@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 95%;
+    --card: 240 8% 6%;
+    --card-foreground: 0 0% 95%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 280 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 16%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 240 5% 16%;
+    --muted-foreground: 240 5% 55%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 60% 30%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 280 60% 45%;
+    --radius: 0.5rem;
+
+    /* MTG Colors */
+    --mtg-white: 48 100% 94%;
+    --mtg-blue: 207 88% 53%;
+    --mtg-black: 0 0% 10%;
+    --mtg-red: 0 100% 50%;
+    --mtg-green: 120 60% 40%;
+
+    /* Phyrexian accent */
+    --phyrexian: 280 70% 35%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.8) hsl(var(--secondary) / 0.45);
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--secondary) / 0.35);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgb(139 92 246 / 0.85), rgb(20 184 166 / 0.65));
+    border: 2px solid hsl(var(--background));
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgb(167 139 250 / 0.95), rgb(45 212 191 / 0.8));
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: clip;
+    background-image:
+      linear-gradient(180deg, rgba(4, 4, 7, 0.76) 0%, rgba(4, 4, 7, 0.9) 58%, rgba(4, 4, 7, 0.96) 100%),
+      radial-gradient(ellipse at 52% 24%, rgba(20, 184, 166, 0.08) 0%, transparent 36%),
+      radial-gradient(ellipse at 68% 38%, rgba(139, 92, 246, 0.08) 0%, transparent 32%),
+      url('/app-background.png');
+    background-size:
+      cover,
+      cover,
+      cover,
+      cover;
+    background-position:
+      center,
+      center,
+      center,
+      center;
+    background-attachment: fixed;
+  }
+
+  @media (max-width: 768px) {
+    body {
+      background-image:
+        linear-gradient(180deg, rgba(4, 4, 7, 0.34) 0%, rgba(4, 4, 7, 0.56) 58%, rgba(4, 4, 7, 0.78) 100%),
+        radial-gradient(ellipse at 52% 24%, rgba(20, 184, 166, 0.08) 0%, transparent 36%),
+        radial-gradient(ellipse at 68% 38%, rgba(139, 92, 246, 0.08) 0%, transparent 32%),
+        url('/app-background.png');
+      background-attachment: scroll;
+    }
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+}
+
+@layer components {
+  .phyrexian-panel {
+    @apply border-border/80 bg-[hsl(var(--card)/0.65)] shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur;
+  }
+
+  .phyrexian-panel-strong {
+    @apply border-violet-500/25 bg-[linear-gradient(135deg,rgba(139,92,246,0.18),rgba(10,10,15,0.72)_45%,rgba(20,184,166,0.08))] shadow-[0_22px_80px_rgba(0,0,0,0.42)] backdrop-blur;
+  }
+
+  .phyrexian-divider {
+    @apply border-border/70 bg-black/25 backdrop-blur;
+  }
+
+  .safe-top {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+
+  .safe-bottom {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes phyrexian-loading {
+  0% {
+    transform: translateX(-110%);
+  }
+  50% {
+    transform: translateX(50%);
+  }
+  100% {
+    transform: translateX(210%);
+  }
+}

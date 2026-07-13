@@ -1,0 +1,1 @@
+export const ARENA_MATCHES_FETCH_LIMIT = 500;

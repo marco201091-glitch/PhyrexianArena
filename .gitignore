@@ -1,0 +1,66 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+/mcps
+.DS_Store
+*.pem
+
+# debug
+/terminals/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env
+.env*.local
+.env*
+!.env.example
+
+# vercel
+.vercel
+.env.vercel.*
+
+# agent/debug scratch scripts
+scripts/_tmp-*.mjs
+
+# supabase cli
+supabase/.temp/
+
+# windows shell accident
+$null
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# capacitor / android
+mobile/android/.gradle/
+mobile/android/.idea/
+mobile/android/local.properties
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/capacitor-cordova-android-plugins/
+mobile/android/.cxx/
+*.keystore
+*.jks
+mobile/android/keystore.properties
+
+# expo native prebuild output
+expo/.expo/
+expo/node_modules/
