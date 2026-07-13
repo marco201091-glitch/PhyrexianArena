@@ -58,6 +58,8 @@ export default function LoginScreen() {
         authEmail = data;
       }
 
+      await setRememberMePreference(rememberMe);
+
       const { error } = await supabase.auth.signInWithPassword({
         email: authEmail,
         password,
@@ -82,6 +84,7 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
+      await setRememberMePreference(rememberMe);
       const next = Array.isArray(redirect) ? redirect[0] : redirect;
       const redirectPath = await signInWithGoogle(next);
       router.replace(redirectPath as Href);

@@ -2,7 +2,11 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-persistence';
+import {
+  getRememberMePreference,
+  setRememberMePreference,
+  syncRememberMePreferenceCookie,
+} from '@/lib/auth-persistence';
 import { clearSupabaseAuthStorage } from '@/lib/supabase-auth-recovery';
 import { resetSupabaseClient, supabase } from '@/lib/supabase';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +33,7 @@ function LoginForm() {
 
   useEffect(() => {
     setRememberMe(getRememberMePreference());
+    syncRememberMePreferenceCookie();
   }, []);
 
   const searchParams = useSearchParams();
@@ -104,9 +109,17 @@ function LoginForm() {
     }
   };
 
+  const handleRememberMeChange = (checked: boolean) => {
+    setRememberMe(checked);
+    setRememberMePreference(checked);
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
+      setRememberMePreference(rememberMe);
+      clearSupabaseAuthStorage();
+      resetSupabaseClient();
       await signInWithGoogle(redirectPath);
     } catch (error: unknown) {
       toast({
@@ -174,7 +187,7 @@ function LoginForm() {
               <Checkbox
                 id="rememberMe"
                 checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked === true)}
+                onCheckedChange={(checked) => handleRememberMeChange(checked === true)}
                 className="border-violet-400/70 data-[state=checked]:border-violet-400 data-[state=checked]:bg-violet-600"
               />
               <span>{t({ it: 'Ricordami su questo dispositivo', en: 'Remember me on this device' })}</span>
