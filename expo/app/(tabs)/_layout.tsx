@@ -1,0 +1,87 @@
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, spacing } from '@/constants/theme';
+import { useLanguage } from '@/contexts/language-context';
+import { resolveTabBarHeight } from '@/lib/layout';
+
+type TabIconProps = {
+  name: keyof typeof Ionicons.glyphMap;
+  focusedName: keyof typeof Ionicons.glyphMap;
+  color: string;
+  focused: boolean;
+};
+
+function TabIcon({ name, focusedName, color, focused }: TabIconProps) {
+  return <Ionicons name={focused ? focusedName : name} size={22} color={color} />;
+}
+
+export default function TabsLayout() {
+  const { copy } = useLanguage();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = resolveTabBarHeight(insets.bottom);
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        headerTransparent: true,
+        headerTitleStyle: { color: colors.foreground, fontWeight: '700' },
+        headerTintColor: colors.foreground,
+        headerShadowVisible: false,
+        tabBarStyle: {
+          backgroundColor: colors.card,
+          borderTopColor: colors.borderSoft,
+          borderTopWidth: 1,
+          height: tabBarHeight,
+          paddingTop: spacing.xs,
+          paddingBottom: Math.max(spacing.sm, insets.bottom),
+        },
+        tabBarActiveTintColor: colors.primaryMuted,
+        tabBarInactiveTintColor: colors.muted,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          marginTop: 2,
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: copy('arenasTab'),
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="grid-outline" focusedName="grid" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{
+          title: copy('statsTab'),
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="bar-chart-outline" focusedName="bar-chart" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: copy('profile'),
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="person-outline" focusedName="person" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: copy('settings'),
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="settings-outline" focusedName="settings" color={color} focused={focused} />
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
