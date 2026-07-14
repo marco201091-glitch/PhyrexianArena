@@ -41,6 +41,8 @@ export function ManaColorBadge({
         className,
       )}
     >
+      {/* Tiny external SVGs do not benefit from Next's raster image optimization. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={getManaSymbolSvgUrl(color)}
         alt=""

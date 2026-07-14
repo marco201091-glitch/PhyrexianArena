@@ -6,9 +6,11 @@ import {
   getBottomToolbarHeight,
   getCenterToolbarBand,
   getCommanderCardAnchor,
+  getLandscapeSeatRotation,
   getSeatRotation,
   getSquareTableLayouts,
   getTableOrientation,
+  getViewportTableOrientation,
   mapPlayersToSeats,
   usesCenterToolbar,
 } from '@/lib/live-game-table-layout';
@@ -18,6 +20,34 @@ describe('live-game-table-layout', () => {
     expect(getTableOrientation(2)).toBe('portrait');
     expect(getTableOrientation(4)).toBe('portrait');
     expect(getTableOrientation(6)).toBe('portrait');
+  });
+
+  it('detects landscape web and tablet viewports without changing native orientation policy', () => {
+    expect(getViewportTableOrientation(1024, 768)).toBe('landscape');
+    expect(getViewportTableOrientation(1366, 1024)).toBe('landscape');
+    expect(getViewportTableOrientation(820, 1180)).toBe('portrait');
+    expect(getViewportTableOrientation(744, 700)).toBe('landscape');
+    expect(getTableOrientation(4)).toBe('portrait');
+  });
+
+  it('builds balanced landscape columns for old and modern tablets', () => {
+    [
+      [4, 1024, 712],
+      [5, 1180, 764],
+      [6, 1366, 968],
+    ].forEach(([count, width, height]) => {
+      const layouts = getSquareTableLayouts(count, width, height, 'classic', 'landscape');
+      expect(layouts).toHaveLength(count);
+      layouts.forEach((seat) => {
+        expect(seat.left).toBeGreaterThanOrEqual(0);
+        expect(seat.top).toBeGreaterThanOrEqual(0);
+        expect(seat.left + seat.width).toBeLessThanOrEqual(width);
+        expect(seat.top + seat.height).toBeLessThanOrEqual(height);
+        expect(getLandscapeSeatRotation(seat, width)).toBe(
+          seat.left + seat.width / 2 <= width / 2 ? 90 : -90,
+        );
+      });
+    });
   });
 
   it('reserves a horizontal center toolbar for two-to-six-player games', () => {
@@ -74,11 +104,11 @@ describe('live-game-table-layout', () => {
     expect(getCommanderCardAnchor('bottomRight')).toBe('topRight');
   });
 
-  it('keeps the five-player head seat and flips every other five/six-player seat', () => {
+  it('faces every five/six-player seat toward its outside table edge', () => {
     expect(getSeatRotation('capotavola', 5)).toBe(90);
-    expect(getSeatRotation('topLeft', 5)).toBe(-90);
+    expect(getSeatRotation('topLeft', 5)).toBe(90);
     expect(getSeatRotation('topRight', 5)).toBe(-90);
-    expect(getSeatRotation('bottom', 5)).toBe(180);
+    expect(getSeatRotation('bottom', 5)).toBe(0);
     expect(getSeatRotation('capotavola', 6)).toBe(90);
     expect(getSeatRotation('top', 6)).toBe(-90);
     expect(getSeatRotation('bottomLeft', 6)).toBe(90);

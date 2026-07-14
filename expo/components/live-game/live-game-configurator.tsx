@@ -14,6 +14,7 @@ import {
 } from '@/lib/live-game-table-layout';
 import type { LiveGameSeatSetup } from '@/lib/live-game-setup';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { isCompactViewport, isTabletViewport, layout } from '@/lib/layout';
 
 export type SetupParticipant = {
   key: ParticipantKey;
@@ -88,7 +89,10 @@ export function LiveGameConfigurator({
   onReset,
 }: Props) {
   const { width: windowWidth } = useWindowDimensions();
-  const previewWidth = Math.min(420, windowWidth - spacing.lg * 4);
+  const compact = isCompactViewport(windowWidth);
+  const maxPreviewWidth = isTabletViewport(windowWidth) ? 520 : 420;
+  const availableWidth = Math.min(windowWidth, layout.contentMaxWidth) - spacing.lg * 4;
+  const previewWidth = Math.min(maxPreviewWidth, availableWidth);
   const previewHeight = Math.round(previewWidth * 1.2);
   const layouts = useMemo(
     () => getSquareTableLayouts(playerCount, previewWidth, previewHeight, layoutVariant),
@@ -273,7 +277,7 @@ export function LiveGameConfigurator({
             </ScrollView>
           </View>
         ) : null}
-        <View style={styles.modalActions}>
+        <View style={[styles.modalActions, compact && styles.modalActionsStacked]}>
           {currentSeat?.participantKey ? (
             <Button
               label={labels.clearSeat}
@@ -350,5 +354,6 @@ const styles = StyleSheet.create({
   deckName: { color: colors.foreground, fontSize: 13, fontWeight: '800' },
   deckCommander: { color: colors.muted, fontSize: 11, marginTop: 2 },
   modalActions: { flexDirection: 'row', gap: spacing.sm },
+  modalActionsStacked: { flexDirection: 'column' },
   actionButton: { flex: 1 },
 });

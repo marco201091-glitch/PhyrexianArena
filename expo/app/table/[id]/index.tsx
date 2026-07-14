@@ -364,7 +364,7 @@ export default function TableScreen() {
     } finally {
       setSharing(false);
     }
-  }, [copy, sharePreview]);
+  }, [copy, sharePreview, showToast]);
 
   const buildSessionExportMatch = (match: ArenaMatch): ArenaSessionExportMatch => ({
     participants: match.match_participants.map((participant) => {

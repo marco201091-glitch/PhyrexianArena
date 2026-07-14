@@ -393,8 +393,8 @@ export const cookiePolicyDocument: LegalDocument = {
           en: 'Remember me (functional): preference stored in localStorage and, when enabled, extended authentication cookie lifetime (up to about 400 days). If you disable "Remember me", the session ends when you close the browser.',
         },
         {
-          it: 'Lingua (funzionali): preferenza IT/EN salvata in localStorage (`phyrexian-arena-language`).',
-          en: 'Language (functional): IT/EN preference stored in localStorage (`phyrexian-arena-language`).',
+          it: 'Lingua (funzionali): preferenza IT/EN salvata nello storage locale del dispositivo (`phyrexian-arena-language`).',
+          en: 'Language (functional): IT/EN preference stored in the device local storage (`phyrexian-arena-language`).',
         },
         {
           it: 'Cache dell’app (funzionale): arene, record recenti, mazzi, immagini dei comandanti e operazioni delle partite live possono essere conservati localmente sul dispositivo per avvio rapido, uso offline e ripristino dopo un crash. La cache è separata per account e viene aggiornata dal server.',

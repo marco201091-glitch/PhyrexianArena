@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   },
   damageTrayAnchor: {
     position: 'absolute',
-    top: '50%',
+    top: '72%',
     zIndex: 6,
   },
   damageTrayAnchorCompact: {

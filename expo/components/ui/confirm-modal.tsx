@@ -1,9 +1,10 @@
 import type { ComponentProps } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { colors, radii, spacing } from '@/constants/theme';
+import { isPhoneViewport } from '@/lib/layout';
 
 type ConfirmAction = {
   label: string;
@@ -30,7 +31,9 @@ export function ConfirmModal({
   icon,
   tone,
 }: ConfirmModalProps) {
+  const { width } = useWindowDimensions();
   const resolvedTone = tone ?? (actions.some((action) => action.variant === 'destructive') ? 'danger' : 'default');
+  const stackActions = actions.length > 2 || (isPhoneViewport(width) && width < 400);
 
   return (
     <Modal
@@ -40,7 +43,7 @@ export function ConfirmModal({
       presentation="dialog"
       maxWidth={480}
       footer={(
-        <View style={[styles.actions, actions.length > 2 && styles.actionsStacked]}>
+        <View style={[styles.actions, stackActions && styles.actionsStacked]}>
         {actions.map((action, index) => (
           <Button
             key={`${action.label}-${index}`}

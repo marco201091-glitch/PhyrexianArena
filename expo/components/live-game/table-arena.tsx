@@ -18,11 +18,12 @@ import { colors, radii, spacing } from '@/constants/theme';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import {
   findPodAtPoint,
-  getBottomToolbarHeight,
   getCenterToolbarBand,
+  getLandscapeSeatRotation,
   getSeatControlPlacement,
   getSeatRotation,
   getSquareTableLayouts,
+  getViewportTableOrientation,
   mapPlayersToSeats,
   usesCenterToolbar,
   type PodBounds,
@@ -147,19 +148,30 @@ export function TableArena({
   const activePickerResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playerCount = players.length;
-  const toolbarHeight = getBottomToolbarHeight(playerCount, insets.bottom);
-  const layoutHeight = Math.max(0, (arenaSize.height || 480) - toolbarHeight);
-
   const arenaWidth = arenaSize.width || screenWidth;
+  const arenaHeight = arenaSize.height || 480;
+  const tableOrientation = getViewportTableOrientation(arenaWidth, arenaHeight);
+  const hasCenterToolbar = usesCenterToolbar(playerCount) && tableOrientation === 'portrait';
+  const toolbarHeight = hasCenterToolbar
+    ? 0
+    : 56 + Math.max(insets.bottom, 8);
+  const layoutHeight = Math.max(0, arenaHeight - toolbarHeight);
   const seatLayouts = useMemo(
-    () => getSquareTableLayouts(playerCount, arenaWidth, layoutHeight, layoutVariant),
-    [layoutHeight, arenaWidth, playerCount, layoutVariant],
+    () => getSquareTableLayouts(
+      playerCount,
+      arenaWidth,
+      layoutHeight,
+      layoutVariant,
+      tableOrientation,
+    ),
+    [layoutHeight, arenaWidth, playerCount, layoutVariant, tableOrientation],
   );
 
-  const hasCenterToolbar = usesCenterToolbar(playerCount);
   const centerToolbarBand = useMemo(
-    () => getCenterToolbarBand(playerCount, arenaWidth, layoutHeight, layoutVariant),
-    [arenaWidth, layoutHeight, layoutVariant, playerCount],
+    () => hasCenterToolbar
+      ? getCenterToolbarBand(playerCount, arenaWidth, layoutHeight, layoutVariant)
+      : null,
+    [arenaWidth, hasCenterToolbar, layoutHeight, layoutVariant, playerCount],
   );
 
   const seatAssignments = useMemo(
@@ -374,7 +386,9 @@ export function TableArena({
             <TableSeat
               player={player}
               allPlayers={players}
-              seatRotation={getSeatRotation(layout.role, playerCount, layoutVariant)}
+              seatRotation={tableOrientation === 'landscape'
+                ? getLandscapeSeatRotation(layout, arenaWidth)
+                : getSeatRotation(layout.role, playerCount, layoutVariant)}
               controlPlacement={getSeatControlPlacement(layout.role)}
               damageMode={damageMode}
               isSource={dragSource === player.participantKey}

@@ -17,26 +17,26 @@ function getScreenOrientationModule(): ScreenOrientationModule | null {
 }
 
 export async function applyLiveGameOrientationLock(playerCount: number): Promise<void> {
-  const module = getScreenOrientationModule();
-  if (!module) return;
+  const orientationModule = getScreenOrientationModule();
+  if (!orientationModule) return;
 
   try {
     const orientation = getTableOrientation(playerCount);
     const lock = orientation === 'portrait'
-      ? module.OrientationLock.PORTRAIT_UP
-      : module.OrientationLock.LANDSCAPE;
-    await module.lockAsync(lock);
+      ? orientationModule.OrientationLock.PORTRAIT_UP
+      : orientationModule.OrientationLock.LANDSCAPE;
+    await orientationModule.lockAsync(lock);
   } catch {
     // Native module missing until the dev client is rebuilt.
   }
 }
 
 export async function clearLiveGameOrientationLock(): Promise<void> {
-  const module = getScreenOrientationModule();
-  if (!module) return;
+  const orientationModule = getScreenOrientationModule();
+  if (!orientationModule) return;
 
   try {
-    await module.unlockAsync();
+    await orientationModule.unlockAsync();
   } catch {
     // ignore
   }

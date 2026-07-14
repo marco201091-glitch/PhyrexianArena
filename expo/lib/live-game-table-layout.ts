@@ -67,6 +67,11 @@ export function getTableOrientation(_playerCount: number): TableOrientation {
   return 'portrait';
 }
 
+/** Web/tablet layouts can rotate even when the native game remains portrait-locked. */
+export function getViewportTableOrientation(width: number, height: number): TableOrientation {
+  return width > height ? 'landscape' : 'portrait';
+}
+
 export function usesCenterToolbar(playerCount: number): boolean {
   return playerCount >= 2 && playerCount <= 6;
 }
@@ -128,15 +133,15 @@ export function getSeatRotation(
   if (playerCount === 5) {
     switch (role) {
       case 'capotavola':
-        return 90;
       case 'topLeft':
-        return -90;
       case 'bottomLeft':
         return 90;
       case 'topRight':
       case 'top':
       case 'bottomRight':
         return -90;
+      case 'bottom':
+        return 0;
       default:
         return 180;
     }
@@ -437,12 +442,84 @@ function buildOpposedTable(playerCount: number, width: number, height: number): 
   ];
 }
 
+function buildLandscapeColumn(
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  roles: SeatRole[],
+): SquareSeatLayout[] {
+  const cellHeight = (height - GRID_GAP * (roles.length - 1)) / roles.length;
+  return roles.map((role, index) => layoutCell(
+    left,
+    top + index * (cellHeight + GRID_GAP),
+    width,
+    cellHeight,
+    role,
+  ));
+}
+
+function buildLandscapeTable(
+  playerCount: number,
+  width: number,
+  height: number,
+  variant: TableLayoutVariant,
+): SquareSeatLayout[] {
+  const innerLeft = GRID_PADDING;
+  const innerTop = GRID_PADDING;
+  const innerWidth = width - GRID_PADDING * 2;
+  const innerHeight = height - GRID_PADDING * 2;
+  const columnWidth = (innerWidth - GRID_GAP) / 2;
+  const right = innerLeft + columnWidth + GRID_GAP;
+
+  if (playerCount === 2) {
+    return [
+      layoutCell(innerLeft, innerTop, columnWidth, innerHeight, 'top'),
+      layoutCell(right, innerTop, columnWidth, innerHeight, 'bottom'),
+    ];
+  }
+
+  const leftRoles: SeatRole[] = playerCount === 3
+    ? variant === 'opposed' ? ['bottomLeft', 'bottomRight'] : ['bottom']
+    : playerCount === 4
+      ? ['topLeft', 'bottomLeft']
+      : playerCount === 5
+        ? variant === 'opposed'
+          ? ['topLeft', 'capotavola', 'bottomLeft']
+          : ['topLeft', 'bottomLeft']
+        : ['topLeft', 'capotavola', 'bottomLeft'];
+  const rightRoles: SeatRole[] = playerCount === 3
+    ? variant === 'opposed' ? ['top'] : ['topLeft', 'topRight']
+    : playerCount === 4
+      ? ['topRight', 'bottomRight']
+      : playerCount === 5
+        ? variant === 'opposed'
+          ? ['topRight', 'bottomRight']
+          : ['topRight', 'top', 'bottomRight']
+        : ['topRight', 'top', 'bottomRight'];
+
+  return [
+    ...buildLandscapeColumn(innerLeft, innerTop, columnWidth, innerHeight, leftRoles),
+    ...buildLandscapeColumn(right, innerTop, columnWidth, innerHeight, rightRoles),
+  ];
+}
+
+export function getLandscapeSeatRotation(layout: SquareSeatLayout, tableWidth: number): number {
+  const seatCenter = layout.left + layout.width / 2;
+  return seatCenter <= tableWidth / 2 ? 90 : -90;
+}
+
 export function getSquareTableLayouts(
   playerCount: number,
   width: number,
   height: number,
   variant: TableLayoutVariant = 'classic',
+  orientation: TableOrientation = 'portrait',
 ): SquareSeatLayout[] {
+  if (orientation === 'landscape' && playerCount >= 2 && playerCount <= 6) {
+    return buildLandscapeTable(playerCount, width, height, variant);
+  }
+
   switch (playerCount) {
     case 2:
     case 3:

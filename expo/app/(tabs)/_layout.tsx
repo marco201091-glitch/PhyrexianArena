@@ -1,9 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
-import { resolveTabBarHeight } from '@/lib/layout';
+import { resolveTabBarHeight, tabBarHorizontalInset } from '@/lib/layout';
 
 type TabIconProps = {
   name: keyof typeof Ionicons.glyphMap;
@@ -19,7 +20,9 @@ function TabIcon({ name, focusedName, color, focused }: TabIconProps) {
 export default function TabsLayout() {
   const { copy } = useLanguage();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const tabBarHeight = resolveTabBarHeight(insets.bottom);
+  const horizontalInset = tabBarHorizontalInset(width);
 
   return (
     <Tabs
@@ -36,6 +39,8 @@ export default function TabsLayout() {
           height: tabBarHeight,
           paddingTop: spacing.xs,
           paddingBottom: Math.max(spacing.sm, insets.bottom),
+          paddingLeft: horizontalInset,
+          paddingRight: horizontalInset,
         },
         tabBarActiveTintColor: colors.primaryMuted,
         tabBarInactiveTintColor: colors.muted,

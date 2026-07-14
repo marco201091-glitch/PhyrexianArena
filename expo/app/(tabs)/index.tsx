@@ -6,6 +6,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ import { getSiteUrl } from '@/lib/env';
 import { fetchGroupByInviteCode } from '@/lib/join-arena';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
+import { isTabletViewport } from '@/lib/layout';
 
 export default function DashboardScreen() {
   const { user } = useAuth();
@@ -46,6 +48,8 @@ export default function DashboardScreen() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
+  const { width } = useWindowDimensions();
+  const useArenaGrid = isTabletViewport(width);
 
   const formatArenaDate = useCallback((date: string) => {
     try {
@@ -209,21 +213,22 @@ export default function DashboardScreen() {
         ) : (
           <View style={styles.arenaList}>
             {groups.map((group) => (
-              <ArenaCard
-                key={group.id}
-                group={group}
-                arenaLabel={copy('arenaLabel')}
-                playersLabel={copy('players')}
-                tableLabel={copy('table')}
-                inviteLabel={copy('invite')}
-                createdLabel={copy('created')}
-                openHint={copy('openArenaHint')}
-                openLabel={copy('open')}
-                copyLabel={copy('copyInviteLink')}
-                formatDate={formatArenaDate}
-                onOpen={() => router.push({ pathname: '/table/[id]', params: { id: group.id } })}
-                onCopyInvite={() => openInvitePreview(group.invite_code)}
-              />
+              <View key={group.id} style={[styles.arenaItem, useArenaGrid && styles.arenaItemTablet]}>
+                <ArenaCard
+                  group={group}
+                  arenaLabel={copy('arenaLabel')}
+                  playersLabel={copy('players')}
+                  tableLabel={copy('table')}
+                  inviteLabel={copy('invite')}
+                  createdLabel={copy('created')}
+                  openHint={copy('openArenaHint')}
+                  openLabel={copy('open')}
+                  copyLabel={copy('copyInviteLink')}
+                  formatDate={formatArenaDate}
+                  onOpen={() => router.push({ pathname: '/table/[id]', params: { id: group.id } })}
+                  onCopyInvite={() => openInvitePreview(group.invite_code)}
+                />
+              </View>
             ))}
           </View>
         )}
@@ -337,7 +342,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   arenaList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 14,
+  },
+  arenaItem: {
+    width: '100%',
+  },
+  arenaItemTablet: {
+    width: '48%',
+    flexGrow: 1,
   },
   modalTitle: {
     color: colors.foreground,

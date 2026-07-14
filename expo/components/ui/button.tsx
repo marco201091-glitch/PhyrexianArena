@@ -60,6 +60,9 @@ export function Button({
           isDestructive && styles.destructiveLabel,
         ]}
         maxFontSizeMultiplier={layout.maxFontSizeMultiplier}
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.86}
       >
         {label}
       </Text>
@@ -108,9 +111,11 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   label: {
+    flexShrink: 1,
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+    textAlign: 'center',
   },
   labelSm: {
     fontSize: 14,

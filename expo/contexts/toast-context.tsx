@@ -35,7 +35,7 @@ const TONE_ICONS: Record<ToastTone, keyof typeof Ionicons.glyphMap> = {
 export function ToastProvider({ children }: PropsWithChildren) {
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState<ToastState | null>(null);
-  const opacity = useRef(new Animated.Value(0)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hideToast = useCallback(() => {

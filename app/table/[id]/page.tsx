@@ -371,6 +371,7 @@ export default function TablePage() {
   const [guests, setGuests] = useState<ArenaGuest[]>([]);
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
   const [commanderStats, setCommanderStats] = useState<CommanderStats[]>([]);
+  const [statsParticipantRows, setStatsParticipantRows] = useState<Awaited<ReturnType<typeof fetchArenaStatsParticipants>>>([]);
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
@@ -908,8 +909,6 @@ export default function TablePage() {
 
     return () => window.clearTimeout(timer);
   }, [editingMatch, editMatchPlayerDecks]);
-
-  const [statsParticipantRows, setStatsParticipantRows] = useState<Awaited<ReturnType<typeof fetchArenaStatsParticipants>>>([]);
 
   const bracketOptions = useMemo(() => {
     const brackets = new Set<string>();
