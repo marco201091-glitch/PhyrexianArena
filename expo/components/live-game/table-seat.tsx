@@ -58,30 +58,34 @@ const AnimatedView = Animated.createAnimatedComponent(View);
 function CommanderDamageTray({
   sources,
   damageFrom,
-  compact,
+  columns,
+  tileWidth,
+  tileHeight,
+  gap,
+  fontSize,
   onPress,
   accessibilityLabel,
 }: {
   sources: LiveGamePlayer[];
   damageFrom: LiveGamePlayer['commanderDamageFrom'];
-  compact: boolean;
+  columns: number;
+  tileWidth: number;
+  tileHeight: number;
+  gap: number;
+  fontSize: number;
   onPress?: () => void;
   accessibilityLabel?: string;
 }) {
   if (sources.length === 0) return null;
 
-  const columns = compact
-    ? sources.length
-    : sources.length <= 2 ? sources.length : sources.length <= 4 ? 2 : 3;
-  const tileWidth = compact ? 22 : 28;
-  const tileHeight = compact ? 28 : 38;
-
   return (
     <Pressable
       style={[
         styles.damageTray,
-        compact && styles.damageTrayCompact,
-        { width: columns * (tileWidth + 3) + 8 },
+        {
+          width: columns * tileWidth + (columns - 1) * gap + 8,
+          gap,
+        },
       ]}
       onPress={onPress}
       disabled={!onPress}
@@ -94,18 +98,18 @@ function CommanderDamageTray({
         return (
           <View
             key={source.participantKey}
-            style={[styles.damageTile, compact && styles.damageTileCompact]}
+            style={[styles.damageTile, { width: tileWidth, height: tileHeight }]}
           >
             <DeckImage
               uri={source.commanderImage}
               alt={source.commander}
-              style={[styles.damageImage, compact && styles.damageImageCompact]}
-              containerStyle={[styles.damageImageWrap, compact && styles.damageImageCompact]}
+              style={{ width: tileWidth, height: tileHeight }}
+              containerStyle={{ width: tileWidth, height: tileHeight, borderRadius: 0 }}
               contentPosition="top"
             />
             <View style={[styles.damageValueBadge, hot && styles.damageValueBadgeHot]}>
               <Text
-                style={[styles.damageValue, compact && styles.damageValueCompact, hot && styles.damageValueHot]}
+                style={[styles.damageValue, { fontSize }, hot && styles.damageValueHot]}
               >
                 {amount}
               </Text>
@@ -213,11 +217,21 @@ export function TableSeat({
 
   const nameOnLeft = controlPlacement.nameSide === 'left';
   const isCompact = canvasWidth > 0 && canvasWidth < 280;
-  const commanderColumns = isCompact
-    ? commanderSources.length
-    : commanderSources.length <= 2 ? commanderSources.length : commanderSources.length <= 4 ? 2 : 3;
-  const commanderRows = Math.max(1, Math.ceil(commanderSources.length / Math.max(1, commanderColumns)));
-  const damageTrayHeight = commanderRows * (isCompact ? 28 : 38) + (commanderRows - 1) * 3 + 8;
+  const commanderCount = commanderSources.length;
+  const commanderColumns = commanderCount <= 2 ? commanderCount : commanderCount <= 4 ? 2 : 3;
+  const playerCount = allPlayers.length;
+  const commanderMaxHeight = playerCount <= 3 ? 64 : playerCount === 4 ? 52 : 40;
+  const commanderMinHeight = playerCount >= 6 ? 24 : playerCount === 5 ? 28 : 32;
+  const commanderTileHeight = Math.max(
+    commanderMinHeight,
+    Math.min(
+      commanderMaxHeight,
+      Math.round(Math.min(canvasWidth * 0.18, canvasHeight * 0.2)),
+    ),
+  );
+  const commanderTileWidth = Math.round(commanderTileHeight * 0.74);
+  const commanderGap = Math.max(2, Math.min(5, Math.round(commanderTileHeight * 0.08)));
+  const commanderFontSize = Math.max(8, Math.min(16, Math.round(commanderTileHeight * 0.25)));
   const lifeFontSize = Math.max(46, Math.min(isCompact ? 58 : 76, Math.round(canvasHeight * 0.4)));
 
   return (
@@ -324,18 +338,16 @@ export function TableSeat({
             </View>
 
             <View
-              style={[
-                styles.damageTrayAnchor,
-                isCompact
-                  ? styles.damageTrayAnchorCompact
-                  : nameOnLeft ? styles.metadataRight : styles.metadataLeft,
-                !isCompact && { marginTop: -damageTrayHeight / 2 },
-              ]}
+              style={styles.damageTrayAnchor}
             >
               <CommanderDamageTray
                 sources={commanderSources}
                 damageFrom={player.commanderDamageFrom}
-                compact={isCompact}
+                columns={commanderColumns}
+                tileWidth={commanderTileWidth}
+                tileHeight={commanderTileHeight}
+                gap={commanderGap}
+                fontSize={commanderFontSize}
                 onPress={onOpenDetails}
                 accessibilityLabel={`${player.displayName} · ${labels.commanderDamage}`}
               />
@@ -567,18 +579,14 @@ const styles = StyleSheet.create({
   },
   damageTrayAnchor: {
     position: 'absolute',
-    top: '72%',
+    left: 42,
+    right: 42,
+    top: '74%',
+    transform: [{ translateY: -24 }],
+    alignItems: 'center',
     zIndex: 6,
   },
-  damageTrayAnchorCompact: {
-    top: undefined,
-    left: 38,
-    right: 38,
-    bottom: 5,
-    alignItems: 'center',
-  },
   damageTray: {
-    minHeight: 48,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
@@ -589,37 +597,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
-  damageTrayCompact: {
-    minHeight: 36,
-    padding: 4,
-    gap: 3,
-  },
   damageTile: {
-    width: 28,
-    height: 38,
     borderRadius: 5,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
     backgroundColor: '#101018',
-  },
-  damageTileCompact: {
-    width: 22,
-    height: 28,
-    borderRadius: 4,
-  },
-  damageImageWrap: {
-    width: 28,
-    height: 38,
-    borderRadius: 0,
-  },
-  damageImage: {
-    width: 28,
-    height: 38,
-  },
-  damageImageCompact: {
-    width: 22,
-    height: 28,
   },
   damageValueBadge: {
     position: 'absolute',
@@ -640,9 +623,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
-  },
-  damageValueCompact: {
-    fontSize: 8,
   },
   damageValueHot: {
     color: '#fecaca',

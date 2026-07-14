@@ -39,7 +39,7 @@ type PendingTransfer = {
 
 type TableArenaProps = {
   players: LiveGamePlayer[];
-  damageMode: DamageMode;
+  startedAt: string | null;
   randomHighlight: ParticipantKey | null;
   startingPlayerKey: ParticipantKey | null;
   startingHighlight: ParticipantKey | null;
@@ -79,34 +79,36 @@ type TableArenaProps = {
   canUndo: boolean;
   onUndo: () => void;
   onEndGame: () => void;
-  onDamageModeChange: (mode: DamageMode) => void;
   onAdjust: (key: ParticipantKey, delta: number) => void;
   onApplyDragDamage: (input: {
     sourceKey: ParticipantKey;
     targetKey: ParticipantKey;
     amount: number;
-    isCommander: boolean;
+    mode: DamageMode;
   }) => void;
   onEliminate: (key: ParticipantKey) => void;
   onRevive: (key: ParticipantKey) => void;
   onPickRandom: (pool?: ParticipantKey[]) => void;
 };
 
-const DAMAGE_MODES: DamageMode[] = ['life', 'commander', 'infect'];
+const SYSTEM_GESTURE_GUARD = 10;
 
-const DAMAGE_MODE_META: Record<DamageMode, {
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  surface: string;
-}> = {
-  life: { icon: 'heart', color: '#86efac', surface: 'rgba(22, 101, 52, 0.82)' },
-  commander: { icon: 'shield', color: '#93c5fd', surface: 'rgba(30, 64, 175, 0.82)' },
-  infect: { icon: 'skull', color: '#e9d5ff', surface: 'rgba(107, 33, 168, 0.82)' },
-};
+function formatTrackerDuration(startedAt: string | null | undefined, now: number) {
+  if (!startedAt || now <= 0) return '00:00';
+  const started = new Date(startedAt).getTime();
+  if (!Number.isFinite(started)) return '00:00';
+  const seconds = Math.max(0, Math.floor((now - started) / 1000));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
+    : `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+}
 
 export function TableArena({
   players,
-  damageMode,
+  startedAt,
   randomHighlight,
   startingPlayerKey,
   startingHighlight,
@@ -119,7 +121,6 @@ export function TableArena({
   canUndo,
   onUndo,
   onEndGame,
-  onDamageModeChange,
   onAdjust,
   onApplyDragDamage,
   onEliminate,
@@ -129,7 +130,6 @@ export function TableArena({
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const [arenaSize, setArenaSize] = useState({ width: 0, height: 0 });
-  const [showTools, setShowTools] = useState(false);
   const [isChoosingActivePlayer, setIsChoosingActivePlayer] = useState(false);
   const [activePickerKey, setActivePickerKey] = useState<ParticipantKey | null>(null);
   const [dragSource, setDragSource] = useState<ParticipantKey | null>(null);
@@ -146,12 +146,18 @@ export function TableArena({
   const podBoundsRef = useRef<Record<string, PodBounds>>({});
   const podRefs = useRef<Record<string, View | null>>({});
   const activePickerResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [clockNow, setClockNow] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const playerCount = players.length;
   const arenaWidth = arenaSize.width || screenWidth;
   const arenaHeight = arenaSize.height || 480;
   const tableOrientation = getViewportTableOrientation(arenaWidth, arenaHeight);
-  const hasCenterToolbar = usesCenterToolbar(playerCount) && tableOrientation === 'portrait';
+  const hasCenterToolbar = usesCenterToolbar(playerCount);
   const toolbarHeight = hasCenterToolbar
     ? 0
     : 56 + Math.max(insets.bottom, 8);
@@ -169,9 +175,9 @@ export function TableArena({
 
   const centerToolbarBand = useMemo(
     () => hasCenterToolbar
-      ? getCenterToolbarBand(playerCount, arenaWidth, layoutHeight, layoutVariant)
+      ? getCenterToolbarBand(playerCount, arenaWidth, layoutHeight, layoutVariant, tableOrientation)
       : null,
-    [arenaWidth, hasCenterToolbar, layoutHeight, layoutVariant, playerCount],
+    [arenaWidth, hasCenterToolbar, layoutHeight, layoutVariant, playerCount, tableOrientation],
   );
   const isVerticalCenterToolbar = centerToolbarBand?.axis === 'vertical';
 
@@ -272,7 +278,6 @@ export function TableArena({
   const cancelActivePlayerChoice = useCallback(() => {
     setIsChoosingActivePlayer(false);
     setActivePickerKey(null);
-    setShowTools(false);
   }, []);
 
   const chooseActivePlayer = useCallback((key: ParticipantKey) => {
@@ -284,7 +289,6 @@ export function TableArena({
     if (activePickerResetRef.current) clearTimeout(activePickerResetRef.current);
     setActivePickerKey(key);
     setIsChoosingActivePlayer(false);
-    setShowTools(false);
     onPickRandom(opponentKeys);
     activePickerResetRef.current = setTimeout(() => {
       setActivePickerKey(null);
@@ -303,31 +307,9 @@ export function TableArena({
         <Ionicons name="arrow-back" size={21} color={colors.foreground} />
       </Pressable>
 
-      <View style={[styles.modeSegment, isVerticalCenterToolbar && styles.modeSegmentVertical]}>
-        {DAMAGE_MODES.map((mode) => {
-          const active = damageMode === mode;
-          const meta = DAMAGE_MODE_META[mode];
-          return (
-            <Pressable
-              key={mode}
-              style={[styles.modeButton, active && { backgroundColor: meta.surface }]}
-              onPress={() => onDamageModeChange(mode)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={mode === 'life'
-                ? labels.damageLife
-                : mode === 'commander'
-                  ? labels.damageCommander
-                  : labels.damageInfect}
-            >
-              <Ionicons
-                name={meta.icon}
-                size={17}
-                color={active ? meta.color : 'rgba(244,244,245,0.46)'}
-              />
-            </Pressable>
-          );
-        })}
+      <View style={[styles.durationPill, isVerticalCenterToolbar && styles.durationPillVertical]}>
+        <Ionicons name="time-outline" size={14} color={colors.muted} />
+        <Text style={styles.durationText}>{formatTrackerDuration(startedAt, clockNow)}</Text>
       </View>
 
       <Pressable
@@ -346,18 +328,41 @@ export function TableArena({
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, showTools && styles.toolBtnActive]}
+        style={[styles.toolBtn, styles.toolBtnSurface]}
         onPress={() => {
-          if (isChoosingActivePlayer) {
-            cancelActivePlayerChoice();
-            return;
-          }
-          setShowTools((value) => !value);
+          setActivePickerKey(null);
+          onPickRandom();
         }}
         accessibilityRole="button"
-        accessibilityState={{ expanded: showTools }}
+        accessibilityLabel={labels.randomAll}
       >
-        <Ionicons name="ellipsis-horizontal" size={21} color={colors.foreground} />
+        <Ionicons name="dice-outline" size={21} color={colors.foreground} />
+      </Pressable>
+
+      <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface, activePlayers.length < 2 && styles.toolBtnDisabled]}
+        disabled={activePlayers.length < 2}
+        onPress={() => {
+          setActivePickerKey(null);
+          setIsChoosingActivePlayer(true);
+          void hapticLight();
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={labels.randomOpponents}
+      >
+        <View style={styles.opponentRandomIcon}>
+          <Ionicons name="person-outline" size={19} color={colors.foreground} />
+          <Ionicons name="dice" size={10} color={colors.primaryLight} style={styles.opponentRandomDie} />
+        </View>
+      </Pressable>
+
+      <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface]}
+        onPress={onEndGame}
+        accessibilityRole="button"
+        accessibilityLabel={labels.endGame}
+      >
+        <Ionicons name="flag-outline" size={20} color={colors.foreground} />
       </Pressable>
     </>
   );
@@ -365,7 +370,16 @@ export function TableArena({
   return (
     <View style={styles.root}>
       <View
-        style={[styles.gridHost, !hasCenterToolbar && { paddingBottom: toolbarHeight }]}
+        style={[
+          styles.gridHost,
+          {
+            marginTop: Math.max(insets.top, SYSTEM_GESTURE_GUARD),
+            marginRight: Math.max(insets.right, SYSTEM_GESTURE_GUARD),
+            marginBottom: Math.max(insets.bottom, SYSTEM_GESTURE_GUARD),
+            marginLeft: Math.max(insets.left, SYSTEM_GESTURE_GUARD),
+          },
+          !hasCenterToolbar && { paddingBottom: toolbarHeight },
+        ]}
         onLayout={handleArenaLayout}
       >
         {arenaSize.width > 0 && seatAssignments.map(({ player, layout }) => (
@@ -391,7 +405,7 @@ export function TableArena({
                 ? getLandscapeSeatRotation(layout, arenaWidth)
                 : getSeatRotation(layout.role, playerCount, layoutVariant)}
               controlPlacement={getSeatControlPlacement(layout.role)}
-              damageMode={damageMode}
+              damageMode="life"
               isSource={dragSource === player.participantKey}
               isDragHover={dragHoverKey === player.participantKey}
               isActiveSelector={activePickerKey === player.participantKey}
@@ -444,71 +458,23 @@ export function TableArena({
         ) : null}
       </View>
 
-      {showTools ? (
-        <View
-          style={[
-            styles.toolsSheet,
-            centerToolbarBand
-              ? centerToolbarBand.axis === 'vertical'
-                ? { top: spacing.md }
-                : { top: centerToolbarBand.top + centerToolbarBand.height + 6 }
-              : { bottom: toolbarHeight + 8 },
-          ]}
-        >
-          {isChoosingActivePlayer ? (
-            <View style={styles.activePickerPrompt}>
-              <View style={styles.activePickerRow}>
-                <Ionicons name="finger-print-outline" size={19} color={colors.primaryMuted} />
-                <Text style={styles.activePickerText}>{labels.selectActivePlayer}</Text>
-              </View>
-              <Pressable
-                style={styles.activePickerCancel}
-                onPress={cancelActivePlayerChoice}
-                accessibilityRole="button"
-                accessibilityLabel={labels.cancel}
-              >
-                <Ionicons name="close" size={18} color={colors.muted} />
-                <Text style={styles.activePickerCancelText}>{labels.cancel}</Text>
-              </Pressable>
+      {isChoosingActivePlayer ? (
+        <View style={[styles.toolsSheet, { top: spacing.md }]}>
+          <View style={styles.activePickerPrompt}>
+            <View style={styles.activePickerRow}>
+              <Ionicons name="finger-print-outline" size={19} color={colors.primaryMuted} />
+              <Text style={styles.activePickerText}>{labels.selectActivePlayer}</Text>
             </View>
-          ) : (
-            <>
-              <View style={styles.randomActions}>
-                <Pressable
-                  style={styles.randomButton}
-                  onPress={() => {
-                    setActivePickerKey(null);
-                    onPickRandom();
-                    setShowTools(false);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={labels.randomAll}
-                >
-                  <Ionicons name="people" size={18} color={colors.foreground} />
-                  <Text style={styles.randomButtonText}>{labels.randomAll}</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.randomButton, activePlayers.length < 2 && styles.toolBtnDisabled]}
-                  disabled={activePlayers.length < 2}
-                  onPress={() => {
-                    setActivePickerKey(null);
-                    setIsChoosingActivePlayer(true);
-                    void hapticLight();
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={labels.randomOpponents}
-                  accessibilityState={{ disabled: activePlayers.length < 2 }}
-                >
-                  <Ionicons name="locate" size={18} color={colors.foreground} />
-                  <Text style={styles.randomButtonText}>{labels.randomOpponents}</Text>
-                </Pressable>
-              </View>
-              <Pressable style={styles.endGameRow} onPress={() => { setShowTools(false); onEndGame(); }}>
-                <Ionicons name="flag" size={18} color="#fecaca" />
-                <Text style={styles.endGameRowText}>{labels.endGame}</Text>
-              </Pressable>
-            </>
-          )}
+            <Pressable
+              style={styles.activePickerCancel}
+              onPress={cancelActivePlayerChoice}
+              accessibilityRole="button"
+              accessibilityLabel={labels.cancel}
+            >
+              <Ionicons name="close" size={18} color={colors.muted} />
+              <Text style={styles.activePickerCancelText}>{labels.cancel}</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
 
@@ -531,29 +497,29 @@ export function TableArena({
         visible={Boolean(pendingTransfer)}
         source={pendingSource}
         target={pendingTarget}
-        showCommanderChoice={damageMode !== 'infect'}
-        defaultCommander={damageMode === 'commander'}
+        defaultMode="life"
         labels={{
           title: labels.damageConfirmTitle,
           amount: labels.damageAmount,
           lifeDamage: labels.lifeDamage,
           commanderDamage: labels.commanderDamage,
+          infectDamage: labels.infect,
           apply: labels.applyDamage,
           cancel: labels.cancel,
         }}
         onClose={() => setPendingTransfer(null)}
-        onConfirm={({ amount, isCommander }) => {
+        onConfirm={({ amount, mode }) => {
           if (!pendingTransfer) return;
           const sourceName = playersByKey.get(pendingTransfer.sourceKey)?.displayName ?? '';
           const targetName = playersByKey.get(pendingTransfer.targetKey)?.displayName ?? '';
-          const modeLabel = damageMode === 'infect'
+          const modeLabel = mode === 'infect'
             ? labels.infect
-            : isCommander ? labels.commanderDamage : labels.lifeDamage;
+            : mode === 'commander' ? labels.commanderDamage : labels.lifeDamage;
           onApplyDragDamage({
             sourceKey: pendingTransfer.sourceKey,
             targetKey: pendingTransfer.targetKey,
             amount,
-            isCommander,
+            mode,
           });
           setDamageFeedback(`${sourceName} → ${targetName} · ${amount} ${modeLabel}`);
           setTimeout(() => setDamageFeedback(null), 3200);
@@ -664,45 +630,42 @@ const styles = StyleSheet.create({
   toolBtnDisabled: {
     opacity: 0.55,
   },
-  modeSegment: {
+  durationPill: {
+    minWidth: 62,
+    height: 34,
+    paddingHorizontal: 8,
+    borderRadius: 17,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    height: 38,
-    padding: 3,
-    borderRadius: 19,
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: 'rgba(255,255,255,0.055)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
-  modeSegmentVertical: {
-    flexDirection: 'column',
-    width: 38,
-    height: 102,
-  },
-  modeButton: {
+  durationPillVertical: {
+    minWidth: 34,
     width: 34,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 68,
+    paddingHorizontal: 0,
+    flexDirection: 'column',
   },
-  endGameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: 'rgba(127, 29, 29, 0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.45)',
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  endGameRowText: {
-    color: '#fecaca',
-    fontSize: 14,
+  durationText: {
+    color: colors.muted,
+    fontSize: 10,
     fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  opponentRandomIcon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  opponentRandomDie: {
+    position: 'absolute',
+    right: -1,
+    bottom: -1,
   },
   toolsSheet: {
     position: 'absolute',
@@ -753,27 +716,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 11,
     fontWeight: '700',
-  },
-  randomActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  randomButton: {
-    flex: 1,
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    borderRadius: radii.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  randomButtonText: {
-    color: colors.foreground,
-    fontSize: 11,
-    fontWeight: '800',
-    textAlign: 'center',
   },
   damageFeedback: {
     position: 'absolute',

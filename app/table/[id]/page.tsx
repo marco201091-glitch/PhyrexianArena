@@ -70,7 +70,8 @@ import {
   extractDeckColorOverridesFromRows,
   fetchArenaStatsParticipants,
 } from '@/lib/arena-stats-fetch';
-import { fetchLatestDayMatches, fetchMatchesForDay, fetchMatchesSince } from '@/lib/arena-match-fetch';
+import { fetchLatestDayMatches, fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
+import { fetchActiveLiveGame } from '@/lib/live-game-service';
 
 import { groupMatchesByDay } from '@/lib/arena-session';
 import {
@@ -388,6 +389,7 @@ export default function TablePage() {
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
+  const [activeLiveGameId, setActiveLiveGameId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
   const [bracketFilter, setBracketFilter] = useState('all');
   const [deckStatsSort, setDeckStatsSort] = useState<'winRate' | 'gamesPlayed' | 'wins'>('winRate');
@@ -647,16 +649,24 @@ export default function TablePage() {
 
   const initializeMatchHistory = useCallback(async () => {
     try {
-      const summaries = await fetchArenaDaySummaries(supabase, groupId);
-      setDaySummaries(summaries);
+      let summaries = await fetchArenaDaySummaries(supabase, groupId);
 
       const latestDayKey = summaries[0]?.dayKey ?? null;
       if (!latestDayKey) {
-        setMatches([]);
-        setMatchesByDay({});
-        return [] as Match[];
+        const recent = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
+        const grouped = groupMatchesByDay(recent);
+        summaries = grouped.map((group) => ({
+          dayKey: group.dayKey,
+          matchCount: group.matchCount,
+          latestPlayedAt: group.matches[0]?.played_at ?? '',
+        }));
+        setDaySummaries(summaries);
+        setMatchesByDay(Object.fromEntries(grouped.map((group) => [group.dayKey, group.matches as Match[]])));
+        setMatches(recent);
+        return recent;
       }
 
+      setDaySummaries(summaries);
       const latestMatches = await fetchLatestDayMatches(supabase, groupId, latestDayKey);
       const loaded = latestMatches as unknown as Match[];
       setMatchesByDay({ [latestDayKey]: loaded });
@@ -664,7 +674,21 @@ export default function TablePage() {
       return loaded;
     } catch (error) {
       console.error('Error fetching match history:', getSupabaseErrorMessage(error as Error, 'Failed to fetch matches'));
-      return [] as Match[];
+      try {
+        const recent = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
+        const grouped = groupMatchesByDay(recent);
+        setDaySummaries(grouped.map((group) => ({
+          dayKey: group.dayKey,
+          matchCount: group.matchCount,
+          latestPlayedAt: group.matches[0]?.played_at ?? '',
+        })));
+        setMatchesByDay(Object.fromEntries(grouped.map((group) => [group.dayKey, group.matches as Match[]])));
+        setMatches(recent);
+        return recent;
+      } catch (fallbackError) {
+        console.error('Error fetching recent matches fallback:', getSupabaseErrorMessage(fallbackError as Error, 'Failed to fetch recent matches'));
+        return [] as Match[];
+      }
     }
   }, [groupId]);
 
@@ -697,6 +721,20 @@ export default function TablePage() {
     if (decksLoading || decks.length > 0 || members.length === 0) return;
     void loadArenaDecks(members.map((member) => member.id));
   }, [decks.length, decksLoading, loadArenaDecks, members]);
+
+  const refreshActiveLiveGame = useCallback(async () => {
+    if (!groupId || !user) {
+      setActiveLiveGameId(null);
+      return;
+    }
+    try {
+      const game = await fetchActiveLiveGame(supabase, groupId, toUserParticipantKey(user.id));
+      setActiveLiveGameId(game?.id ?? null);
+    } catch (error) {
+      console.error('Error fetching active live game:', getSupabaseErrorMessage(error as Error, 'Failed to fetch active game'));
+      setActiveLiveGameId(null);
+    }
+  }, [groupId, user]);
 
   const getStatsSinceDate = useCallback(() => {
     if (dateFilter === 'all') return null;
@@ -848,6 +886,20 @@ export default function TablePage() {
   useEffect(() => {
     if (user) fetchData();
   }, [user, fetchData]);
+
+  useEffect(() => {
+    if (!user) return;
+    void refreshActiveLiveGame();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshActiveLiveGame();
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [refreshActiveLiveGame, user]);
 
   const getFilteredMatches = useCallback(() => {
     if (dateFilter === 'all') return matches;
@@ -2113,7 +2165,9 @@ export default function TablePage() {
                 className="flex-1 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 font-bold shadow-lg shadow-violet-950/30 hover:from-violet-500 hover:to-fuchsia-500"
               >
                 <Swords className="mr-2 h-4 w-4" />
-                {t({ it: 'Gioca live', en: 'Play Game' })}
+                {activeLiveGameId
+                  ? t({ it: 'Riprendi partita', en: 'Resume game' })
+                  : t({ it: 'Gioca live', en: 'Play Game' })}
               </Button>
               <Button
                 onClick={() => {
@@ -2139,6 +2193,23 @@ export default function TablePage() {
             </>
           )}
         >
+          {activeLiveGameId ? (
+            <button
+              type="button"
+              onClick={() => router.push(`/table/${groupId}/play`)}
+              className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-emerald-400/35 bg-emerald-500/10 px-4 py-3 text-left transition hover:bg-emerald-500/15"
+            >
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-400" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="block text-sm text-emerald-100">{t({ it: 'Partita live in corso', en: 'Live game in progress' })}</strong>
+                <span className="block text-xs text-emerald-200/65">{t({ it: 'Tocca per tornare al tracker', en: 'Tap to return to the tracker' })}</span>
+              </span>
+              <ArrowLeft className="h-4 w-4 rotate-180 text-emerald-200" />
+            </button>
+          ) : null}
           {(canLeaveCurrentArena || canManageGroup) && (
             <div className="absolute right-4 top-4 hidden items-center gap-1 lg:flex">
               {canLeaveCurrentArena && (

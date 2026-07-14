@@ -186,6 +186,21 @@ describe('live-game-table-layout', () => {
     expect(six[5]!.width).toBeGreaterThan(six[3]!.width);
   });
 
+  it('reserves a vertical utility lane between every landscape card column', () => {
+    [2, 3, 4, 5, 6].forEach((count) => {
+      const layouts = getSquareTableLayouts(count, 1366, 820, 'classic', 'landscape');
+      const band = getCenterToolbarBand(count, 1366, 820, 'classic', 'landscape')!;
+
+      expect(band.axis).toBe('vertical');
+      expect(layouts).toHaveLength(count);
+      layouts.forEach((layout) => {
+        const overlapsToolbar = layout.left < band.left + band.width
+          && layout.left + layout.width > band.left;
+        expect(overlapsToolbar).toBe(false);
+      });
+    });
+  });
+
   it('orients alternate-preset seats toward the relevant outside edge', () => {
     expect(getSeatRotation('top', 5, 'opposed')).toBe(180);
     expect(getSeatRotation('capotavola', 6, 'opposed')).toBe(180);

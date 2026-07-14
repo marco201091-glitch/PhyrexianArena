@@ -134,7 +134,6 @@ export default function LiveGameScreen() {
   const [customLife, setCustomLife] = useState('40');
   const [starting, setStarting] = useState(false);
 
-  const [damageMode, setDamageMode] = useState<DamageMode>('life');
   const [damagePulse, setDamagePulse] = useState<Record<string, number>>({});
   const [randomHighlight, setRandomHighlight] = useState<ParticipantKey | null>(null);
   const [startingHighlight, setStartingHighlight] = useState<ParticipantKey | null>(null);
@@ -145,6 +144,7 @@ export default function LiveGameScreen() {
   const [endWinCondition, setEndWinCondition] = useState<WinCondition | null>(null);
   const [endingGame, setEndingGame] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [showExitChoice, setShowExitChoice] = useState(false);
   const [discardingGame, setDiscardingGame] = useState(false);
   const [showRematch, setShowRematch] = useState(false);
   const [completedDurationSeconds, setCompletedDurationSeconds] = useState(0);
@@ -723,20 +723,15 @@ export default function LiveGameScreen() {
     sourceKey: ParticipantKey;
     targetKey: ParticipantKey;
     amount: number;
-    isCommander: boolean;
+    mode: DamageMode;
   }) => {
     if (input.sourceKey === input.targetKey || input.amount <= 0) return;
-    const mode: DamageMode = damageMode === 'infect'
-      ? 'infect'
-      : input.isCommander
-        ? 'commander'
-        : 'life';
     pulseDamage(input.targetKey);
     const mutation: LiveGameMutation = {
       type: 'adjust',
       targetKey: input.targetKey,
       amount: input.amount,
-      mode,
+      mode: input.mode,
       sourceKey: input.sourceKey,
     };
     const player = liveGameRef.current?.state.players.find(
@@ -948,8 +943,8 @@ export default function LiveGameScreen() {
         <StatusBar hidden />
         <TableArena
           players={gameState?.players ?? []}
+          startedAt={liveGame.started_at}
           layoutVariant={gameState?.layoutVariant ?? 'classic'}
-          damageMode={damageMode}
           randomHighlight={randomHighlight}
           startingPlayerKey={gameState?.startingPlayerKey ?? null}
           startingHighlight={startingHighlight}
@@ -984,11 +979,10 @@ export default function LiveGameScreen() {
             damageReceived: copy('liveGameDamageReceived'),
             undo: copy('liveGameUndo'),
           }}
-          onBack={() => router.back()}
+          onBack={() => setShowExitChoice(true)}
           canUndo={undoDepth > 0}
           onUndo={handleUndo}
           onEndGame={() => openEndGameModal(liveGame.state)}
-          onDamageModeChange={setDamageMode}
           onAdjust={handleAdjust}
           onApplyDragDamage={handleApplyDragDamage}
           onEliminate={setPendingEliminate}
@@ -1002,6 +996,57 @@ export default function LiveGameScreen() {
           }}
           onPickRandom={runRandomPick}
         />
+
+        <Modal
+          visible={showExitChoice}
+          onClose={() => setShowExitChoice(false)}
+          presentation="dialog"
+          maxWidth={520}
+          scroll={false}
+        >
+          <ModalHeader
+            title={copy('liveGameExitTitle')}
+            subtitle={copy('liveGameExitHint')}
+            icon="arrow-back-outline"
+            onClose={() => setShowExitChoice(false)}
+          />
+          <View style={styles.exitChoiceGrid}>
+            <Pressable
+              style={({ pressed }) => [styles.exitChoice, styles.pauseChoice, pressed && styles.choicePressed]}
+              onPress={() => {
+                setShowExitChoice(false);
+                router.back();
+              }}
+            >
+              <View style={[styles.exitChoiceIcon, styles.pauseChoiceIcon]}>
+                <Ionicons name="pause" size={22} color={colors.primaryLight} />
+              </View>
+              <View style={styles.exitChoiceCopy}>
+                <Text style={styles.exitChoiceTitle}>{copy('liveGamePause')}</Text>
+                <Text style={styles.exitChoiceHint}>
+                  {copy('resumeGameHint')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.exitChoice, styles.discardChoice, pressed && styles.choicePressed]}
+              onPress={() => {
+                setShowExitChoice(false);
+                setShowDiscardConfirm(true);
+              }}
+            >
+              <View style={[styles.exitChoiceIcon, styles.discardChoiceIcon]}>
+                <Ionicons name="trash-outline" size={21} color="#fca5a5" />
+              </View>
+              <View style={styles.exitChoiceCopy}>
+                <Text style={[styles.exitChoiceTitle, styles.discardChoiceTitle]}>{copy('liveGameDiscard')}</Text>
+                <Text style={styles.exitChoiceHint}>{copy('liveGameDiscardConfirm')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="rgba(252,165,165,0.72)" />
+            </Pressable>
+          </View>
+        </Modal>
 
         <ConfirmModal
           visible={Boolean(pendingEliminate)}
@@ -1449,6 +1494,56 @@ const styles = StyleSheet.create({
   immersiveRoot: {
     flex: 1,
     backgroundColor: '#050508',
+  },
+  exitChoiceGrid: {
+    gap: spacing.sm,
+  },
+  exitChoice: {
+    minHeight: 74,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: spacing.sm,
+  },
+  pauseChoice: {
+    borderColor: 'rgba(139,92,246,0.42)',
+    backgroundColor: 'rgba(124,58,237,0.13)',
+  },
+  discardChoice: {
+    borderColor: 'rgba(248,113,113,0.34)',
+    backgroundColor: 'rgba(127,29,29,0.13)',
+  },
+  exitChoiceIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pauseChoiceIcon: {
+    backgroundColor: 'rgba(124,58,237,0.24)',
+  },
+  discardChoiceIcon: {
+    backgroundColor: 'rgba(127,29,29,0.3)',
+  },
+  exitChoiceCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  exitChoiceTitle: {
+    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  discardChoiceTitle: {
+    color: '#fecaca',
+  },
+  exitChoiceHint: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 15,
   },
   drawOption: {
     flexDirection: 'row',
