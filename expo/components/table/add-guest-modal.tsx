@@ -176,7 +176,7 @@ export function AddGuestModal({
 
   return (
     <Modal visible={visible} onClose={onClose}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="always" keyboardDismissMode="none">
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.hint}>{hint}</Text>
 

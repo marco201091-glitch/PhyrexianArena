@@ -7,7 +7,7 @@ type ModalTone = 'default' | 'danger' | 'success' | 'warning';
 type ModalHeaderProps = {
   title: string;
   subtitle?: string;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap | null;
   tone?: ModalTone;
   onClose?: () => void;
 };
@@ -46,14 +46,16 @@ export function ModalHeader({
 
   return (
     <View style={styles.root}>
-      <View
-        style={[
-          styles.iconWrap,
-          { backgroundColor: palette.surface, borderColor: palette.border },
-        ]}
-      >
-        <Ionicons name={icon} size={22} color={palette.icon} />
-      </View>
+      {icon ? (
+        <View
+          style={[
+            styles.iconWrap,
+            { backgroundColor: palette.surface, borderColor: palette.border },
+          ]}
+        >
+          <Ionicons name={icon} size={22} color={palette.icon} />
+        </View>
+      ) : null}
       <View style={styles.copy}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}

@@ -131,10 +131,6 @@ function secureRandom() {
   return value[0]! / 0x1_0000_0000;
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
 function replay(record: LiveGameRecord, queue: QueuedLiveGameMutation[]) {
   return queue.reduce(
     (current, item) => ({ ...current, state: applyLiveGameMutation(current.state, item.mutation) }),
@@ -155,15 +151,15 @@ function formatDuration(startedAt: string | null, endedAt?: string) {
 }
 
 function ModalTitle({ icon: Icon, title, onClose }: {
-  icon: typeof Trophy;
+  icon?: typeof Trophy | null;
   title: string;
   onClose: () => void;
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-      <div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-300">
+      {Icon ? <div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-300">
         <Icon className="h-5 w-5" />
-      </div>
+      </div> : null}
       <h2 className="min-w-0 flex-1 text-lg font-black text-foreground">{title}</h2>
       <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
         <X className="h-5 w-5" />
@@ -864,22 +860,6 @@ export function WebLiveGame({
           const sideways = Math.abs(rotation) === 90;
           const selected = highlight === player.participantKey;
           const isStarting = record.state.startingPlayerKey === player.participantKey;
-          const canvasWidth = sideways ? layout.height : layout.width;
-          const canvasHeight = sideways ? layout.width : layout.height;
-          const commanderEntries = Object.entries(player.commanderDamageFrom);
-          const commanderCount = commanderEntries.length;
-          const commanderColumns = commanderCount <= 2 ? commanderCount : commanderCount <= 4 ? 2 : 3;
-          const playerCount = record.state.players.length;
-          const commanderMaxHeight = playerCount <= 3 ? 64 : playerCount === 4 ? 52 : 40;
-          const commanderMinHeight = playerCount >= 6 ? 24 : playerCount === 5 ? 28 : 32;
-          const commanderTileHeight = clamp(
-            Math.round(Math.min(canvasWidth * 0.18, canvasHeight * 0.2)),
-            commanderMinHeight,
-            commanderMaxHeight,
-          );
-          const commanderTileWidth = Math.round(commanderTileHeight * 0.74);
-          const commanderGap = clamp(Math.round(commanderTileHeight * 0.08), 2, 5);
-          const commanderFontSize = clamp(Math.round(commanderTileHeight * 0.25), 8, 16);
           return (
             <section key={player.participantKey} data-player-key={player.participantKey} onClickCapture={(event) => { if (randomOpponentMode) { event.stopPropagation(); selectRandomOpponent(player.participantKey); } }} className={cn('absolute overflow-hidden rounded-[clamp(12px,2vw,28px)] border-2 bg-zinc-950 transition-all duration-200', selected ? 'z-20 border-amber-300 shadow-[0_0_45px_rgba(251,191,36,.9)] brightness-125' : 'border-black/80', drag?.targetKey === player.participantKey && 'border-rose-400 shadow-[0_0_35px_rgba(244,63,94,.8)]', player.isEliminated && 'grayscale brightness-50')} style={{ left: layout.left, top: layout.top, width: layout.width, height: layout.height }}>
               <DeckImage src={player.commanderImage} alt={player.commander} className="absolute inset-0 h-full w-full rounded-none object-cover opacity-75" fallbackClassName="absolute inset-0 h-full w-full rounded-none" />
@@ -887,40 +867,17 @@ export function WebLiveGame({
               <div className="absolute left-1/2 top-1/2" style={{ width: sideways ? layout.height : layout.width, height: sideways ? layout.width : layout.height, transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}>
                 <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }); }} className="absolute left-1/2 top-2 z-10 grid h-11 w-16 -translate-x-1/2 place-items-center rounded-full bg-black/45 text-4xl font-light backdrop-blur active:scale-90"><Plus /></button>
                 <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }); }} className="absolute bottom-2 left-1/2 z-10 grid h-11 w-16 -translate-x-1/2 place-items-center rounded-full bg-black/45 text-4xl font-light backdrop-blur active:scale-90"><Minus /></button>
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <div className="max-w-[75%] truncate rounded-xl bg-black/65 px-3 py-1 text-sm font-black shadow backdrop-blur">{player.displayName}</div>
                   <div className="font-black leading-none drop-shadow-[0_3px_4px_rgba(0,0,0,.9)]" style={{ fontSize: `clamp(54px, ${Math.min(layout.width, layout.height) * 0.28}px, 112px)` }}>{player.life}</div>
+                  <button
+                    onClick={(event) => { event.stopPropagation(); setDamagePanelKey(player.participantKey); }}
+                    className="mt-1 grid h-10 w-11 place-items-center rounded-full border border-violet-200/30 bg-black/65 text-violet-100 shadow-lg backdrop-blur transition active:scale-90"
+                    aria-label={`${player.displayName} damage details`}
+                  >
+                    <Shield className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  onClick={(event) => { event.stopPropagation(); setDamagePanelKey(player.participantKey); }}
-                  className="absolute left-1/2 top-[74%] z-10 grid -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-black/60 p-1 shadow-xl backdrop-blur"
-                  style={{
-                    gridTemplateColumns: `repeat(${Math.max(1, commanderColumns)}, ${commanderTileWidth}px)`,
-                    gap: commanderGap,
-                  }}
-                >
-                  {commanderEntries.map(([source, amount]) => {
-                    const sourcePlayer = record.state.players.find((entry) => entry.participantKey === source);
-                    return (
-                      <span
-                        key={source}
-                        className="relative overflow-hidden rounded-md border border-white/15 bg-zinc-950"
-                        style={{ width: commanderTileWidth, height: commanderTileHeight }}
-                      >
-                        <DeckImage src={sourcePlayer?.commanderImage} alt="Commander" className="h-full w-full object-cover" />
-                        <b className="absolute inset-x-0 bottom-0 bg-black/80 leading-tight" style={{ fontSize: commanderFontSize }}>{amount}</b>
-                      </span>
-                    );
-                  })}
-                  {player.infect > 0 && (
-                    <span
-                      className="grid place-items-center rounded-md bg-emerald-950 px-1 font-black text-emerald-200"
-                      style={{ width: commanderTileWidth, height: commanderTileHeight, fontSize: commanderFontSize }}
-                    >
-                      ☠ {player.infect}
-                    </span>
-                  )}
-                </button>
                 <button onPointerDown={(event) => { event.stopPropagation(); event.preventDefault(); setDrag({ sourceKey: player.participantKey, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, targetKey: null }); }} className="absolute bottom-3 right-3 z-20 grid h-11 w-11 place-items-center rounded-full border border-rose-300/50 bg-black/70 text-rose-200 shadow-lg backdrop-blur active:scale-90" aria-label="Drag damage"><Link2 className="h-5 w-5" /></button>
                 {player.isEliminated && <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'revive', targetKey: player.participantKey, startingLife: record.starting_life }, { type: 'restore-player', player }); }} className="absolute left-3 top-3 z-20 rounded-full bg-emerald-600 px-3 py-2 text-xs font-black"><RotateCcw className="mr-1 inline h-4 w-4" />Revive</button>}
                 {!player.isEliminated && <button onClick={(event) => { event.stopPropagation(); setConfirmEliminate(player.participantKey); }} className="absolute left-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white/75"><Skull className="h-4 w-4" /></button>}
@@ -942,19 +899,19 @@ export function WebLiveGame({
             height: centerToolbarBand.height,
           }}
         >
-        <div className={cn('flex items-center gap-0.5 rounded-full border border-white/10 bg-zinc-950/95 p-1 shadow-2xl backdrop-blur-xl', centerToolbarBand.axis === 'vertical' ? 'flex-col' : 'flex-row')}>
-          <Button variant="ghost" size="icon" onClick={() => setExitChoiceOpen(true)} title="Back"><ArrowLeft /></Button>
-          <div className={cn('flex items-center gap-1 rounded-full bg-zinc-900 px-2 py-1 text-xs font-bold text-zinc-300', centerToolbarBand.axis === 'vertical' && 'px-1 [writing-mode:vertical-rl]')}><Clock3 className="h-3.5 w-3.5" />{duration}</div>
-          <Button variant="ghost" size="icon" onClick={undoLastMutation} disabled={!undoDepth} title="Undo"><RotateCcw /></Button>
-          <Button variant="ghost" size="icon" onClick={() => runRoulette(activePlayers.map((player) => player.participantKey))} title="Random player"><Dices /></Button>
-          <Button variant={randomOpponentMode ? 'default' : 'ghost'} size="icon" onClick={() => setRandomOpponentMode((value) => !value)} title="Random opponent">
+        <div className={cn('flex items-center gap-1.5 rounded-full border border-white/10 bg-zinc-950/95 p-1.5 shadow-2xl backdrop-blur-xl', centerToolbarBand.axis === 'vertical' ? 'flex-col' : 'flex-row')}>
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={() => setExitChoiceOpen(true)} title="Back"><ArrowLeft /></Button>
+          <div className={cn('flex h-10 min-w-16 items-center justify-center gap-1 rounded-full bg-zinc-900 px-2.5 text-xs font-bold text-zinc-300', centerToolbarBand.axis === 'vertical' && 'h-[4.5rem] min-w-10 px-1 [writing-mode:vertical-rl]')}><Clock3 className="h-4 w-4 shrink-0" />{duration}</div>
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={undoLastMutation} disabled={!undoDepth} title="Undo"><RotateCcw /></Button>
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={() => runRoulette(activePlayers.map((player) => player.participantKey))} title="Random player"><Dices /></Button>
+          <Button variant={randomOpponentMode ? 'default' : 'ghost'} size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={() => setRandomOpponentMode((value) => !value)} title="Random opponent">
             <span className="relative block h-5 w-5">
               <UserRound className="absolute left-0 top-0 h-[18px] w-[18px]" />
               <Dices className="absolute -bottom-1 -right-1 h-3 w-3 text-violet-300" />
             </span>
           </Button>
-          <Button variant="ghost" size="icon" onClick={openEnd} title="End game"><Flag /></Button>
-          <Button variant="ghost" size="icon" onClick={enterTrackerFullscreen} title="Fullscreen"><Maximize2 /></Button>
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={openEnd} title="End game"><Flag /></Button>
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={enterTrackerFullscreen} title="Fullscreen"><Maximize2 /></Button>
           {!online && <WifiOff className="mx-2 h-4 w-4 text-amber-400" />}
           {syncing && <Loader2 className="mx-2 h-4 w-4 animate-spin text-violet-300" />}
         </div>
@@ -1052,7 +1009,7 @@ export function WebLiveGame({
 
       {confirmEliminate && <ModalOverlay><ModalCard><ModalTitle icon={Skull} title={copy({ it: 'Eliminare il giocatore?', en: 'Eliminate player?' })} onClose={() => setConfirmEliminate(null)} /><div className="space-y-4 p-5"><p className="text-muted-foreground">{record.state.players.find((player) => player.participantKey === confirmEliminate)?.displayName}</p><div className="flex gap-3"><Button variant="outline" onClick={() => setConfirmEliminate(null)} className="flex-1">{copy({ it: 'Annulla', en: 'Cancel' })}</Button><Button variant="destructive" onClick={() => { const player = record.state.players.find((entry) => entry.participantKey === confirmEliminate); enqueue({ type: 'eliminate', targetKey: confirmEliminate, eliminatedAt: new Date().toISOString() }, player ? { type: 'restore-player', player } : undefined); setConfirmEliminate(null); }} className="flex-1">{copy({ it: 'Elimina', en: 'Eliminate' })}</Button></div></div></ModalCard></ModalOverlay>}
 
-      {exitChoiceOpen && <ModalOverlay><ModalCard><ModalTitle icon={ArrowLeft} title={copy({ it: 'Uscire dal tracker?', en: 'Leave the tracker?' })} onClose={() => setExitChoiceOpen(false)} /><div className="space-y-3 p-5"><p className="pb-1 text-sm text-muted-foreground">{copy({ it: 'La partita resta al sicuro finché non scegli di annullarla.', en: 'Your game stays safe unless you explicitly cancel it.' })}</p><button onClick={() => router.push(`/table/${groupId}`)} className="flex w-full items-center gap-3 rounded-2xl border border-violet-400/35 bg-violet-500/10 p-3 text-left transition hover:bg-violet-500/15 active:scale-[.99]"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-violet-200"><Pause className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block">{copy({ it: 'Pausa partita', en: 'Pause game' })}</b><small className="text-muted-foreground">{copy({ it: 'Torna all’arena e riprendi quando vuoi.', en: 'Return to the arena and resume whenever you want.' })}</small></span><ChevronRight className="h-5 w-5 text-muted-foreground" /></button><button onClick={() => { setExitChoiceOpen(false); setConfirmCancel(true); }} className="flex w-full items-center gap-3 rounded-2xl border border-red-400/30 bg-red-950/20 p-3 text-left transition hover:bg-red-950/30 active:scale-[.99]"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-950/50 text-red-300"><Trash2 className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-red-200">{copy({ it: 'Annulla partita', en: 'Cancel game' })}</b><small className="text-muted-foreground">{copy({ it: 'Elimina la sessione senza salvare un risultato.', en: 'Discard the session without saving a result.' })}</small></span><ChevronRight className="h-5 w-5 text-red-300/70" /></button></div></ModalCard></ModalOverlay>}
+      {exitChoiceOpen && <ModalOverlay><ModalCard><ModalTitle icon={null} title={copy({ it: 'Uscire dal tracker?', en: 'Leave the tracker?' })} onClose={() => setExitChoiceOpen(false)} /><div className="space-y-3 p-5"><p className="pb-1 text-sm text-muted-foreground">{copy({ it: 'La partita resta al sicuro finché non scegli di annullarla.', en: 'Your game stays safe unless you explicitly cancel it.' })}</p><button onClick={() => router.push(`/table/${groupId}`)} className="flex w-full items-center gap-3 rounded-2xl border border-violet-400/35 bg-violet-500/10 p-3 text-left transition hover:bg-violet-500/15 active:scale-[.99]"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-violet-200"><Pause className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block">{copy({ it: 'Pausa partita', en: 'Pause game' })}</b><small className="text-muted-foreground">{copy({ it: 'Torna all’arena e riprendi quando vuoi.', en: 'Return to the arena and resume whenever you want.' })}</small></span><ChevronRight className="h-5 w-5 text-muted-foreground" /></button><button onClick={() => { setExitChoiceOpen(false); setConfirmCancel(true); }} className="flex w-full items-center gap-3 rounded-2xl border border-red-400/30 bg-red-950/20 p-3 text-left transition hover:bg-red-950/30 active:scale-[.99]"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-950/50 text-red-300"><Trash2 className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-red-200">{copy({ it: 'Annulla partita', en: 'Cancel game' })}</b><small className="text-muted-foreground">{copy({ it: 'Elimina la sessione senza salvare un risultato.', en: 'Discard the session without saving a result.' })}</small></span><ChevronRight className="h-5 w-5 text-red-300/70" /></button></div></ModalCard></ModalOverlay>}
 
       {confirmCancel && <ModalOverlay><ModalCard><ModalTitle icon={Flag} title={copy({ it: 'Annullare la partita?', en: 'Cancel this game?' })} onClose={() => setConfirmCancel(false)} /><div className="space-y-4 p-5"><p className="text-sm text-muted-foreground">{copy({ it: 'La partita live verrà eliminata senza creare un record.', en: 'The live game will be discarded without creating a record.' })}</p><div className="flex gap-3"><Button variant="outline" onClick={() => setConfirmCancel(false)} className="flex-1">{copy({ it: 'Continua a giocare', en: 'Keep playing' })}</Button><Button variant="destructive" onClick={cancelGame} className="flex-1">{copy({ it: 'Annulla partita', en: 'Cancel game' })}</Button></div></div></ModalCard></ModalOverlay>}
     </div>

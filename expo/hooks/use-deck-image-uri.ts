@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Image } from 'expo-image';
 import {
   initDeckImageCache,
   invalidateDeckImageCacheEntry,
   peekDeckImageUri,
   resolveDeckImageUri,
+  validateDeckImageCacheEntry,
 } from '@/lib/deck-image-cache';
 
 export function useDeckImageUri(
@@ -37,6 +39,31 @@ export function useDeckImageUri(
         setResolvedUri(cached);
         setLoading(false);
         setFailed(false);
+
+        void (async () => {
+          const validation = await validateDeckImageCacheEntry(effectiveRemoteUrl, cached);
+          if (cancelled || validation === 'valid') return;
+
+          setLoading(true);
+          setResolvedUri(null);
+          await invalidateDeckImageCacheEntry(remoteUrl, commanderName, cached);
+          await Image.clearMemoryCache().catch(() => false);
+          if (cancelled) return;
+
+          try {
+            const repairedUri = await resolveDeckImageUri(
+              validation === 'remote-invalid' ? null : effectiveRemoteUrl,
+              commanderName,
+            );
+            if (cancelled) return;
+            setResolvedUri(repairedUri);
+            setFailed(!repairedUri);
+          } catch {
+            if (!cancelled) setFailed(true);
+          } finally {
+            if (!cancelled) setLoading(false);
+          }
+        })();
         return;
       }
 
@@ -78,6 +105,7 @@ export function useDeckImageUri(
     setResolvedUri(null);
     setForceNameFallback(true);
     void invalidateDeckImageCacheEntry(remoteUrl, commanderName, failedUri)
+      .then(() => Image.clearMemoryCache().catch(() => false))
       .finally(() => setRetryVersion((version) => version + 1));
   }, [commanderName, remoteUrl, resolvedUri]);
 

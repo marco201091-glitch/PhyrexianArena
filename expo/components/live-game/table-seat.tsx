@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -13,7 +13,6 @@ import Animated, {
 import { DeckImage } from '@/components/deck/deck-image';
 import { colors, radii } from '@/constants/theme';
 import {
-  COMMANDER_DAMAGE_LIMIT,
   type DamageMode,
   type LiveGamePlayer,
   type PlayDirection,
@@ -55,78 +54,9 @@ type TableSeatProps = {
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-function CommanderDamageTray({
-  sources,
-  damageFrom,
-  columns,
-  tileWidth,
-  tileHeight,
-  gap,
-  fontSize,
-  onPress,
-  accessibilityLabel,
-}: {
-  sources: LiveGamePlayer[];
-  damageFrom: LiveGamePlayer['commanderDamageFrom'];
-  columns: number;
-  tileWidth: number;
-  tileHeight: number;
-  gap: number;
-  fontSize: number;
-  onPress?: () => void;
-  accessibilityLabel?: string;
-}) {
-  if (sources.length === 0) return null;
-
-  return (
-    <Pressable
-      style={[
-        styles.damageTray,
-        {
-          width: columns * tileWidth + (columns - 1) * gap + 8,
-          gap,
-        },
-      ]}
-      onPress={onPress}
-      disabled={!onPress}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-    >
-      {sources.map((source) => {
-        const amount = damageFrom[source.participantKey] ?? 0;
-        const hot = amount >= COMMANDER_DAMAGE_LIMIT - 3;
-        return (
-          <View
-            key={source.participantKey}
-            style={[styles.damageTile, { width: tileWidth, height: tileHeight }]}
-          >
-            <DeckImage
-              uri={source.commanderImage}
-              alt={source.commander}
-              style={{ width: tileWidth, height: tileHeight }}
-              containerStyle={{ width: tileWidth, height: tileHeight, borderRadius: 0 }}
-              contentPosition="top"
-            />
-            <View style={[styles.damageValueBadge, hot && styles.damageValueBadgeHot]}>
-              <Text
-                style={[styles.damageValue, { fontSize }, hot && styles.damageValueHot]}
-              >
-                {amount}
-              </Text>
-            </View>
-          </View>
-        );
-      })}
-    </Pressable>
-  );
-}
-
 export function TableSeat({
   player,
-  allPlayers,
   seatRotation,
-  controlPlacement,
-  damageMode,
   isSource,
   isDragHover,
   isActiveSelector,
@@ -148,11 +78,6 @@ export function TableSeat({
 }: TableSeatProps) {
   const mainValue = player.life;
   const isLow = mainValue <= 5;
-  const commanderSources = useMemo(
-    () => allPlayers.filter((entry) => entry.participantKey !== player.participantKey),
-    [allPlayers, player.participantKey],
-  );
-
   const shake = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
   const lifeScale = useSharedValue(1);
@@ -215,23 +140,7 @@ export function TableSeat({
     setSeatSize({ width, height });
   };
 
-  const nameOnLeft = controlPlacement.nameSide === 'left';
   const isCompact = canvasWidth > 0 && canvasWidth < 280;
-  const commanderCount = commanderSources.length;
-  const commanderColumns = commanderCount <= 2 ? commanderCount : commanderCount <= 4 ? 2 : 3;
-  const playerCount = allPlayers.length;
-  const commanderMaxHeight = playerCount <= 3 ? 64 : playerCount === 4 ? 52 : 40;
-  const commanderMinHeight = playerCount >= 6 ? 24 : playerCount === 5 ? 28 : 32;
-  const commanderTileHeight = Math.max(
-    commanderMinHeight,
-    Math.min(
-      commanderMaxHeight,
-      Math.round(Math.min(canvasWidth * 0.18, canvasHeight * 0.2)),
-    ),
-  );
-  const commanderTileWidth = Math.round(commanderTileHeight * 0.74);
-  const commanderGap = Math.max(2, Math.min(5, Math.round(commanderTileHeight * 0.08)));
-  const commanderFontSize = Math.max(8, Math.min(16, Math.round(commanderTileHeight * 0.25)));
   const lifeFontSize = Math.max(46, Math.min(isCompact ? 58 : 76, Math.round(canvasHeight * 0.4)));
 
   return (
@@ -326,35 +235,11 @@ export function TableSeat({
               <Text style={styles.edgeButtonText}>+</Text>
             </Pressable>
 
-            <View
-              style={[
-                styles.metadataRail,
-                isCompact
-                  ? styles.metadataCompact
-                  : nameOnLeft ? styles.metadataLeft : styles.metadataRight,
-              ]}
-            >
-              <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
-            </View>
-
-            <View
-              style={styles.damageTrayAnchor}
-            >
-              <CommanderDamageTray
-                sources={commanderSources}
-                damageFrom={player.commanderDamageFrom}
-                columns={commanderColumns}
-                tileWidth={commanderTileWidth}
-                tileHeight={commanderTileHeight}
-                gap={commanderGap}
-                fontSize={commanderFontSize}
-                onPress={onOpenDetails}
-                accessibilityLabel={`${player.displayName} · ${labels.commanderDamage}`}
-              />
-            </View>
-
             <GestureDetector gesture={dragGesture}>
               <AnimatedView style={[styles.lifeReadout, lifeStyle]}>
+                <View style={styles.playerNamePill}>
+                  <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
+                </View>
                 <Text
                   style={[
                     styles.lifeValue,
@@ -364,14 +249,18 @@ export function TableSeat({
                 >
                   {mainValue}
                 </Text>
-                {player.infect > 0 || damageMode === 'infect' ? (
-                  <View style={[styles.secondaryPill, styles.infectPill]}>
-                    <Ionicons name="skull" size={11} color="#f5d0fe" />
-                    <Text style={styles.secondaryValue}>{player.infect}</Text>
-                  </View>
-                ) : null}
               </AnimatedView>
             </GestureDetector>
+
+            <Pressable
+              style={styles.damageDetailsButton}
+              onPress={onOpenDetails}
+              disabled={!onOpenDetails}
+              accessibilityRole="button"
+              accessibilityLabel={`${player.displayName} · ${labels.commanderDamage} · ${labels.infect}`}
+            >
+              <Ionicons name="shield-half-outline" size={21} color="#ddd6fe" />
+            </Pressable>
 
             <Pressable
               style={styles.koButton}
@@ -541,32 +430,17 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 7,
   },
-  metadataRail: {
-    position: 'absolute',
-    top: '50%',
-    zIndex: 6,
-    maxWidth: 82,
-    marginTop: -18,
+  playerNamePill: {
+    maxWidth: 116,
+    minHeight: 24,
     borderRadius: radii.sm,
     backgroundColor: 'rgba(4, 5, 10, 0.72)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 9,
-    paddingVertical: 7,
-  },
-  metadataLeft: {
-    left: 46,
-  },
-  metadataRight: {
-    right: 46,
-  },
-  metadataCompact: {
-    top: 6,
-    left: 42,
-    right: 42,
-    maxWidth: undefined,
-    marginTop: 0,
     paddingVertical: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   playerName: {
     color: '#ffffff',
@@ -577,65 +451,15 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  damageTrayAnchor: {
-    position: 'absolute',
-    left: 42,
-    right: 42,
-    top: '74%',
-    transform: [{ translateY: -24 }],
-    alignItems: 'center',
-    zIndex: 6,
-  },
-  damageTray: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 3,
-    borderRadius: radii.sm,
-    padding: 4,
-    backgroundColor: 'rgba(4, 5, 10, 0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  damageTile: {
-    borderRadius: 5,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: '#101018',
-  },
-  damageValueBadge: {
-    position: 'absolute',
-    left: 2,
-    right: 2,
-    bottom: 2,
-    minHeight: 14,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.76)',
-  },
-  damageValueBadgeHot: {
-    backgroundColor: 'rgba(127,29,29,0.9)',
-  },
-  damageValue: {
-    color: '#ffffff',
-    fontSize: 9,
-    fontWeight: '900',
-    fontVariant: ['tabular-nums'],
-  },
-  damageValueHot: {
-    color: '#fecaca',
-  },
   lifeReadout: {
     position: 'absolute',
     top: '50%',
     left: '50%',
     zIndex: 7,
     width: 132,
-    minHeight: 112,
+    minHeight: 118,
     marginLeft: -66,
-    marginTop: -56,
+    marginTop: -64,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -652,29 +476,21 @@ const styles = StyleSheet.create({
   dangerLife: {
     color: '#fecaca',
   },
-  secondaryPill: {
-    minWidth: 34,
-    height: 20,
-    marginTop: -4,
-    paddingHorizontal: 7,
-    borderRadius: 10,
-    flexDirection: 'row',
+  damageDetailsButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    zIndex: 9,
+    width: 44,
+    height: 40,
+    marginLeft: -22,
+    marginTop: 48,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: 'rgba(4,5,10,0.7)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  infectPill: {
-    backgroundColor: 'rgba(88,28,135,0.78)',
-    borderColor: 'rgba(216,180,254,0.3)',
-  },
-  secondaryValue: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
+    borderColor: 'rgba(221,214,254,0.32)',
   },
   koButton: {
     position: 'absolute',

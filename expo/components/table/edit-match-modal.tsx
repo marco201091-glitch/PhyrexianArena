@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextInput } from '@/components/ui/rich-text-input';
@@ -107,8 +107,7 @@ export function EditMatchModal({
   onError,
   onSave,
 }: EditMatchModalProps) {
-  const { height: windowHeight } = useWindowDimensions();
-  const modalBodyHeight = Math.min(windowHeight * 0.62, 520);
+  const modalBodyHeight = Math.min(Dimensions.get('screen').height * 0.62, 520);
   const [winnerKey, setWinnerKey] = useState('');
   const [isDraw, setIsDraw] = useState(false);
   const [participantDecks, setParticipantDecks] = useState<Record<string, string>>({});
@@ -219,7 +218,8 @@ export function EditMatchModal({
         <ScrollView
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator
           nestedScrollEnabled
         >
