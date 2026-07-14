@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CENTER_TOOLBAR_HEIGHT,
+  CENTER_TOOLBAR_WIDTH,
   findPodAtPoint,
   fitCommanderArtFrame,
   getBottomToolbarHeight,
@@ -86,6 +87,20 @@ describe('live-game-table-layout', () => {
     const toolbar = getCenterToolbarBand(2, 390, 780)!;
     expect(toolbar.top).toBe(layouts[0]!.top + layouts[0]!.height);
     expect(layouts[1]!.top).toBe(toolbar.top + toolbar.height);
+    expect(toolbar.axis).toBe('horizontal');
+  });
+
+  it('uses the Lifetap side-by-side duel with a central vertical toolbar', () => {
+    const layouts = getSquareTableLayouts(2, 390, 780, 'opposed');
+    const toolbar = getCenterToolbarBand(2, 390, 780, 'opposed')!;
+
+    expect(layouts.map((seat) => seat.role)).toEqual(['topLeft', 'topRight']);
+    expect(layouts[0]!.height).toBe(layouts[1]!.height);
+    expect(layouts[0]!.top).toBe(layouts[1]!.top);
+    expect(toolbar.axis).toBe('vertical');
+    expect(toolbar.width).toBe(CENTER_TOOLBAR_WIDTH);
+    expect(toolbar.left).toBe(layouts[0]!.left + layouts[0]!.width);
+    expect(layouts[1]!.left).toBe(toolbar.left + toolbar.width);
   });
 
   it('rotates four-player side seats outward away from the table center', () => {
@@ -139,19 +154,36 @@ describe('live-game-table-layout', () => {
     });
   });
 
-  it('offers an alternate table preset without overlapping the toolbar', () => {
+  it('offers Lifetap alternate presets without overlapping the toolbar', () => {
     [2, 3, 4, 5, 6].forEach((count) => {
       const layouts = getSquareTableLayouts(count, 390, 780, 'opposed');
       const band = getCenterToolbarBand(count, 390, 780, 'opposed')!;
       expect(layouts).toHaveLength(count);
       layouts.forEach((layout) => {
-        const overlapsToolbar = layout.top < band.top + band.height
-          && layout.top + layout.height > band.top;
+        const overlapsToolbar = band.axis === 'vertical'
+          ? layout.left < band.left + band.width && layout.left + layout.width > band.left
+          : layout.top < band.top + band.height && layout.top + layout.height > band.top;
         expect(overlapsToolbar).toBe(false);
       });
     });
     expect(getSquareTableLayouts(3, 390, 780, 'opposed').map((seat) => seat.role))
       .toEqual(['top', 'bottomLeft', 'bottomRight']);
+
+    const four = getSquareTableLayouts(4, 390, 780, 'opposed');
+    expect(four.map((seat) => seat.role)).toEqual(['capotavola', 'bottomLeft', 'bottomRight', 'bottom']);
+    expect(four[0]!.width).toBeGreaterThan(four[1]!.width);
+    expect(four[3]!.width).toBeGreaterThan(four[1]!.width);
+
+    const five = getSquareTableLayouts(5, 390, 780, 'opposed');
+    expect(five.map((seat) => seat.role)).toEqual(['top', 'topLeft', 'topRight', 'bottomLeft', 'bottomRight']);
+    expect(five[0]!.width).toBeGreaterThan(five[1]!.width);
+
+    const six = getSquareTableLayouts(6, 390, 780, 'opposed');
+    expect(six.map((seat) => seat.role)).toEqual([
+      'top', 'topLeft', 'topRight', 'bottomLeft', 'bottomRight', 'bottom',
+    ]);
+    expect(six[0]!.width).toBeGreaterThan(six[1]!.width);
+    expect(six[5]!.width).toBeGreaterThan(six[3]!.width);
   });
 
   it('orients alternate-preset seats toward the relevant outside edge', () => {
@@ -160,6 +192,8 @@ describe('live-game-table-layout', () => {
     expect(getSeatRotation('bottom', 4, 'opposed')).toBe(0);
     expect(getSeatRotation('bottomLeft', 5, 'opposed')).toBe(90);
     expect(getSeatRotation('bottomRight', 5, 'opposed')).toBe(-90);
+    expect(getSeatRotation('topLeft', 2, 'opposed')).toBe(90);
+    expect(getSeatRotation('topRight', 2, 'opposed')).toBe(-90);
   });
 
   it('anchors the viewer at the bottom for duels and bottom-right in four-player games', () => {

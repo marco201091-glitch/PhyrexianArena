@@ -67,7 +67,11 @@ function LayoutPreview({ count, variant }: { count: number; variant: TableLayout
         />
       ))}
       {toolbar ? (
-        <View style={[styles.layoutToolbar, { left: toolbar.left, top: toolbar.top, width: toolbar.width, height: toolbar.height }]}>
+        <View style={[
+          styles.layoutToolbar,
+          toolbar.axis === 'vertical' && styles.layoutToolbarVertical,
+          { left: toolbar.left, top: toolbar.top, width: toolbar.width, height: toolbar.height },
+        ]}>
           <View style={styles.layoutToolbarDot} />
           <View style={styles.layoutToolbarDot} />
           <View style={styles.layoutToolbarDot} />
@@ -141,7 +145,10 @@ export function LiveGameConfigurator({
       <View style={styles.sectionHeader}>
         <View style={styles.stepBadge}><Text style={styles.stepText}>1</Text></View>
         <Text style={styles.sectionTitle}>{labels.playerCount}</Text>
-        <Pressable style={styles.resetButton} onPress={onReset}>
+        <Pressable
+          style={({ pressed }) => [styles.resetButton, pressed && styles.interactivePressed]}
+          onPress={onReset}
+        >
           <Ionicons name="refresh-outline" size={15} color={colors.muted} />
           <Text style={styles.resetText}>{labels.reset}</Text>
         </Pressable>
@@ -151,7 +158,11 @@ export function LiveGameConfigurator({
           <Pressable
             key={count}
             onPress={() => onPlayerCountChange(count)}
-            style={[styles.countButton, count === playerCount && styles.countButtonActive]}
+            style={({ pressed }) => [
+              styles.countButton,
+              count === playerCount && styles.countButtonActive,
+              pressed && styles.interactivePressed,
+            ]}
           >
             <Text style={[styles.countText, count === playerCount && styles.countTextActive]}>{count}</Text>
           </Pressable>
@@ -167,7 +178,11 @@ export function LiveGameConfigurator({
           <Pressable
             key={variant}
             onPress={() => onLayoutChange(variant)}
-            style={[styles.layoutOption, layoutVariant === variant && styles.layoutOptionActive]}
+            style={({ pressed }) => [
+              styles.layoutOption,
+              layoutVariant === variant && styles.layoutOptionActive,
+              pressed && styles.interactivePressed,
+            ]}
           >
             <LayoutPreview count={playerCount} variant={variant} />
             <View style={styles.layoutLabelRow}>
@@ -197,9 +212,10 @@ export function LiveGameConfigurator({
             <Pressable
               key={`seat-${index}`}
               onPress={() => openSeat(index)}
-              style={[
+              style={({ pressed }) => [
                 styles.seatButton,
                 participant && styles.seatButtonAssigned,
+                pressed && styles.seatButtonPressed,
                 { left: layout.left, top: layout.top, width: layout.width, height: layout.height },
               ]}
             >
@@ -222,7 +238,11 @@ export function LiveGameConfigurator({
           );
         })}
         {toolbar ? (
-          <View style={[styles.tableToolbar, { left: toolbar.left, top: toolbar.top, width: toolbar.width, height: toolbar.height }]}>
+          <View style={[
+            styles.tableToolbar,
+            toolbar.axis === 'vertical' && styles.tableToolbarVertical,
+            { left: toolbar.left, top: toolbar.top, width: toolbar.width, height: toolbar.height },
+          ]}>
             <Ionicons name="game-controller-outline" size={19} color={colors.primaryMuted} />
           </View>
         ) : null}
@@ -240,7 +260,11 @@ export function LiveGameConfigurator({
             <Pressable
               key={participant.key}
               onPress={() => selectPlayer(participant)}
-              style={[styles.playerOption, draftPlayer === participant.key && styles.playerOptionActive]}
+              style={({ pressed }) => [
+                styles.playerOption,
+                draftPlayer === participant.key && styles.playerOptionActive,
+                pressed && styles.interactivePressed,
+              ]}
             >
               <Ionicons name="person-circle-outline" size={24} color={draftPlayer === participant.key ? colors.primaryLight : colors.muted} />
               <Text style={styles.playerName}>{participant.name}</Text>
@@ -260,7 +284,11 @@ export function LiveGameConfigurator({
                 <Pressable
                   key={deck.id}
                   onPress={() => setDraftDeck(deck.id)}
-                  style={[styles.deckOption, draftDeck === deck.id && styles.deckOptionActive]}
+                  style={({ pressed }) => [
+                    styles.deckOption,
+                    draftDeck === deck.id && styles.deckOptionActive,
+                    pressed && styles.interactivePressed,
+                  ]}
                 >
                   <DeckImage uri={deck.commander_image} alt={deck.commander} style={styles.deckImage} containerStyle={styles.deckImage} />
                   <View style={styles.deckCopy}>
@@ -309,6 +337,7 @@ export function LiveGameConfigurator({
 
 const styles = StyleSheet.create({
   root: { gap: spacing.md },
+  interactivePressed: { opacity: 0.9, transform: [{ scale: 0.985 }] },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   stepBadge: { width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
   stepText: { color: '#fff', fontSize: 12, fontWeight: '900' },
@@ -326,6 +355,7 @@ const styles = StyleSheet.create({
   layoutPreview: { position: 'relative', backgroundColor: '#06060a', borderRadius: radii.md, overflow: 'hidden' },
   layoutSeat: { position: 'absolute', borderRadius: 4, borderWidth: 1, borderColor: 'rgba(196,181,253,0.35)', backgroundColor: 'rgba(124,58,237,0.22)' },
   layoutToolbar: { position: 'absolute', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#12121a' },
+  layoutToolbarVertical: { flexDirection: 'column' },
   layoutToolbarDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primaryMuted },
   layoutLabelRow: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   layoutLabel: { color: colors.muted, fontSize: 12, fontWeight: '800' },
@@ -333,12 +363,14 @@ const styles = StyleSheet.create({
   tablePreview: { position: 'relative', alignSelf: 'center', borderRadius: radii.lg, overflow: 'hidden', backgroundColor: '#050508', borderWidth: 1, borderColor: colors.border },
   seatButton: { position: 'absolute', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', padding: 5, borderRadius: 7, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.selectionBorder, backgroundColor: 'rgba(124,58,237,0.08)' },
   seatButtonAssigned: { borderStyle: 'solid', borderColor: 'rgba(196,181,253,0.58)' },
+  seatButtonPressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },
   seatImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   seatScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3,3,8,0.52)' },
   seatNumber: { position: 'absolute', left: 5, top: 4, color: 'rgba(255,255,255,0.72)', fontSize: 9, fontWeight: '900' },
   seatName: { color: '#fff', fontSize: 11, fontWeight: '900', textAlign: 'center' },
   seatDeck: { color: 'rgba(255,255,255,0.7)', fontSize: 9, textAlign: 'center' },
   tableToolbar: { position: 'absolute', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111118', borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.borderSoft },
+  tableToolbarVertical: { borderTopWidth: 0, borderBottomWidth: 0, borderLeftWidth: 1, borderRightWidth: 1 },
   playerList: { gap: spacing.xs, maxHeight: 210 },
   optionListContent: { gap: spacing.xs },
   playerOption: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, backgroundColor: colors.cardInset, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },

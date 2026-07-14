@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
 import { DeckCarousel, useDeckCarouselCardWidth } from '@/components/ui/deck-carousel';
-import { colors, radii, spacing, touch } from '@/constants/theme';
+import { Input } from '@/components/ui/input';
+import { colors, radii, spacing } from '@/constants/theme';
 import type { ArenaGuestDeck } from '@/lib/arena-participants';
 import type { ParticipantKey } from '@/lib/participant-keys';
 
@@ -72,7 +73,11 @@ export function MatchParticipantRow({
 
   return (
     <Pressable
-      style={[styles.row, selected && styles.rowSelected]}
+      style={({ pressed }) => [
+        styles.row,
+        selected && styles.rowSelected,
+        pressed && !readOnly && styles.rowPressed,
+      ]}
       onPress={() => {
         if (!readOnly && !selected) onToggle();
       }}
@@ -115,16 +120,14 @@ export function MatchParticipantRow({
 
       {selected && deckCount > 0 ? (
         <View style={styles.deckControls}>
-          <View style={styles.searchField}>
-            <Ionicons name="search" size={16} color={colors.muted} style={styles.searchIcon} />
-            <TextInput
-              value={searchValue}
-              onChangeText={onSearchChange}
-              placeholder={labels.searchPlaceholder}
-              placeholderTextColor={colors.muted}
-              style={styles.searchInput}
-            />
-          </View>
+          <Input
+            icon="search-outline"
+            value={searchValue}
+            onChangeText={onSearchChange}
+            placeholder={labels.searchPlaceholder}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
           <Pressable
             style={({ pressed }) => [styles.toggleButton, pressed && styles.toggleButtonPressed]}
             onPress={(event) => {
@@ -168,10 +171,11 @@ export function MatchParticipantRow({
                     return (
                       <Pressable
                         key={deck.id}
-                        style={[
+                        style={({ pressed }) => [
                           styles.deckCard,
                           { width: deckCardWidth },
                           isSelected && styles.deckCardSelected,
+                          pressed && styles.deckCardPressed,
                         ]}
                         onPress={() => onSelectDeck(deck.id === selectedDeckId ? '' : deck.id)}
                       >
@@ -245,6 +249,10 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryLight,
     backgroundColor: colors.selectionTint,
   },
+  rowPressed: {
+    opacity: 0.94,
+    transform: [{ scale: 0.992 }],
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -312,25 +320,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginLeft: 28,
   },
-  searchField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: touch.minHeight - 4,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.inputBg,
-    paddingHorizontal: spacing.md,
-  },
-  searchIcon: {
-    marginRight: spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.foreground,
-    fontSize: 15,
-    paddingVertical: 8,
-  },
   toggleButton: {
     alignSelf: 'flex-start',
     minHeight: 42,
@@ -385,6 +374,10 @@ const styles = StyleSheet.create({
   deckCardSelected: {
     borderColor: colors.primaryLight,
     backgroundColor: colors.selectionTint,
+  },
+  deckCardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
   },
   deckArt: {
     width: 72,

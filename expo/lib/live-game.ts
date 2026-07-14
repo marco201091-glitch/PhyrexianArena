@@ -9,6 +9,8 @@ export const INFECT_LOSS_THRESHOLD = 10;
 export type LiveGameStatus = 'setup' | 'active' | 'ended' | 'cancelled';
 export type DamageMode = 'life' | 'commander' | 'infect';
 export type PlayDirection = 'clockwise' | 'counterclockwise';
+export type WinCondition = 'last_standing' | 'combo' | 'concession' | 'alternate_card' | 'other';
+export type LiveGameEventDirection = 'increase' | 'decrease';
 export type LiveGameEventType =
   | 'damage'
   | 'commander_damage'
@@ -25,6 +27,32 @@ export interface LiveGameEvent {
   targetKey: ParticipantKey;
   sourceKey: ParticipantKey | null;
   amount: number | null;
+  /** Direction of the tracked counter. Missing on legacy events. */
+  direction?: LiveGameEventDirection;
+}
+
+export interface LiveGameParticipantSummary {
+  eventCount: number;
+  lifeLost: number;
+  lifeGained: number;
+  lifeDamageDealt: number;
+  unattributedLifeLost: number;
+  commanderDamageTaken: number;
+  commanderDamageDealt: number;
+  infectReceived: number;
+  infectDealt: number;
+  eliminations: number;
+  eliminationsCaused: number;
+  revives: number;
+  corrections: number;
+}
+
+export interface LiveGameSummary {
+  schemaVersion: 1;
+  totalEvents: number;
+  firstOccurredAt: string | null;
+  lastOccurredAt: string | null;
+  byParticipant: Partial<Record<ParticipantKey, LiveGameParticipantSummary>>;
 }
 
 export interface LiveGamePlayer {
@@ -48,6 +76,8 @@ export interface LiveGameState {
   startingPlayerKey?: ParticipantKey | null;
   startingDirection?: PlayDirection | null;
   events: LiveGameEvent[];
+  /** Bounded cumulative counters used for per-match and future per-deck analytics. */
+  summary?: LiveGameSummary;
 }
 
 type LiveGameMutationMetadata = {
@@ -89,6 +119,111 @@ export interface LiveGameRecord {
 
 export function bumpLiveGameState(state: LiveGameState): LiveGameState {
   return { ...state, version: state.version + 1 };
+}
+
+function emptyParticipantSummary(): LiveGameParticipantSummary {
+  return {
+    eventCount: 0,
+    lifeLost: 0,
+    lifeGained: 0,
+    lifeDamageDealt: 0,
+    unattributedLifeLost: 0,
+    commanderDamageTaken: 0,
+    commanderDamageDealt: 0,
+    infectReceived: 0,
+    infectDealt: 0,
+    eliminations: 0,
+    eliminationsCaused: 0,
+    revives: 0,
+    corrections: 0,
+  };
+}
+
+export function createLiveGameSummary(): LiveGameSummary {
+  return {
+    schemaVersion: 1,
+    totalEvents: 0,
+    firstOccurredAt: null,
+    lastOccurredAt: null,
+    byParticipant: {},
+  };
+}
+
+function incrementMetric(
+  metrics: LiveGameParticipantSummary,
+  key: keyof LiveGameParticipantSummary,
+  amount: number,
+) {
+  metrics[key] = Math.max(0, metrics[key] + amount);
+}
+
+export function aggregateLiveGameEvent(
+  current: LiveGameSummary | undefined,
+  event: LiveGameEvent,
+): LiveGameSummary {
+  const summary = current ?? createLiveGameSummary();
+  const byParticipant = { ...summary.byParticipant };
+  const getMetrics = (key: ParticipantKey) => {
+    const metrics = { ...(byParticipant[key] ?? emptyParticipantSummary()) };
+    byParticipant[key] = metrics;
+    return metrics;
+  };
+  const target = getMetrics(event.targetKey);
+  const amount = Math.max(0, event.amount ?? 0);
+  const defaultDirection: LiveGameEventDirection = event.type === 'damage' ? 'decrease' : 'increase';
+  const direction = event.direction ?? defaultDirection;
+  const delta = direction === 'decrease' ? -amount : amount;
+
+  target.eventCount += 1;
+  if (event.type === 'damage') {
+    incrementMetric(target, 'lifeLost', amount);
+    if (!event.sourceKey) incrementMetric(target, 'unattributedLifeLost', amount);
+  } else if (event.type === 'lifegain') {
+    incrementMetric(target, 'lifeGained', delta);
+  } else if (event.type === 'commander_damage') {
+    incrementMetric(target, 'lifeLost', delta);
+    incrementMetric(target, 'commanderDamageTaken', delta);
+    if (direction === 'decrease') target.corrections += 1;
+  } else if (event.type === 'infect') {
+    incrementMetric(target, 'infectReceived', delta);
+    if (direction === 'decrease') target.corrections += 1;
+  } else if (event.type === 'elimination') {
+    target.eliminations += 1;
+  } else if (event.type === 'revive') {
+    target.revives += 1;
+  } else if (event.type === 'correction') {
+    target.corrections += 1;
+  }
+
+  if (event.sourceKey) {
+    const source = getMetrics(event.sourceKey);
+    if (event.type === 'damage') {
+      incrementMetric(source, 'lifeDamageDealt', amount);
+    } else if (event.type === 'commander_damage') {
+      incrementMetric(source, 'lifeDamageDealt', delta);
+      incrementMetric(source, 'commanderDamageDealt', delta);
+    } else if (event.type === 'infect') {
+      incrementMetric(source, 'infectDealt', delta);
+    } else if (event.type === 'elimination') {
+      source.eliminationsCaused += 1;
+    }
+  }
+
+  return {
+    schemaVersion: 1,
+    totalEvents: summary.totalEvents + 1,
+    firstOccurredAt: !summary.firstOccurredAt || event.occurredAt < summary.firstOccurredAt
+      ? event.occurredAt
+      : summary.firstOccurredAt,
+    lastOccurredAt: !summary.lastOccurredAt || event.occurredAt > summary.lastOccurredAt
+      ? event.occurredAt
+      : summary.lastOccurredAt,
+    byParticipant,
+  };
+}
+
+export function summarizeLiveGameEvents(events: LiveGameEvent[]): LiveGameSummary {
+  return events.reduce<LiveGameSummary>(aggregateLiveGameEvent, createLiveGameSummary());
 }
 
 export function createLiveGamePlayer(input: {
@@ -186,12 +321,13 @@ export function applyHealing(
     if (mode === 'commander') {
       if (!sourceKey || sourceKey === targetKey) return player;
       const current = player.commanderDamageFrom[sourceKey] ?? 0;
+      const restored = Math.min(amount, current);
       return {
         ...player,
-        life: player.life + amount,
+        life: player.life + restored,
         commanderDamageFrom: {
           ...player.commanderDamageFrom,
-          [sourceKey]: Math.max(0, current - amount),
+          [sourceKey]: current - restored,
         },
       };
     }
@@ -257,9 +393,11 @@ export function applyLiveGameMutation(
     if (!eventId || !occurredAt) return next;
     const id = `${eventId}${suffix}`;
     if (next.events.some((entry) => entry.id === id)) return next;
+    const completeEvent = { id, occurredAt, ...event };
     return {
       ...next,
-      events: [...next.events, { id, occurredAt, ...event }].slice(-500),
+      events: [...next.events, completeEvent].slice(-500),
+      summary: aggregateLiveGameEvent(next.summary, completeEvent),
     };
   };
 
@@ -270,7 +408,19 @@ export function applyLiveGameMutation(
       : applyHealing(state, mutation.targetKey, Math.abs(mutation.amount), mutation.mode, mutation.sourceKey);
     let withAutoKo = { ...autoEliminatePlayers(next), version: state.version + 1 };
     const afterPlayer = withAutoKo.players.find((player) => player.participantKey === mutation.targetKey);
-    if (beforePlayer && afterPlayer && mutation.amount !== 0) {
+    const appliedAmount = beforePlayer && afterPlayer
+      ? mutation.mode === 'life'
+        ? Math.abs(afterPlayer.life - beforePlayer.life)
+        : mutation.mode === 'infect'
+          ? Math.abs(afterPlayer.infect - beforePlayer.infect)
+          : mutation.sourceKey
+            ? Math.abs(
+              (afterPlayer.commanderDamageFrom[mutation.sourceKey] ?? 0)
+              - (beforePlayer.commanderDamageFrom[mutation.sourceKey] ?? 0),
+            )
+            : 0
+      : 0;
+    if (beforePlayer && afterPlayer && appliedAmount > 0) {
       const eventType: LiveGameEventType = mutation.amount < 0 && mutation.mode === 'life'
         ? 'lifegain'
         : mutation.mode === 'commander'
@@ -280,7 +430,10 @@ export function applyLiveGameMutation(
         type: eventType,
         targetKey: mutation.targetKey,
         sourceKey: mutation.sourceKey ?? null,
-        amount: Math.abs(mutation.amount),
+        amount: appliedAmount,
+        direction: mutation.mode === 'life'
+          ? mutation.amount < 0 ? 'increase' : 'decrease'
+          : mutation.amount < 0 ? 'decrease' : 'increase',
       });
       if (!beforePlayer.isEliminated && afterPlayer.isEliminated) {
         withAutoKo = appendEvent(withAutoKo, {
@@ -350,9 +503,32 @@ export function getSuggestedWinner(state: LiveGameState): LiveGamePlayer | null 
   return null;
 }
 
+export function getDefaultWinCondition(state: LiveGameState): WinCondition | null {
+  return getSuggestedWinner(state) ? 'last_standing' : null;
+}
+
+export function isValidLiveGameResult(
+  state: LiveGameState,
+  result: { winnerKey: ParticipantKey | null; isDraw: boolean; winCondition: WinCondition | null },
+): boolean {
+  if (result.isDraw) return result.winnerKey === null && result.winCondition === null;
+  if (!result.winnerKey || !result.winCondition) return false;
+  if (!state.players.some((player) => player.participantKey === result.winnerKey)) return false;
+
+  const suggested = getSuggestedWinner(state);
+  if (suggested) {
+    return result.winnerKey === suggested.participantKey && result.winCondition === 'last_standing';
+  }
+  return result.winCondition !== 'last_standing';
+}
+
 export function parseLiveGameState(raw: unknown): LiveGameState {
   if (!raw || typeof raw !== 'object') return { version: 0, players: [], events: [] };
   const value = raw as Partial<LiveGameState>;
+  const events = Array.isArray(value.events) ? value.events as LiveGameEvent[] : [];
+  const summary = value.summary?.schemaVersion === 1
+    ? value.summary
+    : summarizeLiveGameEvents(events);
   return {
     version: typeof value.version === 'number' ? value.version : 0,
     players: Array.isArray(value.players) ? value.players as LiveGamePlayer[] : [],
@@ -363,6 +539,7 @@ export function parseLiveGameState(raw: unknown): LiveGameState {
     startingDirection: value.startingDirection === 'clockwise' || value.startingDirection === 'counterclockwise'
       ? value.startingDirection
       : null,
-    events: Array.isArray(value.events) ? value.events as LiveGameEvent[] : [],
+    events: events.slice(-500),
+    summary,
   };
 }

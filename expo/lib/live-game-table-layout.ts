@@ -27,14 +27,16 @@ export type SquareSeatLayout = {
 
 const GRID_PADDING = 4;
 const GRID_GAP = 2;
-/** Horizontal tool strip between the two sides of the table. */
+/** Tool strip between the two sides of the table. */
 export const CENTER_TOOLBAR_HEIGHT = 48;
+export const CENTER_TOOLBAR_WIDTH = 56;
 
 export type CenterToolbarBand = {
   left: number;
   top: number;
   width: number;
   height: number;
+  axis: 'horizontal' | 'vertical';
 };
 
 /** MTG card width:height — used to frame commander art in live seats. */
@@ -316,8 +318,8 @@ function centerTableMetrics(
   const cellW = (innerW - GRID_GAP) / 2;
   const availableH = innerH - CENTER_TOOLBAR_HEIGHT;
   const topRatio = variant === 'opposed'
-    ? playerCount >= 4 ? 0.34 : playerCount === 3 ? 0.42 : 0.5
-    : playerCount === 3 ? 0.58 : playerCount >= 5 ? 0.64 : 0.5;
+    ? playerCount === 5 ? 0.66 : playerCount === 4 ? 0.34 : 0.5
+    : playerCount >= 5 ? 0.64 : 0.5;
   const topH = Math.round(availableH * topRatio);
   const bottomH = availableH - topH;
 
@@ -332,12 +334,25 @@ export function getCenterToolbarBand(
 ): CenterToolbarBand | null {
   if (!usesCenterToolbar(playerCount)) return null;
 
+  if (playerCount === 2 && variant === 'opposed') {
+    const innerHeight = height - GRID_PADDING * 2;
+    const innerWidth = width - GRID_PADDING * 2;
+    return {
+      left: GRID_PADDING + (innerWidth - CENTER_TOOLBAR_WIDTH) / 2,
+      top: GRID_PADDING,
+      width: CENTER_TOOLBAR_WIDTH,
+      height: innerHeight,
+      axis: 'vertical',
+    };
+  }
+
   const { innerLeft, innerTop, innerW, topH } = centerTableMetrics(playerCount, width, height, variant);
   return {
     left: innerLeft,
     top: innerTop + topH,
     width: innerW,
     height: CENTER_TOOLBAR_HEIGHT,
+    axis: 'horizontal',
   };
 }
 
@@ -396,7 +411,17 @@ function buildClassicTable(playerCount: number, width: number, height: number): 
 }
 
 function buildOpposedTable(playerCount: number, width: number, height: number): SquareSeatLayout[] {
-  if (playerCount === 2) return buildClassicTable(playerCount, width, height);
+  if (playerCount === 2) {
+    const innerLeft = GRID_PADDING;
+    const innerTop = GRID_PADDING;
+    const innerW = width - GRID_PADDING * 2;
+    const innerH = height - GRID_PADDING * 2;
+    const seatW = (innerW - CENTER_TOOLBAR_WIDTH) / 2;
+    return [
+      layoutCell(innerLeft, innerTop, seatW, innerH, 'topLeft'),
+      layoutCell(innerLeft + seatW + CENTER_TOOLBAR_WIDTH, innerTop, seatW, innerH, 'topRight'),
+    ];
+  }
   const { innerLeft, innerTop, innerW, cellW, topH, bottomH } = centerTableMetrics(
     playerCount,
     width,
@@ -423,22 +448,26 @@ function buildOpposedTable(playerCount: number, width: number, height: number): 
     ];
   }
 
-  const lowerCellH = (bottomH - GRID_GAP) / 2;
-  const lowerSeats = [
-    layoutCell(innerLeft, bottomTop, cellW, lowerCellH, 'topLeft'),
-    layoutCell(innerLeft + cellW + GRID_GAP, bottomTop, cellW, lowerCellH, 'topRight'),
-    layoutCell(innerLeft, bottomTop + lowerCellH + GRID_GAP, cellW, lowerCellH, 'bottomLeft'),
-    layoutCell(innerLeft + cellW + GRID_GAP, bottomTop + lowerCellH + GRID_GAP, cellW, lowerCellH, 'bottomRight'),
-  ];
-
   if (playerCount === 5) {
-    return [layoutCell(innerLeft, innerTop, innerW, topH, 'top'), ...lowerSeats];
+    const upperRowH = (topH - GRID_GAP) / 2;
+    return [
+      layoutCell(innerLeft, innerTop, innerW, upperRowH, 'top'),
+      layoutCell(innerLeft, innerTop + upperRowH + GRID_GAP, cellW, upperRowH, 'topLeft'),
+      layoutCell(innerLeft + cellW + GRID_GAP, innerTop + upperRowH + GRID_GAP, cellW, upperRowH, 'topRight'),
+      layoutCell(innerLeft, bottomTop, cellW, bottomH, 'bottomLeft'),
+      layoutCell(innerLeft + cellW + GRID_GAP, bottomTop, cellW, bottomH, 'bottomRight'),
+    ];
   }
 
+  const upperRowH = (topH - GRID_GAP) / 2;
+  const lowerRowH = (bottomH - GRID_GAP) / 2;
   return [
-    layoutCell(innerLeft, innerTop, cellW, topH, 'capotavola'),
-    layoutCell(innerLeft + cellW + GRID_GAP, innerTop, cellW, topH, 'top'),
-    ...lowerSeats,
+    layoutCell(innerLeft, innerTop, innerW, upperRowH, 'top'),
+    layoutCell(innerLeft, innerTop + upperRowH + GRID_GAP, cellW, upperRowH, 'topLeft'),
+    layoutCell(innerLeft + cellW + GRID_GAP, innerTop + upperRowH + GRID_GAP, cellW, upperRowH, 'topRight'),
+    layoutCell(innerLeft, bottomTop, cellW, lowerRowH, 'bottomLeft'),
+    layoutCell(innerLeft + cellW + GRID_GAP, bottomTop, cellW, lowerRowH, 'bottomRight'),
+    layoutCell(innerLeft, bottomTop + lowerRowH + GRID_GAP, innerW, lowerRowH, 'bottom'),
   ];
 }
 

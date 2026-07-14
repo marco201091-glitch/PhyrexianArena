@@ -1,5 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { LiveGameRecord, QueuedLiveGameMutation } from '@/lib/live-game';
+import {
+  parseLiveGameState,
+  type LiveGameRecord,
+  type QueuedLiveGameMutation,
+  type WinCondition,
+} from '@/lib/live-game';
 
 const STORAGE_PREFIX = 'phyrexian-arena:live-game:v2:';
 const OUTBOX_KEY = 'phyrexian-arena:live-game:v2:outbox';
@@ -7,6 +12,7 @@ const OUTBOX_KEY = 'phyrexian-arena:live-game:v2:outbox';
 export type PendingLiveGameFinalization = {
   winnerKey: string | null;
   isDraw: boolean;
+  winCondition: WinCondition | null;
   endedAt: string;
   players: Array<{
     participantKey: string;
@@ -48,9 +54,15 @@ export async function loadLiveGameOfflineSession(
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LiveGameOfflineSession>;
     if (!parsed.record?.id || !parsed.record?.state?.players) return null;
+    const record = { ...parsed.record, state: parseLiveGameState(parsed.record.state) } as LiveGameRecord;
+    const rawServerRecord = parsed.serverRecord ?? parsed.record;
+    const serverRecord = {
+      ...rawServerRecord,
+      state: parseLiveGameState(rawServerRecord.state),
+    } as LiveGameRecord;
     return {
-      record: parsed.record,
-      serverRecord: parsed.serverRecord ?? parsed.record,
+      record,
+      serverRecord,
       needsCreate: Boolean(parsed.needsCreate),
       mutations: Array.isArray(parsed.mutations) ? parsed.mutations : [],
       pendingFinalization: parsed.pendingFinalization ?? null,
