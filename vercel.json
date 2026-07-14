@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/reset-demo",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/purge-access-logs",
+      "schedule": "0 5 * * *"
+    }
+  ]
+}
