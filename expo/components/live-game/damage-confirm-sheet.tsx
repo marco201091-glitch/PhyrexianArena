@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { colors, radii, spacing } from '@/constants/theme';
-import type { LiveGamePlayer } from '@/lib/live-game';
+import type { DamageMode, LiveGamePlayer } from '@/lib/live-game';
 
 const QUICK_AMOUNTS = [1, 2, 3, 5, 10, 15] as const;
 
@@ -14,38 +14,37 @@ type DamageConfirmSheetProps = {
   visible: boolean;
   source: LiveGamePlayer | null;
   target: LiveGamePlayer | null;
-  showCommanderChoice: boolean;
-  defaultCommander: boolean;
+  defaultMode?: DamageMode;
   labels: {
     title: string;
     amount: string;
     lifeDamage: string;
     commanderDamage: string;
+    infectDamage: string;
     apply: string;
     cancel: string;
   };
   onClose: () => void;
-  onConfirm: (input: { amount: number; isCommander: boolean }) => void;
+  onConfirm: (input: { amount: number; mode: DamageMode }) => void;
 };
 
 export function DamageConfirmSheet({
   visible,
   source,
   target,
-  showCommanderChoice,
-  defaultCommander,
+  defaultMode = 'life',
   labels,
   onClose,
   onConfirm,
 }: DamageConfirmSheetProps) {
   const [amount, setAmount] = useState(1);
-  const [isCommander, setIsCommander] = useState(defaultCommander);
+  const [mode, setMode] = useState<DamageMode>(defaultMode);
 
   useEffect(() => {
     if (!visible) return;
     setAmount(1);
-    setIsCommander(defaultCommander);
-  }, [visible, defaultCommander, source?.participantKey, target?.participantKey]);
+    setMode(defaultMode);
+  }, [visible, defaultMode, source?.participantKey, target?.participantKey]);
 
   if (!source || !target) return null;
 
@@ -61,7 +60,7 @@ export function DamageConfirmSheet({
           <Button label={labels.cancel} variant="outline" onPress={onClose} style={styles.footerButton} />
           <Button
             label={labels.apply}
-            onPress={() => onConfirm({ amount, isCommander: showCommanderChoice ? isCommander : false })}
+            onPress={() => onConfirm({ amount, mode })}
             style={styles.footerButton}
           />
         </View>
@@ -132,28 +131,27 @@ export function DamageConfirmSheet({
         })}
       </View>
 
-      {showCommanderChoice ? (
-        <View style={styles.typeSegment}>
+      <View style={styles.typeSegment}>
+        {([
+          { value: 'life' as const, label: labels.lifeDamage, icon: 'heart-dislike-outline' as const },
+          { value: 'commander' as const, label: labels.commanderDamage, icon: 'shield-outline' as const },
+          { value: 'infect' as const, label: labels.infectDamage, icon: 'skull-outline' as const },
+        ]).map((option) => {
+          const active = mode === option.value;
+          return (
           <Pressable
-            style={[styles.typePill, !isCommander && styles.typePillActive]}
-            onPress={() => setIsCommander(false)}
+            key={option.value}
+            style={[styles.typePill, active && styles.typePillActive]}
+            onPress={() => setMode(option.value)}
           >
-            <Ionicons name="heart-dislike-outline" size={16} color={!isCommander ? colors.primaryForeground : colors.muted} />
-            <Text style={[styles.typePillText, !isCommander && styles.typePillTextActive]}>
-              {labels.lifeDamage}
+            <Ionicons name={option.icon} size={16} color={active ? colors.primaryForeground : colors.muted} />
+            <Text style={[styles.typePillText, active && styles.typePillTextActive]}>
+              {option.label}
             </Text>
           </Pressable>
-          <Pressable
-            style={[styles.typePill, isCommander && styles.typePillActive]}
-            onPress={() => setIsCommander(true)}
-          >
-            <Ionicons name="shield-outline" size={16} color={isCommander ? colors.primaryForeground : colors.muted} />
-            <Text style={[styles.typePillText, isCommander && styles.typePillTextActive]}>
-              {labels.commanderDamage}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
+          );
+        })}
+      </View>
     </Modal>
   );
 }

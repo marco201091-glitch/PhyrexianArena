@@ -1,4 +1,5 @@
 import { getDayPlayedAtRange } from '@/lib/arena-day-fetch';
+import { ARENA_MATCHES_FETCH_LIMIT } from '@/lib/arena-matches';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const MATCHES_SELECT = `
@@ -58,6 +59,21 @@ export async function fetchMatchesSince(
     .eq('group_id', groupId)
     .gte('played_at', since.toISOString())
     .order('played_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function fetchRecentArenaMatches(
+  supabase: SupabaseClient,
+  groupId: string,
+) {
+  const { data, error } = await supabase
+    .from('matches')
+    .select(MATCHES_SELECT)
+    .eq('group_id', groupId)
+    .order('played_at', { ascending: false })
+    .limit(ARENA_MATCHES_FETCH_LIMIT);
 
   if (error) throw error;
   return data || [];

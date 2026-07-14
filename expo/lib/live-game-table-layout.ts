@@ -331,10 +331,11 @@ export function getCenterToolbarBand(
   width: number,
   height: number,
   variant: TableLayoutVariant = 'classic',
+  orientation: TableOrientation = 'portrait',
 ): CenterToolbarBand | null {
   if (!usesCenterToolbar(playerCount)) return null;
 
-  if (playerCount === 2 && variant === 'opposed') {
+  if (orientation === 'landscape' || (playerCount === 2 && variant === 'opposed')) {
     const innerHeight = height - GRID_PADDING * 2;
     const innerWidth = width - GRID_PADDING * 2;
     return {
@@ -498,8 +499,8 @@ function buildLandscapeTable(
   const innerTop = GRID_PADDING;
   const innerWidth = width - GRID_PADDING * 2;
   const innerHeight = height - GRID_PADDING * 2;
-  const columnWidth = (innerWidth - GRID_GAP) / 2;
-  const right = innerLeft + columnWidth + GRID_GAP;
+  const columnWidth = (innerWidth - CENTER_TOOLBAR_WIDTH) / 2;
+  const right = innerLeft + columnWidth + CENTER_TOOLBAR_WIDTH;
 
   if (playerCount === 2) {
     return [
