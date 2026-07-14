@@ -1,207 +1,164 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  createEmptyLiveGameState,
+  applyLiveGameMutation,
   parseLiveGameState,
   type LiveGameRecord,
   type LiveGameState,
-  type LiveGameStatus,
+  type QueuedLiveGameMutation,
+  type WinCondition,
 } from '@/lib/live-game';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 export async function fetchActiveLiveGame(
-  supabase: SupabaseClient,
+  client: SupabaseClient,
   groupId: string,
+  participantKey: string,
 ): Promise<LiveGameRecord | null> {
-  const { data, error } = await supabase
-    .from('live_games')
-    .select('*')
+  const { data: participant, error: participantError } = await client
+    .from('live_game_participants')
+    .select('live_game_id')
     .eq('group_id', groupId)
-    .eq('status', 'active')
-    .order('updated_at', { ascending: false })
+    .eq('participant_key', participantKey)
     .limit(1)
     .maybeSingle();
+  if (participantError) throw participantError;
+  if (!participant) return null;
 
-  if (error) throw error;
-  if (!data) return null;
-
-  return {
-    ...data,
-    state: parseLiveGameState(data.state),
-  } as LiveGameRecord;
-}
-
-export async function createLiveGame(
-  supabase: SupabaseClient,
-  input: {
-    groupId: string;
-    createdBy: string;
-    startingLife: number;
-    state: LiveGameState;
-  },
-): Promise<LiveGameRecord> {
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('live_games')
-    .insert({
-      group_id: input.groupId,
-      created_by: input.createdBy,
-      starting_life: input.startingLife,
-      status: 'active',
-      state: input.state,
-      started_at: new Date().toISOString(),
-    })
     .select('*')
-    .single();
-
+    .eq('id', participant.live_game_id)
+    .eq('group_id', groupId)
+    .eq('status', 'active')
+    .maybeSingle();
   if (error) throw error;
-
-  return {
-    ...data,
-    state: parseLiveGameState(data.state),
-  } as LiveGameRecord;
+  return data ? { ...data, state: parseLiveGameState(data.state) } as LiveGameRecord : null;
 }
 
-export async function updateLiveGameState(
-  supabase: SupabaseClient,
-  liveGameId: string,
-  state: LiveGameState,
+export async function fetchBusyLiveGameParticipantKeys(
+  client: SupabaseClient,
+  groupId: string,
+  participantKeys: string[],
+): Promise<string[]> {
+  if (!participantKeys.length) return [];
+  const { data, error } = await client
+    .from('live_game_participants')
+    .select('participant_key')
+    .eq('group_id', groupId)
+    .in('participant_key', participantKeys);
+  if (error) throw error;
+  return (data ?? []).map((entry) => entry.participant_key as string);
+}
+
+export async function ensureLiveGameCreated(client: SupabaseClient, record: LiveGameRecord) {
+  const { data, error } = await client.from('live_games').upsert({
+    id: record.id,
+    group_id: record.group_id,
+    created_by: record.created_by,
+    starting_life: record.starting_life,
+    status: 'active',
+    state: record.state,
+    started_at: record.started_at,
+  }, { onConflict: 'id', ignoreDuplicates: true }).select('*').maybeSingle();
+  if (error) throw error;
+  if (data) return { ...data, state: parseLiveGameState(data.state) } as LiveGameRecord;
+
+  const { data: existing, error: fetchError } = await client
+    .from('live_games').select('*').eq('id', record.id).single();
+  if (fetchError) throw fetchError;
+  return { ...existing, state: parseLiveGameState(existing.state) } as LiveGameRecord;
+}
+
+type MutationRpcResult = {
+  applied: boolean;
+  duplicate: boolean;
+  record: LiveGameRecord;
+};
+
+export async function applyQueuedLiveGameMutation(
+  client: SupabaseClient,
+  initialRecord: LiveGameRecord,
+  queued: QueuedLiveGameMutation,
 ): Promise<LiveGameRecord> {
-  const { data, error } = await supabase
-    .from('live_games')
-    .update({ state })
-    .eq('id', liveGameId)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-
-  return {
-    ...data,
-    state: parseLiveGameState(data.state),
-  } as LiveGameRecord;
-}
-
-export async function setLiveGameStatus(
-  supabase: SupabaseClient,
-  liveGameId: string,
-  status: LiveGameStatus,
-  matchId?: string | null,
-): Promise<void> {
-  const payload: Record<string, unknown> = {
-    status,
-    ended_at: status === 'ended' || status === 'cancelled' ? new Date().toISOString() : null,
-  };
-
-  if (matchId !== undefined) {
-    payload.match_id = matchId;
+  let base = initialRecord;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const nextState = applyLiveGameMutation(base.state, queued.mutation);
+    const { data, error } = await client.rpc('apply_live_game_mutation', {
+      p_live_game_id: base.id,
+      p_mutation_id: queued.id,
+      p_expected_version: base.state.version,
+      p_next_state: nextState,
+    });
+    if (error) throw error;
+    const result = data as MutationRpcResult;
+    const record = { ...result.record, state: parseLiveGameState(result.record.state) } as LiveGameRecord;
+    if (result.applied) return record;
+    base = record;
   }
-
-  const { error } = await supabase
-    .from('live_games')
-    .update(payload)
-    .eq('id', liveGameId);
-
-  if (error) throw error;
+  throw new Error('Live game state stayed busy after multiple retries');
 }
 
 export function subscribeToLiveGame(
-  supabase: SupabaseClient,
+  client: SupabaseClient,
   liveGameId: string,
   onChange: (record: LiveGameRecord) => void,
 ) {
-  const channel = supabase
-    .channel(`live-game:${liveGameId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'live_games',
-        filter: `id=eq.${liveGameId}`,
-      },
-      (payload) => {
-        const next = payload.new as LiveGameRecord;
-        onChange({
-          ...next,
-          state: parseLiveGameState(next.state),
-        });
-      },
-    )
-    .subscribe();
-
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  const channel = client.channel(`web-live-game:${liveGameId}`).on(
+    'postgres_changes',
+    { event: 'UPDATE', schema: 'public', table: 'live_games', filter: `id=eq.${liveGameId}` },
+    (payload) => {
+      const next = payload.new as LiveGameRecord;
+      onChange({ ...next, state: parseLiveGameState(next.state) });
+    },
+  ).subscribe();
+  return () => { void client.removeChannel(channel); };
 }
 
-export async function cancelLiveGame(
-  supabase: SupabaseClient,
+export async function cancelLiveGame(client: SupabaseClient, liveGameId: string) {
+  const { error } = await client.from('live_games').update({
+    status: 'cancelled',
+    ended_at: new Date().toISOString(),
+  }).eq('id', liveGameId);
+  if (error) throw error;
+}
+
+export async function finalizeLiveGameAsMatch(client: SupabaseClient, input: {
+  liveGameId: string;
+  winnerKey: string | null;
+  isDraw: boolean;
+  winCondition: WinCondition | null;
+  endedAt: string;
+  players: Array<{
+    participantKey: string;
+    deckId: string;
+    isGuest: boolean;
+    userId: string | null;
+    guestId: string | null;
+  }>;
+}) {
+  const { data, error } = await client.rpc('finalize_live_game', {
+    p_live_game_id: input.liveGameId,
+    p_winner_key: input.winnerKey,
+    p_is_draw: input.isDraw,
+    p_win_condition: input.isDraw ? null : input.winCondition ?? 'other',
+    p_ended_at: input.endedAt,
+    p_players: input.players.map((player) => ({
+      participant_key: player.participantKey,
+      deck_id: player.deckId,
+      is_guest: player.isGuest,
+      user_id: player.userId,
+      guest_id: player.guestId,
+    })),
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function updateLiveGameState(
+  client: SupabaseClient,
   liveGameId: string,
-): Promise<void> {
-  await setLiveGameStatus(supabase, liveGameId, 'cancelled', null);
-}
-
-export async function finalizeLiveGameAsMatch(
-  supabase: SupabaseClient,
-  input: {
-    groupId: string;
-    createdBy: string;
-    liveGameId: string;
-    winnerKey: string | null;
-    isDraw: boolean;
-    players: Array<{
-      participantKey: string;
-      deckId: string;
-      isGuest: boolean;
-      userId: string | null;
-      guestId: string | null;
-    }>;
-  },
-): Promise<string> {
-  const winnerParsed = input.winnerKey?.includes(':') ? input.winnerKey.split(':') : null;
-  const winnerType = winnerParsed?.[0];
-  const winnerId = winnerParsed?.[1] ?? null;
-
-  const { data: match, error: matchError } = await supabase
-    .from('matches')
-    .insert({
-      group_id: input.groupId,
-      created_by: input.createdBy,
-      is_draw: input.isDraw,
-      winner_id: !input.isDraw && winnerType === 'user' ? winnerId : null,
-      winner_guest_id: !input.isDraw && winnerType === 'guest' ? winnerId : null,
-      played_at: new Date().toISOString(),
-      notes: null,
-    })
-    .select('id')
-    .single();
-
-  if (matchError) throw matchError;
-
-  const participants = input.players.map((player) => ({
-    match_id: match.id,
-    user_id: player.isGuest ? null : player.userId,
-    guest_id: player.isGuest ? player.guestId : null,
-    deck_id: player.isGuest ? null : player.deckId,
-    guest_deck_id: player.isGuest ? player.deckId : null,
-    is_winner: !input.isDraw && player.participantKey === input.winnerKey,
-  }));
-
-  const { error: participantsError } = await supabase
-    .from('match_participants')
-    .insert(participants);
-
-  if (participantsError) {
-    await supabase.from('matches').delete().eq('id', match.id);
-    throw participantsError;
-  }
-
-  const guestIds = input.players.filter((player) => player.isGuest).map((player) => player.guestId!);
-  if (guestIds.length > 0) {
-    await supabase
-      .from('arena_guests')
-      .update({ last_played_at: new Date().toISOString() })
-      .in('id', guestIds);
-  }
-
-  await setLiveGameStatus(supabase, input.liveGameId, 'ended', match.id);
-  return match.id;
+  state: LiveGameState,
+) {
+  const { data, error } = await client.from('live_games').update({ state }).eq('id', liveGameId).select('*').single();
+  if (error) throw error;
+  return { ...data, state: parseLiveGameState(data.state) } as LiveGameRecord;
 }

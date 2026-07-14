@@ -22,6 +22,15 @@ export const viewport = {
 export const metadata: Metadata = {
   title: 'Phyrexian Arena - EDH Tracker',
   description: 'Track your Commander games with the perfection of Phyrexia',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Phyrexian Arena',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: '/favicon.ico' },

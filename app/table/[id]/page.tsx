@@ -158,6 +158,19 @@ const MATCHES_SELECT = `
     deck_id,
     guest_deck_id,
     is_winner,
+    tracked_event_count,
+    life_lost,
+    life_gained,
+    life_damage_dealt,
+    unattributed_life_lost,
+    commander_damage_taken,
+    commander_damage_dealt,
+    infect_received,
+    infect_dealt,
+    eliminations,
+    eliminations_caused,
+    revives,
+    corrections,
     profiles (id, username, display_name),
     arena_guests (id, display_name),
     decks (name, commander, commander_image, bracket, color_identity, source_type),
@@ -2096,12 +2109,20 @@ export default function TablePage() {
           actions={(
             <>
               <Button
+                onClick={() => router.push(`/table/${groupId}/play`)}
+                className="flex-1 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 font-bold shadow-lg shadow-violet-950/30 hover:from-violet-500 hover:to-fuchsia-500"
+              >
+                <Swords className="mr-2 h-4 w-4" />
+                {t({ it: 'Gioca live', en: 'Play Game' })}
+              </Button>
+              <Button
                 onClick={() => {
                   setMatchPlayedAt(toMatchDateValue());
                   ensureArenaMemberDecksLoaded();
                   setShowMatchModal(true);
                 }}
-                className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+                variant="outline"
+                className="flex-1 border-violet-500/35 bg-violet-500/5 font-semibold text-foreground hover:bg-violet-500/15"
               >
                 <Target className="mr-2 h-4 w-4" />
                 {t({ it: 'Registra partita', en: 'Record Battle' })}

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyLiveGameMutation,
   applyDamage,
   autoEliminatePlayers,
   COMMANDER_DAMAGE_LIMIT,
   createLiveGamePlayer,
   eliminatePlayer,
   getSuggestedWinner,
+  isValidLiveGameResult,
   pickRandomPlayer,
   type LiveGameState,
 } from '@/lib/live-game';
@@ -14,6 +16,7 @@ function buildState(): LiveGameState {
   const keys = ['user:a', 'user:b', 'user:c', 'user:d'] as const;
   return {
     version: 0,
+    events: [],
     players: keys.map((key, slot) => createLiveGamePlayer({
       slot,
       participantKey: key,
@@ -64,5 +67,32 @@ describe('live-game', () => {
     const state = buildState();
     const picked = pickRandomPlayer(state);
     expect(picked?.participantKey).toMatch(/^user:/);
+  });
+
+  it('uses the same event log and compact analytics engine as native', () => {
+    const next = applyLiveGameMutation(buildState(), {
+      type: 'adjust',
+      targetKey: 'user:b',
+      sourceKey: 'user:a',
+      amount: 7,
+      mode: 'commander',
+      eventId: 'web-damage-1',
+      occurredAt: '2026-07-14T17:00:00.000Z',
+    });
+
+    expect(next.players[1]?.life).toBe(33);
+    expect(next.events[0]).toMatchObject({ type: 'commander_damage', amount: 7 });
+    expect(next.summary?.byParticipant['user:b']?.lifeLost).toBe(7);
+    expect(next.summary?.byParticipant['user:a']?.commanderDamageDealt).toBe(7);
+  });
+
+  it('requires an alternative condition while multiple players remain', () => {
+    const state = buildState();
+    expect(isValidLiveGameResult(state, {
+      winnerKey: 'user:a', isDraw: false, winCondition: 'combo',
+    })).toBe(true);
+    expect(isValidLiveGameResult(state, {
+      winnerKey: 'user:a', isDraw: false, winCondition: 'last_standing',
+    })).toBe(false);
   });
 });
