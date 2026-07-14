@@ -1,10 +1,12 @@
 import {
   applyLiveGameMutation,
+  getDefaultWinCondition,
   parseLiveGameState,
   type LiveGameRecord,
   type LiveGameState,
   type QueuedLiveGameMutation,
   type LiveGameStatus,
+  type WinCondition,
 } from '@/lib/live-game';
 import type { PendingLiveGameFinalization } from '@/lib/live-game-offline';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -240,6 +242,7 @@ export async function finalizeLiveGameAsMatch(
     liveGameId: string;
     winnerKey: string | null;
     isDraw: boolean;
+    winCondition: WinCondition | null;
     endedAt: string;
     players: Array<{
       participantKey: string;
@@ -254,6 +257,7 @@ export async function finalizeLiveGameAsMatch(
     p_live_game_id: input.liveGameId,
     p_winner_key: input.winnerKey,
     p_is_draw: input.isDraw,
+    p_win_condition: input.isDraw ? null : input.winCondition ?? 'other',
     p_ended_at: input.endedAt,
     p_players: input.players.map((player) => ({
       participant_key: player.participantKey,
@@ -271,11 +275,14 @@ export async function finalizePendingLiveGame(
   supabase: SupabaseClient,
   liveGameId: string,
   pending: PendingLiveGameFinalization,
+  state?: LiveGameState,
 ): Promise<string> {
+  const legacyWinCondition = state ? getDefaultWinCondition(state) ?? 'other' : 'other';
   return finalizeLiveGameAsMatch(supabase, {
     liveGameId,
     winnerKey: pending.winnerKey,
     isDraw: pending.isDraw,
+    winCondition: pending.isDraw ? null : pending.winCondition ?? legacyWinCondition,
     endedAt: pending.endedAt || new Date().toISOString(),
     players: pending.players,
   });

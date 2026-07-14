@@ -32,6 +32,10 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
+      hitSlop={size === 'sm' ? 4 : 2}
+      android_ripple={{ color: 'rgba(255,255,255,0.12)', borderless: false }}
       style={({ pressed }) => [
         styles.base,
         size === 'sm' && styles.sm,
@@ -77,7 +81,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 7,
     paddingHorizontal: 16,
+    overflow: 'hidden',
   },
   sm: {
     minHeight: 36,
@@ -85,6 +91,11 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   ghost: {
     backgroundColor: colors.surfaceMuted,
@@ -105,11 +116,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   pressed: {
-    opacity: 0.9,
+    opacity: 0.94,
+    transform: [{ scale: 0.985 }, { translateY: 1 }],
   },
-  icon: {
-    marginRight: 6,
-  },
+  icon: {},
   label: {
     flexShrink: 1,
     color: '#fff',

@@ -141,8 +141,8 @@ Web deploy and native build stay **separate pipelines**.
 ## Live game tracker
 
 - Works offline through a durable local mutation journal and syncs when connectivity returns.
-- Tracks life, commander damage, infect, lifegain, eliminations, revives and undo corrections.
-- A completed tracked game stores its elapsed duration and ordered event log on the match.
+- Tracks life, commander damage, infect, lifegain, eliminations, revives and undo corrections. Counter direction is retained so damage and manual corrections remain distinguishable.
+- A completed tracked game stores its elapsed duration, win condition and the latest 500 ordered events. A bounded cumulative summary preserves exact per-player totals for the whole game and writes compact per-deck metrics suitable for future medians.
 - Starting player and clockwise/counterclockwise direction are randomized and remain visible on the table.
 - Commander images use an on-device cache that invalidates broken files and falls back to a fresh Scryfall art lookup.
 - Arena details, recent records, guests and deck metadata use a per-account stale-while-revalidate cache for immediate startup.

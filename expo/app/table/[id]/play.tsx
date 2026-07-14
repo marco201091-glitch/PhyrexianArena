@@ -29,7 +29,10 @@ import { getPreferredDeckId } from '@/lib/arena-deck-selection';
 import {
   applyLiveGameMutation,
   createLiveGamePlayer,
+  createLiveGameSummary,
+  getDefaultWinCondition,
   getSuggestedWinner,
+  isValidLiveGameResult,
   pickRandomPlayer,
   type DamageMode,
   type LiveGameMutation,
@@ -37,6 +40,7 @@ import {
   type LiveGameRecord,
   type LiveGameState,
   type QueuedLiveGameMutation,
+  type WinCondition,
 } from '@/lib/live-game';
 import { buildRouletteSequence } from '@/lib/live-game-roulette';
 import type { TableLayoutVariant } from '@/lib/live-game-table-layout';
@@ -81,6 +85,17 @@ import type { MemberDeck } from '@/lib/types/arena';
 type LifePreset = '20' | '25' | '30' | '40' | '60' | 'custom';
 
 const LIFE_PRESETS: LifePreset[] = ['20', '25', '30', '40', '60'];
+const ALTERNATIVE_WIN_CONDITIONS: Array<{
+  value: Exclude<WinCondition, 'last_standing'>;
+  icon: keyof typeof Ionicons.glyphMap;
+  labelKey: 'liveGameWinCombo' | 'liveGameWinConcession' | 'liveGameWinAlternateCard' | 'liveGameWinOther';
+  hintKey: 'liveGameWinComboHint' | 'liveGameWinConcessionHint' | 'liveGameWinAlternateCardHint' | 'liveGameWinOtherHint';
+}> = [
+  { value: 'combo', icon: 'git-merge-outline', labelKey: 'liveGameWinCombo', hintKey: 'liveGameWinComboHint' },
+  { value: 'concession', icon: 'flag-outline', labelKey: 'liveGameWinConcession', hintKey: 'liveGameWinConcessionHint' },
+  { value: 'alternate_card', icon: 'sparkles-outline', labelKey: 'liveGameWinAlternateCard', hintKey: 'liveGameWinAlternateCardHint' },
+  { value: 'other', icon: 'ellipsis-horizontal-circle-outline', labelKey: 'liveGameWinOther', hintKey: 'liveGameWinOtherHint' },
+];
 
 function replayQueuedMutations(
   record: LiveGameRecord,
@@ -127,6 +142,7 @@ export default function LiveGameScreen() {
   const [showEndGame, setShowEndGame] = useState(false);
   const [endWinnerKey, setEndWinnerKey] = useState<ParticipantKey | ''>('');
   const [endIsDraw, setEndIsDraw] = useState(false);
+  const [endWinCondition, setEndWinCondition] = useState<WinCondition | null>(null);
   const [endingGame, setEndingGame] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [discardingGame, setDiscardingGame] = useState(false);
@@ -152,6 +168,7 @@ export default function LiveGameScreen() {
     const suggested = getSuggestedWinner(state);
     setEndWinnerKey(suggested?.participantKey || '');
     setEndIsDraw(false);
+    setEndWinCondition(getDefaultWinCondition(state));
     setShowEndGame(true);
   }, []);
 
@@ -304,7 +321,12 @@ export default function LiveGameScreen() {
         await saveLiveGameOutbox(outbox);
       }
       if (item.finalization) {
-        await finalizePendingLiveGame(supabase, serverRecord.id, item.finalization);
+        await finalizePendingLiveGame(
+          supabase,
+          serverRecord.id,
+          item.finalization,
+          serverRecord.state,
+        );
       } else if (item.cancel) {
         await cancelLiveGame(supabase, serverRecord.id);
       }
@@ -648,6 +670,7 @@ export default function LiveGameScreen() {
           startingPlayerKey: startingPlayer?.participantKey ?? null,
           startingDirection,
           events: [],
+          summary: createLiveGameSummary(),
         },
         match_id: null,
         started_at: now,
@@ -773,6 +796,18 @@ export default function LiveGameScreen() {
       showToast(copy('liveGameWinnerError'));
       return;
     }
+    if (!endIsDraw && activePlayers.length !== 1 && !endWinCondition) {
+      showToast(copy('liveGameWinConditionError'));
+      return;
+    }
+    if (!isValidLiveGameResult(liveGame.state, {
+      winnerKey: endIsDraw ? null : endWinnerKey || null,
+      isDraw: endIsDraw,
+      winCondition: endIsDraw ? null : endWinCondition,
+    })) {
+      showToast(copy('liveGameWinConditionError'));
+      return;
+    }
 
     setEndingGame(true);
     try {
@@ -790,6 +825,9 @@ export default function LiveGameScreen() {
       const pending: PendingLiveGameFinalization = {
         winnerKey: endIsDraw ? null : endWinnerKey,
         isDraw: endIsDraw,
+        winCondition: endIsDraw
+          ? null
+          : activePlayers.length === 1 ? 'last_standing' : endWinCondition,
         endedAt: new Date().toISOString(),
         players,
       };
@@ -870,6 +908,7 @@ export default function LiveGameScreen() {
         startingPlayerKey: startingPlayer?.participantKey ?? null,
         startingDirection,
         events: [],
+        summary: createLiveGameSummary(),
       },
       match_id: null,
       started_at: now,
@@ -898,6 +937,7 @@ export default function LiveGameScreen() {
 
   const gameState = liveGame?.state;
   const activePlayers = (gameState?.players ?? []).filter((player: LiveGamePlayer) => !player.isEliminated);
+  const requiresAlternativeWinCondition = !endIsDraw && activePlayers.length !== 1;
   const pendingEliminatePlayer = gameState?.players.find(
     (player) => player.participantKey === pendingEliminate,
   );
@@ -1013,7 +1053,10 @@ export default function LiveGameScreen() {
                 label={endingGame ? copy('liveGameSaving') : copy('liveGameConfirmSave')}
                 icon="checkmark-circle-outline"
                 onPress={handleEndGame}
-                disabled={endingGame || discardingGame || (!endIsDraw && !endWinnerKey)}
+                disabled={endingGame
+                  || discardingGame
+                  || (!endIsDraw && !endWinnerKey)
+                  || (requiresAlternativeWinCondition && !endWinCondition)}
                 style={styles.modalButton}
               />
             </View>
@@ -1026,11 +1069,19 @@ export default function LiveGameScreen() {
             tone="success"
             onClose={() => setShowEndGame(false)}
           />
+          <View style={styles.winConditionHeading}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>1</Text>
+            </View>
+            <Text style={styles.winConditionTitle}>{copy('liveGameWhoWon')}</Text>
+          </View>
           <Pressable
             style={[styles.drawOption, endIsDraw && styles.winnerOptionActive]}
             onPress={() => {
               setEndIsDraw((value) => !value);
               setEndWinnerKey('');
+              setEndWinCondition(null);
+              void hapticLight();
             }}
           >
             <View style={styles.drawIcon}>
@@ -1053,6 +1104,8 @@ export default function LiveGameScreen() {
               onPress={() => {
                 setEndIsDraw(false);
                 setEndWinnerKey(player.participantKey);
+                setEndWinCondition(activePlayers.length === 1 ? 'last_standing' : null);
+                void hapticLight();
               }}
             >
               <DeckImage
@@ -1073,6 +1126,68 @@ export default function LiveGameScreen() {
               />
             </Pressable>
           )) : null}
+          {!endIsDraw && endWinnerKey ? (
+            <View style={styles.winConditionSection}>
+              <View style={styles.winConditionHeading}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>2</Text>
+                </View>
+                <View style={styles.winConditionHeadingCopy}>
+                  <Text style={styles.winConditionTitle}>{copy('liveGameWinCondition')}</Text>
+                  <Text style={styles.winConditionHint}>
+                    {requiresAlternativeWinCondition
+                      ? copy('liveGameWinConditionHint')
+                      : copy('liveGameWinLastStandingHint')}
+                  </Text>
+                </View>
+              </View>
+              {requiresAlternativeWinCondition ? (
+                <View style={styles.winConditionGrid}>
+                  {ALTERNATIVE_WIN_CONDITIONS.map((condition) => {
+                    const selected = endWinCondition === condition.value;
+                    return (
+                      <Pressable
+                        key={condition.value}
+                        onPress={() => {
+                          setEndWinCondition(condition.value);
+                          void hapticLight();
+                        }}
+                        style={({ pressed }) => [
+                          styles.winConditionOption,
+                          selected && styles.winConditionOptionActive,
+                          pressed && styles.choicePressed,
+                        ]}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                      >
+                        <View style={[styles.winConditionIcon, selected && styles.winConditionIconActive]}>
+                          <Ionicons
+                            name={condition.icon}
+                            size={20}
+                            color={selected ? colors.primaryLight : colors.muted}
+                          />
+                        </View>
+                        <Text style={styles.winConditionOptionTitle}>{copy(condition.labelKey)}</Text>
+                        <Text style={styles.winConditionOptionHint} numberOfLines={2}>{copy(condition.hintKey)}</Text>
+                        <Ionicons
+                          name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={19}
+                          color={selected ? colors.primaryLight : colors.border}
+                          style={styles.winConditionCheck}
+                        />
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.lastStandingCard}>
+                  <Ionicons name="shield-checkmark-outline" size={21} color="#86efac" />
+                  <Text style={styles.lastStandingText}>{copy('liveGameWinLastStanding')}</Text>
+                  <Ionicons name="checkmark-circle" size={20} color="#86efac" />
+                </View>
+              )}
+            </View>
+          ) : null}
           <Pressable
             onPress={() => setShowDiscardConfirm(true)}
             disabled={endingGame || discardingGame}
@@ -1152,8 +1267,15 @@ export default function LiveGameScreen() {
               {LIFE_PRESETS.map((preset) => (
                 <Pressable
                   key={preset}
-                  style={[styles.lifePill, lifePreset === preset && styles.lifePillActive]}
-                  onPress={() => setLifePreset(preset)}
+                  style={({ pressed }) => [
+                    styles.lifePill,
+                    lifePreset === preset && styles.lifePillActive,
+                    pressed && styles.choicePressed,
+                  ]}
+                  onPress={() => {
+                    setLifePreset(preset);
+                    void hapticLight();
+                  }}
                 >
                   <Text style={[styles.lifePillText, lifePreset === preset && styles.lifePillTextActive]}>
                     {preset}
@@ -1161,8 +1283,15 @@ export default function LiveGameScreen() {
                 </Pressable>
               ))}
               <Pressable
-                style={[styles.lifePill, lifePreset === 'custom' && styles.lifePillActive]}
-                onPress={() => setLifePreset('custom')}
+                style={({ pressed }) => [
+                  styles.lifePill,
+                  lifePreset === 'custom' && styles.lifePillActive,
+                  pressed && styles.choicePressed,
+                ]}
+                onPress={() => {
+                  setLifePreset('custom');
+                  void hapticLight();
+                }}
               >
                 <Text style={[styles.lifePillText, lifePreset === 'custom' && styles.lifePillTextActive]}>
                   {copy('liveGameCustom')}
@@ -1170,7 +1299,14 @@ export default function LiveGameScreen() {
               </Pressable>
             </View>
             {lifePreset === 'custom' ? (
-              <Input value={customLife} onChangeText={setCustomLife} keyboardType="number-pad" />
+              <Input
+                label={copy('liveGameStartingLife')}
+                icon="heart-outline"
+                value={customLife}
+                onChangeText={setCustomLife}
+                keyboardType="number-pad"
+                selectTextOnFocus
+              />
             ) : null}
 
             <Button
@@ -1351,6 +1487,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
+  choicePressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.985 }],
+  },
   winnerOptionMeta: {
     color: colors.muted,
     fontSize: 12,
@@ -1369,6 +1509,106 @@ const styles = StyleSheet.create({
   winnerImage: {
     width: 42,
     height: 56,
+  },
+  winConditionSection: {
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  winConditionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  stepBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  stepBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  winConditionHeadingCopy: {
+    flex: 1,
+  },
+  winConditionTitle: {
+    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  winConditionHint: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  winConditionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  winConditionOption: {
+    position: 'relative',
+    flexGrow: 1,
+    flexBasis: '47%',
+    minHeight: 118,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardInset,
+    padding: spacing.md,
+    gap: 5,
+  },
+  winConditionOptionActive: {
+    borderColor: colors.primaryLight,
+    backgroundColor: 'rgba(124, 58, 237, 0.18)',
+  },
+  winConditionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceChip,
+  },
+  winConditionIconActive: {
+    backgroundColor: 'rgba(124, 58, 237, 0.30)',
+  },
+  winConditionOptionTitle: {
+    color: colors.foreground,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  winConditionOptionHint: {
+    color: colors.muted,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  winConditionCheck: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+  },
+  lastStandingCard: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.30)',
+    backgroundColor: 'rgba(22, 101, 52, 0.18)',
+    paddingHorizontal: spacing.md,
+  },
+  lastStandingText: {
+    flex: 1,
+    color: '#dcfce7',
+    fontSize: 13,
+    fontWeight: '800',
   },
   modalActions: {
     flexDirection: 'row',

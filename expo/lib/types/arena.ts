@@ -29,6 +29,9 @@ export interface ArenaMatch {
   played_at: string;
   created_by: string;
   notes: string | null;
+  duration_seconds?: number | null;
+  live_game_log?: unknown[];
+  win_condition?: 'last_standing' | 'combo' | 'concession' | 'alternate_card' | 'other' | null;
   winner: ArenaProfile | null;
   winner_guest?: { id: string; display_name: string } | null;
   match_participants: MatchParticipantRecord[];

@@ -173,6 +173,7 @@ export function TableArena({
       : null,
     [arenaWidth, hasCenterToolbar, layoutHeight, layoutVariant, playerCount],
   );
+  const isVerticalCenterToolbar = centerToolbarBand?.axis === 'vertical';
 
   const seatAssignments = useMemo(
     () => mapPlayersToSeats(players, seatLayouts, null),
@@ -302,7 +303,7 @@ export function TableArena({
         <Ionicons name="arrow-back" size={21} color={colors.foreground} />
       </Pressable>
 
-      <View style={styles.modeSegment}>
+      <View style={[styles.modeSegment, isVerticalCenterToolbar && styles.modeSegmentVertical]}>
         {DAMAGE_MODES.map((mode) => {
           const active = damageMode === mode;
           const meta = DAMAGE_MODE_META[mode];
@@ -429,6 +430,7 @@ export function TableArena({
           <View
             style={[
               styles.centerToolbarRow,
+              isVerticalCenterToolbar && styles.centerToolbarColumn,
               {
                 left: centerToolbarBand.left,
                 top: centerToolbarBand.top,
@@ -447,7 +449,9 @@ export function TableArena({
           style={[
             styles.toolsSheet,
             centerToolbarBand
-              ? { top: centerToolbarBand.top + centerToolbarBand.height + 6 }
+              ? centerToolbarBand.axis === 'vertical'
+                ? { top: spacing.md }
+                : { top: centerToolbarBand.top + centerToolbarBand.height + 6 }
               : { bottom: toolbarHeight + 8 },
           ]}
         >
@@ -616,6 +620,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
     zIndex: 40,
   },
+  centerToolbarColumn: {
+    flexDirection: 'column',
+    paddingHorizontal: 0,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 0,
+    borderBottomWidth: 0,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+  },
   toolbar: {
     position: 'absolute',
     left: 0,
@@ -661,6 +674,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.055)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
+  },
+  modeSegmentVertical: {
+    flexDirection: 'column',
+    width: 38,
+    height: 102,
   },
   modeButton: {
     width: 34,

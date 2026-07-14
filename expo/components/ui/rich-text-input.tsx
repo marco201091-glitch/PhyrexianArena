@@ -83,7 +83,7 @@ export function RichTextInput({
           {label}
         </Text>
       ) : null}
-      <View style={styles.editor}>
+      <View style={[styles.editor, focused && styles.editorFocused]}>
         {showPreview ? (
           <Pressable
             onPress={beginEditing}
@@ -147,6 +147,7 @@ export function RichTextInput({
               }}
               placeholder={placeholder}
               placeholderTextColor={colors.muted}
+              selectionColor={colors.primaryLight}
               multiline
               textAlignVertical="top"
               style={[styles.input, { minHeight }]}
@@ -207,6 +208,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.inputBg,
     overflow: 'hidden',
   },
+  editorFocused: {
+    borderColor: colors.primaryLight,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
+  },
   toolbarRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -245,6 +255,7 @@ const styles = StyleSheet.create({
   },
   toolbarButtonPressed: {
     opacity: 0.8,
+    transform: [{ scale: 0.94 }],
   },
   input: {
     color: colors.foreground,
