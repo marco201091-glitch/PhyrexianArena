@@ -469,7 +469,10 @@ export default function LiveGameScreen() {
   useEffect(() => {
     const interval = setInterval(() => void syncJournal(), 10_000);
     const appStateSubscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void syncJournal();
+      if (state === 'active') {
+        void syncJournal();
+        if (liveGameRef.current) applyLiveGameImmersive();
+      }
     });
     return () => {
       clearInterval(interval);
@@ -477,30 +480,42 @@ export default function LiveGameScreen() {
     };
   }, [syncJournal]);
 
+  const liveGameId = liveGame?.id ?? null;
+  const liveGamePlayerCount = liveGame?.state.players.length ?? 0;
+
   useEffect(() => {
-    if (!liveGame) {
+    if (!liveGameId) {
       void clearLiveGameOrientationLock();
+      return undefined;
+    }
+
+    void applyLiveGameOrientationLock(liveGamePlayerCount);
+    return () => {
+      void clearLiveGameOrientationLock();
+    };
+  }, [liveGameId, liveGamePlayerCount]);
+
+  useEffect(() => {
+    if (!liveGameId) {
       clearLiveGameImmersive();
       return undefined;
     }
 
-    void applyLiveGameOrientationLock(liveGame.state.players.length);
     applyLiveGameImmersive();
     return () => {
-      void clearLiveGameOrientationLock();
       clearLiveGameImmersive();
     };
-  }, [liveGame]);
+  }, [liveGameId]);
 
   useFocusEffect(
     useCallback(() => {
-      if (liveGame) {
+      if (liveGameId) {
         applyLiveGameImmersive();
       }
       return () => {
         clearLiveGameImmersive();
       };
-    }, [liveGame]),
+    }, [liveGameId]),
   );
 
   useEffect(() => {
@@ -1007,7 +1022,7 @@ export default function LiveGameScreen() {
           <ModalHeader
             title={copy('liveGameExitTitle')}
             subtitle={copy('liveGameExitHint')}
-            icon="arrow-back-outline"
+            icon={null}
             onClose={() => setShowExitChoice(false)}
           />
           <View style={styles.exitChoiceGrid}>

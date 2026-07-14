@@ -160,7 +160,7 @@ export function TableArena({
   const hasCenterToolbar = usesCenterToolbar(playerCount);
   const toolbarHeight = hasCenterToolbar
     ? 0
-    : 56 + Math.max(insets.bottom, 8);
+    : 64 + Math.max(insets.bottom, 8);
   const layoutHeight = Math.max(0, arenaHeight - toolbarHeight);
   const seatLayouts = useMemo(
     () => getSquareTableLayouts(
@@ -304,11 +304,11 @@ export function TableArena({
         accessibilityRole="button"
         accessibilityLabel="Back"
       >
-        <Ionicons name="arrow-back" size={21} color={colors.foreground} />
+        <Ionicons name="arrow-back" size={23} color={colors.foreground} />
       </Pressable>
 
       <View style={[styles.durationPill, isVerticalCenterToolbar && styles.durationPillVertical]}>
-        <Ionicons name="time-outline" size={14} color={colors.muted} />
+        <Ionicons name="time-outline" size={15} color={colors.muted} />
         <Text style={styles.durationText}>{formatTrackerDuration(startedAt, clockNow)}</Text>
       </View>
 
@@ -322,7 +322,7 @@ export function TableArena({
       >
         <Ionicons
           name="arrow-undo-outline"
-          size={21}
+          size={23}
           color={canUndo ? colors.foreground : 'rgba(244,244,245,0.28)'}
         />
       </Pressable>
@@ -336,7 +336,7 @@ export function TableArena({
         accessibilityRole="button"
         accessibilityLabel={labels.randomAll}
       >
-        <Ionicons name="dice-outline" size={21} color={colors.foreground} />
+        <Ionicons name="dice-outline" size={23} color={colors.foreground} />
       </Pressable>
 
       <Pressable
@@ -351,8 +351,8 @@ export function TableArena({
         accessibilityLabel={labels.randomOpponents}
       >
         <View style={styles.opponentRandomIcon}>
-          <Ionicons name="person-outline" size={19} color={colors.foreground} />
-          <Ionicons name="dice" size={10} color={colors.primaryLight} style={styles.opponentRandomDie} />
+          <Ionicons name="person-outline" size={21} color={colors.foreground} />
+          <Ionicons name="dice" size={11} color={colors.primaryLight} style={styles.opponentRandomDie} />
         </View>
       </Pressable>
 
@@ -362,7 +362,7 @@ export function TableArena({
         accessibilityRole="button"
         accessibilityLabel={labels.endGame}
       >
-        <Ionicons name="flag-outline" size={20} color={colors.foreground} />
+        <Ionicons name="flag-outline" size={22} color={colors.foreground} />
       </Pressable>
     </>
   );
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 6,
     paddingHorizontal: spacing.sm,
     backgroundColor: 'rgba(4, 4, 9, 0.98)',
     borderTopWidth: 1,
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   centerToolbarColumn: {
     flexDirection: 'column',
     paddingHorizontal: 0,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     borderTopWidth: 0,
     borderBottomWidth: 0,
     borderLeftWidth: 1,
@@ -604,17 +604,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 6,
     paddingHorizontal: spacing.md,
-    paddingTop: 6,
+    paddingTop: 8,
     backgroundColor: 'rgba(4, 4, 8, 0.98)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
   },
   toolBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -631,10 +631,10 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   durationPill: {
-    minWidth: 62,
-    height: 34,
-    paddingHorizontal: 8,
-    borderRadius: 17,
+    minWidth: 66,
+    height: 40,
+    paddingHorizontal: 9,
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -644,15 +644,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
   durationPillVertical: {
-    minWidth: 34,
-    width: 34,
-    height: 68,
+    minWidth: 40,
+    width: 40,
+    height: 72,
     paddingHorizontal: 0,
     flexDirection: 'column',
   },
   durationText: {
     color: colors.muted,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },

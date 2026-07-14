@@ -1,6 +1,5 @@
-import { PropsWithChildren, useEffect, useState, type ReactNode } from 'react';
+import { PropsWithChildren, type ReactNode } from 'react';
 import {
-  Keyboard,
   KeyboardAvoidingView,
   Modal as RNModal,
   Platform,
@@ -37,32 +36,7 @@ export function Modal({
 }: ModalProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const isDialog = presentation === 'dialog' || width >= 720;
-
-  useEffect(() => {
-    if (!visible) {
-      setKeyboardHeight(0);
-      return;
-    }
-
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, [visible]);
-
-  const androidKeyboardPadding = Platform.OS === 'android' ? Math.max(0, keyboardHeight - insets.bottom) : 0;
 
   const panel = (
     <View style={styles.wrapper}>
@@ -74,8 +48,8 @@ export function Modal({
               styles.scrollContent,
               footer ? styles.scrollWithFooter : styles.scrollStandalone,
             ]}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
             automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
             showsVerticalScrollIndicator
             nestedScrollEnabled
@@ -114,7 +88,7 @@ export function Modal({
             styles.sheetHost,
             isDialog && styles.dialogHost,
             {
-              paddingBottom: Math.max(insets.bottom, spacing.md) + androidKeyboardPadding,
+              paddingBottom: Math.max(insets.bottom, spacing.md),
               maxWidth: isDialog ? maxWidth : undefined,
             },
           ]}
