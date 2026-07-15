@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, touch } from '@/constants/theme';
@@ -11,9 +10,7 @@ type InputProps = TextInputProps & {
   icon?: keyof typeof Ionicons.glyphMap;
 };
 
-export function Input({ label, error, hint, icon, onBlur, onFocus, style, ...props }: InputProps) {
-  const [focused, setFocused] = useState(false);
-
+export function Input({ label, error, hint, icon, style, ...props }: InputProps) {
   return (
     <View style={styles.wrapper}>
       {label ? (
@@ -23,24 +20,15 @@ export function Input({ label, error, hint, icon, onBlur, onFocus, style, ...pro
       ) : null}
       <View style={[
         styles.inputShell,
-        focused && styles.inputShellFocused,
         error && styles.inputShellError,
         props.editable === false && styles.disabled,
       ]}>
-        {icon ? <Ionicons name={icon} size={19} color={focused ? colors.primaryLight : colors.muted} /> : null}
+        {icon ? <Ionicons name={icon} size={19} color={colors.muted} /> : null}
         <TextInput
           placeholderTextColor={colors.muted}
           selectionColor={colors.primaryLight}
           style={[styles.input, props.multiline && styles.inputMultiline, style]}
           maxFontSizeMultiplier={layout.maxFontSizeMultiplier}
-          onFocus={(event) => {
-            setFocused(true);
-            onFocus?.(event);
-          }}
-          onBlur={(event) => {
-            setFocused(false);
-            onBlur?.(event);
-          }}
           {...props}
         />
         {error ? <Ionicons name="alert-circle" size={18} color={colors.destructive} /> : null}
@@ -77,15 +65,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 14,
-  },
-  inputShellFocused: {
-    borderColor: colors.primaryLight,
-    backgroundColor: 'rgba(124, 58, 237, 0.10)',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 2,
   },
   inputShellError: {
     borderColor: colors.destructive,
