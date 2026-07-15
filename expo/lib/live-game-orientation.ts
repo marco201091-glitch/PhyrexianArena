@@ -1,5 +1,3 @@
-import { getTableOrientation } from '@/lib/live-game-table-layout';
-
 type ScreenOrientationModule = typeof import('expo-screen-orientation');
 
 let cachedModule: ScreenOrientationModule | null | undefined;
@@ -16,16 +14,12 @@ function getScreenOrientationModule(): ScreenOrientationModule | null {
   }
 }
 
-export async function applyLiveGameOrientationLock(playerCount: number): Promise<void> {
+export async function applyLiveGameOrientationLock(_playerCount: number): Promise<void> {
   const orientationModule = getScreenOrientationModule();
   if (!orientationModule) return;
 
   try {
-    const orientation = getTableOrientation(playerCount);
-    const lock = orientation === 'portrait'
-      ? orientationModule.OrientationLock.PORTRAIT_UP
-      : orientationModule.OrientationLock.LANDSCAPE;
-    await orientationModule.lockAsync(lock);
+    await orientationModule.lockAsync(orientationModule.OrientationLock.PORTRAIT_UP);
   } catch {
     // Native module missing until the dev client is rebuilt.
   }

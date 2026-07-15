@@ -149,6 +149,7 @@ export default function LiveGameScreen() {
   const [showRematch, setShowRematch] = useState(false);
   const [completedDurationSeconds, setCompletedDurationSeconds] = useState(0);
   const rouletteTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const previousActivePlayerCountRef = useRef<number | null>(null);
 
   const liveGameRef = useRef<LiveGameRecord | null>(null);
   const serverRecordRef = useRef<LiveGameRecord | null>(null);
@@ -171,6 +172,21 @@ export default function LiveGameScreen() {
     setEndWinCondition(getDefaultWinCondition(state));
     setShowEndGame(true);
   }, []);
+
+  useEffect(() => {
+    if (!liveGame) {
+      previousActivePlayerCountRef.current = null;
+      return;
+    }
+
+    const activePlayerCount = liveGame.state.players.filter((player) => !player.isEliminated).length;
+    const previousActivePlayerCount = previousActivePlayerCountRef.current;
+    previousActivePlayerCountRef.current = activePlayerCount;
+
+    if (previousActivePlayerCount !== null && previousActivePlayerCount > 1 && activePlayerCount === 1) {
+      openEndGameModal(liveGame.state);
+    }
+  }, [liveGame, openEndGameModal]);
 
   const startingLife = useMemo(() => {
     if (lifePreset === 'custom') {

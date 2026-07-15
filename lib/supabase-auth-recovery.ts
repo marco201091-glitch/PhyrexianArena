@@ -1,11 +1,14 @@
 export function isInvalidRefreshTokenError(error: unknown) {
+  const status = error && typeof error === 'object' && 'status' in error
+    ? Number((error as { status?: unknown }).status)
+    : null;
   const message = error instanceof Error
     ? error.message
     : error && typeof error === 'object' && 'message' in error
     ? String((error as { message?: unknown }).message)
     : String(error || '');
 
-  return /invalid refresh token|refresh token not found/i.test(message);
+  return status === 401 || /invalid refresh token|refresh token not found|session.*(?:missing|expired|invalid)|jwt.*expired/i.test(message);
 }
 
 function clearLegacyAuthStorage() {
