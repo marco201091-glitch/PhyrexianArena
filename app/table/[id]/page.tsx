@@ -62,7 +62,7 @@ import {
 import { buildPairedCommanderColorFields, buildPairedCommanderName } from '@/lib/commander-partners';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
-import { fetchArenaDaySummaries, type ArenaDaySummary } from '@/lib/arena-day-fetch';
+import type { ArenaDaySummary } from '@/lib/arena-day-fetch';
 import {
   buildColorAnalyticsFromRows,
   buildCommanderStatsFromRows,
@@ -70,7 +70,7 @@ import {
   extractDeckColorOverridesFromRows,
   fetchArenaStatsParticipants,
 } from '@/lib/arena-stats-fetch';
-import { fetchLatestDayMatches, fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
+import { fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
 import { fetchActiveLiveGame } from '@/lib/live-game-service';
 
 import { groupMatchesByDay } from '@/lib/arena-session';
@@ -377,9 +377,6 @@ export default function TablePage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [daySummaries, setDaySummaries] = useState<ArenaDaySummary[]>([]);
   const [matchesByDay, setMatchesByDay] = useState<Record<string, Match[]>>({});
-  const [loadingDayKeys, setLoadingDayKeys] = useState<Set<string>>(new Set());
-  const [dayMatchErrorKeys, setDayMatchErrorKeys] = useState<Set<string>>(new Set());
-  const dayLoadsInFlightRef = useRef<Set<string>>(new Set());
 
 
   const [decks, setDecks] = useState<Deck[]>([]);
@@ -623,57 +620,15 @@ export default function TablePage() {
     }
   }, [buildArenaColorTargets, deckColorOverrides, user]);
 
-  const loadDayMatches = useCallback(async (dayKey: string) => {
-    if (matchesByDay[dayKey] !== undefined || dayLoadsInFlightRef.current.has(dayKey)) return;
-
-    dayLoadsInFlightRef.current.add(dayKey);
-    setLoadingDayKeys((current) => new Set(current).add(dayKey));
-    setDayMatchErrorKeys((current) => {
-      const next = new Set(current);
-      next.delete(dayKey);
-      return next;
-    });
-    try {
-      const data = await fetchMatchesForDay(supabase, groupId, dayKey);
-      const loaded = data as unknown as Match[];
-      const expectedCount = daySummaries.find((summary) => summary.dayKey === dayKey)?.matchCount ?? 0;
-      if (loaded.length === 0 && expectedCount > 0) {
-        throw new Error('Match day summary has rows, but its detail query returned none');
-      }
-      setMatchesByDay((current) => ({ ...current, [dayKey]: loaded }));
-      setMatches((current) => {
-        const byId = new Map(current.map((match) => [match.id, match]));
-        loaded.forEach((match) => byId.set(match.id, match));
-        return Array.from(byId.values()).sort(
-          (left, right) => new Date(right.played_at).getTime() - new Date(left.played_at).getTime(),
-        );
-      });
-    } catch (error) {
-      console.error('Error fetching day matches:', error);
-      setDayMatchErrorKeys((current) => new Set(current).add(dayKey));
-    } finally {
-      dayLoadsInFlightRef.current.delete(dayKey);
-      setLoadingDayKeys((current) => {
-        const next = new Set(current);
-        next.delete(dayKey);
-        return next;
-      });
-    }
-  }, [daySummaries, groupId, matchesByDay]);
-
   const initializeMatchHistory = useCallback(async () => {
     try {
-      const summaryRows = await fetchArenaDaySummaries(supabase, groupId);
-      const latestRows = await fetchLatestDayMatches(supabase, groupId, summaryRows[0]?.dayKey ?? null);
-      const recent = latestRows as unknown as Match[];
+      const recent = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
       const grouped = groupMatchesByDay(recent);
-      const summaries = summaryRows.length > 0
-        ? summaryRows
-        : grouped.map((group) => ({
-            dayKey: group.dayKey,
-            matchCount: group.matchCount,
-            latestPlayedAt: group.matches[0]?.played_at ?? '',
-          }));
+      const summaries = grouped.map((group) => ({
+        dayKey: group.dayKey,
+        matchCount: group.matchCount,
+        latestPlayedAt: group.matches[0]?.played_at ?? '',
+      }));
 
       setDaySummaries(summaries);
       setMatchesByDay(Object.fromEntries(
@@ -683,21 +638,7 @@ export default function TablePage() {
       return recent;
     } catch (error) {
       console.error('Error fetching match history:', getSupabaseErrorMessage(error as Error, 'Failed to fetch matches'));
-      try {
-        const recent = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
-        const grouped = groupMatchesByDay(recent);
-        setDaySummaries(grouped.map((group) => ({
-          dayKey: group.dayKey,
-          matchCount: group.matchCount,
-          latestPlayedAt: group.matches[0]?.played_at ?? '',
-        })));
-        setMatchesByDay(Object.fromEntries(grouped.map((group) => [group.dayKey, group.matches as Match[]])));
-        setMatches(recent);
-        return recent;
-      } catch (fallbackError) {
-        console.error('Error fetching recent matches fallback:', getSupabaseErrorMessage(fallbackError as Error, 'Failed to fetch recent matches'));
-        return [] as Match[];
-      }
+      return [] as Match[];
     }
   }, [groupId]);
 
@@ -968,17 +909,6 @@ export default function TablePage() {
     });
 
   }, [latestDayKey]);
-
-  useEffect(() => {
-    expandedDayKeys.forEach((dayKey) => {
-      if (
-        matchesByDay[dayKey] === undefined
-        && !dayMatchErrorKeys.has(dayKey)
-      ) {
-        void loadDayMatches(dayKey);
-      }
-    });
-  }, [dayMatchErrorKeys, expandedDayKeys, loadDayMatches, matchesByDay]);
 
   useEffect(() => {
     if (!editingMatch) return;
@@ -1886,7 +1816,6 @@ export default function TablePage() {
   };
 
   const toggleDayGroup = (dayKey: string, open: boolean) => {
-    if (open) void loadDayMatches(dayKey);
     setExpandedDayKeys((current) => {
       const next = new Set(current);
       if (open) {
@@ -2422,25 +2351,10 @@ export default function TablePage() {
                         </div>
                         <CollapsibleContent>
                           <div className="space-y-3 p-3">
-                            {loadingDayKeys.has(dayGroup.dayKey) ? (
-                              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                {t({ it: 'Caricamento partite...', en: 'Loading matches...' })}
-                              </div>
-                            ) : null}
-                            {!loadingDayKeys.has(dayGroup.dayKey) && dayGroup.matches.length === 0 && isExpanded ? (
-                              dayMatchErrorKeys.has(dayGroup.dayKey) ? (
-                                <div className="flex flex-col items-center gap-3 py-4 text-center text-sm text-muted-foreground">
-                                  <p>{t({ it: 'Impossibile caricare le partite di questa giornata.', en: 'Unable to load matches for this day.' })}</p>
-                                  <Button type="button" variant="outline" size="sm" onClick={() => void loadDayMatches(dayGroup.dayKey)}>
-                                    {t({ it: 'Riprova', en: 'Retry' })}
-                                  </Button>
-                                </div>
-                              ) : (
-                                <p className="py-4 text-center text-sm text-muted-foreground">
-                                  {t({ it: 'Nessuna partita in questa giornata', en: 'No matches on this day' })}
-                                </p>
-                              )
+                            {dayGroup.matches.length === 0 && isExpanded ? (
+                              <p className="py-4 text-center text-sm text-muted-foreground">
+                                {t({ it: 'Nessuna partita in questa giornata', en: 'No matches on this day' })}
+                              </p>
                             ) : null}
                             {dayGroup.matches.map((match) => (
                               <Card key={match.id} className="border-border/70 bg-background/20 transition-colors hover:border-violet-500/40">
