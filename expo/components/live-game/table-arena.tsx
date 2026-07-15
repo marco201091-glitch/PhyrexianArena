@@ -180,6 +180,17 @@ export function TableArena({
     [arenaWidth, hasCenterToolbar, layoutHeight, layoutVariant, playerCount, tableOrientation],
   );
   const isVerticalCenterToolbar = centerToolbarBand?.axis === 'vertical';
+  const centerToolbarMainSize = isVerticalCenterToolbar
+    ? centerToolbarBand?.height ?? 0
+    : centerToolbarBand?.width ?? 0;
+  const toolbarButtonSize = centerToolbarBand
+    ? Math.max(34, Math.min(56, (centerToolbarMainSize - 98) / 5))
+    : 44;
+  const toolbarButtonStyle = {
+    width: toolbarButtonSize,
+    height: toolbarButtonSize,
+    borderRadius: toolbarButtonSize / 2,
+  };
 
   const seatAssignments = useMemo(
     () => mapPlayersToSeats(players, seatLayouts, null),
@@ -299,7 +310,7 @@ export function TableArena({
   const toolbarControls = (
     <>
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface]}
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
         onPress={onBack}
         accessibilityRole="button"
         accessibilityLabel="Back"
@@ -313,7 +324,7 @@ export function TableArena({
       </View>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, !canUndo && styles.toolBtnDisabled]}
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle, !canUndo && styles.toolBtnDisabled]}
         onPress={onUndo}
         disabled={!canUndo}
         accessibilityRole="button"
@@ -328,7 +339,7 @@ export function TableArena({
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface]}
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
         onPress={() => {
           setActivePickerKey(null);
           onPickRandom();
@@ -340,7 +351,7 @@ export function TableArena({
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, activePlayers.length < 2 && styles.toolBtnDisabled]}
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle, activePlayers.length < 2 && styles.toolBtnDisabled]}
         disabled={activePlayers.length < 2}
         onPress={() => {
           setActivePickerKey(null);
@@ -357,7 +368,7 @@ export function TableArena({
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface]}
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
         onPress={onEndGame}
         accessibilityRole="button"
         accessibilityLabel={labels.endGame}
@@ -577,8 +588,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
     backgroundColor: 'rgba(4, 4, 9, 0.98)',
     borderTopWidth: 1,
@@ -589,7 +599,7 @@ const styles = StyleSheet.create({
   centerToolbarColumn: {
     flexDirection: 'column',
     paddingHorizontal: 0,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderTopWidth: 0,
     borderBottomWidth: 0,
     borderLeftWidth: 1,

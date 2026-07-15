@@ -379,6 +379,7 @@ export default function TablePage() {
   const [matchesByDay, setMatchesByDay] = useState<Record<string, Match[]>>({});
   const [loadingDayKeys, setLoadingDayKeys] = useState<Set<string>>(new Set());
   const [dayMatchErrorKeys, setDayMatchErrorKeys] = useState<Set<string>>(new Set());
+  const dayLoadsInFlightRef = useRef<Set<string>>(new Set());
 
 
   const [decks, setDecks] = useState<Deck[]>([]);
@@ -623,8 +624,9 @@ export default function TablePage() {
   }, [buildArenaColorTargets, deckColorOverrides, user]);
 
   const loadDayMatches = useCallback(async (dayKey: string) => {
-    if (matchesByDay[dayKey]?.length || loadingDayKeys.has(dayKey)) return;
+    if (matchesByDay[dayKey] !== undefined || dayLoadsInFlightRef.current.has(dayKey)) return;
 
+    dayLoadsInFlightRef.current.add(dayKey);
     setLoadingDayKeys((current) => new Set(current).add(dayKey));
     setDayMatchErrorKeys((current) => {
       const next = new Set(current);
@@ -650,13 +652,14 @@ export default function TablePage() {
       console.error('Error fetching day matches:', error);
       setDayMatchErrorKeys((current) => new Set(current).add(dayKey));
     } finally {
+      dayLoadsInFlightRef.current.delete(dayKey);
       setLoadingDayKeys((current) => {
         const next = new Set(current);
         next.delete(dayKey);
         return next;
       });
     }
-  }, [daySummaries, groupId, loadingDayKeys, matchesByDay]);
+  }, [daySummaries, groupId, matchesByDay]);
 
   const initializeMatchHistory = useCallback(async () => {
     try {
@@ -967,6 +970,17 @@ export default function TablePage() {
     });
 
   }, [latestDayKey]);
+
+  useEffect(() => {
+    expandedDayKeys.forEach((dayKey) => {
+      if (
+        matchesByDay[dayKey] === undefined
+        && !dayMatchErrorKeys.has(dayKey)
+      ) {
+        void loadDayMatches(dayKey);
+      }
+    });
+  }, [dayMatchErrorKeys, expandedDayKeys, loadDayMatches, matchesByDay]);
 
   useEffect(() => {
     if (!editingMatch) return;

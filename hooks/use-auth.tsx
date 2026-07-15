@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { clearSupabaseAuthStorage, isInvalidRefreshTokenError } from '@/lib/supabase-auth-recovery';
 
 interface AuthContextType {
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     let resolved = false;
@@ -92,10 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       subscription.unsubscribe();
     };
-  }, [router]);
+  }, [pathname, router]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     router.push('/auth/login');
   };
 

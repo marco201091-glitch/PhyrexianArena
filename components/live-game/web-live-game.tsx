@@ -131,6 +131,30 @@ function secureRandom() {
   return value[0]! / 0x1_0000_0000;
 }
 
+type LockableScreenOrientation = ScreenOrientation & {
+  lock?: (orientation: 'portrait') => Promise<void>;
+  unlock?: () => void;
+};
+
+async function lockTrackerPortraitOrientation() {
+  const orientation = screen.orientation as LockableScreenOrientation | undefined;
+  if (!orientation?.lock) return;
+  try {
+    await orientation.lock('portrait');
+  } catch {
+    // Safari and some embedded browsers do not expose orientation locking.
+  }
+}
+
+function unlockTrackerOrientation() {
+  const orientation = screen.orientation as LockableScreenOrientation | undefined;
+  try {
+    orientation?.unlock?.();
+  } catch {
+    // Ignore unsupported orientation APIs.
+  }
+}
+
 function replay(record: LiveGameRecord, queue: QueuedLiveGameMutation[]) {
   return queue.reduce(
     (current, item) => ({ ...current, state: applyLiveGameMutation(current.state, item.mutation) }),
@@ -222,6 +246,7 @@ export function WebLiveGame({
   const [confirmEliminate, setConfirmEliminate] = useState<ParticipantKey | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [exitChoiceOpen, setExitChoiceOpen] = useState(false);
+  const previousActivePlayerCountRef = useRef<number | null>(null);
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [tableSize, setTableSize] = useState({ width: 390, height: 760 });
   const [fullscreen, setFullscreen] = useState(false);
@@ -229,21 +254,27 @@ export function WebLiveGame({
   const toggleTrackerFullscreen = useCallback(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-    if (standalone) return;
+    if (standalone) {
+      void lockTrackerPortraitOrientation();
+      return;
+    }
     if (document.fullscreenElement) {
+      unlockTrackerOrientation();
       void document.exitFullscreen().catch(() => undefined);
       return;
     }
     if (document.fullscreenEnabled && document.documentElement.requestFullscreen) {
-      void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {
-        toast({
-          title: copy({
-            it: 'Il browser non ha consentito lo schermo intero. Riprova dal pulsante del tracker.',
-            en: 'The browser did not allow fullscreen. Try again from the tracker button.',
-          }),
-          variant: 'destructive',
+      void document.documentElement.requestFullscreen({ navigationUI: 'hide' })
+        .then(() => lockTrackerPortraitOrientation())
+        .catch(() => {
+          toast({
+            title: copy({
+              it: 'Il browser non ha consentito lo schermo intero. Riprova dal pulsante del tracker.',
+              en: 'The browser did not allow fullscreen. Try again from the tracker button.',
+            }),
+            variant: 'destructive',
+          });
         });
-      });
       return;
     }
     toast({
@@ -255,10 +286,21 @@ export function WebLiveGame({
   }, [copy, toast]);
 
   useEffect(() => {
-    const updateFullscreen = () => setFullscreen(Boolean(document.fullscreenElement));
+    const updateFullscreen = () => {
+      const isFullscreen = Boolean(document.fullscreenElement);
+      setFullscreen(isFullscreen);
+      if (isFullscreen) {
+        void lockTrackerPortraitOrientation();
+      } else {
+        unlockTrackerOrientation();
+      }
+    };
     updateFullscreen();
     document.addEventListener('fullscreenchange', updateFullscreen);
-    return () => document.removeEventListener('fullscreenchange', updateFullscreen);
+    return () => {
+      document.removeEventListener('fullscreenchange', updateFullscreen);
+      unlockTrackerOrientation();
+    };
   }, []);
 
   const setOptimisticRecord = useCallback((next: LiveGameRecord | null) => {
@@ -667,14 +709,29 @@ export function WebLiveGame({
     setDamageDraft(null);
   };
 
-  const openEnd = () => {
+  const openEnd = useCallback(() => {
     if (!record) return;
     const suggested = getSuggestedWinner(record.state);
     setWinnerKey(suggested?.participantKey ?? '');
     setIsDraw(false);
     setWinCondition(getDefaultWinCondition(record.state));
     setEndOpen(true);
-  };
+  }, [record]);
+
+  useEffect(() => {
+    if (!record) {
+      previousActivePlayerCountRef.current = null;
+      return;
+    }
+
+    const activePlayerCount = record.state.players.filter((player) => !player.isEliminated).length;
+    const previousActivePlayerCount = previousActivePlayerCountRef.current;
+    previousActivePlayerCountRef.current = activePlayerCount;
+
+    if (previousActivePlayerCount !== null && previousActivePlayerCount > 1 && activePlayerCount === 1) {
+      openEnd();
+    }
+  }, [openEnd, record]);
 
   const finishGame = async () => {
     if (!record) return;
@@ -883,6 +940,17 @@ export function WebLiveGame({
   const panelPlayer = record.state.players.find((player) => player.participantKey === damagePanelKey);
   const activePlayers = record.state.players.filter((player) => !player.isEliminated);
   const alternativeRequired = activePlayers.length !== 1;
+  const toolbarMainSize = centerToolbarBand?.axis === 'vertical'
+    ? centerToolbarBand.height
+    : centerToolbarBand?.width ?? 0;
+  const toolbarCrossSize = centerToolbarBand?.axis === 'vertical'
+    ? centerToolbarBand.width
+    : centerToolbarBand?.height ?? 0;
+  const toolbarControlSize = Math.max(34, Math.min(56, toolbarCrossSize - 12, (toolbarMainSize - 96) / 6));
+  const toolbarButtonStyle = { width: toolbarControlSize, height: toolbarControlSize };
+  const toolbarDurationStyle = centerToolbarBand?.axis === 'vertical'
+    ? { width: toolbarControlSize, height: Math.min(80, toolbarControlSize * 1.5) }
+    : { width: Math.min(88, toolbarControlSize * 1.65), height: toolbarControlSize };
 
   return (
     <div className="fixed inset-0 select-none overflow-hidden bg-black text-white touch-none">
@@ -939,19 +1007,19 @@ export function WebLiveGame({
             height: centerToolbarBand.height,
           }}
         >
-        <div className={cn('flex items-center gap-1.5 rounded-full border border-white/10 bg-zinc-950/95 p-1.5 shadow-2xl backdrop-blur-xl', centerToolbarBand.axis === 'vertical' ? 'flex-col' : 'flex-row')}>
-          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={() => setExitChoiceOpen(true)} title="Back"><ArrowLeft /></Button>
-          <div className={cn('flex h-10 min-w-16 items-center justify-center gap-1 rounded-full bg-zinc-900 px-2.5 text-xs font-bold text-zinc-300', centerToolbarBand.axis === 'vertical' && 'h-[4.5rem] min-w-10 px-1 [writing-mode:vertical-rl]')}><Clock3 className="h-4 w-4 shrink-0" />{duration}</div>
-          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={undoLastMutation} disabled={!undoDepth} title="Undo"><RotateCcw /></Button>
-          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={() => runRoulette(activePlayers.map((player) => player.participantKey))} title="Random player"><Dices /></Button>
-          <Button variant={randomOpponentMode ? 'default' : 'ghost'} size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={() => setRandomOpponentMode((value) => !value)} title="Random opponent">
+        <div className={cn('flex h-full w-full items-center justify-between border border-white/10 bg-zinc-950/95 p-1.5 shadow-2xl backdrop-blur-xl', centerToolbarBand.axis === 'vertical' ? 'flex-col' : 'flex-row')}>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => setExitChoiceOpen(true)} title="Back"><ArrowLeft /></Button>
+          <div className={cn('flex shrink-0 items-center justify-center gap-1 rounded-full bg-zinc-900 px-1.5 text-xs font-bold text-zinc-300', centerToolbarBand.axis === 'vertical' && 'flex-col px-1')} style={toolbarDurationStyle}><Clock3 className="h-4 w-4 shrink-0" />{duration}</div>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={undoLastMutation} disabled={!undoDepth} title="Undo"><RotateCcw /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => runRoulette(activePlayers.map((player) => player.participantKey))} title="Random player"><Dices /></Button>
+          <Button variant={randomOpponentMode ? 'default' : 'ghost'} size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => setRandomOpponentMode((value) => !value)} title="Random opponent">
             <span className="relative block h-5 w-5">
               <UserRound className="absolute left-0 top-0 h-[18px] w-[18px]" />
               <Dices className="absolute -bottom-1 -right-1 h-3 w-3 text-violet-300" />
             </span>
           </Button>
-          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={openEnd} title="End game"><Flag /></Button>
-          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={toggleTrackerFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>{fullscreen ? <Minimize2 /> : <Maximize2 />}</Button>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={openEnd} title="End game"><Flag /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={toggleTrackerFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>{fullscreen ? <Minimize2 /> : <Maximize2 />}</Button>
           {!online && <WifiOff className="mx-2 h-4 w-4 text-amber-400" />}
           {syncing && <Loader2 className="mx-2 h-4 w-4 animate-spin text-violet-300" />}
         </div>
