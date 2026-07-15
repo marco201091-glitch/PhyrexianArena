@@ -11,9 +11,9 @@ import {
   Dices,
   Flag,
   Heart,
-  Link2,
   Loader2,
   Maximize2,
+  Minimize2,
   Minus,
   MoreHorizontal,
   Pause,
@@ -224,13 +224,26 @@ export function WebLiveGame({
   const [exitChoiceOpen, setExitChoiceOpen] = useState(false);
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [tableSize, setTableSize] = useState({ width: 390, height: 760 });
+  const [fullscreen, setFullscreen] = useState(false);
 
-  const enterTrackerFullscreen = useCallback(() => {
+  const toggleTrackerFullscreen = useCallback(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-    if (standalone || document.fullscreenElement) return;
+    if (standalone) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined);
+      return;
+    }
     if (document.fullscreenEnabled && document.documentElement.requestFullscreen) {
-      void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => undefined);
+      void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {
+        toast({
+          title: copy({
+            it: 'Il browser non ha consentito lo schermo intero. Riprova dal pulsante del tracker.',
+            en: 'The browser did not allow fullscreen. Try again from the tracker button.',
+          }),
+          variant: 'destructive',
+        });
+      });
       return;
     }
     toast({
@@ -240,6 +253,13 @@ export function WebLiveGame({
       }),
     });
   }, [copy, toast]);
+
+  useEffect(() => {
+    const updateFullscreen = () => setFullscreen(Boolean(document.fullscreenElement));
+    updateFullscreen();
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    return () => document.removeEventListener('fullscreenchange', updateFullscreen);
+  }, []);
 
   const setOptimisticRecord = useCallback((next: LiveGameRecord | null) => {
     recordRef.current = next;
@@ -468,7 +488,7 @@ export function WebLiveGame({
       toast({ title: copy({ it: 'Completa tutti i posti', en: 'Complete every seat' }), variant: 'destructive' });
       return;
     }
-    enterTrackerFullscreen();
+    toggleTrackerFullscreen();
     setStarting(true);
     try {
       const keys = selected.map((seat) => seat.participantKey!) as ParticipantKey[];
@@ -584,6 +604,18 @@ export function WebLiveGame({
     runRoulette(pool);
   };
 
+  const beginDamageDrag = (event: React.PointerEvent<HTMLElement>, sourceKey: ParticipantKey) => {
+    if (randomOpponentMode || event.button !== 0) return;
+    setDrag({
+      sourceKey,
+      startX: event.clientX,
+      startY: event.clientY,
+      x: event.clientX,
+      y: event.clientY,
+      targetKey: null,
+    });
+  };
+
   const dragging = Boolean(drag);
   useEffect(() => {
     if (!dragging) return;
@@ -608,9 +640,11 @@ export function WebLiveGame({
     };
     window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', up, { once: true });
+    window.addEventListener('pointercancel', up, { once: true });
     return () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
     };
   }, [dragging]);
 
@@ -860,27 +894,33 @@ export function WebLiveGame({
           const sideways = Math.abs(rotation) === 90;
           const selected = highlight === player.participantKey;
           const isStarting = record.state.startingPlayerKey === player.participantKey;
+          const contentWidth = sideways ? layout.height : layout.width;
+          const contentHeight = sideways ? layout.width : layout.height;
+          const shortestSide = Math.min(contentWidth, contentHeight);
+          const controlSize = Math.max(36, Math.min(68, shortestSide * 0.16));
+          const controlWidth = controlSize * 1.35;
+          const controlInset = Math.max(8, Math.min(24, contentWidth * 0.055));
+          const iconSize = Math.max(18, Math.min(31, controlSize * 0.48));
+          const auxiliarySize = Math.max(32, Math.min(48, controlSize * 0.75));
           return (
-            <section key={player.participantKey} data-player-key={player.participantKey} onClickCapture={(event) => { if (randomOpponentMode) { event.stopPropagation(); selectRandomOpponent(player.participantKey); } }} className={cn('absolute overflow-hidden rounded-[clamp(12px,2vw,28px)] border-2 bg-zinc-950 transition-all duration-200', selected ? 'z-20 border-amber-300 shadow-[0_0_45px_rgba(251,191,36,.9)] brightness-125' : 'border-black/80', drag?.targetKey === player.participantKey && 'border-rose-400 shadow-[0_0_35px_rgba(244,63,94,.8)]', player.isEliminated && 'grayscale brightness-50')} style={{ left: layout.left, top: layout.top, width: layout.width, height: layout.height }}>
+            <section key={player.participantKey} data-player-key={player.participantKey} onPointerDown={(event) => beginDamageDrag(event, player.participantKey)} onClickCapture={(event) => { if (randomOpponentMode) { event.stopPropagation(); selectRandomOpponent(player.participantKey); } }} className={cn('absolute overflow-hidden rounded-[clamp(12px,2vw,28px)] border-2 bg-zinc-950 transition-all duration-200', selected ? 'z-20 border-amber-300 shadow-[0_0_45px_rgba(251,191,36,.9)] brightness-125' : 'border-black/80', drag?.targetKey === player.participantKey && 'border-rose-400 shadow-[0_0_35px_rgba(244,63,94,.8)]', player.isEliminated && 'grayscale brightness-50')} style={{ left: layout.left, top: layout.top, width: layout.width, height: layout.height }}>
               <DeckImage src={player.commanderImage} alt={player.commander} className="absolute inset-0 h-full w-full rounded-none object-cover opacity-75" fallbackClassName="absolute inset-0 h-full w-full rounded-none" />
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/50" />
-              <div className="absolute left-1/2 top-1/2" style={{ width: sideways ? layout.height : layout.width, height: sideways ? layout.width : layout.height, transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}>
-                <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }); }} className="absolute left-1/2 top-2 z-10 grid h-11 w-16 -translate-x-1/2 place-items-center rounded-full bg-black/45 text-4xl font-light backdrop-blur active:scale-90"><Plus /></button>
-                <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }); }} className="absolute bottom-2 left-1/2 z-10 grid h-11 w-16 -translate-x-1/2 place-items-center rounded-full bg-black/45 text-4xl font-light backdrop-blur active:scale-90"><Minus /></button>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="max-w-[75%] truncate rounded-xl bg-black/65 px-3 py-1 text-sm font-black shadow backdrop-blur">{player.displayName}</div>
-                  <div className="font-black leading-none drop-shadow-[0_3px_4px_rgba(0,0,0,.9)]" style={{ fontSize: `clamp(54px, ${Math.min(layout.width, layout.height) * 0.28}px, 112px)` }}>{player.life}</div>
-                  <button
-                    onClick={(event) => { event.stopPropagation(); setDamagePanelKey(player.participantKey); }}
-                    className="mt-1 grid h-10 w-11 place-items-center rounded-full border border-violet-200/30 bg-black/65 text-violet-100 shadow-lg backdrop-blur transition active:scale-90"
-                    aria-label={`${player.displayName} damage details`}
-                  >
-                    <Shield className="h-5 w-5" />
-                  </button>
-                </div>
-                <button onPointerDown={(event) => { event.stopPropagation(); event.preventDefault(); setDrag({ sourceKey: player.participantKey, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, targetKey: null }); }} className="absolute bottom-3 right-3 z-20 grid h-11 w-11 place-items-center rounded-full border border-rose-300/50 bg-black/70 text-rose-200 shadow-lg backdrop-blur active:scale-90" aria-label="Drag damage"><Link2 className="h-5 w-5" /></button>
-                {player.isEliminated && <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'revive', targetKey: player.participantKey, startingLife: record.starting_life }, { type: 'restore-player', player }); }} className="absolute left-3 top-3 z-20 rounded-full bg-emerald-600 px-3 py-2 text-xs font-black"><RotateCcw className="mr-1 inline h-4 w-4" />Revive</button>}
-                {!player.isEliminated && <button onClick={(event) => { event.stopPropagation(); setConfirmEliminate(player.participantKey); }} className="absolute left-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white/75"><Skull className="h-4 w-4" /></button>}
+              <div className="absolute left-1/2 top-1/2" style={{ width: contentWidth, height: contentHeight, transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}>
+                <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }); }} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ left: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Riduci punti vita di', en: 'Reduce life for' })} ${player.displayName}`}><Minus style={{ width: iconSize, height: iconSize }} /></button>
+                <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }); }} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ right: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Aumenta punti vita di', en: 'Increase life for' })} ${player.displayName}`}><Plus style={{ width: iconSize, height: iconSize }} /></button>
+                <div className="pointer-events-none absolute left-1/2 top-[7%] z-10 max-w-[66%] -translate-x-1/2 truncate rounded-full border border-white/15 bg-gradient-to-r from-black/75 via-zinc-900/80 to-black/75 px-[clamp(10px,3%,20px)] py-[clamp(4px,1.5%,9px)] font-black tracking-wide text-white shadow-xl backdrop-blur-md" style={{ fontSize: `clamp(11px, ${shortestSide * 0.052}px, 22px)` }}>{player.displayName}</div>
+                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-black leading-none drop-shadow-[0_3px_4px_rgba(0,0,0,.9)]" style={{ fontSize: `clamp(54px, ${shortestSide * 0.28}px, 112px)` }}>{player.life}</div>
+                <button
+                  onClick={(event) => { event.stopPropagation(); setDamagePanelKey(player.participantKey); }}
+                  className="absolute left-1/2 top-3/4 z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-violet-200/30 bg-black/65 text-violet-100 shadow-lg backdrop-blur transition active:scale-90"
+                  style={{ width: controlSize, height: controlSize }}
+                  aria-label={`${player.displayName} damage details`}
+                >
+                  <Shield style={{ width: iconSize, height: iconSize }} />
+                </button>
+                {player.isEliminated && <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'revive', targetKey: player.participantKey, startingLife: record.starting_life }, { type: 'restore-player', player }); }} className="absolute left-3 top-3 z-20 rounded-full bg-emerald-600 px-3 font-black" style={{ height: auxiliarySize, fontSize: Math.max(10, auxiliarySize * 0.27) }}><RotateCcw className="mr-1 inline" style={{ width: auxiliarySize * 0.38, height: auxiliarySize * 0.38 }} />Revive</button>}
+                {!player.isEliminated && <button onClick={(event) => { event.stopPropagation(); setConfirmEliminate(player.participantKey); }} className="absolute left-3 top-3 z-20 grid place-items-center rounded-full border border-white/20 bg-black/55 text-white/75" style={{ width: auxiliarySize, height: auxiliarySize }}><Skull style={{ width: auxiliarySize * 0.4, height: auxiliarySize * 0.4 }} /></button>}
                 {isStarting && <div className="absolute left-3 bottom-3 max-w-[55%] rounded-full border border-amber-300/50 bg-amber-950/80 px-3 py-1 text-[11px] font-black text-amber-100"><ChevronRight className={cn('mr-1 inline h-3.5 w-3.5', record.state.startingDirection === 'counterclockwise' && 'rotate-180')} />{record.state.startingDirection === 'clockwise' ? 'Clockwise' : 'Counterclockwise'}</div>}
               </div>
             </section>
@@ -911,7 +951,7 @@ export function WebLiveGame({
             </span>
           </Button>
           <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={openEnd} title="End game"><Flag /></Button>
-          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={enterTrackerFullscreen} title="Fullscreen"><Maximize2 /></Button>
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" onClick={toggleTrackerFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>{fullscreen ? <Minimize2 /> : <Maximize2 />}</Button>
           {!online && <WifiOff className="mx-2 h-4 w-4 text-amber-400" />}
           {syncing && <Loader2 className="mx-2 h-4 w-4 animate-spin text-violet-300" />}
         </div>

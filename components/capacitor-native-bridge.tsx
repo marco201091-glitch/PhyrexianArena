@@ -12,7 +12,7 @@ export function CapacitorNativeBridge() {
 
     void (async () => {
       try {
-        const [{ App }, { StatusBar, Style }] = await Promise.all([
+        const [{ App }, { StatusBar, Style, Animation }] = await Promise.all([
           import('@capacitor/app'),
           import('@capacitor/status-bar'),
         ]);
@@ -21,6 +21,7 @@ export function CapacitorNativeBridge() {
 
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: '#0a0a0f' });
+        await StatusBar.hide({ animation: Animation.None });
 
         const listener = await App.addListener('backButton', ({ canGoBack }) => {
           if (canGoBack) {
