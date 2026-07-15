@@ -70,7 +70,7 @@ import {
   extractDeckColorOverridesFromRows,
   fetchArenaStatsParticipants,
 } from '@/lib/arena-stats-fetch';
-import { fetchLatestDayMatches, fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
+import { fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
 import { fetchActiveLiveGame } from '@/lib/live-game-service';
 
 import { groupMatchesByDay } from '@/lib/arena-session';
@@ -660,32 +660,26 @@ export default function TablePage() {
 
   const initializeMatchHistory = useCallback(async () => {
     try {
-      let summaries = await fetchArenaDaySummaries(supabase, groupId);
-
-      const latestDayKey = summaries[0]?.dayKey ?? null;
-      if (!latestDayKey) {
-        const recent = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
-        const grouped = groupMatchesByDay(recent);
-        summaries = grouped.map((group) => ({
-          dayKey: group.dayKey,
-          matchCount: group.matchCount,
-          latestPlayedAt: group.matches[0]?.played_at ?? '',
-        }));
-        setDaySummaries(summaries);
-        setMatchesByDay(Object.fromEntries(grouped.map((group) => [group.dayKey, group.matches as Match[]])));
-        setMatches(recent);
-        return recent;
-      }
+      const [summaryRows, recentRows] = await Promise.all([
+        fetchArenaDaySummaries(supabase, groupId),
+        fetchRecentArenaMatches(supabase, groupId),
+      ]);
+      const recent = recentRows as unknown as Match[];
+      const grouped = groupMatchesByDay(recent);
+      const summaries = summaryRows.length > 0
+        ? summaryRows
+        : grouped.map((group) => ({
+            dayKey: group.dayKey,
+            matchCount: group.matchCount,
+            latestPlayedAt: group.matches[0]?.played_at ?? '',
+          }));
 
       setDaySummaries(summaries);
-      const latestMatches = await fetchLatestDayMatches(supabase, groupId, latestDayKey);
-      const loaded = latestMatches as unknown as Match[];
-      if (loaded.length === 0 && (summaries[0]?.matchCount ?? 0) > 0) {
-        throw new Error('Latest match day summary has rows, but its detail query returned none');
-      }
-      setMatchesByDay({ [latestDayKey]: loaded });
-      setMatches(loaded);
-      return loaded;
+      setMatchesByDay(Object.fromEntries(
+        grouped.map((group) => [group.dayKey, group.matches as Match[]]),
+      ));
+      setMatches(recent);
+      return recent;
     } catch (error) {
       console.error('Error fetching match history:', getSupabaseErrorMessage(error as Error, 'Failed to fetch matches'));
       try {
@@ -972,14 +966,7 @@ export default function TablePage() {
       return next;
     });
 
-    if (
-      !matchesByDay[latestDayKey]?.length
-      && !loadingDayKeys.has(latestDayKey)
-      && !dayMatchErrorKeys.has(latestDayKey)
-    ) {
-      void loadDayMatches(latestDayKey);
-    }
-  }, [dayMatchErrorKeys, latestDayKey, loadDayMatches, loadingDayKeys, matchesByDay]);
+  }, [latestDayKey]);
 
   useEffect(() => {
     if (!editingMatch) return;
