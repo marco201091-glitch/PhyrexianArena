@@ -402,7 +402,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen min-w-0 overflow-x-hidden">
       <header className="safe-top border-b border-border/50 bg-card/50 backdrop-blur sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-3">
           <ManaLogo size="md" showText />
@@ -433,7 +433,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-5 sm:py-8">
+      <main className="mx-auto w-full min-w-0 max-w-7xl px-3 py-5 sm:px-4 sm:py-8">
         <PanelWithActions
           variant="strong"
           className="mb-6 sm:mb-8"
@@ -585,7 +585,7 @@ export default function DashboardPage() {
           </MotionList>
         )}
 
-        <section className="mt-8 sm:mt-10">
+        <section className="mt-8 min-w-0 max-w-full sm:mt-10">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-xl font-bold text-foreground">
@@ -621,8 +621,8 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
-              <Card className="border-border/70 bg-card/60">
+            <div className="grid min-w-0 max-w-full gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+              <Card className="min-w-0 max-w-full overflow-hidden border-border/70 bg-card/60">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
                     <Trophy className="h-5 w-5 text-violet-300" />
@@ -636,7 +636,7 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     {personalAnalytics.topDecks.map((deck, index) => (
                       <div key={deck.id} className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/35 p-3 sm:grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-3">
-                        <div className="flex items-center gap-3 sm:block">
+                        <div className="flex w-full min-w-0 items-center gap-3 sm:block sm:w-auto">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-sm font-bold text-violet-200">
                             {index + 1}
                           </div>
@@ -647,7 +647,7 @@ export default function DashboardPage() {
                             ) : null}
                             <p className="truncate text-sm text-violet-300">{deck.commander}</p>
                           </div>
-                          <div className="ml-auto text-right text-sm sm:hidden">
+                          <div className="ml-auto shrink-0 text-right text-sm sm:hidden">
                             <p className="font-semibold text-foreground">{deck.gamesPlayed}G / {deck.wins}W</p>
                             <p className="text-xs text-muted-foreground">{deck.winRate}% {t({ it: 'win', en: 'win' })}</p>
                           </div>
@@ -673,7 +673,7 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <div className="space-y-5">
+              <div className="min-w-0 max-w-full space-y-5">
                 <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
                   <Card className="border-border/70 bg-card/60">
                     <CardContent className="p-4">
@@ -730,7 +730,7 @@ export default function DashboardPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center gap-3 rounded-md border border-border/60 bg-background/35 p-3">
+                      <div className="flex min-w-0 items-center gap-3 rounded-md border border-border/60 bg-background/35 p-3">
                         <DeckImage
                           src={personalAnalytics.bestDeck.commanderImage}
                           alt={personalAnalytics.bestDeck.commander}
@@ -743,7 +743,7 @@ export default function DashboardPage() {
                           </div>
                           <p className="truncate text-sm text-violet-300">{personalAnalytics.bestDeck.commander}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="shrink-0 text-right">
                           <p className="text-sm font-semibold text-foreground">
                             {personalAnalytics.bestDeck.gamesPlayed}G / {personalAnalytics.bestDeck.wins}W
                           </p>
