@@ -13,8 +13,10 @@ import { ManaLogo } from '@/components/ui/mana-logo';
 import { useLanguage } from '@/components/language-provider';
 import { HCaptchaWidget } from '@/components/hcaptcha-widget';
 import { getSafeRedirectPath } from '@/lib/safe-redirect';
+import { setRememberMePreference } from '@/lib/auth-persistence';
+import { clearSupabaseAuthStorage } from '@/lib/supabase-auth-recovery';
 import { signInWithGoogle } from '@/lib/google-auth';
-import { supabase } from '@/lib/supabase';
+import { resetSupabaseClient, supabase } from '@/lib/supabase';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { AuthPageShell } from '@/components/legal/auth-page-shell';
 import { RegisterTermsNotice } from '@/components/legal/register-terms-notice';
@@ -114,6 +116,10 @@ function RegisterForm() {
       if (!registerResponse.ok) {
         throw new Error(registerData.error || t({ it: 'Creazione account non riuscita', en: 'Failed to create account' }));
       }
+
+      setRememberMePreference(true);
+      clearSupabaseAuthStorage();
+      resetSupabaseClient();
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
