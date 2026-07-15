@@ -1,5 +1,6 @@
-import { PropsWithChildren, type ReactNode } from 'react';
+import { PropsWithChildren, useEffect, useState, type ReactNode } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal as RNModal,
   Platform,
@@ -13,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
 import { keyboardAvoidingBehavior, keyboardAvoidingEnabled } from '@/lib/keyboard';
+import { useReducedMotion } from '@/lib/reduced-motion';
 
 type ModalProps = PropsWithChildren<{
   visible: boolean;
@@ -37,6 +39,27 @@ export function Modal({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isDialog = presentation === 'dialog' || width >= 720;
+  const reducedMotion = useReducedMotion();
+  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !visible) {
+      setAndroidKeyboardHeight(0);
+      return;
+    }
+
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (event) => {
+      setAndroidKeyboardHeight(Math.max(0, event.endCoordinates.height - insets.bottom));
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setAndroidKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [insets.bottom, visible]);
 
   const panel = (
     <View style={styles.wrapper}>
@@ -71,7 +94,7 @@ export function Modal({
     <RNModal
       visible={visible}
       transparent
-      animationType={isDialog ? 'fade' : 'slide'}
+      animationType={reducedMotion ? 'none' : (isDialog ? 'fade' : 'slide')}
       onRequestClose={onClose}
       statusBarTranslucent
     >
@@ -88,7 +111,7 @@ export function Modal({
             styles.sheetHost,
             isDialog && styles.dialogHost,
             {
-              paddingBottom: Math.max(insets.bottom, spacing.md),
+              paddingBottom: Math.max(insets.bottom, spacing.md) + androidKeyboardHeight,
               maxWidth: isDialog ? maxWidth : undefined,
             },
           ]}

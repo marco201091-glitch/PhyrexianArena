@@ -17,6 +17,7 @@ export const API_RATE_LIMITS = {
   authForgotPassword: { maxRequests: 3, windowSeconds: 60 * 60 },
   authResendConfirmation: { maxRequests: 5, windowSeconds: 60 * 60 },
   authDemoLogin: { maxRequests: 20, windowSeconds: 60 * 60 },
+  accountDelete: { maxRequests: 3, windowSeconds: 60 * 60 },
   accessLog: { maxRequests: 120, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitConfig>;
 

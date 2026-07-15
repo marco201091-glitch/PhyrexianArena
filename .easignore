@@ -1,6 +1,19 @@
 # Monorepo: EAS builds the expo app; skip unrelated trees.
 mobile/
+artifacts/
 .git/
+
+# Dependencies and generated output are restored by EAS.
+node_modules/
+expo/node_modules/
+.next/
+coverage/
+expo/dist/
+expo/web-build/
+expo/assets/reference/
+expo/.expo/
+expo/.metro.log
+expo/.metro.pid
 
 # Native folders are regenerated on EAS.
 expo/android/

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Animated, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, radii } from '@/constants/theme';
+import { useReducedMotion } from '@/lib/reduced-motion';
 
 type SkeletonProps = {
   width?: number | `${number}%`;
@@ -16,8 +17,15 @@ export function Skeleton({
   style,
 }: SkeletonProps) {
   const [opacity] = useState(() => new Animated.Value(0.35));
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      opacity.setValue(0.55);
+      return undefined;
+    }
+
+    opacity.setValue(0.35);
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 0.75, duration: 700, useNativeDriver: true }),
@@ -26,7 +34,7 @@ export function Skeleton({
     );
     animation.start();
     return () => animation.stop();
-  }, [opacity]);
+  }, [opacity, reducedMotion]);
 
   return (
     <Animated.View

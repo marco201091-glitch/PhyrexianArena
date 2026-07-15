@@ -1,5 +1,4 @@
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -43,7 +42,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   useEffect(() => {
-    WebBrowser.maybeCompleteAuthSession();
     void SystemUI.setBackgroundColorAsync(colors.black);
   }, []);
 

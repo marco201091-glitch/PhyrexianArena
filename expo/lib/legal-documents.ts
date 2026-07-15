@@ -323,8 +323,8 @@ export const termsOfUseDocument: LegalDocument = {
           en: 'We may suspend or close accounts that violate these Terms or pose risks to the platform or other users.',
         },
         {
-          it: 'Puoi smettere di usare il servizio in qualsiasi momento e richiedere la cancellazione del tuo account contattandoci.',
-          en: 'You may stop using the service at any time and request account deletion by contacting us.',
+          it: 'Puoi smettere di usare il servizio in qualsiasi momento ed eliminare definitivamente il tuo account dalle Impostazioni dell’app.',
+          en: 'You may stop using the service at any time and permanently delete your account from the app Settings.',
         },
       ],
     },

@@ -5,12 +5,10 @@ import { Screen } from '@/components/ui/screen';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AuthBranding } from '@/components/auth/auth-branding';
-import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { useLanguage } from '@/contexts/language-context';
 import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-persistence';
 import { showAppAlert } from '@/lib/app-alert';
-import { signInWithGoogle } from '@/lib/google-auth';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/theme';
 
@@ -30,9 +28,7 @@ export default function LoginScreen() {
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const authBusy = loading || googleLoading;
 
   useEffect(() => {
     void getRememberMePreference().then(setRememberMe);
@@ -80,25 +76,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      const next = Array.isArray(redirect) ? redirect[0] : redirect;
-      const redirectPath = await signInWithGoogle(next);
-      router.replace(redirectPath as Href);
-    } catch (error) {
-      if (error instanceof Error && error.message === 'cancelled') {
-        return;
-      }
-      if (__DEV__) {
-        console.error('[google-auth] sign-in failed:', error);
-      }
-      showAppAlert(copy('error'), copy('googleSignInFailed'));
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
   return (
     <Screen background="solid">
       <AuthBranding />
@@ -134,17 +111,7 @@ export default function LoginScreen() {
           <Button
             label={loading ? copy('signingIn') : copy('enterArena')}
             onPress={handleLogin}
-            disabled={authBusy}
-          />
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerLabel}>{copy('orDivider')}</Text>
-            <View style={styles.dividerLine} />
-          </View>
-          <GoogleSignInButton
-            label={googleLoading ? copy('signingInWithGoogle') : copy('continueWithGoogle')}
-            disabled={authBusy}
-            onPress={handleGoogleSignIn}
+            disabled={loading}
           />
         </View>
       </PhyrexianPanel>
@@ -171,22 +138,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
   },
   rememberRow: {
     flexDirection: 'row',

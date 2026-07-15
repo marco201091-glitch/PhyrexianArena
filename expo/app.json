@@ -2,7 +2,7 @@
   "expo": {
     "name": "Phyrexian Arena",
     "slug": "phyrexian-arena",
-    "version": "2.8.11",
+    "version": "2.8.12",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "phyrexianarena",
@@ -16,11 +16,36 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.phyrexianarena.app",
-      "icon": "./assets/icon.png"
+      "buildNumber": "20812",
+      "icon": "./assets/icon.png",
+      "backgroundColor": "#0a0a0f",
+      "associatedDomains": [
+        "applinks:phyrexian-arena.vercel.app"
+      ],
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["C617.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": ["35F9.1"]
+          }
+        ]
+      }
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 20811,
+      "versionCode": 20812,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -28,16 +53,6 @@
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "intentFilters": [
-        {
-          "action": "VIEW",
-          "category": ["BROWSABLE", "DEFAULT"],
-          "data": [
-            {
-              "scheme": "phyrexianarena",
-              "host": "callback"
-            }
-          ]
-        },
         {
           "action": "VIEW",
           "autoVerify": true,
@@ -83,7 +98,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Phyrexian Arena to access your photos to set your profile avatar."
+          "photosPermission": "Allow Phyrexian Arena to access your photos to set your profile avatar.",
+          "microphonePermission": false
         }
       ]
     ],

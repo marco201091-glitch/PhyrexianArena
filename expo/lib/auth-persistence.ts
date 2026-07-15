@@ -53,7 +53,8 @@ function isPkceVerifierKey(key: string) {
 }
 
 function usesAsyncStorage(key: string) {
-  // Supabase sessions exceed SecureStore's 2048-byte limit; PKCE verifier must survive OAuth.
+  // Supabase sessions exceed SecureStore's value limit. Keep recovery PKCE
+  // verifiers durable as well so password-reset links can complete reliably.
   return rememberMeEnabled || isPkceVerifierKey(key);
 }
 

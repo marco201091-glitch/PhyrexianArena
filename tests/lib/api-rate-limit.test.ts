@@ -6,6 +6,7 @@ describe('api-rate-limit', () => {
     expect(API_RATE_LIMITS.deckImport.maxRequests).toBe(200);
     expect(API_RATE_LIMITS.profileDeckRefresh.maxRequests).toBe(200);
     expect(API_RATE_LIMITS.authRegister.maxRequests).toBe(5);
+    expect(API_RATE_LIMITS.accountDelete.maxRequests).toBe(3);
     expect(API_RATE_LIMITS.archidektUserDecks.maxRequests).toBe(10);
   });
 });

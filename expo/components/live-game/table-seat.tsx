@@ -19,6 +19,7 @@ import {
 } from '@/lib/live-game';
 import type { SeatControlPlacement } from '@/lib/live-game-table-layout';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { useReducedMotion } from '@/lib/reduced-motion';
 
 type TableSeatProps = {
   player: LiveGamePlayer;
@@ -81,9 +82,16 @@ export function TableSeat({
   const shake = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
   const lifeScale = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (damagePulse <= 0) return;
+    if (reducedMotion) {
+      flashOpacity.value = 0;
+      shake.value = 0;
+      lifeScale.value = 1;
+      return;
+    }
     flashOpacity.value = withSequence(
       withTiming(0.58, { duration: 70 }),
       withTiming(0, { duration: 280 }),
@@ -97,7 +105,7 @@ export function TableSeat({
       withSpring(1.1, { damping: 9, stiffness: 300 }),
       withSpring(1, { damping: 12, stiffness: 220 }),
     );
-  }, [damagePulse, flashOpacity, lifeScale, shake]);
+  }, [damagePulse, flashOpacity, lifeScale, reducedMotion, shake]);
 
   const cardStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shake.value }, { translateY: shake.value * 0.3 }],

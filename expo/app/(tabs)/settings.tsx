@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,11 +26,13 @@ import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { hapticSuccess } from '@/lib/haptics';
 import { APP_DISPLAY_VERSION } from '@/lib/app-version';
+import { apiPost } from '@/lib/api';
 import { colors, spacing } from '@/constants/theme';
 
 export default function SettingsScreen() {
   const { copy, language, setLanguage } = useLanguage();
   const { user, signOut } = useAuth();
+  const router = useRouter();
   const { version: avatarVersion } = useAvatarVersion();
   const { profile, updateDisplayName, uploadAvatar, getAvatarUrl } = useProfile(user?.id);
   const { pickAvatar } = useAvatarPicker({ uploadAvatar });
@@ -40,12 +42,15 @@ export default function SettingsScreen() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const languageOptions: { id: AppLanguage; label: string }[] = [
     { id: 'en', label: copy('english') },
@@ -55,6 +60,8 @@ export default function SettingsScreen() {
 
   const passwordsMatch = newPassword === confirmNewPassword && confirmNewPassword.length > 0;
   const canSavePassword = isPasswordPolicyValid(newPassword) && passwordsMatch && currentPassword.length > 0;
+  const deleteNeedsPassword = !isGoogleAuthUser(user);
+  const canDeleteAccount = deleteConfirmation.trim().length > 0;
 
   const resetPasswordForm = () => {
     setCurrentPassword('');
@@ -126,6 +133,36 @@ export default function SettingsScreen() {
     void hapticSuccess();
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    setDeletingAccount(true);
+    try {
+      const response = await apiPost<{ ok: true }>('/api/auth/delete-account', {
+        password: deleteNeedsPassword ? deleteConfirmation : undefined,
+        confirmation: deleteNeedsPassword ? undefined : deleteConfirmation,
+      });
+
+      if (response.error || response.status >= 400) {
+        throw new Error(response.status === 403
+          ? copy('accountConfirmationFailed')
+          : copy('deleteAccountFailed'));
+      }
+
+      await supabase.auth.signOut({ scope: 'local' });
+      setShowDeleteAccountModal(false);
+      setDeleteConfirmation('');
+      router.replace('/(auth)/login');
+    } catch (error) {
+      showAppAlert(
+        copy('error'),
+        error instanceof Error ? error.message : copy('deleteAccountFailed'),
+      );
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   return (
     <Screen>
       <View style={styles.branding}>
@@ -183,6 +220,16 @@ export default function SettingsScreen() {
       </PhyrexianPanel>
 
       <Button label={copy('logout')} variant="ghost" onPress={() => void signOut()} style={styles.logout} />
+      <Button
+        label={copy('deleteAccount')}
+        variant="destructive"
+        icon="trash-outline"
+        onPress={() => {
+          setDeleteConfirmation('');
+          setShowDeleteAccountModal(true);
+        }}
+        style={styles.deleteAccount}
+      />
 
       <Text style={styles.version}>
         {copy('appVersion')} {APP_DISPLAY_VERSION}
@@ -269,6 +316,41 @@ export default function SettingsScreen() {
           />
         </View>
       </Modal>
+
+      <Modal
+        visible={showDeleteAccountModal}
+        onClose={() => {
+          if (!deletingAccount) setShowDeleteAccountModal(false);
+        }}
+      >
+        <Text style={styles.modalTitle}>{copy('deleteAccountTitle')}</Text>
+        <Text style={styles.deleteAccountHint}>{copy('deleteAccountHint')}</Text>
+        <Input
+          label={deleteNeedsPassword ? copy('currentPassword') : copy('confirmAccountEmail')}
+          secureTextEntry={deleteNeedsPassword}
+          autoCapitalize="none"
+          keyboardType={deleteNeedsPassword ? 'default' : 'email-address'}
+          value={deleteConfirmation}
+          onChangeText={setDeleteConfirmation}
+          autoComplete={deleteNeedsPassword ? 'current-password' : 'email'}
+        />
+        <View style={styles.modalActions}>
+          <Button
+            label={copy('cancel')}
+            variant="ghost"
+            disabled={deletingAccount}
+            onPress={() => setShowDeleteAccountModal(false)}
+            style={styles.modalButton}
+          />
+          <Button
+            label={deletingAccount ? copy('deletingAccount') : copy('deleteAccount')}
+            variant="destructive"
+            disabled={deletingAccount || !canDeleteAccount}
+            onPress={() => void handleDeleteAccount()}
+            style={styles.modalButton}
+          />
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -332,6 +414,14 @@ const styles = StyleSheet.create({
   },
   logout: {
     marginTop: spacing.xs,
+  },
+  deleteAccount: {
+    marginTop: spacing.sm,
+  },
+  deleteAccountHint: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 21,
   },
   version: {
     marginTop: spacing.lg,
