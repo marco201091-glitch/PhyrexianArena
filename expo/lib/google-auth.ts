@@ -6,6 +6,7 @@ import { ensureOAuthUserProfile } from '@/lib/oauth-profile';
 import { getSafeRedirectPath } from '@/lib/safe-redirect';
 
 const APP_SCHEME = 'phyrexianarena';
+const oauthCodeCompletions = new Map<string, Promise<string>>();
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -130,7 +131,7 @@ async function waitForOAuthSession(timeoutMs = 4000) {
   return null;
 }
 
-export async function completeOAuthFromCode(code: string, nextPath?: string | null) {
+async function exchangeOAuthCode(code: string, nextPath?: string | null) {
   const { data: { session: existingSession } } = await supabase.auth.getSession();
   if (existingSession?.user) {
     return finishOAuthSession(nextPath);
@@ -139,7 +140,10 @@ export async function completeOAuthFromCode(code: string, nextPath?: string | nu
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) {
     if (isPkceVerifierMissing(exchangeError)) {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Expo Router and openAuthSessionAsync can receive the same callback at
+      // nearly the same time. The other handler may still be persisting the
+      // session after consuming the one-time PKCE verifier.
+      const session = await waitForOAuthSession();
       if (session?.user) {
         return finishOAuthSession(nextPath);
       }
@@ -148,6 +152,25 @@ export async function completeOAuthFromCode(code: string, nextPath?: string | nu
   }
 
   return finishOAuthSession(nextPath);
+}
+
+export function completeOAuthFromCode(code: string, nextPath?: string | null) {
+  const inFlight = oauthCodeCompletions.get(code);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const completion = exchangeOAuthCode(code, nextPath);
+  oauthCodeCompletions.set(code, completion);
+
+  const clearCompletion = () => {
+    if (oauthCodeCompletions.get(code) === completion) {
+      oauthCodeCompletions.delete(code);
+    }
+  };
+  void completion.then(clearCompletion, clearCompletion);
+
+  return completion;
 }
 
 export async function completeOAuthFromUrl(url: string) {
