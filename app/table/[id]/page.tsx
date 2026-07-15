@@ -70,7 +70,7 @@ import {
   extractDeckColorOverridesFromRows,
   fetchArenaStatsParticipants,
 } from '@/lib/arena-stats-fetch';
-import { fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
+import { fetchLatestDayMatches, fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
 import { fetchActiveLiveGame } from '@/lib/live-game-service';
 
 import { groupMatchesByDay } from '@/lib/arena-session';
@@ -663,11 +663,9 @@ export default function TablePage() {
 
   const initializeMatchHistory = useCallback(async () => {
     try {
-      const [summaryRows, recentRows] = await Promise.all([
-        fetchArenaDaySummaries(supabase, groupId),
-        fetchRecentArenaMatches(supabase, groupId),
-      ]);
-      const recent = recentRows as unknown as Match[];
+      const summaryRows = await fetchArenaDaySummaries(supabase, groupId);
+      const latestRows = await fetchLatestDayMatches(supabase, groupId, summaryRows[0]?.dayKey ?? null);
+      const recent = latestRows as unknown as Match[];
       const grouped = groupMatchesByDay(recent);
       const summaries = summaryRows.length > 0
         ? summaryRows

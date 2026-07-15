@@ -27,16 +27,14 @@ export async function fetchMatchesForDay(
 ) {
   const { start, end } = getDayPlayedAtRange(dayKey);
 
-  const { data, error } = await supabase
-    .from('matches')
-    .select(MATCHES_SELECT)
-    .eq('group_id', groupId)
-    .gte('played_at', start.toISOString())
-    .lt('played_at', end.toISOString())
-    .order('played_at', { ascending: false });
+  const { data, error } = await supabase.rpc('get_arena_matches_for_day', {
+    p_group_id: groupId,
+    p_start: start.toISOString(),
+    p_end: end.toISOString(),
+  });
 
   if (error) throw error;
-  return data || [];
+  return Array.isArray(data) ? data : [];
 }
 
 export async function fetchLatestDayMatches(

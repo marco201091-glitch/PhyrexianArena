@@ -415,6 +415,14 @@ export interface Database {
           latest_played_at: string;
         }>;
       };
+      get_arena_matches_for_day: {
+        Args: {
+          p_group_id: string;
+          p_start: string;
+          p_end: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       [_ in never]: never;
