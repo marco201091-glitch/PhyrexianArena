@@ -153,7 +153,7 @@ export default function DashboardPage() {
 
       const { data: participantRows, error: participantsError } = await supabase
         .from('match_participants')
-        .select('is_winner, deck_id, matches(played_at)')
+        .select('match_id, is_winner, deck_id')
         .eq('user_id', user.id)
         .not('deck_id', 'is', null);
 
@@ -161,14 +161,25 @@ export default function DashboardPage() {
         throw participantsError;
       }
 
-      const participants = ((participantRows as Array<PersonalMatchParticipantRow & {
-        matches?: { played_at: string } | Array<{ played_at: string }> | null;
-      }>) || []).map((row) => ({
+      const rawParticipants = (participantRows || []) as Array<PersonalMatchParticipantRow & {
+        match_id: string;
+      }>;
+      const matchIds = Array.from(new Set(rawParticipants.map((row) => row.match_id)));
+      const { data: matchRows, error: matchesError } = matchIds.length > 0
+        ? await supabase.from('matches').select('id, played_at').in('id', matchIds)
+        : { data: [], error: null };
+
+      if (matchesError) {
+        throw matchesError;
+      }
+
+      const playedAtByMatchId = new Map(
+        (matchRows || []).map((match) => [match.id as string, match.played_at as string]),
+      );
+      const participants = rawParticipants.map((row) => ({
         is_winner: row.is_winner,
         deck_id: row.deck_id,
-        played_at: Array.isArray(row.matches)
-          ? row.matches[0]?.played_at ?? null
-          : row.matches?.played_at ?? null,
+        played_at: playedAtByMatchId.get(row.match_id) ?? null,
       }));
       const deckIds = Array.from(new Set(participants.map((row) => row.deck_id).filter(Boolean)));
 

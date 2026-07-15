@@ -21,14 +21,28 @@ export async function fetchActiveLiveGame(
     .limit(1)
     .maybeSingle();
   if (participantError) throw participantError;
-  if (!participant) return null;
+  const creatorId = participantKey.startsWith('user:')
+    ? participantKey.slice('user:'.length)
+    : null;
+  if (!participant && !creatorId) return null;
 
-  const { data, error } = await client
+  let query = client
     .from('live_games')
     .select('*')
-    .eq('id', participant.live_game_id)
     .eq('group_id', groupId)
     .eq('status', 'active')
+    .order('updated_at', { ascending: false })
+    .limit(1);
+
+  if (participant && creatorId) {
+    query = query.or(`id.eq.${participant.live_game_id},created_by.eq.${creatorId}`);
+  } else if (participant) {
+    query = query.eq('id', participant.live_game_id);
+  } else {
+    query = query.eq('created_by', creatorId!);
+  }
+
+  const { data, error } = await query
     .maybeSingle();
   if (error) throw error;
   return data ? { ...data, state: parseLiveGameState(data.state) } as LiveGameRecord : null;
