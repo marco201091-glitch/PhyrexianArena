@@ -2,7 +2,7 @@
   "expo": {
     "name": "Phyrexian Arena",
     "slug": "phyrexian-arena",
-    "version": "2.7.11",
+    "version": "2.8.11",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "phyrexianarena",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 20711,
+      "versionCode": 20811,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
