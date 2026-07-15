@@ -716,7 +716,7 @@ export function WebLiveGame({
     setIsDraw(false);
     setWinCondition(getDefaultWinCondition(record.state));
     setEndOpen(true);
-  }, [record]);
+  }, [record, setEndOpen, setIsDraw, setWinCondition, setWinnerKey]);
 
   useEffect(() => {
     if (!record) {

@@ -620,6 +620,12 @@ export default function TablePage() {
     }
   }, [buildArenaColorTargets, deckColorOverrides, user]);
 
+  // Keep refreshMatches stable when loading matches changes the color-sync callback.
+  const ensureArenaDeckColorsRef = useRef(ensureArenaDeckColors);
+  useEffect(() => {
+    ensureArenaDeckColorsRef.current = ensureArenaDeckColors;
+  }, [ensureArenaDeckColors]);
+
   const initializeMatchHistory = useCallback(async () => {
     try {
       const recent = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
@@ -695,12 +701,11 @@ export default function TablePage() {
   }, [dateFilter]);
 
   const refreshMatches = useCallback(async () => {
-    setMatchesByDay({});
     const loadedMatches = await initializeMatchHistory();
 
     const matchDeckIds = extractMatchDeckIds(loadedMatches);
     if (matchDeckIds.length > 0) {
-      runWhenIdle(() => ensureArenaDeckColors(matchDeckIds), { timeoutMs: 5000 });
+      runWhenIdle(() => ensureArenaDeckColorsRef.current(matchDeckIds), { timeoutMs: 5000 });
     }
 
     try {
@@ -711,7 +716,7 @@ export default function TablePage() {
     } catch (error) {
       console.error('Error refreshing arena stats:', error);
     }
-  }, [bracketFilter, deckStatsSort, ensureArenaDeckColors, getStatsSinceDate, groupId, initializeMatchHistory]);
+  }, [bracketFilter, deckStatsSort, getStatsSinceDate, groupId, initializeMatchHistory]);
 
   const loadFilteredMatchHistory = useCallback(async (since: Date) => {
     try {
