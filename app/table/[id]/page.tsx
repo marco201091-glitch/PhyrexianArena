@@ -378,6 +378,7 @@ export default function TablePage() {
   const [daySummaries, setDaySummaries] = useState<ArenaDaySummary[]>([]);
   const [matchesByDay, setMatchesByDay] = useState<Record<string, Match[]>>({});
   const [loadingDayKeys, setLoadingDayKeys] = useState<Set<string>>(new Set());
+  const [dayMatchErrorKeys, setDayMatchErrorKeys] = useState<Set<string>>(new Set());
 
 
   const [decks, setDecks] = useState<Deck[]>([]);
@@ -622,12 +623,21 @@ export default function TablePage() {
   }, [buildArenaColorTargets, deckColorOverrides, user]);
 
   const loadDayMatches = useCallback(async (dayKey: string) => {
-    if (matchesByDay[dayKey] || loadingDayKeys.has(dayKey)) return;
+    if (matchesByDay[dayKey]?.length || loadingDayKeys.has(dayKey)) return;
 
     setLoadingDayKeys((current) => new Set(current).add(dayKey));
+    setDayMatchErrorKeys((current) => {
+      const next = new Set(current);
+      next.delete(dayKey);
+      return next;
+    });
     try {
       const data = await fetchMatchesForDay(supabase, groupId, dayKey);
       const loaded = data as unknown as Match[];
+      const expectedCount = daySummaries.find((summary) => summary.dayKey === dayKey)?.matchCount ?? 0;
+      if (loaded.length === 0 && expectedCount > 0) {
+        throw new Error('Match day summary has rows, but its detail query returned none');
+      }
       setMatchesByDay((current) => ({ ...current, [dayKey]: loaded }));
       setMatches((current) => {
         const byId = new Map(current.map((match) => [match.id, match]));
@@ -638,6 +648,7 @@ export default function TablePage() {
       });
     } catch (error) {
       console.error('Error fetching day matches:', error);
+      setDayMatchErrorKeys((current) => new Set(current).add(dayKey));
     } finally {
       setLoadingDayKeys((current) => {
         const next = new Set(current);
@@ -645,7 +656,7 @@ export default function TablePage() {
         return next;
       });
     }
-  }, [groupId, loadingDayKeys, matchesByDay]);
+  }, [daySummaries, groupId, loadingDayKeys, matchesByDay]);
 
   const initializeMatchHistory = useCallback(async () => {
     try {
@@ -669,6 +680,9 @@ export default function TablePage() {
       setDaySummaries(summaries);
       const latestMatches = await fetchLatestDayMatches(supabase, groupId, latestDayKey);
       const loaded = latestMatches as unknown as Match[];
+      if (loaded.length === 0 && (summaries[0]?.matchCount ?? 0) > 0) {
+        throw new Error('Latest match day summary has rows, but its detail query returned none');
+      }
       setMatchesByDay({ [latestDayKey]: loaded });
       setMatches(loaded);
       return loaded;
@@ -957,7 +971,15 @@ export default function TablePage() {
       next.add(latestDayKey);
       return next;
     });
-  }, [latestDayKey]);
+
+    if (
+      !matchesByDay[latestDayKey]?.length
+      && !loadingDayKeys.has(latestDayKey)
+      && !dayMatchErrorKeys.has(latestDayKey)
+    ) {
+      void loadDayMatches(latestDayKey);
+    }
+  }, [dayMatchErrorKeys, latestDayKey, loadDayMatches, loadingDayKeys, matchesByDay]);
 
   useEffect(() => {
     if (!editingMatch) return;
@@ -1865,11 +1887,11 @@ export default function TablePage() {
   };
 
   const toggleDayGroup = (dayKey: string, open: boolean) => {
+    if (open) void loadDayMatches(dayKey);
     setExpandedDayKeys((current) => {
       const next = new Set(current);
       if (open) {
         next.add(dayKey);
-        void loadDayMatches(dayKey);
       } else {
         next.delete(dayKey);
       }
@@ -2408,9 +2430,18 @@ export default function TablePage() {
                               </div>
                             ) : null}
                             {!loadingDayKeys.has(dayGroup.dayKey) && dayGroup.matches.length === 0 && isExpanded ? (
-                              <p className="py-4 text-center text-sm text-muted-foreground">
-                                {t({ it: 'Nessuna partita in questa giornata', en: 'No matches on this day' })}
-                              </p>
+                              dayMatchErrorKeys.has(dayGroup.dayKey) ? (
+                                <div className="flex flex-col items-center gap-3 py-4 text-center text-sm text-muted-foreground">
+                                  <p>{t({ it: 'Impossibile caricare le partite di questa giornata.', en: 'Unable to load matches for this day.' })}</p>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => void loadDayMatches(dayGroup.dayKey)}>
+                                    {t({ it: 'Riprova', en: 'Retry' })}
+                                  </Button>
+                                </div>
+                              ) : (
+                                <p className="py-4 text-center text-sm text-muted-foreground">
+                                  {t({ it: 'Nessuna partita in questa giornata', en: 'No matches on this day' })}
+                                </p>
+                              )
                             ) : null}
                             {dayGroup.matches.map((match) => (
                               <Card key={match.id} className="border-border/70 bg-background/20 transition-colors hover:border-violet-500/40">
