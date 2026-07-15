@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { isPasswordPolicyValid, PasswordRequirements } from '@/components/auth/password-requirements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { AuthBranding } from '@/components/auth/auth-branding';
 import { Screen } from '@/components/ui/screen';
 import { useLanguage } from '@/contexts/language-context';
 import { colors } from '@/constants/theme';
+import { showAppAlert } from '@/lib/app-alert';
 import { supabase } from '@/lib/supabase';
 
 function parseTokensFromUrl(url: string) {
@@ -110,10 +111,10 @@ export default function ResetPasswordScreen() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
 
-      Alert.alert(copy('passwordUpdated'), copy('passwordUpdatedHint'));
+      showAppAlert(copy('passwordUpdated'), copy('passwordUpdatedHint'));
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert(
+      showAppAlert(
         copy('error'),
         error instanceof Error ? error.message : copy('unableToUpdatePassword'),
       );

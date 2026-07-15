@@ -59,7 +59,8 @@ export function calculatePlayerStats(matches: ArenaMatch[]): PlayerStats[] {
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || b.gamesPlayed - a.gamesPlayed);
 }
 
-export function getMatchWinnerName(match: ArenaMatch) {
+export function getMatchWinnerName(match: ArenaMatch, drawLabel = 'Draw') {
+  if (match.is_draw) return drawLabel;
   if (match.winner_guest?.display_name) return match.winner_guest.display_name;
   return match.winner?.display_name?.trim() || match.winner?.username || '';
 }

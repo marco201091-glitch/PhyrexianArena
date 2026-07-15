@@ -160,7 +160,7 @@ export function CommanderPicker({
       ) : null}
 
       {!searching && results.length > 0 && !selectedCommander ? (
-        <ScrollView style={styles.resultsScroll} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.resultsScroll} nestedScrollEnabled keyboardShouldPersistTaps="always" keyboardDismissMode="none">
           <View style={styles.results}>
             {results.map((commander) => (
               <Pressable
@@ -259,7 +259,7 @@ export function CommanderPicker({
           ) : null}
 
           {partnerResults.length > 0 ? (
-            <ScrollView style={styles.partnerResultsScroll} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            <ScrollView style={styles.partnerResultsScroll} nestedScrollEnabled keyboardShouldPersistTaps="always" keyboardDismissMode="none">
               <View style={styles.results}>
                 {partnerResults.map((result) => (
                   <Pressable

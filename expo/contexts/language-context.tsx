@@ -1,9 +1,7 @@
-import * as SecureStore from 'expo-secure-store';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { AppLanguage, TranslationKey } from '@/lib/i18n/types';
 import { t as translate } from '@/lib/i18n/translations';
-
-const LANGUAGE_KEY = 'phyrexian_app_language';
+import { getStoredLanguage, setStoredLanguage } from '@/lib/language-storage';
 
 type LanguageContextValue = {
   language: AppLanguage;
@@ -19,17 +17,18 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void (async () => {
-      const stored = await SecureStore.getItemAsync(LANGUAGE_KEY);
-      if (stored === 'it' || stored === 'en') {
-        setLanguageState(stored);
+      try {
+        const stored = await getStoredLanguage();
+        if (stored) setLanguageState(stored);
+      } finally {
+        setReady(true);
       }
-      setReady(true);
     })();
   }, []);
 
   const setLanguage = useCallback(async (next: AppLanguage) => {
     setLanguageState(next);
-    await SecureStore.setItemAsync(LANGUAGE_KEY, next);
+    await setStoredLanguage(next);
   }, []);
 
   const copy = useCallback((key: TranslationKey) => translate(language, key), [language]);

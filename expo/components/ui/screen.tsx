@@ -11,7 +11,7 @@ import { AppBackground } from '@/components/ui/app-background';
 import { useAuth } from '@/contexts/auth-context';
 import { colors, spacing } from '@/constants/theme';
 import { keyboardAvoidingBehavior, keyboardAvoidingEnabled } from '@/lib/keyboard';
-import { contentPadding, resolveSafeAreaEdges } from '@/lib/layout';
+import { contentPadding, resolveSafeAreaEdges, screenContentMaxWidth } from '@/lib/layout';
 
 type ScreenBackground = 'artwork' | 'solid' | 'auto';
 
@@ -22,6 +22,8 @@ type ScreenProps = PropsWithChildren<{
   /** Include bottom safe-area inset (stack screens without tab bar). Auth solid screens default to true. */
   safeBottom?: boolean;
   keyboardAvoiding?: boolean;
+  /** Constrain wide web/tablet layouts while keeping phones edge-to-edge. */
+  maxWidth?: number;
 }>;
 
 function resolveBackground(
@@ -42,6 +44,7 @@ export function Screen({
   background = 'auto',
   safeBottom,
   keyboardAvoiding,
+  maxWidth,
 }: ScreenProps) {
   const { user, loading } = useAuth();
   const resolvedBackground = resolveBackground(background, user, loading);
@@ -50,14 +53,21 @@ export function Screen({
   const edges = resolveSafeAreaEdges(resolvedSafeBottom);
   const { width } = useWindowDimensions();
   const horizontalPadding = useMemo(() => contentPadding(width), [width]);
+  const resolvedMaxWidth = maxWidth ?? screenContentMaxWidth(resolvedBackground);
   const paddedStyle = useMemo(
-    () => ({ paddingHorizontal: horizontalPadding, paddingTop: horizontalPadding }),
-    [horizontalPadding],
+    () => ({
+      width: '100%' as const,
+      maxWidth: resolvedMaxWidth,
+      alignSelf: 'center' as const,
+      paddingHorizontal: padded ? horizontalPadding : 0,
+      paddingTop: padded ? horizontalPadding : 0,
+    }),
+    [horizontalPadding, padded, resolvedMaxWidth],
   );
 
   const content = scroll ? (
     <ScrollView
-      contentContainerStyle={[styles.scrollContent, padded && paddedStyle]}
+      contentContainerStyle={[styles.scrollContent, paddedStyle]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       automaticallyAdjustKeyboardInsets
@@ -66,7 +76,7 @@ export function Screen({
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.content, padded && paddedStyle]}>{children}</View>
+    <View style={[styles.content, paddedStyle]}>{children}</View>
   );
 
   const body = (

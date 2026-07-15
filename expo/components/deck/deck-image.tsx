@@ -1,4 +1,4 @@
-import { Image } from 'expo-image';
+import { Image, type ImageContentFit, type ImageContentPosition } from 'expo-image';
 import { ActivityIndicator, StyleSheet, Text, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
 import { colors } from '@/constants/theme';
 import { useDeckImageUri } from '@/hooks/use-deck-image-uri';
@@ -10,6 +10,8 @@ type DeckImageProps = {
   containerStyle?: StyleProp<ViewStyle>;
   fallbackSize?: number;
   showLoader?: boolean;
+  contentFit?: ImageContentFit;
+  contentPosition?: ImageContentPosition;
 };
 
 export function DeckImage({
@@ -19,8 +21,10 @@ export function DeckImage({
   containerStyle,
   fallbackSize = 20,
   showLoader = false,
+  contentFit = 'cover',
+  contentPosition,
 }: DeckImageProps) {
-  const { resolvedUri, loading, failed, setFailed } = useDeckImageUri(uri, alt);
+  const { resolvedUri, loading, failed, handleError } = useDeckImageUri(uri, alt);
 
   if (loading) {
     return (
@@ -43,11 +47,12 @@ export function DeckImage({
       source={{ uri: resolvedUri }}
       alt={alt}
       style={style}
-      contentFit="cover"
+      contentFit={contentFit}
+      contentPosition={contentPosition}
       cachePolicy="memory-disk"
       transition={180}
       recyclingKey={`${alt}::${resolvedUri ?? ''}`}
-      onError={() => setFailed(true)}
+      onError={handleError}
     />
   );
 }

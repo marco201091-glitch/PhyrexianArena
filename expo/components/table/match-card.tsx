@@ -13,14 +13,20 @@ import type { ArenaMatch } from '@/lib/types/arena';
 
 type MatchCardProps = {
   match: ArenaMatch;
+  drawLabel: string;
   onEdit: () => void;
   onShare: () => void;
   onDelete: () => void;
 };
 
-export const MatchCard = memo(function MatchCard({ match, onEdit, onShare, onDelete }: MatchCardProps) {
+export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete }: MatchCardProps) {
   return (
     <PhyrexianPanel variant="inset" padded={false}>
+      {match.is_draw ? (
+        <View style={styles.drawBadge}>
+          <Text style={styles.drawBadgeText}>{drawLabel}</Text>
+        </View>
+      ) : null}
       <View style={styles.participants}>
         {match.match_participants.map((participant) => {
           const deck = getParticipantDeckSnapshot(participant);
@@ -95,6 +101,24 @@ export const MatchCard = memo(function MatchCard({ match, onEdit, onShare, onDel
 });
 
 const styles = StyleSheet.create({
+  drawBadge: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+    marginLeft: spacing.md,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.selectionBorder,
+    backgroundColor: colors.selectionTint,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  drawBadgeText: {
+    color: colors.primaryMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   participants: {
     gap: spacing.xs,
     padding: spacing.md,

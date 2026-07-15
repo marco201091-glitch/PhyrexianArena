@@ -1,5 +1,11 @@
 export const layout = {
   compactWidth: 360,
+  phoneWidth: 600,
+  tabletWidth: 700,
+  desktopWidth: 1024,
+  contentMaxWidth: 960,
+  formMaxWidth: 560,
+  tabContentMaxWidth: 720,
   maxFontSizeMultiplier: 1.3,
   tabBarBaseHeight: 64,
   screenPaddingWide: 16,
@@ -35,7 +41,28 @@ export function contentPadding(width: number): number {
 
 export function contentWidth(width: number, extraInset = 0): number {
   const padding = contentPadding(width);
-  return Math.max(0, width - (padding + extraInset) * 2);
+  const viewportWidth = Math.min(width, layout.contentMaxWidth);
+  return Math.max(0, viewportWidth - (padding + extraInset) * 2);
+}
+
+export function isCompactViewport(width: number): boolean {
+  return width < layout.compactWidth;
+}
+
+export function isPhoneViewport(width: number): boolean {
+  return width < layout.phoneWidth;
+}
+
+export function isTabletViewport(width: number): boolean {
+  return width >= layout.tabletWidth;
+}
+
+export function screenContentMaxWidth(background: 'artwork' | 'solid'): number {
+  return background === 'solid' ? layout.formMaxWidth : layout.contentMaxWidth;
+}
+
+export function tabBarHorizontalInset(width: number): number {
+  return Math.max(0, Math.round((width - layout.tabContentMaxWidth) / 2));
 }
 
 /** Width for horizontal deck-picker cards (narrow enough to peek the next card). */

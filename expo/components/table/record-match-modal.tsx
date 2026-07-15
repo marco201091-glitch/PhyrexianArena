@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextInput } from '@/components/ui/rich-text-input';
@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/modal';
 import { colors, spacing } from '@/constants/theme';
 import type { ArenaGuest } from '@/lib/arena-participants';
 import { getLastDeckSelectionForParticipant } from '@/lib/arena-participants';
+import { getPreferredDeckId } from '@/lib/arena-deck-selection';
 import { matchDateToIso, toMatchDateValue } from '@/lib/match-datetime';
 import { toGuestParticipantKey, toUserParticipantKey, type ParticipantKey } from '@/lib/participant-keys';
 import { getProfileDisplayName } from '@/lib/profile-display';
@@ -30,6 +31,7 @@ type RecordMatchModalProps = {
     selectPlayers: string;
     selectGuests: string;
     selectWinner: string;
+    draw: string;
     battleDate: string;
     notes: string;
     notesPlaceholder: string;
@@ -56,7 +58,8 @@ type RecordMatchModalProps = {
   onClose: () => void;
   onSave: (input: {
     selectedParticipantKeys: string[];
-    winnerKey: string;
+    winnerKey: string | null;
+    isDraw: boolean;
     participantDecks: Record<string, string>;
     matchPlayedAtIso: string;
     matchNotes: string;
@@ -102,6 +105,7 @@ export function RecordMatchModal({
 }: RecordMatchModalProps) {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [winnerKey, setWinnerKey] = useState('');
+  const [isDraw, setIsDraw] = useState(false);
   const [participantDecks, setParticipantDecks] = useState<Record<string, string>>({});
   const [matchPlayedAt, setMatchPlayedAt] = useState(toMatchDateValue());
   const [matchNotes, setMatchNotes] = useState('');
@@ -153,13 +157,12 @@ export function RecordMatchModal({
       }
 
       const next = [...current, key];
-      if (deckOptions.length === 1) {
-        setParticipantDecks((state) => ({ ...state, [key]: deckOptions[0].id }));
-      } else {
-        const lastDeck = getLastDeckSelectionForParticipant(key as ParticipantKey, matches);
-        if (lastDeck) {
-          setParticipantDecks((state) => ({ ...state, [key]: lastDeck }));
-        }
+      const preferredDeck = getPreferredDeckId(
+        deckOptions,
+        getLastDeckSelectionForParticipant(key as ParticipantKey, matches),
+      );
+      if (preferredDeck) {
+        setParticipantDecks((state) => ({ ...state, [key]: preferredDeck }));
       }
       return next;
     });
@@ -170,7 +173,7 @@ export function RecordMatchModal({
       onError(labels.minPlayersError);
       return;
     }
-    if (!winnerKey) {
+    if (!isDraw && !winnerKey) {
       onError(labels.winnerError);
       return;
     }
@@ -193,7 +196,8 @@ export function RecordMatchModal({
 
     await onSave({
       selectedParticipantKeys: selectedKeys,
-      winnerKey,
+      winnerKey: isDraw ? null : winnerKey,
+      isDraw,
       participantDecks,
       matchPlayedAtIso: playedAtIso,
       matchNotes,
@@ -215,7 +219,7 @@ export function RecordMatchModal({
 
   return (
     <Modal visible={visible} onClose={onClose}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="always" keyboardDismissMode="none">
         <Text style={styles.title}>{labels.title}</Text>
         <Text style={styles.hint}>{labels.hint}</Text>
 
@@ -296,6 +300,18 @@ export function RecordMatchModal({
 
         {selectedKeys.length > 0 ? (
           <>
+            <View style={styles.drawRow}>
+              <Text style={styles.drawLabel}>{labels.draw}</Text>
+              <Switch
+                value={isDraw}
+                onValueChange={(value) => {
+                  setIsDraw(value);
+                  if (value) setWinnerKey('');
+                }}
+              />
+            </View>
+            {!isDraw ? (
+            <>
             <Text style={styles.sectionLabel}>{labels.selectWinner}</Text>
             <View style={styles.chipRow}>
               {selectedKeys.map((key) => {
@@ -319,6 +335,8 @@ export function RecordMatchModal({
                 );
               })}
             </View>
+            </>
+            ) : null}
           </>
         ) : null}
 
@@ -365,6 +383,16 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  drawRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  drawLabel: {
+    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: '600',
   },
   sectionLabel: {
     color: colors.foreground,

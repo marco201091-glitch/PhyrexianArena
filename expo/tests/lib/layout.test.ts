@@ -4,9 +4,14 @@ import {
   contentWidth,
   deckPickerCardWidth,
   layout,
+  isCompactViewport,
+  isPhoneViewport,
+  isTabletViewport,
   resolveSafeAreaEdges,
   resolveTabBarHeight,
   scaleForWidth,
+  screenContentMaxWidth,
+  tabBarHorizontalInset,
 } from '@/lib/layout';
 
 describe('scaleForWidth', () => {
@@ -53,6 +58,28 @@ describe('contentPadding', () => {
 describe('contentWidth', () => {
   it('subtracts horizontal padding from the screen width', () => {
     expect(contentWidth(400)).toBe(400 - layout.screenPaddingWide * 2);
+  });
+
+  it('caps content on wide tablets and desktop browsers', () => {
+    expect(contentWidth(1366)).toBe(layout.contentMaxWidth - layout.screenPaddingWide * 2);
+  });
+});
+
+describe('responsive breakpoints', () => {
+  it('classifies compact phones, phones and tablets predictably', () => {
+    expect(isCompactViewport(320)).toBe(true);
+    expect(isCompactViewport(390)).toBe(false);
+    expect(isPhoneViewport(599)).toBe(true);
+    expect(isPhoneViewport(600)).toBe(false);
+    expect(isTabletViewport(699)).toBe(false);
+    expect(isTabletViewport(700)).toBe(true);
+  });
+
+  it('constrains forms and centers wide tab content', () => {
+    expect(screenContentMaxWidth('solid')).toBe(layout.formMaxWidth);
+    expect(screenContentMaxWidth('artwork')).toBe(layout.contentMaxWidth);
+    expect(tabBarHorizontalInset(720)).toBe(0);
+    expect(tabBarHorizontalInset(1024)).toBe(152);
   });
 });
 

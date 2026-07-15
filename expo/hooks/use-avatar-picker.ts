@@ -1,10 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
 import { useAvatarVersion } from '@/contexts/avatar-version-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useToast } from '@/contexts/toast-context';
 import { hapticSuccess } from '@/lib/haptics';
+import { showAppAlert } from '@/lib/app-alert';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 
 type UseAvatarPickerOptions = {
@@ -19,7 +19,7 @@ export function useAvatarPicker({ uploadAvatar }: UseAvatarPickerOptions) {
   const pickAvatar = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(copy('error'), copy('uploadAvatarFailed'));
+      showAppAlert(copy('error'), copy('uploadAvatarFailed'));
       return;
     }
 
@@ -41,14 +41,14 @@ export function useAvatarPicker({ uploadAvatar }: UseAvatarPickerOptions) {
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       if (message === 'INVALID_IMAGE_FORMAT') {
-        Alert.alert(copy('error'), copy('invalidImageFormat'));
+        showAppAlert(copy('error'), copy('invalidImageFormat'));
         return;
       }
       if (message === 'IMAGE_TOO_LARGE') {
-        Alert.alert(copy('error'), copy('imageTooLarge'));
+        showAppAlert(copy('error'), copy('imageTooLarge'));
         return;
       }
-      Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('uploadAvatarFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('uploadAvatarFailed')));
     }
   }, [bumpAvatarVersion, copy, showToast, uploadAvatar]);
 

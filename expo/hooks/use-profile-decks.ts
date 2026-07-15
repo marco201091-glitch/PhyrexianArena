@@ -10,6 +10,7 @@ import type { CommanderSearchResult } from '@/lib/commander-types';
 import {
   deckDataToColorFields,
   getDefaultImportedCommanderOption,
+  repairImportedCommanderOptions,
   resolveImportedDeckCommanderImage,
   type CommanderOption,
   type ImportedDeckPreview,
@@ -19,6 +20,7 @@ import {
   filterSelectableCommanderOptions,
   getCommanderOptions,
   mergeDeckColorFields,
+  resolveSelectedCommanderOption,
   type CommanderMetadataOption,
 } from '@/lib/deck-metadata';
 import {
@@ -66,6 +68,11 @@ export function useProfileDecks(userId: string | undefined) {
       const loadedDecks = (deckRows as ProfileDeck[]) || [];
       setDecks(loadedDecks);
       prefetchProfileDeckImages(loadedDecks);
+      void repairLoadedDeckArtwork(loadedDecks).then((repairedDecks) => {
+        const repairedById = new Map(repairedDecks.map((deck) => [deck.id, deck]));
+        setDecks((current) => current.map((deck) => repairedById.get(deck.id) || deck));
+        prefetchProfileDeckImages(repairedDecks);
+      });
 
       const deckIds = loadedDecks.map((deck) => deck.id);
       if (deckIds.length === 0) {
@@ -142,21 +149,26 @@ export function useProfileDecks(userId: string | undefined) {
       return { inserted: 0, updated: 0, skipped: 1 };
     }
 
-    const selectedCommander = options?.selectedCommander || getDefaultImportedCommanderOption(imported);
+    const repairedOptions = await repairCommanderOptions(imported.commanderOptions || []);
+    const repairedImported = { ...imported, commanderOptions: repairedOptions };
+    const requestedCommander = options?.selectedCommander || getDefaultImportedCommanderOption(repairedImported);
+    const selectedCommander = repairedOptions.find(
+      (option) => option.name.toLowerCase() === requestedCommander.name.toLowerCase(),
+    ) || requestedCommander;
     let commanderImage = resolveImportedDeckCommanderImage(
       selectedCommander,
-      imported,
+      repairedImported,
       { preserveImage: existingDeck?.commander_image },
     );
     if (!commanderImage) {
       const arts = await fetchCommanderArtOptions(selectedCommander.name);
       commanderImage = arts[0]?.imageUrl?.trim() || null;
     }
-    const commander = (imported.commanderOptions?.length || 0) > 1
+    const commander = repairedOptions.length > 1
       ? imported.commander
       : selectedCommander.name;
     const colorFields = deckDataToColorFields({
-      commanderOptions: imported.commanderOptions || [],
+      commanderOptions: repairedOptions,
       colorIdentity: imported.colorIdentity || [],
     });
     const payload = {
@@ -229,7 +241,7 @@ export function useProfileDecks(userId: string | undefined) {
 
     if (status !== 200 || error || !data?.name) return null;
 
-    const importedCommanderOptions = data.commanderOptions || [];
+    const importedCommanderOptions = await repairCommanderOptions(data.commanderOptions || []);
     const currentCommanderStillAvailable = importedCommanderOptions.some((option) =>
       option.name.toLowerCase() === deck.commander.toLowerCase()
     );
@@ -306,15 +318,20 @@ export function useProfileDecks(userId: string | undefined) {
     const decksToUpdate: Array<{ id: string; payload: Record<string, unknown> }> = [];
 
     for (const deck of selectedDecks) {
-      const selectedCommander = input.selectedCommanders[deck.sourceUrl] || getDefaultImportedCommanderOption(deck);
+      const repairedOptions = await repairCommanderOptions(deck.commanderOptions || []);
+      const repairedDeck = { ...deck, commanderOptions: repairedOptions };
+      const requestedCommander = input.selectedCommanders[deck.sourceUrl] || getDefaultImportedCommanderOption(repairedDeck);
+      const selectedCommander = repairedOptions.find(
+        (option) => option.name.toLowerCase() === requestedCommander.name.toLowerCase(),
+      ) || requestedCommander;
       const colorFields = deckDataToColorFields({
-        commanderOptions: deck.commanderOptions || [],
+        commanderOptions: repairedOptions,
         colorIdentity: deck.colorIdentity || [],
       });
       const existingDeck = existingByUrl.get(deck.sourceUrl);
       let commanderImage = resolveImportedDeckCommanderImage(
         selectedCommander,
-        deck,
+        repairedDeck,
         { preserveImage: existingDeck?.commander_image },
       );
       if (!commanderImage) {
@@ -407,7 +424,14 @@ export function useProfileDecks(userId: string | undefined) {
     const currentCommander = { name: deck.commander, imageUrl: deck.commander_image };
     const storedOptions = getCommanderOptions(deck);
     if (storedOptions.length > 0) {
-      return filterSelectableCommanderOptions(uniqueCommanderOptions([currentCommander, ...storedOptions]));
+      const repairedOptions = await repairCommanderOptions(storedOptions);
+      if (JSON.stringify(repairedOptions) !== JSON.stringify(storedOptions)) {
+        await supabase
+          .from('decks')
+          .update({ commander_options: repairedOptions })
+          .eq('id', deck.id);
+      }
+      return filterSelectableCommanderOptions(uniqueCommanderOptions([currentCommander, ...repairedOptions]));
     }
 
     if (deck.source_type !== 'manual' && deck.source_url) {
@@ -417,7 +441,8 @@ export function useProfileDecks(userId: string | undefined) {
           { url: deck.source_url },
         );
         if (status === 200 && data?.commanderOptions?.length) {
-          return filterSelectableCommanderOptions(uniqueCommanderOptions([currentCommander, ...data.commanderOptions]));
+          const repairedOptions = await repairCommanderOptions(data.commanderOptions);
+          return filterSelectableCommanderOptions(uniqueCommanderOptions([currentCommander, ...repairedOptions]));
         }
       } catch {
         // Fall back to current commander only.
@@ -441,4 +466,61 @@ export function useProfileDecks(userId: string | undefined) {
     saveArchidektUserDecks,
     getDeckCommanderOptions,
   };
+}
+
+async function repairCommanderOptions(
+  options: CommanderMetadataOption[],
+): Promise<CommanderMetadataOption[]> {
+  return repairImportedCommanderOptions(options, async (name) => {
+    const arts = await fetchCommanderArtOptions(name);
+    return arts[0]?.imageUrl?.trim() || null;
+  });
+}
+
+async function repairLoadedDeckArtwork(loadedDecks: ProfileDeck[]): Promise<ProfileDeck[]> {
+  const repairedDecks: ProfileDeck[] = [];
+
+  for (const deck of loadedDecks) {
+    const storedOptions = getCommanderOptions(deck);
+    const repairedOptions = await repairCommanderOptions(storedOptions);
+    const optionsChanged = JSON.stringify(repairedOptions) !== JSON.stringify(storedOptions);
+    const oldSelection = resolveSelectedCommanderOption(
+      storedOptions,
+      deck.commander,
+      deck.commander_image,
+    );
+    const repairedSelection = resolveSelectedCommanderOption(
+      repairedOptions,
+      deck.commander,
+      deck.commander_image,
+    );
+
+    let commanderImage = deck.commander_image?.trim() || null;
+    if (
+      repairedSelection?.imageUrl &&
+      (!commanderImage || (optionsChanged && commanderImage === (oldSelection?.imageUrl || null)))
+    ) {
+      commanderImage = repairedSelection.imageUrl;
+    }
+
+    if (!commanderImage && deck.commander.trim().length >= 2) {
+      const arts = await fetchCommanderArtOptions(deck.commander);
+      commanderImage = arts[0]?.imageUrl?.trim() || null;
+    }
+
+    const imageChanged = commanderImage !== (deck.commander_image?.trim() || null);
+    if (!optionsChanged && !imageChanged) {
+      repairedDecks.push(deck);
+      continue;
+    }
+
+    const payload = {
+      commander_image: commanderImage,
+      commander_options: repairedOptions.length > 0 ? repairedOptions : deck.commander_options,
+    };
+    const { error } = await supabase.from('decks').update(payload).eq('id', deck.id);
+    repairedDecks.push(error ? deck : { ...deck, ...payload });
+  }
+
+  return repairedDecks;
 }

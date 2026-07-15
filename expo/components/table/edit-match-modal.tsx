@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextInput } from '@/components/ui/rich-text-input';
@@ -32,6 +32,7 @@ type EditMatchModalProps = {
     title: string;
     hint: string;
     selectWinner: string;
+    draw: string;
     battleDate: string;
     notes: string;
     notesPlaceholder: string;
@@ -57,7 +58,8 @@ type EditMatchModalProps = {
   onError: (message: string) => void;
   onSave: (input: {
     matchId: string;
-    winnerKey: string;
+    winnerKey: string | null;
+    isDraw: boolean;
     participantDecks: Record<string, string>;
     matchPlayedAtIso: string;
     matchNotes: string;
@@ -105,9 +107,9 @@ export function EditMatchModal({
   onError,
   onSave,
 }: EditMatchModalProps) {
-  const { height: windowHeight } = useWindowDimensions();
-  const modalBodyHeight = Math.min(windowHeight * 0.62, 520);
+  const modalBodyHeight = Math.min(Dimensions.get('screen').height * 0.62, 520);
   const [winnerKey, setWinnerKey] = useState('');
+  const [isDraw, setIsDraw] = useState(false);
   const [participantDecks, setParticipantDecks] = useState<Record<string, string>>({});
   const [matchPlayedAt, setMatchPlayedAt] = useState('');
   const [matchNotes, setMatchNotes] = useState('');
@@ -134,7 +136,8 @@ export function EditMatchModal({
   useEffect(() => {
     if (!visible || !match) return;
 
-    setWinnerKey(resolveWinnerParticipantKey(match) || '');
+    setIsDraw(Boolean(match.is_draw));
+    setWinnerKey(match.is_draw ? '' : (resolveWinnerParticipantKey(match) || ''));
     setMatchNotes(match.notes || '');
     setMatchPlayedAt(isoToMatchDateValue(match.played_at));
     setDeckSearch({});
@@ -153,7 +156,7 @@ export function EditMatchModal({
 
   const handleSave = async () => {
     if (!match) return;
-    if (!winnerKey) {
+    if (!isDraw && !winnerKey) {
       onError(labels.winnerError);
       return;
     }
@@ -166,7 +169,8 @@ export function EditMatchModal({
 
     await onSave({
       matchId: match.id,
-      winnerKey,
+      winnerKey: isDraw ? null : winnerKey,
+      isDraw,
       participantDecks,
       matchPlayedAtIso: playedAtIso,
       matchNotes,
@@ -198,7 +202,7 @@ export function EditMatchModal({
       <Button label={labels.cancel} variant="ghost" onPress={onClose} style={styles.actionButton} />
       <Button
         label={saving ? labels.saving : labels.save}
-        disabled={saving || !winnerKey}
+        disabled={saving || (!isDraw && !winnerKey)}
         onPress={handleSave}
         style={styles.actionButton}
       />
@@ -214,7 +218,8 @@ export function EditMatchModal({
         <ScrollView
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator
           nestedScrollEnabled
         >
@@ -269,6 +274,19 @@ export function EditMatchModal({
             })}
           </View>
 
+          <View style={styles.drawRow}>
+            <Text style={styles.drawLabel}>{labels.draw}</Text>
+            <Switch
+              value={isDraw}
+              onValueChange={(value) => {
+                setIsDraw(value);
+                if (value) setWinnerKey('');
+              }}
+            />
+          </View>
+
+          {!isDraw ? (
+          <>
           <Text style={styles.sectionLabel}>{labels.selectWinner}</Text>
           <View style={styles.chipRow}>
             {participantKeys.map((key) => {
@@ -293,6 +311,8 @@ export function EditMatchModal({
               );
             })}
           </View>
+          </>
+          ) : null}
 
           <RichTextInput
             label={labels.notes}
@@ -324,6 +344,16 @@ const styles = StyleSheet.create({
     color: colors.foreground,
     fontSize: 20,
     fontWeight: '700',
+  },
+  drawRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  drawLabel: {
+    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: '600',
   },
   hint: {
     color: colors.muted,

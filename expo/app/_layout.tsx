@@ -4,12 +4,14 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { AvatarVersionProvider } from '@/contexts/avatar-version-context';
 import { LanguageProvider } from '@/contexts/language-context';
 import { ToastProvider } from '@/contexts/toast-context';
 import { AccessLogger } from '@/components/access-logger';
+import { AppAlertHost } from '@/components/ui/app-alert-host';
 import { ImageCacheWarmer } from '@/components/deck/image-cache-warmer';
 import { colors } from '@/constants/theme';
 
@@ -46,6 +48,7 @@ export default function RootLayout() {
   }, []);
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <LanguageProvider>
         <AuthProvider>
@@ -55,6 +58,7 @@ export default function RootLayout() {
           <AuthGate>
             <AccessLogger />
             <ImageCacheWarmer />
+            <AppAlertHost />
             <Stack
             screenOptions={{
               headerShown: false,
@@ -70,7 +74,6 @@ export default function RootLayout() {
             <Stack.Screen name="join/[code]" />
             <Stack.Screen name="arena/[code]" />
             <Stack.Screen name="legal/[slug]" />
-            <Stack.Screen name="table/[id]" />
           </Stack>
           </AuthGate>
           </ToastProvider>
@@ -78,5 +81,6 @@ export default function RootLayout() {
         </AuthProvider>
       </LanguageProvider>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

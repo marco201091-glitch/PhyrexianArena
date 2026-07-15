@@ -1,7 +1,8 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { showAppAlert } from '@/lib/app-alert';
 import { isPasswordPolicyValid, PasswordRequirements } from '@/components/auth/password-requirements';
 import { Button } from '@/components/ui/button';
 import { FilterChip } from '@/components/ui/filter-chip';
@@ -63,12 +64,12 @@ export default function SettingsScreen() {
 
   const handleChangePassword = async () => {
     if (!user?.email) {
-      Alert.alert(copy('error'), copy('unableToUpdatePassword'));
+      showAppAlert(copy('error'), copy('unableToUpdatePassword'));
       return;
     }
 
     if (!passwordsMatch) {
-      Alert.alert(copy('error'), copy('passwordsDoNotMatch'));
+      showAppAlert(copy('error'), copy('passwordsDoNotMatch'));
       return;
     }
 
@@ -91,7 +92,7 @@ export default function SettingsScreen() {
       void hapticSuccess();
       showToast(copy('passwordChangedSuccess'));
     } catch (error) {
-      Alert.alert(
+      showAppAlert(
         copy('error'),
         error instanceof Error ? error.message : getSupabaseErrorMessage(error, copy('unableToUpdatePassword')),
       );
@@ -113,7 +114,7 @@ export default function SettingsScreen() {
       void hapticSuccess();
       showToast(copy('profileUpdated'));
     } catch (error) {
-      Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('updateProfileFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('updateProfileFailed')));
     } finally {
       setSavingName(false);
     }

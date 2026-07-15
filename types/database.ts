@@ -204,6 +204,7 @@ export interface Database {
           group_id: string | null;
           winner_id: string | null;
           winner_guest_id: string | null;
+          is_draw: boolean;
           played_at: string;
           created_by: string;
           notes: string | null;
@@ -213,6 +214,7 @@ export interface Database {
           group_id: string | null;
           winner_id?: string | null;
           winner_guest_id?: string | null;
+          is_draw?: boolean;
           played_at?: string;
           created_by: string;
           notes?: string | null;
@@ -222,9 +224,51 @@ export interface Database {
           group_id?: string;
           winner_id?: string | null;
           winner_guest_id?: string | null;
+          is_draw?: boolean;
           played_at?: string;
           created_by?: string;
           notes?: string | null;
+        };
+      };
+      live_games: {
+        Row: {
+          id: string;
+          group_id: string;
+          created_by: string;
+          status: string;
+          starting_life: number;
+          state: Json;
+          match_id: string | null;
+          started_at: string | null;
+          ended_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          group_id: string;
+          created_by: string;
+          status?: string;
+          starting_life?: number;
+          state?: Json;
+          match_id?: string | null;
+          started_at?: string | null;
+          ended_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          group_id?: string;
+          created_by?: string;
+          status?: string;
+          starting_life?: number;
+          state?: Json;
+          match_id?: string | null;
+          started_at?: string | null;
+          ended_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       match_participants: {
@@ -332,6 +376,52 @@ export interface Database {
           source: string;
           accessed_at: string;
         }>;
+      };
+      get_arena_stats_participants: {
+        Args: {
+          p_group_id: string;
+          p_since?: string | null;
+        };
+        Returns: Array<{
+          match_id: string;
+          played_at: string;
+          is_draw: boolean;
+          user_id: string | null;
+          guest_id: string | null;
+          deck_id: string | null;
+          guest_deck_id: string | null;
+          is_winner: boolean;
+          username: string | null;
+          display_name: string | null;
+          guest_display_name: string | null;
+          deck_commander: string | null;
+          deck_commander_image: string | null;
+          deck_bracket: string | null;
+          deck_color_identity: string[] | null;
+          guest_deck_commander: string | null;
+          guest_deck_commander_image: string | null;
+          guest_deck_bracket: string | null;
+          guest_deck_color_identity: string[] | null;
+        }>;
+      };
+      get_arena_match_day_summaries: {
+        Args: {
+          p_group_id: string;
+          p_boundary_hour?: number;
+        };
+        Returns: Array<{
+          day_key: string;
+          match_count: number;
+          latest_played_at: string;
+        }>;
+      };
+      get_arena_matches_for_day: {
+        Args: {
+          p_group_id: string;
+          p_start: string;
+          p_end: string;
+        };
+        Returns: Json;
       };
     };
     Enums: {

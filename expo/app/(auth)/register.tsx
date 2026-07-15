@@ -1,6 +1,6 @@
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { HCaptchaField } from '@/components/auth/hcaptcha-field';
 import { isPasswordPolicyValid, PasswordRequirements } from '@/components/auth/password-requirements';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { useLanguage } from '@/contexts/language-context';
 import { apiPost } from '@/lib/api';
+import { showAppAlert } from '@/lib/app-alert';
 import { signInWithGoogle } from '@/lib/google-auth';
 import { isValidEmail, isValidUsername } from '@/lib/auth-validation';
 import { supabase } from '@/lib/supabase';
@@ -45,19 +46,19 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!isValidUsername(username)) {
-      Alert.alert(copy('error'), copy('invalidUsername'));
+      showAppAlert(copy('error'), copy('invalidUsername'));
       return;
     }
     if (!isValidEmail(email)) {
-      Alert.alert(copy('error'), copy('invalidEmail'));
+      showAppAlert(copy('error'), copy('invalidEmail'));
       return;
     }
     if (!isPasswordPolicyValid(password)) {
-      Alert.alert(copy('error'), copy('weakPassword'));
+      showAppAlert(copy('error'), copy('weakPassword'));
       return;
     }
     if (!captchaToken) {
-      Alert.alert(copy('error'), copy('captchaRequired'));
+      showAppAlert(copy('error'), copy('captchaRequired'));
       return;
     }
 
@@ -89,7 +90,7 @@ export default function RegisterScreen() {
       router.replace(redirectPath);
     } catch (error) {
       resetCaptcha();
-      Alert.alert(
+      showAppAlert(
         copy('error'),
         error instanceof Error ? error.message : copy('error'),
       );
@@ -108,7 +109,7 @@ export default function RegisterScreen() {
       if (error instanceof Error && error.message === 'cancelled') {
         return;
       }
-      Alert.alert(copy('error'), copy('googleSignInFailed'));
+      showAppAlert(copy('error'), copy('googleSignInFailed'));
     } finally {
       setGoogleLoading(false);
     }

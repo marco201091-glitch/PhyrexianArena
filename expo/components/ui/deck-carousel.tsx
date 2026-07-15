@@ -99,8 +99,10 @@ const styles = StyleSheet.create({
   },
   carouselFrame: {
     position: 'relative',
+    overflow: 'hidden',
   },
   carouselContent: {
+    alignItems: 'flex-start',
     gap: spacing.md,
     paddingBottom: spacing.xs,
   },

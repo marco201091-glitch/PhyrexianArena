@@ -1,13 +1,16 @@
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, touch } from '@/constants/theme';
 import { layout } from '@/lib/layout';
 
 type InputProps = TextInputProps & {
   label?: string;
   error?: string;
+  hint?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
 };
 
-export function Input({ label, error, ...props }: InputProps) {
+export function Input({ label, error, hint, icon, style, ...props }: InputProps) {
   return (
     <View style={styles.wrapper}>
       {label ? (
@@ -15,15 +18,28 @@ export function Input({ label, error, ...props }: InputProps) {
           {label}
         </Text>
       ) : null}
-      <TextInput
-        placeholderTextColor={colors.muted}
-        style={[styles.input, props.editable === false && styles.disabled]}
-        maxFontSizeMultiplier={layout.maxFontSizeMultiplier}
-        {...props}
-      />
+      <View style={[
+        styles.inputShell,
+        error && styles.inputShellError,
+        props.editable === false && styles.disabled,
+      ]}>
+        {icon ? <Ionicons name={icon} size={19} color={colors.muted} /> : null}
+        <TextInput
+          placeholderTextColor={colors.muted}
+          selectionColor={colors.primaryLight}
+          style={[styles.input, props.multiline && styles.inputMultiline, style]}
+          maxFontSizeMultiplier={layout.maxFontSizeMultiplier}
+          {...props}
+        />
+        {error ? <Ionicons name="alert-circle" size={18} color={colors.destructive} /> : null}
+      </View>
       {error ? (
         <Text style={styles.error} maxFontSizeMultiplier={layout.maxFontSizeMultiplier}>
           {error}
+        </Text>
+      ) : hint ? (
+        <Text style={styles.hint} maxFontSizeMultiplier={layout.maxFontSizeMultiplier}>
+          {hint}
         </Text>
       ) : null}
     </View>
@@ -39,15 +55,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  input: {
+  inputShell: {
     minHeight: touch.minHeight,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.borderSoft,
     backgroundColor: colors.inputBg,
-    color: colors.foreground,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     paddingHorizontal: 14,
+  },
+  inputShellError: {
+    borderColor: colors.destructive,
+  },
+  input: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: touch.minHeight - 2,
+    color: colors.foreground,
+    paddingHorizontal: 0,
+    paddingVertical: 10,
     fontSize: 16,
+  },
+  inputMultiline: {
+    minHeight: 96,
+    textAlignVertical: 'top',
   },
   disabled: {
     opacity: 0.6,
@@ -55,5 +88,10 @@ const styles = StyleSheet.create({
   error: {
     color: colors.destructive,
     fontSize: 12,
+  },
+  hint: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
   },
 });

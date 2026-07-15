@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { HCaptchaField } from '@/components/auth/hcaptcha-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { AuthBranding } from '@/components/auth/auth-branding';
 import { Screen } from '@/components/ui/screen';
 import { useLanguage } from '@/contexts/language-context';
 import { apiPost } from '@/lib/api';
+import { showAppAlert } from '@/lib/app-alert';
 import { isValidEmail } from '@/lib/auth-validation';
 import { colors } from '@/constants/theme';
 
@@ -21,11 +22,11 @@ export default function ForgotPasswordScreen() {
 
   const handleSubmit = async () => {
     if (!isValidEmail(email)) {
-      Alert.alert(copy('error'), copy('invalidEmail'));
+      showAppAlert(copy('error'), copy('invalidEmail'));
       return;
     }
     if (!captchaToken) {
-      Alert.alert(copy('error'), copy('captchaRequired'));
+      showAppAlert(copy('error'), copy('captchaRequired'));
       return;
     }
 
@@ -43,7 +44,7 @@ export default function ForgotPasswordScreen() {
     } catch (error) {
       setCaptchaToken('');
       setCaptchaResetSignal((value) => value + 1);
-      Alert.alert(copy('error'), error instanceof Error ? error.message : copy('error'));
+      showAppAlert(copy('error'), error instanceof Error ? error.message : copy('error'));
     } finally {
       setLoading(false);
     }

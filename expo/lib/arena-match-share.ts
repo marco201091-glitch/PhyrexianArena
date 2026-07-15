@@ -10,6 +10,7 @@ export type MatchShareLabels = {
   playersAndDecks: string;
   noDeckSelected: string;
   winner: string;
+  draw: string;
   comment: string;
   noComment: string;
 };
@@ -38,7 +39,7 @@ export function buildMatchShareText(
     })
     .join('\n');
 
-  const winnerName = getMatchWinnerName(match);
+  const winnerName = getMatchWinnerName(match, labels.draw);
   const comment = match.notes?.trim() || labels.noComment;
 
   return [

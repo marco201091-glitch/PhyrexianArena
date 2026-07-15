@@ -1,6 +1,6 @@
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Screen } from '@/components/ui/screen';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { useLanguage } from '@/contexts/language-context';
 import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-persistence';
+import { showAppAlert } from '@/lib/app-alert';
 import { signInWithGoogle } from '@/lib/google-auth';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/theme';
@@ -58,8 +59,6 @@ export default function LoginScreen() {
         authEmail = data;
       }
 
-      await setRememberMePreference(rememberMe);
-
       const { error } = await supabase.auth.signInWithPassword({
         email: authEmail,
         password,
@@ -75,7 +74,7 @@ export default function LoginScreen() {
 
       router.replace(redirectPath);
     } catch {
-      Alert.alert(copy('error'), copy('invalidCredentials'));
+      showAppAlert(copy('error'), copy('invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -84,7 +83,6 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      await setRememberMePreference(rememberMe);
       const next = Array.isArray(redirect) ? redirect[0] : redirect;
       const redirectPath = await signInWithGoogle(next);
       router.replace(redirectPath as Href);
@@ -95,7 +93,7 @@ export default function LoginScreen() {
       if (__DEV__) {
         console.error('[google-auth] sign-in failed:', error);
       }
-      Alert.alert(copy('error'), copy('googleSignInFailed'));
+      showAppAlert(copy('error'), copy('googleSignInFailed'));
     } finally {
       setGoogleLoading(false);
     }

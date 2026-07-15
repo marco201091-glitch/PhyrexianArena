@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { ArenaGroup } from '@/lib/types/group';
+import { loadGroupsCache, saveGroupsCache } from '@/lib/arena-cache';
 
 export function useGroups(userId: string | undefined) {
   const [groups, setGroups] = useState<ArenaGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (showLoading = true) => {
     if (!userId) {
       setGroups([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const { data: memberData, error: memberError } = await supabase
         .from('group_members')
@@ -24,6 +25,7 @@ export function useGroups(userId: string | undefined) {
 
       if (!memberData || memberData.length === 0) {
         setGroups([]);
+        await saveGroupsCache(userId, []);
         return;
       }
 
@@ -41,18 +43,32 @@ export function useGroups(userId: string | undefined) {
 
       if (error) throw error;
 
-      setGroups((data as ArenaGroup[]) || []);
+      const loadedGroups = (data as ArenaGroup[]) || [];
+      setGroups(loadedGroups);
+      await saveGroupsCache(userId, loadedGroups);
     } catch (error) {
       console.error('Error fetching groups:', error);
-      setGroups([]);
     } finally {
       setLoading(false);
     }
   }, [userId]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (!userId) return;
+    let cancelled = false;
+    setGroups([]);
+    setLoading(true);
+    void (async () => {
+      const cached = await loadGroupsCache(userId);
+      if (cancelled) return;
+      if (cached) {
+        setGroups(cached);
+        setLoading(false);
+      }
+      await refresh(!cached);
+    })();
+    return () => { cancelled = true; };
+  }, [refresh, userId]);
 
   return { groups, loading, refresh, setGroups };
 }

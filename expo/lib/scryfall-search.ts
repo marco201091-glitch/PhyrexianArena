@@ -1,7 +1,7 @@
 import type { CommanderArtOption, CommanderPartnerMode, CommanderSearchResult } from '@/lib/commander-types';
 import { normalizeDeckColorIdentity } from '@/lib/deck-metadata';
 
-type ScryfallCard = {
+export type ScryfallCard = {
   id: string;
   name: string;
   type_line?: string;
@@ -59,7 +59,7 @@ function extractScryfallImage(card: ScryfallCard): string | null {
   return null;
 }
 
-function extractScryfallImageForName(card: ScryfallCard, preferredName: string): string | null {
+export function extractScryfallImageForName(card: ScryfallCard, preferredName: string): string | null {
   const normalizedName = preferredName.trim().toLowerCase();
   const matchingFace = card.card_faces?.find((face) => face.name.trim().toLowerCase() === normalizedName);
   if (matchingFace?.image_uris?.art_crop) return matchingFace.image_uris.art_crop;

@@ -38,6 +38,19 @@ export interface MatchParticipantRecord {
   deck_id: string | null;
   guest_deck_id: string | null;
   is_winner: boolean;
+  tracked_event_count?: number;
+  life_lost?: number;
+  life_gained?: number;
+  life_damage_dealt?: number;
+  unattributed_life_lost?: number;
+  commander_damage_taken?: number;
+  commander_damage_dealt?: number;
+  infect_received?: number;
+  infect_dealt?: number;
+  eliminations?: number;
+  eliminations_caused?: number;
+  revives?: number;
+  corrections?: number;
   profiles?: {
     id: string;
     username: string;

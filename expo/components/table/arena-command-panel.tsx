@@ -9,11 +9,11 @@ type ArenaCommandPanelProps = {
   inviteCode: string;
   labels: {
     invite: string;
+    playGame: string;
     recordBattle: string;
-    shareInvite: string;
   };
+  onPlayGame: () => void;
   onRecordBattle: () => void;
-  onShareInvite: () => void;
 };
 
 export function ArenaCommandPanel({
@@ -21,8 +21,8 @@ export function ArenaCommandPanel({
   description,
   inviteCode,
   labels,
+  onPlayGame,
   onRecordBattle,
-  onShareInvite,
 }: ArenaCommandPanelProps) {
   return (
     <PanelWithActions
@@ -30,15 +30,17 @@ export function ArenaCommandPanel({
       actions={(
         <>
           <Button
-            label={labels.recordBattle}
-            onPress={onRecordBattle}
-            style={styles.actionButton}
+            label={labels.playGame}
+            onPress={onPlayGame}
+            icon="play"
+            style={styles.playButton}
           />
           <Button
-            label={labels.shareInvite}
-            variant="ghost"
-            onPress={onShareInvite}
-            style={styles.actionButton}
+            label={labels.recordBattle}
+            variant="outline"
+            icon="create-outline"
+            onPress={onRecordBattle}
+            style={styles.recordButton}
           />
         </>
       )}
@@ -67,7 +69,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'monospace',
   },
-  actionButton: {
+  playButton: {
+    flex: 1.12,
+    minHeight: 54,
+  },
+  recordButton: {
     flex: 1,
+    minHeight: 54,
   },
 });

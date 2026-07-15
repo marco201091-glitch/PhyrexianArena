@@ -4,7 +4,8 @@ React Native app with **feature parity target** vs the Next.js web app.
 
 ## v1 scope decisions
 
-- Email/password auth only (no Google OAuth, no demo login)
+- Email/password + Google OAuth (no demo login)
+- **Life tracker** (Play Game) — app only, not on web
 - No admin panel in app
 - Default language: **English**, switchable in Settings
 - hCaptcha: same site key as web (`EXPO_PUBLIC_HCAPTCHA_SITE_KEY`)
@@ -137,12 +138,21 @@ Web deploy and native build stay **separate pipelines**.
 | `npm test` | Unit tests (Vitest) |
 | `npm run lint` | ESLint |
 
+## Live game tracker
+
+- Works offline through a durable local mutation journal and syncs when connectivity returns.
+- Tracks life, commander damage, infect, lifegain, eliminations, revives and undo corrections. Counter direction is retained so damage and manual corrections remain distinguishable.
+- A completed tracked game stores its elapsed duration, win condition and the latest 500 ordered events. A bounded cumulative summary preserves exact per-player totals for the whole game and writes compact per-deck metrics suitable for future medians.
+- Starting player and clockwise/counterclockwise direction are randomized and remain visible on the table.
+- Commander images use an on-device cache that invalidates broken files and falls back to a fresh Scryfall art lookup.
+- Arena details, recent records, guests and deck metadata use a per-account stale-while-revalidate cache for immediate startup.
+
 ## Remaining work (parity)
 
 Core screens are implemented. Highest-value gaps vs web:
 
 1. Profile depth — avatar upload UI, EDHREC badges, deck collection insights, bulk refresh, external deck links, mana color filter
-2. Table polish — EDHREC on deck stats, auto-refresh missing imported deck images
+2. Table polish — EDHREC on deck stats
 3. Public arena — full color meta charts (pairs, win-rate breakdowns)
 4. Auth extras — remember me, Google OAuth (excluded from v1 by design)
 5. Deep links — `/table/[id]` intent filter for opening an arena from a shared link

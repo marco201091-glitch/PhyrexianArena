@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { showAppAlert } from '@/lib/app-alert';
 import { AddGuestModal, type GuestModalMode } from '@/components/table/add-guest-modal';
 import { EditMatchModal } from '@/components/table/edit-match-modal';
 import { ArenaFilterPanel } from '@/components/table/arena-filter-panel';
@@ -61,7 +62,10 @@ import { getSiteUrl } from '@/lib/env';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 
+import { fetchActiveLiveGame } from '@/lib/live-game-service';
+import { toUserParticipantKey } from '@/lib/participant-keys';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
+import { supabase } from '@/lib/supabase';
 import type { ArenaMatch } from '@/lib/types/arena';
 
 type ArenaTab = 'matches' | 'players' | 'decks' | 'meta';
@@ -115,6 +119,7 @@ export default function TableScreen() {
   const [bracketFilter, setBracketFilter] = useState('all');
   const [deckStatsSort, setDeckStatsSort] = useState<DeckStatsSort>('winRate');
   const [refreshing, setRefreshing] = useState(false);
+  const [activeLiveGameId, setActiveLiveGameId] = useState<string | null>(null);
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [guestModalMode, setGuestModalMode] = useState<GuestModalMode | undefined>(undefined);
@@ -139,6 +144,29 @@ export default function TableScreen() {
   const [expandedDayKeys, setExpandedDayKeys] = useState<Set<string>>(new Set());
   const [sharePreview, setSharePreview] = useState<{ title: string; message: string } | null>(null);
   const [sharing, setSharing] = useState(false);
+
+  const refreshActiveLiveGame = useCallback(async () => {
+    if (!groupId || !user) {
+      setActiveLiveGameId(null);
+      return;
+    }
+    try {
+      const game = await fetchActiveLiveGame(
+        supabase,
+        groupId,
+        toUserParticipantKey(user.id),
+      );
+      setActiveLiveGameId(game?.id ?? null);
+    } catch {
+      setActiveLiveGameId(null);
+    }
+  }, [groupId, user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshActiveLiveGame();
+    }, [refreshActiveLiveGame]),
+  );
 
   const isMember = isArenaMember(members, user?.id);
   const canManage = canManageArenaMembership({
@@ -237,9 +265,9 @@ export default function TableScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), refreshActiveLiveGame()]);
     setRefreshing(false);
-  }, [refresh]);
+  }, [refresh, refreshActiveLiveGame]);
 
   const shareInvite = useCallback(() => {
     if (!group) return;
@@ -276,7 +304,7 @@ export default function TableScreen() {
       recentMatches: filteredMatches.slice(0, 3).map((match) => ({
         playedAt: match.played_at,
         notes: match.notes,
-        winnerName: getMatchWinnerName(match),
+        winnerName: getMatchWinnerName(match, copy('liveGameDraw')),
         participants: match.match_participants.map((participant) => {
           const deck = getParticipantDeckSnapshot(participant);
           return {
@@ -332,11 +360,11 @@ export default function TableScreen() {
       setSharePreview(null);
       showToast(copy('statsShared'));
     } catch {
-      Alert.alert(copy('error'), copy('shareStatsFailed'));
+      showAppAlert(copy('error'), copy('shareStatsFailed'));
     } finally {
       setSharing(false);
     }
-  }, [copy, sharePreview]);
+  }, [copy, sharePreview, showToast]);
 
   const buildSessionExportMatch = (match: ArenaMatch): ArenaSessionExportMatch => ({
     participants: match.match_participants.map((participant) => {
@@ -367,7 +395,7 @@ export default function TableScreen() {
       closeExportModal();
       showToast(copy('exportCopied'));
     } catch {
-      Alert.alert(copy('error'), copy('shareStatsFailed'));
+      showAppAlert(copy('error'), copy('shareStatsFailed'));
     }
   }, [closeExportModal, copy, exportDayGroup, exportIntro, group, showToast]);
 
@@ -380,6 +408,7 @@ export default function TableScreen() {
         playersAndDecks: copy('playersAndDecks'),
         noDeckSelected: copy('noDeckSelected'),
         winner: copy('winner'),
+        draw: copy('liveGameDraw'),
         comment: copy('comment'),
         noComment: copy('noComment'),
       }, locale);
@@ -404,7 +433,7 @@ export default function TableScreen() {
       setShowEditModal(false);
       showToast(copy('arenaUpdated'));
     } catch (error) {
-      Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('updateArenaFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('updateArenaFailed')));
     } finally {
       setSavingArena(false);
     }
@@ -412,7 +441,7 @@ export default function TableScreen() {
 
   const handleLeaveArena = async () => {
     if (!isLeaveArenaConfirmationValid(leaveConfirm)) {
-      Alert.alert(copy('error'), copy('leaveArenaHint'));
+      showAppAlert(copy('error'), copy('leaveArenaHint'));
       return;
     }
 
@@ -422,7 +451,7 @@ export default function TableScreen() {
       setShowLeaveModal(false);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('leaveArenaFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('leaveArenaFailed')));
     } finally {
       setLeavingArena(false);
     }
@@ -435,17 +464,17 @@ export default function TableScreen() {
     try {
       await deleteArena();
       setShowDeleteModal(false);
-      Alert.alert(copy('arenaDeleted'));
+      showAppAlert(copy('arenaDeleted'));
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('deleteArenaFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('deleteArenaFailed')));
     } finally {
       setDeletingArena(false);
     }
   };
 
   const handleKickMember = (memberId: string, displayName: string) => {
-    Alert.alert(copy('removeMember'), copy('removeMemberConfirm'), [
+    showAppAlert(copy('removeMember'), copy('removeMemberConfirm'), [
       { text: copy('cancel'), style: 'cancel' },
       {
         text: copy('removeMember'),
@@ -453,9 +482,9 @@ export default function TableScreen() {
         onPress: async () => {
           try {
             await kickMember(memberId);
-            Alert.alert(copy('memberRemoved'), displayName);
+            showAppAlert(copy('memberRemoved'), displayName);
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('removeMemberFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('removeMemberFailed')));
           }
         },
       },
@@ -463,7 +492,7 @@ export default function TableScreen() {
   };
 
   const handleDeleteGuest = (guestId: string) => {
-    Alert.alert(copy('deleteGuest'), copy('deleteGuestConfirm'), [
+    showAppAlert(copy('deleteGuest'), copy('deleteGuestConfirm'), [
       { text: copy('cancel'), style: 'cancel' },
       {
         text: copy('deleteGuest'),
@@ -471,9 +500,9 @@ export default function TableScreen() {
         onPress: async () => {
           try {
             await removeGuest(guestId);
-            Alert.alert(copy('guestDeleted'));
+            showAppAlert(copy('guestDeleted'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveGuestFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveGuestFailed')));
           }
         },
       },
@@ -481,7 +510,7 @@ export default function TableScreen() {
   };
 
   const handleDeleteMatch = (matchId: string) => {
-    Alert.alert(copy('deleteMatch'), copy('deleteMatchConfirm'), [
+    showAppAlert(copy('deleteMatch'), copy('deleteMatchConfirm'), [
       { text: copy('cancel'), style: 'cancel' },
       {
         text: copy('deleteMatch'),
@@ -491,7 +520,7 @@ export default function TableScreen() {
             await deleteMatch(matchId);
             showToast(copy('matchDeleted'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveMatchFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveMatchFailed')));
           }
         },
       },
@@ -526,17 +555,29 @@ export default function TableScreen() {
           <Text style={styles.backLabel}>{copy('back')}</Text>
         </Pressable>
 
+        {activeLiveGameId ? (
+          <PhyrexianPanel style={styles.resumePanel}>
+            <Text style={styles.resumeTitle}>{copy('gameInProgress')}</Text>
+            <Text style={styles.resumeHint}>{copy('resumeGameHint')}</Text>
+            <Button
+              label={copy('resumeGame')}
+              icon="play"
+              onPress={() => router.push(`/table/${groupId}/play`)}
+            />
+          </PhyrexianPanel>
+        ) : null}
+
         <ArenaCommandPanel
           name={group.name}
           description={group.description}
           inviteCode={group.invite_code}
           labels={{
             invite: copy('invite'),
+            playGame: copy('playGame'),
             recordBattle: copy('recordBattle'),
-            shareInvite: copy('shareInvite'),
           }}
+          onPlayGame={() => router.push(`/table/${groupId}/play`)}
           onRecordBattle={() => setShowRecordModal(true)}
-          onShareInvite={shareInvite}
         />
 
         <ArenaTabBar
@@ -593,6 +634,7 @@ export default function TableScreen() {
             onDeleteMatch={handleDeleteMatch}
             onRecordBattle={() => setShowRecordModal(true)}
             exportDayLabel={copy('exportDay')}
+            drawLabel={copy('liveGameDraw')}
             onExportDay={openDayExportModal}
           />
         ) : null}
@@ -699,18 +741,20 @@ export default function TableScreen() {
           />
         ) : null}
 
-        {(filteredMatches.length > 0 || canManage || canLeave) ? (
+        {isMember ? (
           <TableArenaManagement
             showExportStats={filteredMatches.length > 0}
             canManage={canManage}
             canLeave={canLeave}
             labels={{
               arenaManagement: copy('arenaManagement'),
+              shareInvite: copy('shareInvite'),
               exportArenaStats: copy('shareStats'),
               editArena: copy('editArena'),
               leaveArena: copy('leaveArena'),
               deleteArena: copy('deleteArena'),
             }}
+            onShareInvite={shareInvite}
             onExportStats={shareArenaStats}
             onEdit={openEditModal}
             onLeave={() => {
@@ -780,7 +824,7 @@ export default function TableScreen() {
           setGuestModalMode(undefined);
           setGuestModalTargetId(null);
         }}
-        onError={(message) => Alert.alert(copy('error'), message)}
+        onError={(message) => showAppAlert(copy('error'), message)}
         onPickExisting={() => setShowGuestModal(false)}
         onSaveCreate={async (input) => {
           setSavingGuest(true);
@@ -797,7 +841,7 @@ export default function TableScreen() {
             setGuestModalTargetId(null);
             showToast(copy('guestAddedHint'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveGuestFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveGuestFailed')));
           } finally {
             setSavingGuest(false);
           }
@@ -817,7 +861,7 @@ export default function TableScreen() {
             setGuestModalTargetId(null);
             showToast(copy('guestDeckAddedHint'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveGuestFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveGuestFailed')));
           } finally {
             setSavingGuest(false);
           }
@@ -837,6 +881,7 @@ export default function TableScreen() {
           selectPlayers: copy('selectPlayers'),
           selectGuests: copy('selectGuests'),
           selectWinner: copy('selectWinner'),
+          draw: copy('liveGameDraw'),
           battleDate: copy('battleDate'),
           notes: copy('notes'),
           notesPlaceholder: copy('notesPlaceholder'),
@@ -862,7 +907,7 @@ export default function TableScreen() {
           swipeDecksHint: copy('swipeDecksHint'),
         }}
         onClose={() => setShowRecordModal(false)}
-        onError={(message) => Alert.alert(copy('error'), message)}
+        onError={(message) => showAppAlert(copy('error'), message)}
         onSave={async (input) => {
           setSavingMatch(true);
           try {
@@ -871,7 +916,7 @@ export default function TableScreen() {
             void hapticSuccess();
             showToast(copy('battleRecordedHint'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveMatchFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveMatchFailed')));
           } finally {
             setSavingMatch(false);
           }
@@ -889,6 +934,7 @@ export default function TableScreen() {
           title: copy('editMatchTitle'),
           hint: copy('editMatchHint'),
           selectWinner: copy('selectWinner'),
+          draw: copy('liveGameDraw'),
           battleDate: copy('battleDate'),
           notes: copy('notes'),
           notesPlaceholder: copy('notesPlaceholder'),
@@ -912,7 +958,7 @@ export default function TableScreen() {
           swipeDecksHint: copy('swipeDecksHint'),
         }}
         onClose={() => setEditingMatch(null)}
-        onError={(message) => Alert.alert(copy('error'), message)}
+        onError={(message) => showAppAlert(copy('error'), message)}
         onSave={async (input) => {
           setSavingEditMatch(true);
           try {
@@ -921,7 +967,7 @@ export default function TableScreen() {
             void hapticSuccess();
             showToast(copy('matchUpdated'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveMatchFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveMatchFailed')));
           } finally {
             setSavingEditMatch(false);
           }
@@ -1032,6 +1078,21 @@ export default function TableScreen() {
 }
 
 const styles = StyleSheet.create({
+  resumePanel: {
+    gap: spacing.sm,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+  },
+  resumeTitle: {
+    color: '#d1fae5',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  resumeHint: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   exportModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',

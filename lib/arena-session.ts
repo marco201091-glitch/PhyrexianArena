@@ -9,13 +9,13 @@ export function getArenaDayKey(
   boundaryHour = ARENA_DAY_BOUNDARY_HOUR,
 ): string {
   const date = typeof playedAt === 'string' ? new Date(playedAt) : new Date(playedAt.getTime());
-  const adjusted = new Date(date);
+  const adjusted = new Date(date.getTime());
 
-  if (adjusted.getHours() < boundaryHour) {
-    adjusted.setDate(adjusted.getDate() - 1);
+  if (adjusted.getUTCHours() < boundaryHour) {
+    adjusted.setUTCDate(adjusted.getUTCDate() - 1);
   }
 
-  return `${adjusted.getFullYear()}-${pad(adjusted.getMonth() + 1)}-${pad(adjusted.getDate())}`;
+  return `${adjusted.getUTCFullYear()}-${pad(adjusted.getUTCMonth() + 1)}-${pad(adjusted.getUTCDate())}`;
 }
 
 export interface ArenaMatchDayGroup<T extends { played_at: string }> {

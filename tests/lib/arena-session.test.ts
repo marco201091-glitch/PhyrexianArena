@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { getArenaDayKey, groupMatchesByDay } from '@/lib/arena-session';
 
 describe('arena-session', () => {
-  it('assigns late-night matches to the previous day before 08:00', () => {
-    const key = getArenaDayKey(new Date(2026, 6, 11, 1, 30));
+  it('assigns late-night matches to the previous day before 08:00 UTC', () => {
+    const key = getArenaDayKey('2026-07-11T01:30:00.000Z');
     expect(key).toBe('2026-07-10');
   });
 
-  it('keeps evening matches on the same calendar day from 08:00 onward', () => {
-    const key = getArenaDayKey(new Date(2026, 6, 10, 21, 0));
+  it('keeps evening matches on the same calendar day from 08:00 UTC onward', () => {
+    const key = getArenaDayKey('2026-07-10T21:00:00.000Z');
     expect(key).toBe('2026-07-10');
   });
 

@@ -1,14 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { showAppAlert } from '@/lib/app-alert';
 import { AddDeckModal } from '@/components/profile/add-deck-modal';
 import { DeckCard } from '@/components/profile/deck-card';
 import { DeckCollectionInsights } from '@/components/profile/deck-collection-insights';
@@ -36,6 +37,7 @@ import { MANA_COLOR_ORDER } from '@/lib/mana-colors';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import type { ProfileDeck } from '@/lib/types/profile';
+import { isTabletViewport } from '@/lib/layout';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -60,6 +62,8 @@ export default function ProfileScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
+  const { width } = useWindowDimensions();
+  const deckColumns = isTabletViewport(width) ? 2 : 1;
   const [searchQuery, setSearchQuery] = useState('');
   const [deckColorFilter, setDeckColorFilter] = useState('all');
   const [refreshingAllDecks, setRefreshingAllDecks] = useState(false);
@@ -111,8 +115,8 @@ export default function ProfileScreen() {
     setRefreshing(false);
   };
 
-  const handleDeleteDeck = (deckId: string) => {
-    Alert.alert(copy('deleteDeck'), copy('deleteDeckConfirm'), [
+  const handleDeleteDeck = useCallback((deckId: string) => {
+    showAppAlert(copy('deleteDeck'), copy('deleteDeckConfirm'), [
       { text: copy('cancel'), style: 'cancel' },
       {
         text: copy('deleteDeck'),
@@ -122,68 +126,70 @@ export default function ProfileScreen() {
             await deleteDeck(deckId);
             showToast(copy('deckDeleted'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
           }
         },
       },
     ]);
-  };
+  }, [copy, deleteDeck, showToast]);
 
-  const openEditDeck = async (deck: ProfileDeck) => {
+  const openEditDeck = useCallback(async (deck: ProfileDeck) => {
     setEditingDeck(deck);
     setEditingDeckOptions([]);
     const options = await getDeckCommanderOptions(deck);
     setEditingDeckOptions(options);
-  };
+  }, [getDeckCommanderOptions]);
 
   const handleRefreshAllDecks = async () => {
     setRefreshingAllDecks(true);
     try {
       const result = await refreshAllDecks();
       if (result.skipped) {
-        Alert.alert(copy('noRefreshNeeded'));
+        showAppAlert(copy('noRefreshNeeded'));
         return;
       }
       showToast(`${copy('refreshDecksDone')}: ${result.imported} imported · ${result.edhrec} EDHREC`);
     } catch (error) {
-      Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
     } finally {
       setRefreshingAllDecks(false);
     }
   };
 
-  const handleRefreshDeck = async (deck: ProfileDeck) => {
+  const handleRefreshDeck = useCallback(async (deck: ProfileDeck) => {
     setRefreshingDeckIds((ids) => [...ids, deck.id]);
     try {
       const update = await refreshImportedDeck(deck);
       if (!update) {
-        Alert.alert(copy('deckNotRefreshed'));
+        showAppAlert(copy('deckNotRefreshed'));
         return;
       }
       showToast(`${copy('deckRefreshed')}: ${update.name}`);
     } catch (error) {
-      Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
     } finally {
       setRefreshingDeckIds((ids) => ids.filter((id) => id !== deck.id));
     }
-  };
+  }, [copy, refreshImportedDeck, showToast]);
 
   const renderDeckItem = useCallback(({ item: deck }: { item: ProfileDeck }) => (
-    <DeckCard
-      deck={deck}
-      winRate={winRates[deck.id]}
-      gamesLabel={copy('games')}
-      winsLabel={copy('wins')}
-      openDeckLabel={copy('openDeck')}
-      viewOnEdhrecLabel={copy('viewOnEdhrec')}
-      refreshing={refreshingDeckIds.includes(deck.id)}
-      onEdit={() => openEditDeck(deck)}
-      onRefresh={() => handleRefreshDeck(deck)}
-      onDelete={() => handleDeleteDeck(deck.id)}
-    />
+    <View style={styles.deckGridItem}>
+      <DeckCard
+        deck={deck}
+        winRate={winRates[deck.id]}
+        gamesLabel={copy('games')}
+        winsLabel={copy('wins')}
+        openDeckLabel={copy('openDeck')}
+        viewOnEdhrecLabel={copy('viewOnEdhrec')}
+        refreshing={refreshingDeckIds.includes(deck.id)}
+        onEdit={() => openEditDeck(deck)}
+        onRefresh={() => handleRefreshDeck(deck)}
+        onDelete={() => handleDeleteDeck(deck.id)}
+      />
+    </View>
   ), [copy, handleDeleteDeck, handleRefreshDeck, openEditDeck, refreshingDeckIds, winRates]);
 
-  const listHeader = useMemo(() => (
+  const listHeader = (
     <View style={styles.listHeader}>
         <PhyrexianPanel variant="strong" style={styles.profileCard}>
           <View style={styles.profileHeader}>
@@ -296,21 +302,7 @@ export default function ProfileScreen() {
         </PhyrexianPanel>
       ) : null}
     </View>
-  ), [
-    avatarUrl,
-    copy,
-    deckColorFilter,
-    decks,
-    filteredDecks.length,
-    handleRefreshAllDecks,
-    avatarVersion,
-    language,
-    memberSince,
-    profile,
-    refreshingAllDecks,
-    searchQuery,
-    user?.email,
-  ]);
+  );
 
   if (profileLoading && decksLoading && !profile) {
     return <ProfileSkeleton contentStyle={scrollContentStyle} />;
@@ -319,7 +311,10 @@ export default function ProfileScreen() {
   return (
     <Screen scroll={false} padded={false}>
       <FlatList
+        key={`profile-decks-${deckColumns}`}
         data={filteredDecks}
+        numColumns={deckColumns}
+        columnWrapperStyle={deckColumns > 1 ? styles.deckGridRow : undefined}
         keyExtractor={(deck) => deck.id}
         renderItem={renderDeckItem}
         ListHeaderComponent={listHeader}
@@ -384,7 +379,7 @@ export default function ProfileScreen() {
           back: copy('back'),
         }}
         onClose={() => setShowAddDeck(false)}
-        onError={(message) => Alert.alert(copy('error'), message)}
+        onError={(message) => showAppAlert(copy('error'), message)}
         onSaveImported={async (imported, options) => {
           setSavingDeck(true);
           try {
@@ -397,7 +392,7 @@ export default function ProfileScreen() {
             showToast(result.updated > 0 ? copy('deckUpdated') : copy('deckAdded'));
             return result;
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
             return { inserted: 0, updated: 0, skipped: 0 };
           } finally {
             setSavingDeck(false);
@@ -411,7 +406,7 @@ export default function ProfileScreen() {
             void hapticSuccess();
             showToast(copy('deckCreated'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
           } finally {
             setSavingDeck(false);
           }
@@ -435,7 +430,7 @@ export default function ProfileScreen() {
             }
             return result;
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
             return { inserted: 0, updated: 0, skipped: 0 };
           } finally {
             setSavingDeck(false);
@@ -477,7 +472,7 @@ export default function ProfileScreen() {
             setEditingDeckOptions([]);
             showToast(copy('commanderUpdated'));
           } catch (error) {
-            Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
           } finally {
             setSavingDeckEdit(false);
           }
@@ -540,6 +535,13 @@ const styles = StyleSheet.create({
   },
   deckSeparator: {
     height: 10,
+  },
+  deckGridRow: {
+    gap: spacing.md,
+  },
+  deckGridItem: {
+    flex: 1,
+    minWidth: 0,
   },
   emptyCard: {
     alignItems: 'center',

@@ -12,6 +12,7 @@ const ON_DEMAND_CONCURRENCY = 6;
 const BACKGROUND_CONCURRENCY = 12;
 const MIN_CACHED_FILE_BYTES = 512;
 const ARTS_PER_COMMANDER_PREFETCH = 8;
+const REMOTE_VALIDATION_TIMEOUT_MS = 8_000;
 
 type CacheManifest = {
   urls: Record<string, string>;
@@ -61,6 +62,114 @@ export function splitCommanderNames(commander: string): string[] {
 
 function isLocalUri(uri: string): boolean {
   return uri.startsWith('file://') || uri.startsWith('content://');
+}
+
+async function isUsableLocalCacheFile(uri: string): Promise<boolean> {
+  if (!isLocalUri(uri)) return true;
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    const hasUsableSize = Boolean(
+      info.exists &&
+      (typeof info.size !== 'number' || info.size > MIN_CACHED_FILE_BYTES),
+    );
+    if (!hasUsableSize) return false;
+    const imageRef = await Image.loadAsync(uri);
+    try {
+      return imageRef.width > 8 && imageRef.height > 8;
+    } finally {
+      imageRef.release();
+    }
+  } catch {
+    return false;
+  }
+}
+
+export type DeckImageCacheValidation = 'valid' | 'cache-invalid' | 'remote-invalid';
+
+/**
+ * Validate a cached image without making offline startup depend on the network.
+ * A remote size mismatch catches interrupted downloads that can still be large
+ * enough to look valid to the filesystem but render as a blank/black image.
+ */
+export async function validateDeckImageCacheEntry(
+  remoteUrl: string | null | undefined,
+  cachedUri: string,
+): Promise<DeckImageCacheValidation> {
+  if (!isLocalUri(cachedUri)) return 'valid';
+  if (!(await isUsableLocalCacheFile(cachedUri))) return 'cache-invalid';
+
+  const normalizedRemote = remoteUrl?.trim();
+  if (!normalizedRemote || isLocalUri(normalizedRemote)) return 'valid';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REMOTE_VALIDATION_TIMEOUT_MS);
+  try {
+    const response = await fetch(normalizedRemote, {
+      method: 'HEAD',
+      signal: controller.signal,
+    });
+    if (!response.ok) return 'remote-invalid';
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && !contentType.toLowerCase().startsWith('image/')) {
+      return 'remote-invalid';
+    }
+
+    const expectedBytes = Number(response.headers.get('content-length'));
+    if (Number.isFinite(expectedBytes) && expectedBytes > 0) {
+      const info = await FileSystem.getInfoAsync(cachedUri);
+      if (!info.exists || (typeof info.size === 'number' && info.size !== expectedBytes)) {
+        return 'cache-invalid';
+      }
+    }
+
+    return 'valid';
+  } catch {
+    // Preserve a decodable cached image when offline or when the CDN is slow.
+    return 'valid';
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function invalidateDeckImageCacheEntry(
+  remoteUrl?: string | null,
+  commanderName?: string,
+  failedUri?: string | null,
+): Promise<void> {
+  await initDeckImageCache();
+
+  const normalizedRemote = remoteUrl?.trim() || '';
+  const normalizedName = commanderName?.trim().toLowerCase() || '';
+  const localCandidates = new Set<string>();
+
+  if (normalizedRemote) {
+    const mapped = memoryUriByRemote.get(normalizedRemote) || manifest.urls[normalizedRemote];
+    if (mapped) localCandidates.add(mapped);
+    memoryUriByRemote.delete(normalizedRemote);
+    delete manifest.urls[normalizedRemote];
+  }
+
+  if (normalizedName) {
+    const mapped = memoryUriByCommander.get(normalizedName) || manifest.names[normalizedName];
+    if (mapped) localCandidates.add(mapped);
+    memoryUriByCommander.delete(normalizedName);
+    delete manifest.names[normalizedName];
+  }
+
+  if (failedUri && isLocalUri(failedUri)) localCandidates.add(failedUri);
+
+  for (const localUri of localCandidates) {
+    if (!isLocalUri(localUri)) continue;
+    try {
+      const info = await FileSystem.getInfoAsync(localUri);
+      if (info.exists) await FileSystem.deleteAsync(localUri, { idempotent: true });
+    } catch {
+      // A failed cache entry is already unusable; cleanup remains best effort.
+    }
+  }
+
+  scheduleManifestPersist();
 }
 
 function rememberRemoteMapping(remoteUrl: string, localUri: string): void {
@@ -223,18 +332,28 @@ async function downloadToCache(
   await initDeckImageCache();
   await ensureCacheDir();
 
-  const existing = await FileSystem.getInfoAsync(cachePath);
-  if (existing.exists && typeof existing.size === 'number' && existing.size > MIN_CACHED_FILE_BYTES) {
+  if (await isUsableLocalCacheFile(cachePath)) {
     return cachePath;
   }
 
   return runQueued(priority, async () => {
-    const downloaded = await FileSystem.downloadAsync(remoteUrl, cachePath);
-    if (downloaded.status >= 200 && downloaded.status < 300) {
-      void warmExpoImageCache(downloaded.uri);
-      return downloaded.uri;
+    const temporaryPath = `${cachePath}.download-${Date.now()}`;
+    try {
+      const downloaded = await FileSystem.downloadAsync(remoteUrl, temporaryPath);
+      if (
+        downloaded.status >= 200 &&
+        downloaded.status < 300 &&
+        await isUsableLocalCacheFile(downloaded.uri)
+      ) {
+        await FileSystem.deleteAsync(cachePath, { idempotent: true });
+        await FileSystem.moveAsync({ from: downloaded.uri, to: cachePath });
+        void warmExpoImageCache(cachePath);
+        return cachePath;
+      }
+      return remoteUrl;
+    } finally {
+      await FileSystem.deleteAsync(temporaryPath, { idempotent: true }).catch(() => undefined);
     }
-    return remoteUrl;
   });
 }
 
@@ -332,8 +451,11 @@ export async function resolveDeckImageUri(
 
   const peeked = peekDeckImageUri(remoteUrl, commanderName);
   if (peeked) {
-    void warmExpoImageCache(peeked);
-    return peeked;
+    if (await isUsableLocalCacheFile(peeked)) {
+      void warmExpoImageCache(peeked);
+      return peeked;
+    }
+    await invalidateDeckImageCacheEntry(remoteUrl, commanderName, peeked);
   }
 
   if (remoteUrl?.trim()) {

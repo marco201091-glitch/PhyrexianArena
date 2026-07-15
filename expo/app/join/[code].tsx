@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Loader } from '@/components/ui/loader';
@@ -11,6 +11,7 @@ import { useToast } from '@/contexts/toast-context';
 import { useLanguage } from '@/contexts/language-context';
 
 import { hapticSuccess } from '@/lib/haptics';
+import { showAppAlert } from '@/lib/app-alert';
 import { fetchGroupByInviteCode, type GroupInvitePreview } from '@/lib/join-arena';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
@@ -68,7 +69,7 @@ export default function JoinScreen() {
       showToast(copy('joinedArenaBody'));
       router.replace({ pathname: '/table/[id]', params: { id: group.id } });
     } catch (error) {
-      Alert.alert(copy('error'), getSupabaseErrorMessage(error, copy('joinArenaFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('joinArenaFailed')));
     } finally {
       setJoining(false);
     }

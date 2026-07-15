@@ -1,15 +1,16 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
   RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { showAppAlert } from '@/lib/app-alert';
 import { ArenaCard } from '@/components/dashboard/arena-card';
 import { Button } from '@/components/ui/button';
 import { SharePreviewModal } from '@/components/ui/share-preview-modal';
@@ -28,6 +29,7 @@ import { getSiteUrl } from '@/lib/env';
 import { fetchGroupByInviteCode } from '@/lib/join-arena';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
+import { isTabletViewport } from '@/lib/layout';
 
 export default function DashboardScreen() {
   const { user } = useAuth();
@@ -46,6 +48,8 @@ export default function DashboardScreen() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
+  const { width } = useWindowDimensions();
+  const useArenaGrid = isTabletViewport(width);
 
   const formatArenaDate = useCallback((date: string) => {
     try {
@@ -77,7 +81,7 @@ export default function DashboardScreen() {
       await Share.share({ message: sharePreview.message, title: sharePreview.title });
       setSharePreview(null);
     } catch {
-      Alert.alert(copy('error'), copy('shareStatsFailed'));
+      showAppAlert(copy('error'), copy('shareStatsFailed'));
     } finally {
       setSharing(false);
     }
@@ -103,10 +107,10 @@ export default function DashboardScreen() {
       setShowCreateModal(false);
       setNewGroupName('');
       setNewGroupDescription('');
-      Alert.alert(copy('arenaCreated'), copy('arenaCreatedHint'));
+      showAppAlert(copy('arenaCreated'), copy('arenaCreatedHint'));
       await refreshGroups();
     } catch (error) {
-      Alert.alert(
+      showAppAlert(
         copy('error'),
         getSupabaseErrorMessage(error, copy('createArenaFailed')),
       );
@@ -123,7 +127,7 @@ export default function DashboardScreen() {
       const group = await fetchGroupByInviteCode(supabase, joiningCode);
 
       if (!group) {
-        Alert.alert(copy('invalidInviteCode'), copy('invalidInviteCodeHint'));
+        showAppAlert(copy('invalidInviteCode'), copy('invalidInviteCodeHint'));
         return;
       }
 
@@ -136,19 +140,19 @@ export default function DashboardScreen() {
 
       if (error) {
         if (error.code === '23505') {
-          Alert.alert(copy('alreadyMember'), copy('redirectingToArena'));
+          showAppAlert(copy('alreadyMember'), copy('redirectingToArena'));
         } else {
           throw error;
         }
       } else {
-        Alert.alert(copy('joinedArena'), `${copy('welcome')} "${group.name}"`);
+        showAppAlert(copy('joinedArena'), `${copy('welcome')} "${group.name}"`);
       }
 
       setShowJoinModal(false);
       setJoiningCode('');
       router.push({ pathname: '/table/[id]', params: { id: group.id } });
     } catch (error) {
-      Alert.alert(
+      showAppAlert(
         copy('error'),
         getSupabaseErrorMessage(error, copy('joinArenaFailed')),
       );
@@ -209,21 +213,22 @@ export default function DashboardScreen() {
         ) : (
           <View style={styles.arenaList}>
             {groups.map((group) => (
-              <ArenaCard
-                key={group.id}
-                group={group}
-                arenaLabel={copy('arenaLabel')}
-                playersLabel={copy('players')}
-                tableLabel={copy('table')}
-                inviteLabel={copy('invite')}
-                createdLabel={copy('created')}
-                openHint={copy('openArenaHint')}
-                openLabel={copy('open')}
-                copyLabel={copy('copyInviteLink')}
-                formatDate={formatArenaDate}
-                onOpen={() => router.push({ pathname: '/table/[id]', params: { id: group.id } })}
-                onCopyInvite={() => openInvitePreview(group.invite_code)}
-              />
+              <View key={group.id} style={[styles.arenaItem, useArenaGrid && styles.arenaItemTablet]}>
+                <ArenaCard
+                  group={group}
+                  arenaLabel={copy('arenaLabel')}
+                  playersLabel={copy('players')}
+                  tableLabel={copy('table')}
+                  inviteLabel={copy('invite')}
+                  createdLabel={copy('created')}
+                  openHint={copy('openArenaHint')}
+                  openLabel={copy('open')}
+                  copyLabel={copy('copyInviteLink')}
+                  formatDate={formatArenaDate}
+                  onOpen={() => router.push({ pathname: '/table/[id]', params: { id: group.id } })}
+                  onCopyInvite={() => openInvitePreview(group.invite_code)}
+                />
+              </View>
             ))}
           </View>
         )}
@@ -337,7 +342,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   arenaList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 14,
+  },
+  arenaItem: {
+    width: '100%',
+  },
+  arenaItemTablet: {
+    width: '48%',
+    flexGrow: 1,
   },
   modalTitle: {
     color: colors.foreground,

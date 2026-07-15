@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -166,8 +166,7 @@ export function AddDeckModal({
   onSaveManual,
   onSaveArchidektBatch,
 }: AddDeckModalProps) {
-  const { height: windowHeight } = useWindowDimensions();
-  const modalBodyHeight = Math.min(windowHeight * 0.62, 520);
+  const modalBodyHeight = Math.min(Dimensions.get('screen').height * 0.62, 520);
   const [overwriteConfirm, setOverwriteConfirm] = useState<OverwriteConfirmState | null>(null);
   const overwriteResolver = useRef<((value: boolean | 'overwrite' | 'skip' | 'cancel') => void) | null>(null);
   const [mode, setMode] = useState<AddDeckMode>('import');
@@ -471,8 +470,8 @@ export function AddDeckModal({
         <ScrollView
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator
           nestedScrollEnabled
         >

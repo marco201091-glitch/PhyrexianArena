@@ -5,7 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 
-> Track Commander games, decks, and playgroup stats — built for recurring pods, one-off nights, and mini-leagues.
+> Play Commander, track life and damage in real time, save every match, and discover how your playgroup evolves.
 
 **Live app:** [phyrexian-arena.vercel.app](https://phyrexian-arena.vercel.app)
 
@@ -13,7 +13,7 @@
 
 ## What is Phyrexian Arena?
 
-Phyrexian Arena is a web app for Commander playgroups. Create a private space for your pod, invite friends, import decks, log games, and see who’s winning — without spreadsheets.
+Phyrexian Arena is a web and Android app for Commander playgroups. Create a private space for your pod, invite friends, import decks, play with the live tracker, and keep a complete history without spreadsheets.
 
 An **Arena** works for a weekly table, a single evening with friends, or a short league over a few weeks. Everyone joins with their profile and decks; stats stay scoped to that group.
 
@@ -21,13 +21,23 @@ An **Arena** works for a weekly table, a single evening with friends, or a short
 
 ## What you can do
 
-### Arenas & matches
+### Live games
+
+- Start a match from your Arena and arrange the table for 2 to 6 players
+- Track life, commander damage, infect, eliminations, and the last player standing
+- Adjust life with large adaptive controls or drag damage directly between player cards on the web
+- Resume an unfinished game if the app or browser is closed
+- Automatically open the end-of-game summary when only one player remains
+- Save the result and update the Arena history and statistics immediately
+
+### Arenas and match history
 
 - Create and join Arenas with an invite code
-- Log battles with players, decks, winner, and notes
+- Play live or record a completed match manually
 - Edit or delete matches when something was recorded wrong
 - Add **guest players** for occasional friends — even with multiple decks each
-- Share a **public stats page** for your Arena (rankings, commanders, color meta, recent games)
+- Browse matches grouped by day and export individual sessions
+- Share a public Arena page with rankings, commanders, color trends, and recent games
 
 ### Decks & commanders
 
@@ -41,17 +51,19 @@ An **Arena** works for a weekly table, a single evening with friends, or a short
 
 ### Stats & analytics
 
-- Player rankings with wins, losses, and win rate
+- Player rankings with games, wins, losses, and win rate
 - Deck and commander performance per Arena
-- Color meta charts — what’s being played and what’s winning
-- Personal dashboard with your stats across Arenas
+- Color trends showing what is being played and what is winning
+- Personal dashboard with your performance across all Arenas
+- Filters for exploring different periods and parts of the playgroup
 
 ### Profiles
 
-- Register and sign in with email or username
-- Persistent login on the live site
+- Register and sign in with email, username, or Google
+- Keep your session active across visits
 - Profile with display name, username, and avatar
-- Interface in **Italian** and **English**
+- Use the interface in **Italian** or **English**
+- Play in full screen on the web or in the Android app
 
 ---
 
@@ -60,14 +72,15 @@ An **Arena** works for a weekly table, a single evening with friends, or a short
 1. Open [phyrexian-arena.vercel.app](https://phyrexian-arena.vercel.app)
 2. Create an account
 3. Create an Arena or join one with an invite code
-4. Add your decks from Archidekt, Moxfield, or by searching a commander
-5. Log your games — rankings and stats update on their own
+4. Add your decks from Archidekt, Moxfield, or by searching for a commander
+5. Start a live game or record a completed one
+6. Review the match history and updated statistics
 
 ---
 
-## Tech stack
+## Built with
 
-Phyrexian Arena is a modern full-stack web app:
+The app is available on the web and Android. It is built with:
 
 | Layer | Technology |
 |---|---|

@@ -9,11 +9,13 @@ type TableArenaManagementProps = {
   canLeave: boolean;
   labels: {
     arenaManagement: string;
+    shareInvite: string;
     exportArenaStats: string;
     editArena: string;
     leaveArena: string;
     deleteArena: string;
   };
+  onShareInvite: () => void;
   onExportStats: () => void;
   onEdit: () => void;
   onLeave: () => void;
@@ -25,6 +27,7 @@ export function TableArenaManagement({
   canManage,
   canLeave,
   labels,
+  onShareInvite,
   onExportStats,
   onEdit,
   onLeave,
@@ -33,6 +36,12 @@ export function TableArenaManagement({
   return (
     <PhyrexianPanel style={styles.section}>
       <Text style={styles.sectionTitle}>{labels.arenaManagement}</Text>
+      <Button
+        label={labels.shareInvite}
+        variant="outline"
+        icon="person-add-outline"
+        onPress={onShareInvite}
+      />
       {showExportStats ? (
         <Button
           label={labels.exportArenaStats}

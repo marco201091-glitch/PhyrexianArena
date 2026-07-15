@@ -1,9 +1,9 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
-import { Button } from '@/components/ui/button';
 import { DeckCarousel, useDeckCarouselCardWidth } from '@/components/ui/deck-carousel';
-import { colors, radii, spacing, touch } from '@/constants/theme';
+import { Input } from '@/components/ui/input';
+import { colors, radii, spacing } from '@/constants/theme';
 import type { ArenaGuestDeck } from '@/lib/arena-participants';
 import type { ParticipantKey } from '@/lib/participant-keys';
 
@@ -73,7 +73,11 @@ export function MatchParticipantRow({
 
   return (
     <Pressable
-      style={[styles.row, selected && styles.rowSelected]}
+      style={({ pressed }) => [
+        styles.row,
+        selected && styles.rowSelected,
+        pressed && !readOnly && styles.rowPressed,
+      ]}
       onPress={() => {
         if (!readOnly && !selected) onToggle();
       }}
@@ -106,7 +110,9 @@ export function MatchParticipantRow({
           </View>
           {selectedDeck ? (
             <Text style={styles.selectedDeck} numberOfLines={2}>
-              {selectedDeck.name} — {selectedDeck.commander}
+              {selectedDeck.name === selectedDeck.commander
+                ? selectedDeck.name
+                : `${selectedDeck.name} — ${selectedDeck.commander}`}
             </Text>
           ) : null}
         </View>
@@ -114,24 +120,33 @@ export function MatchParticipantRow({
 
       {selected && deckCount > 0 ? (
         <View style={styles.deckControls}>
-          <View style={styles.searchField}>
-            <Ionicons name="search" size={16} color={colors.muted} style={styles.searchIcon} />
-            <TextInput
-              value={searchValue}
-              onChangeText={onSearchChange}
-              placeholder={labels.searchPlaceholder}
-              placeholderTextColor={colors.muted}
-              style={styles.searchInput}
-            />
-          </View>
-          <Button
-            label={deckListHidden ? labels.showDeckList : labels.hideDeckList}
-            variant="outline"
-            size="sm"
-            icon={deckListHidden ? 'eye-outline' : 'eye-off-outline'}
-            onPress={onToggleDeckList}
-            style={styles.toggleButton}
+          <Input
+            icon="search-outline"
+            value={searchValue}
+            onChangeText={onSearchChange}
+            placeholder={labels.searchPlaceholder}
+            autoCapitalize="none"
+            returnKeyType="search"
           />
+          <Pressable
+            style={({ pressed }) => [styles.toggleButton, pressed && styles.toggleButtonPressed]}
+            onPress={(event) => {
+              event.stopPropagation();
+              onToggleDeckList();
+            }}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={deckListHidden ? labels.showDeckList : labels.hideDeckList}
+          >
+            <Ionicons
+              name={deckListHidden ? 'eye-outline' : 'eye-off-outline'}
+              size={18}
+              color={colors.primaryMuted}
+            />
+            <Text style={styles.toggleButtonText}>
+              {deckListHidden ? labels.showDeckList : labels.hideDeckList}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -152,37 +167,45 @@ export function MatchParticipantRow({
                   {filteredDecks.map((deck) => {
                     const isSelected = selectedDeckId === deck.id;
                     const tone = sourceTone(deck.source_type);
+                    const showMeta = Boolean(deck.source_type || deck.bracket);
                     return (
                       <Pressable
                         key={deck.id}
-                        style={[
+                        style={({ pressed }) => [
                           styles.deckCard,
                           { width: deckCardWidth },
                           isSelected && styles.deckCardSelected,
+                          pressed && styles.deckCardPressed,
                         ]}
                         onPress={() => onSelectDeck(deck.id === selectedDeckId ? '' : deck.id)}
                       >
-                        <DeckImage
-                          uri={deck.commander_image}
-                          alt={deck.commander}
-                          style={styles.deckArt}
-                          containerStyle={styles.deckArt}
-                          showLoader
-                        />
-                        <View style={styles.deckInfo}>
-                          <Text style={styles.deckName} numberOfLines={2}>{deck.name}</Text>
-                          <Text style={styles.deckCommander} numberOfLines={2}>{deck.commander}</Text>
-                          <View style={styles.deckMeta}>
-                            {deck.source_type ? (
-                              <View style={[styles.sourceBadge, { backgroundColor: tone.bg }]}>
-                                <Text style={[styles.sourceText, { color: tone.text }]}>
-                                  {deck.source_type}
-                                </Text>
-                              </View>
+                        <View style={styles.deckMain}>
+                          <DeckImage
+                            uri={deck.commander_image}
+                            alt={deck.commander}
+                            style={styles.deckArt}
+                            containerStyle={styles.deckArt}
+                            showLoader
+                          />
+                          <View style={styles.deckInfo}>
+                            <Text style={styles.deckName} numberOfLines={2}>{deck.name}</Text>
+                            {deck.commander !== deck.name ? (
+                              <Text style={styles.deckCommander} numberOfLines={2}>{deck.commander}</Text>
                             ) : null}
-                            {deck.bracket ? (
-                              <View style={styles.bracketBadge}>
-                                <Text style={styles.bracketText}>B{deck.bracket}</Text>
+                            {showMeta ? (
+                              <View style={styles.deckMeta}>
+                                {deck.source_type ? (
+                                  <View style={[styles.sourceBadge, { backgroundColor: tone.bg }]}>
+                                    <Text style={[styles.sourceText, { color: tone.text }]}>
+                                      {deck.source_type}
+                                    </Text>
+                                  </View>
+                                ) : null}
+                                {deck.bracket ? (
+                                  <View style={styles.bracketBadge}>
+                                    <Text style={styles.bracketText}>B{deck.bracket}</Text>
+                                  </View>
+                                ) : null}
                               </View>
                             ) : null}
                           </View>
@@ -225,6 +248,10 @@ const styles = StyleSheet.create({
   rowSelected: {
     borderColor: colors.primaryLight,
     backgroundColor: colors.selectionTint,
+  },
+  rowPressed: {
+    opacity: 0.94,
+    transform: [{ scale: 0.992 }],
   },
   header: {
     flexDirection: 'row',
@@ -293,28 +320,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginLeft: 28,
   },
-  searchField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: touch.minHeight - 4,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.inputBg,
-    paddingHorizontal: spacing.md,
-  },
-  searchIcon: {
-    marginRight: spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.foreground,
-    fontSize: 15,
-    paddingVertical: 8,
-  },
   toggleButton: {
     alignSelf: 'flex-start',
+    minHeight: 42,
+    minWidth: 112,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: colors.selectionBorder,
+    backgroundColor: 'rgba(124,58,237,0.14)',
+    paddingHorizontal: spacing.md,
   },
+  toggleButtonPressed: { opacity: 0.72 },
+  toggleButtonText: { color: colors.primaryMuted, fontSize: 13, fontWeight: '800' },
   deckArea: {
     gap: spacing.sm,
     marginLeft: 28,
@@ -335,18 +356,28 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   deckCard: {
-    flexDirection: 'row',
-    gap: spacing.md,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceMuted,
     padding: spacing.md,
     minHeight: 108,
+    overflow: 'hidden',
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+  },
+  deckMain: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'flex-start',
   },
   deckCardSelected: {
     borderColor: colors.primaryLight,
     backgroundColor: colors.selectionTint,
+  },
+  deckCardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
   },
   deckArt: {
     width: 72,
@@ -358,6 +389,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
     minWidth: 0,
+    justifyContent: 'flex-start',
   },
   deckName: {
     color: colors.foreground,
@@ -373,9 +405,9 @@ const styles = StyleSheet.create({
   deckMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 6,
-    marginTop: 'auto',
-    paddingTop: 4,
+    marginTop: 2,
   },
   sourceBadge: {
     borderRadius: 4,

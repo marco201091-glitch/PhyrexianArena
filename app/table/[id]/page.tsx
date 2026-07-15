@@ -22,11 +22,12 @@ import { AppProfileButton } from '@/components/navigation/app-profile-button';
 import { DeckImage } from '@/components/deck-image';
 import { useLanguage } from '@/components/language-provider';
 import { usePlatformAdmin } from '@/hooks/use-platform-admin';
-import { computeArenaColorAnalytics } from '@/lib/arena-color-analytics';
+
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 import { syncDeckCommanderColors, type DeckCommanderColorTarget } from '@/lib/deck-color-sync';
 import { ManaColorPairs, ManaColorReport } from '@/components/arena/mana-color-charts';
 import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
+
 import { PanelWithActions } from '@/components/ui/panel-with-actions';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FormattedMarkdown } from '@/components/ui/formatted-markdown';
@@ -61,7 +62,17 @@ import {
 import { buildPairedCommanderColorFields, buildPairedCommanderName } from '@/lib/commander-partners';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
-import { ARENA_MATCHES_FETCH_LIMIT } from '@/lib/arena-matches';
+import type { ArenaDaySummary } from '@/lib/arena-day-fetch';
+import {
+  buildColorAnalyticsFromRows,
+  buildCommanderStatsFromRows,
+  buildPlayerStatsFromRows,
+  extractDeckColorOverridesFromRows,
+  fetchArenaStatsParticipants,
+} from '@/lib/arena-stats-fetch';
+import { fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
+import { fetchActiveLiveGame } from '@/lib/live-game-service';
+
 import { groupMatchesByDay } from '@/lib/arena-session';
 import {
   buildArenaSessionExportText,
@@ -88,6 +99,7 @@ import {
   ArrowLeft,
   Users,
   Trophy,
+
   Plus,
   Trash2,
   Copy,
@@ -147,6 +159,19 @@ const MATCHES_SELECT = `
     deck_id,
     guest_deck_id,
     is_winner,
+    tracked_event_count,
+    life_lost,
+    life_gained,
+    life_damage_dealt,
+    unattributed_life_lost,
+    commander_damage_taken,
+    commander_damage_dealt,
+    infect_received,
+    infect_dealt,
+    eliminations,
+    eliminations_caused,
+    revives,
+    corrections,
     profiles (id, username, display_name),
     arena_guests (id, display_name),
     decks (name, commander, commander_image, bracket, color_identity, source_type),
@@ -216,6 +241,7 @@ interface Match {
   group_id: string;
   winner_id: string | null;
   winner_guest_id?: string | null;
+  is_draw?: boolean;
   played_at: string;
   created_by: string;
   notes: string | null;
@@ -349,14 +375,20 @@ export default function TablePage() {
   const { adminMode } = usePlatformAdmin();
   const [group, setGroup] = useState<Group | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [daySummaries, setDaySummaries] = useState<ArenaDaySummary[]>([]);
+  const [matchesByDay, setMatchesByDay] = useState<Record<string, Match[]>>({});
+
+
   const [decks, setDecks] = useState<Deck[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
   const [guests, setGuests] = useState<ArenaGuest[]>([]);
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
   const [commanderStats, setCommanderStats] = useState<CommanderStats[]>([]);
+  const [statsParticipantRows, setStatsParticipantRows] = useState<Awaited<ReturnType<typeof fetchArenaStatsParticipants>>>([]);
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
+  const [activeLiveGameId, setActiveLiveGameId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
   const [bracketFilter, setBracketFilter] = useState('all');
   const [deckStatsSort, setDeckStatsSort] = useState<'winRate' | 'gamesPlayed' | 'wins'>('winRate');
@@ -372,6 +404,7 @@ export default function TablePage() {
   const [participantDeckSearches, setParticipantDeckSearches] = useState<Record<string, string>>({});
   const [hiddenParticipantDeckLists, setHiddenParticipantDeckLists] = useState<Record<string, boolean>>({});
   const [winnerKey, setWinnerKey] = useState<ParticipantKey | ''>('');
+  const [matchIsDraw, setMatchIsDraw] = useState(false);
   const [matchNotes, setMatchNotes] = useState('');
   const [matchPlayedAt, setMatchPlayedAt] = useState(() => toMatchDateValue());
   const [savingMatch, setSavingMatch] = useState(false);
@@ -402,6 +435,7 @@ export default function TablePage() {
   // Edit match modal state
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [editMatchWinnerKey, setEditMatchWinnerKey] = useState<ParticipantKey | ''>('');
+  const [editMatchIsDraw, setEditMatchIsDraw] = useState(false);
   const [editMatchNotes, setEditMatchNotes] = useState('');
   const [editMatchPlayedAt, setEditMatchPlayedAt] = useState(() => toMatchDateValue());
   const [editMatchPlayerDecks, setEditMatchPlayerDecks] = useState<Record<string, string>>({});
@@ -586,20 +620,32 @@ export default function TablePage() {
     }
   }, [buildArenaColorTargets, deckColorOverrides, user]);
 
-  const fetchMatches = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('matches')
-      .select(MATCHES_SELECT)
-      .eq('group_id', groupId)
-      .order('played_at', { ascending: false })
-      .limit(ARENA_MATCHES_FETCH_LIMIT);
+  // Keep refreshMatches stable when loading matches changes the color-sync callback.
+  const ensureArenaDeckColorsRef = useRef(ensureArenaDeckColors);
+  useEffect(() => {
+    ensureArenaDeckColorsRef.current = ensureArenaDeckColors;
+  }, [ensureArenaDeckColors]);
 
-    if (error) {
-      console.error('Error fetching matches:', getSupabaseErrorMessage(error, 'Failed to fetch matches'));
+  const initializeMatchHistory = useCallback(async () => {
+    try {
+      const recent = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
+      const grouped = groupMatchesByDay(recent);
+      const summaries = grouped.map((group) => ({
+        dayKey: group.dayKey,
+        matchCount: group.matchCount,
+        latestPlayedAt: group.matches[0]?.played_at ?? '',
+      }));
+
+      setDaySummaries(summaries);
+      setMatchesByDay(Object.fromEntries(
+        grouped.map((group) => [group.dayKey, group.matches as Match[]]),
+      ));
+      setMatches(recent);
+      return recent;
+    } catch (error) {
+      console.error('Error fetching match history:', getSupabaseErrorMessage(error as Error, 'Failed to fetch matches'));
       return [] as Match[];
     }
-
-    return (data as unknown as Match[]) || [];
   }, [groupId]);
 
   const loadArenaDecks = useCallback(async (memberIds: string[]) => {
@@ -632,15 +678,82 @@ export default function TablePage() {
     void loadArenaDecks(members.map((member) => member.id));
   }, [decks.length, decksLoading, loadArenaDecks, members]);
 
+  const refreshActiveLiveGame = useCallback(async () => {
+    if (!groupId || !user) {
+      setActiveLiveGameId(null);
+      return;
+    }
+    try {
+      const game = await fetchActiveLiveGame(supabase, groupId, toUserParticipantKey(user.id));
+      setActiveLiveGameId(game?.id ?? null);
+    } catch (error) {
+      console.error('Error fetching active live game:', getSupabaseErrorMessage(error as Error, 'Failed to fetch active game'));
+      setActiveLiveGameId(null);
+    }
+  }, [groupId, user]);
+
+  const getStatsSinceDate = useCallback(() => {
+    if (dateFilter === 'all') return null;
+    const now = new Date();
+    if (dateFilter === '7d') return subDays(now, 7);
+    if (dateFilter === '30d') return subDays(now, 30);
+    return subDays(now, 90);
+  }, [dateFilter]);
+
   const refreshMatches = useCallback(async () => {
-    const loadedMatches = await fetchMatches();
-    setMatches(loadedMatches);
+    const loadedMatches = await initializeMatchHistory();
 
     const matchDeckIds = extractMatchDeckIds(loadedMatches);
     if (matchDeckIds.length > 0) {
-      runWhenIdle(() => ensureArenaDeckColors(matchDeckIds), { timeoutMs: 5000 });
+      runWhenIdle(() => ensureArenaDeckColorsRef.current(matchDeckIds), { timeoutMs: 5000 });
     }
-  }, [ensureArenaDeckColors, fetchMatches]);
+
+    try {
+      const rows = await fetchArenaStatsParticipants(supabase, groupId, getStatsSinceDate());
+      setStatsParticipantRows(rows);
+      setPlayerStats(buildPlayerStatsFromRows(rows));
+      setCommanderStats(buildCommanderStatsFromRows(rows, bracketFilter, deckStatsSort));
+    } catch (error) {
+      console.error('Error refreshing arena stats:', error);
+    }
+  }, [bracketFilter, deckStatsSort, getStatsSinceDate, groupId, initializeMatchHistory]);
+
+  const loadFilteredMatchHistory = useCallback(async (since: Date) => {
+    try {
+      const loaded = await fetchMatchesSince(supabase, groupId, startOfDay(since));
+      const typed = loaded as unknown as Match[];
+      const grouped = groupMatchesByDay(typed);
+      const nextByDay: Record<string, Match[]> = {};
+      grouped.forEach((group) => {
+        nextByDay[group.dayKey] = group.matches as Match[];
+      });
+      setDaySummaries(grouped.map((group) => ({
+        dayKey: group.dayKey,
+        matchCount: group.matchCount,
+        latestPlayedAt: group.matches[0]?.played_at || '',
+      })));
+      setMatchesByDay(nextByDay);
+      setMatches(typed);
+      setExpandedDayKeys(new Set(grouped.map((group) => group.dayKey)));
+    } catch (error) {
+      console.error('Error fetching filtered matches:', getSupabaseErrorMessage(error as Error, 'Failed to fetch matches'));
+    }
+  }, [groupId]);
+
+  const dateFilterBootRef = useRef(true);
+  useEffect(() => {
+    if (!groupId || !user) return;
+    if (dateFilterBootRef.current) {
+      dateFilterBootRef.current = false;
+      return;
+    }
+    if (dateFilter === 'all') {
+      void refreshMatches();
+      return;
+    }
+    const since = getStatsSinceDate();
+    if (since) void loadFilteredMatchHistory(since);
+  }, [dateFilter, getStatsSinceDate, groupId, loadFilteredMatchHistory, refreshMatches, user]);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -659,7 +772,7 @@ export default function TablePage() {
           `)
           .eq('id', groupId)
           .maybeSingle(),
-        fetchMatches(),
+        initializeMatchHistory(),
         supabase
           .from('arena_guests')
           .select(`
@@ -719,7 +832,7 @@ export default function TablePage() {
     } finally {
       setLoading(false);
     }
-  }, [fetchMatches, groupId, loadArenaDecks, router, user]);
+  }, [groupId, initializeMatchHistory, loadArenaDecks, router, user]);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/auth/login');
@@ -728,6 +841,20 @@ export default function TablePage() {
   useEffect(() => {
     if (user) fetchData();
   }, [user, fetchData]);
+
+  useEffect(() => {
+    if (!user) return;
+    void refreshActiveLiveGame();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshActiveLiveGame();
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [refreshActiveLiveGame, user]);
 
   const getFilteredMatches = useCallback(() => {
     if (dateFilter === 'all') return matches;
@@ -754,10 +881,19 @@ export default function TablePage() {
 
   const matchDayGroups = useMemo(() => {
     const dateLocale = language === 'it' ? itLocale : enUS;
-    return groupMatchesByDay(getFilteredMatches(), {
-      formatLabel: (dayKey) => format(parse(dayKey, 'yyyy-MM-dd', new Date()), 'd MMM yyyy', { locale: dateLocale }),
-    });
-  }, [getFilteredMatches, language]);
+    const formatLabel = (dayKey: string) => format(parse(dayKey, 'yyyy-MM-dd', new Date()), 'd MMM yyyy', { locale: dateLocale });
+
+    if (dateFilter === 'all') {
+      return daySummaries.map((summary) => ({
+        dayKey: summary.dayKey,
+        label: formatLabel(summary.dayKey),
+        matchCount: summary.matchCount,
+        matches: matchesByDay[summary.dayKey] || [],
+      }));
+    }
+
+    return groupMatchesByDay(getFilteredMatches(), { formatLabel });
+  }, [dateFilter, daySummaries, getFilteredMatches, language, matchesByDay]);
 
   const latestDayKey = matchDayGroups[0]?.dayKey ?? null;
 
@@ -776,6 +912,7 @@ export default function TablePage() {
       next.add(latestDayKey);
       return next;
     });
+
   }, [latestDayKey]);
 
   useEffect(() => {
@@ -796,79 +933,26 @@ export default function TablePage() {
 
   const bracketOptions = useMemo(() => {
     const brackets = new Set<string>();
-    getFilteredMatches().forEach((match) => {
-      match.match_participants.forEach((p) => {
-        const deck = getParticipantDeckSnapshot(p);
-        if (deck?.bracket) brackets.add(deck.bracket);
-      });
+    statsParticipantRows.forEach((row) => {
+      const bracket = row.deck_bracket || row.guest_deck_bracket;
+      if (bracket) brackets.add(bracket);
     });
     return Array.from(brackets).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [getFilteredMatches]);
-
-  const calculateStats = useCallback((matchesData: Match[]) => {
-    const playerMap = new Map<ParticipantKey, PlayerStats>();
-    matchesData.forEach((match) => {
-      match.match_participants.forEach((p) => {
-        const participantKey = getParticipantKey(p);
-        if (!participantKey) return;
-
-        if (!playerMap.has(participantKey)) {
-          const isGuest = Boolean(p.guest_id);
-          playerMap.set(participantKey, {
-            key: participantKey,
-            displayName: getParticipantDisplayName(p),
-            isGuest,
-            profile: isGuest ? null : (p.profiles || null),
-            gamesPlayed: 0,
-            wins: 0,
-            winRate: 0,
-          });
-        }
-        const stats = playerMap.get(participantKey)!;
-        stats.gamesPlayed++;
-        if (p.is_winner) stats.wins++;
-      });
-    });
-    setPlayerStats(Array.from(playerMap.values()).map((s) => ({
-      ...s,
-      winRate: s.gamesPlayed > 0 ? Math.round((s.wins / s.gamesPlayed) * 100) : 0,
-    })).sort((a, b) => b.winRate - a.winRate || b.wins - a.wins));
-
-    const commanderMap = new Map<string, CommanderStats>();
-    matchesData.forEach((match) => {
-      match.match_participants.forEach((p) => {
-        const deck = getParticipantDeckSnapshot(p);
-        if (!deck) return;
-        if (bracketFilter !== 'all' && deck.bracket !== bracketFilter) return;
-        const commander = deck.commander;
-        const bracket = deck.bracket;
-        const key = `${commander}::${bracket || 'none'}`;
-        if (!commanderMap.has(key)) {
-          commanderMap.set(key, {
-            key, commander, commanderImageUrl: deck.commander_image, bracket, gamesPlayed: 0, wins: 0, winRate: 0
-          });
-        }
-        const stats = commanderMap.get(key)!;
-        stats.gamesPlayed++;
-        if (p.is_winner) stats.wins++;
-      });
-    });
-    const sortedCommanderStats = Array.from(commanderMap.values()).map((s) => ({
-      ...s,
-      winRate: s.gamesPlayed > 0 ? Math.round((s.wins / s.gamesPlayed) * 100) : 0,
-    })).sort((a, b) => {
-      if (deckStatsSort === 'gamesPlayed') return b.gamesPlayed - a.gamesPlayed || b.wins - a.wins || b.winRate - a.winRate;
-      if (deckStatsSort === 'wins') return b.wins - a.wins || b.winRate - a.winRate || b.gamesPlayed - a.gamesPlayed;
-      return b.winRate - a.winRate || b.wins - a.wins || b.gamesPlayed - a.gamesPlayed;
-    });
-
-    setCommanderStats(sortedCommanderStats);
-  }, [bracketFilter, deckStatsSort]);
+  }, [statsParticipantRows]);
 
   useEffect(() => {
-    const filtered = getFilteredMatches();
-    calculateStats(filtered);
-  }, [getFilteredMatches, calculateStats]);
+    if (!user || loading) return;
+    void (async () => {
+      try {
+        const rows = await fetchArenaStatsParticipants(supabase, groupId, getStatsSinceDate());
+        setStatsParticipantRows(rows);
+        setPlayerStats(buildPlayerStatsFromRows(rows));
+        setCommanderStats(buildCommanderStatsFromRows(rows, bracketFilter, deckStatsSort));
+      } catch (error) {
+        console.error('Error fetching arena stats:', error);
+      }
+    })();
+  }, [bracketFilter, deckStatsSort, getStatsSinceDate, groupId, loading, user]);
 
   const deckIdsInMatches = useMemo(() => Array.from(new Set(
     getFilteredMatches().flatMap((match) =>
@@ -881,11 +965,11 @@ export default function TablePage() {
     runWhenIdle(() => ensureArenaDeckColors(deckIdsInMatches), { timeoutMs: 2000 });
   }, [activeTab, deckIdsInMatches, ensureArenaDeckColors, loading]);
 
-  const colorAnalytics = useMemo(() => computeArenaColorAnalytics(
-    getFilteredMatches(),
+  const colorAnalytics = useMemo(() => buildColorAnalyticsFromRows(
+    statsParticipantRows,
     new Map(Object.entries(deckColorOverrides)),
-    bracketFilter
-  ), [bracketFilter, deckColorOverrides, getFilteredMatches]);
+    bracketFilter,
+  ), [bracketFilter, deckColorOverrides, statsParticipantRows]);
 
   const copyInviteLink = () => {
     if (!group) return;
@@ -1091,9 +1175,13 @@ export default function TablePage() {
         return prev.filter((key) => key !== participantKey);
       }
 
+      const deckOptions = getParticipantDeckOptions(participantKey);
       const lastDeckId = getLastDeckSelectionForParticipant(participantKey, matches);
-      if (lastDeckId) {
-        setParticipantDecks((current) => ({ ...current, [participantKey]: lastDeckId }));
+      const preferredDeckId = deckOptions.length === 1
+        ? deckOptions[0].id
+        : lastDeckId && deckOptions.some((deck) => deck.id === lastDeckId) ? lastDeckId : null;
+      if (preferredDeckId) {
+        setParticipantDecks((current) => ({ ...current, [participantKey]: preferredDeckId }));
       }
 
       return [...prev, participantKey];
@@ -1490,6 +1578,7 @@ export default function TablePage() {
     setParticipantDeckSearches({});
     setHiddenParticipantDeckLists({});
     setWinnerKey('');
+    setMatchIsDraw(false);
     setMatchNotes('');
     setMatchPlayedAt(toMatchDateValue());
   };
@@ -1499,8 +1588,8 @@ export default function TablePage() {
       toast({ title: t({ it: 'Errore', en: 'Error' }), description: t({ it: 'Seleziona almeno 2 giocatori', en: 'Select at least 2 players' }), variant: 'destructive' });
       return;
     }
-    if (!winnerKey) {
-      toast({ title: t({ it: 'Errore', en: 'Error' }), description: t({ it: 'Seleziona un vincitore', en: 'Select a winner' }), variant: 'destructive' });
+    if (!matchIsDraw && !winnerKey) {
+      toast({ title: t({ it: 'Errore', en: 'Error' }), description: t({ it: 'Seleziona un vincitore o segna come patta', en: 'Select a winner or mark as draw' }), variant: 'destructive' });
       return;
     }
 
@@ -1537,11 +1626,12 @@ export default function TablePage() {
         .filter(Boolean);
       await refreshMissingImportedDeckImages(userDeckIds);
 
-      const winnerParsed = parseParticipantKey(winnerKey);
+      const winnerParsed = matchIsDraw ? null : parseParticipantKey(winnerKey);
       const { data: match, error: matchError } = await supabase.from('matches').insert({
         group_id: groupId,
-        winner_id: winnerParsed?.type === 'user' ? winnerParsed.id : null,
-        winner_guest_id: winnerParsed?.type === 'guest' ? winnerParsed.id : null,
+        is_draw: matchIsDraw,
+        winner_id: !matchIsDraw && winnerParsed?.type === 'user' ? winnerParsed.id : null,
+        winner_guest_id: !matchIsDraw && winnerParsed?.type === 'guest' ? winnerParsed.id : null,
         created_by: user!.id,
         notes: matchNotes || null,
         played_at: playedAtIso,
@@ -1559,7 +1649,7 @@ export default function TablePage() {
           guest_id: isGuest ? parsed?.id : null,
           deck_id: isGuest ? null : deckId,
           guest_deck_id: isGuest ? deckId : null,
-          is_winner: participantKey === winnerKey,
+          is_winner: !matchIsDraw && participantKey === winnerKey,
         };
       });
 
@@ -1582,7 +1672,12 @@ export default function TablePage() {
         await reloadGuests();
       }
 
-      toast({ title: t({ it: 'Partita registrata!', en: 'Battle recorded!' }), description: t({ it: 'La vittoria e stata salvata', en: 'Victory has been logged' }) });
+      toast({
+        title: t({ it: 'Partita registrata!', en: 'Battle recorded!' }),
+        description: matchIsDraw
+          ? t({ it: 'Esito registrato: patta', en: 'Result logged: draw' })
+          : t({ it: 'La vittoria e stata salvata', en: 'Victory has been logged' }),
+      });
       resetMatchForm();
       refreshMatches();
     } catch (error: unknown) {
@@ -1619,7 +1714,9 @@ export default function TablePage() {
         return `- ${playerName}: ${deckName}${commanderName}`;
       })
       .join('\n');
-    const winnerName = getMatchWinnerName(match);
+    const winnerName = match.is_draw
+      ? t({ it: 'Patta', en: 'Draw' })
+      : getMatchWinnerName(match);
     const comment = match.notes?.trim() || t({ it: 'Nessun commento', en: 'No comment' });
 
     return [
@@ -1758,10 +1855,19 @@ export default function TablePage() {
   };
 
   const handleExportDayMatches = async () => {
-    const dayGroup = matchDayGroups.find((entry) => entry.dayKey === exportDayKey);
-    if (!dayGroup) return;
+    if (!exportDayKey) return;
+    let dayMatches = matchesByDay[exportDayKey];
+    if (!dayMatches?.length) {
+      const loaded = await fetchMatchesForDay(supabase, groupId, exportDayKey);
+      dayMatches = loaded as unknown as Match[];
+      if (dayMatches.length > 0) {
+        setMatchesByDay((current) => ({ ...current, [exportDayKey]: dayMatches! }));
+      }
+    }
+    if (!dayMatches?.length) return;
 
-    const exportMatches = [...dayGroup.matches]
+    const dayGroup = matchDayGroups.find((entry) => entry.dayKey === exportDayKey);
+    const exportMatches = [...dayMatches]
       .reverse()
       .map((match) => buildSessionExportMatch(match));
     const text = buildArenaSessionExportText(exportIntro, exportMatches);
@@ -1769,7 +1875,7 @@ export default function TablePage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: dayGroup.label,
+          title: dayGroup?.label || exportDayKey,
           text,
         });
         closeDayExportModal();
@@ -1884,6 +1990,7 @@ export default function TablePage() {
   const openEditMatch = (match: Match) => {
     setEditingMatch(match);
     setEditMatchWinnerKey(resolveWinnerParticipantKey(match) || '');
+    setEditMatchIsDraw(Boolean(match.is_draw));
     setEditMatchNotes(match.notes || '');
     setEditMatchPlayedAt(isoToMatchDateValue(match.played_at));
     setEditMatchDeckSearches({});
@@ -1904,8 +2011,8 @@ export default function TablePage() {
 
   const handleSaveEditMatch = async () => {
     if (!editingMatch) return;
-    if (!editMatchWinnerKey) {
-      toast({ title: t({ it: 'Errore', en: 'Error' }), description: t({ it: 'Seleziona un vincitore', en: 'Select a winner' }), variant: 'destructive' });
+    if (!editMatchIsDraw && !editMatchWinnerKey) {
+      toast({ title: t({ it: 'Errore', en: 'Error' }), description: t({ it: 'Seleziona un vincitore o segna come patta', en: 'Select a winner or mark as draw' }), variant: 'destructive' });
       return;
     }
     const playedAtIso = matchDateToIso(editMatchPlayedAt);
@@ -1920,12 +2027,13 @@ export default function TablePage() {
 
     setSavingEditMatch(true);
     try {
-      const winnerParsed = parseParticipantKey(editMatchWinnerKey);
+      const winnerParsed = editMatchIsDraw ? null : parseParticipantKey(editMatchWinnerKey);
       const { error: matchError } = await supabase
         .from('matches')
         .update({
-          winner_id: winnerParsed?.type === 'user' ? winnerParsed.id : null,
-          winner_guest_id: winnerParsed?.type === 'guest' ? winnerParsed.id : null,
+          is_draw: editMatchIsDraw,
+          winner_id: !editMatchIsDraw && winnerParsed?.type === 'user' ? winnerParsed.id : null,
+          winner_guest_id: !editMatchIsDraw && winnerParsed?.type === 'guest' ? winnerParsed.id : null,
           notes: editMatchNotes || null,
           played_at: playedAtIso,
         })
@@ -1942,7 +2050,7 @@ export default function TablePage() {
           .update({
             deck_id: isGuest ? null : deckId,
             guest_deck_id: isGuest ? deckId : null,
-            is_winner: participantKey === editMatchWinnerKey,
+            is_winner: !editMatchIsDraw && participantKey === editMatchWinnerKey,
           })
           .eq('id', p.id);
         if (pError) throw pError;
@@ -2004,16 +2112,26 @@ export default function TablePage() {
       <main className="max-w-7xl mx-auto px-3 sm:px-4 py-5 sm:py-8">
         <PanelWithActions
           variant="strong"
-          className="mb-5 sm:mb-8"
+          className="relative mb-5 sm:mb-8"
           actions={(
             <>
+              <Button
+                onClick={() => router.push(`/table/${groupId}/play`)}
+                className="flex-1 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 font-bold shadow-lg shadow-violet-950/30 hover:from-violet-500 hover:to-fuchsia-500"
+              >
+                <Swords className="mr-2 h-4 w-4" />
+                {activeLiveGameId
+                  ? t({ it: 'Riprendi partita', en: 'Resume game' })
+                  : t({ it: 'Gioca live', en: 'Play Game' })}
+              </Button>
               <Button
                 onClick={() => {
                   setMatchPlayedAt(toMatchDateValue());
                   ensureArenaMemberDecksLoaded();
                   setShowMatchModal(true);
                 }}
-                className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+                variant="outline"
+                className="flex-1 border-violet-500/35 bg-violet-500/5 font-semibold text-foreground hover:bg-violet-500/15"
               >
                 <Target className="mr-2 h-4 w-4" />
                 {t({ it: 'Registra partita', en: 'Record Battle' })}
@@ -2030,8 +2148,55 @@ export default function TablePage() {
             </>
           )}
         >
+          {activeLiveGameId ? (
+            <button
+              type="button"
+              onClick={() => router.push(`/table/${groupId}/play`)}
+              className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-emerald-400/35 bg-emerald-500/10 px-4 py-3 text-left transition hover:bg-emerald-500/15"
+            >
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-400" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="block text-sm text-emerald-100">{t({ it: 'Partita live in corso', en: 'Live game in progress' })}</strong>
+                <span className="block text-xs text-emerald-200/65">{t({ it: 'Tocca per tornare al tracker', en: 'Tap to return to the tracker' })}</span>
+              </span>
+              <ArrowLeft className="h-4 w-4 rotate-180 text-emerald-200" />
+            </button>
+          ) : null}
+          {(canLeaveCurrentArena || canManageGroup) && (
+            <div className="absolute right-4 top-4 hidden items-center gap-1 lg:flex">
+              {canLeaveCurrentArena && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={openLeaveArenaModal}
+                  className="h-10 w-10 text-muted-foreground hover:text-foreground"
+                  title={t({ it: 'Esci dall\'arena', en: 'Leave arena' })}
+                  aria-label={t({ it: 'Esci dall\'arena', en: 'Leave arena' })}
+                >
+                  <DoorOpen className="h-4 w-4" />
+                </Button>
+              )}
+              {canManageGroup && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={openDeleteArenaModal}
+                  className="h-10 w-10 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  title={t({ it: 'Elimina arena', en: 'Delete arena' })}
+                  aria-label={t({ it: 'Elimina arena', en: 'Delete arena' })}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
           <p className="text-xs uppercase tracking-[0.24em] text-violet-200">{t({ it: 'Sala operativa', en: 'Command room' })}</p>
-          <div className="mt-1 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+          <div className="mt-1 flex min-w-0 items-center gap-2 lg:pr-24">
             <div className="flex min-w-0 items-center gap-2">
               <h1 className="truncate text-2xl font-bold text-foreground">{group.name}</h1>
               {canManageGroup && (
@@ -2040,34 +2205,6 @@ export default function TablePage() {
                 </Button>
               )}
             </div>
-            {(canLeaveCurrentArena || canManageGroup) && (
-              <div className="flex flex-wrap items-center gap-2">
-                {canLeaveCurrentArena && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={openLeaveArenaModal}
-                    className="border-border text-foreground hover:bg-secondary"
-                  >
-                    <DoorOpen className="mr-2 h-4 w-4" />
-                    {t({ it: 'Esci dall\'arena', en: 'Leave arena' })}
-                  </Button>
-                )}
-                {canManageGroup && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={openDeleteArenaModal}
-                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    {t({ it: 'Elimina arena', en: 'Delete arena' })}
-                  </Button>
-                )}
-              </div>
-            )}
           </div>
           {group.description ? <p className="text-sm text-muted-foreground">{group.description}</p> : null}
           <p className="font-mono text-xs font-semibold text-violet-300">
@@ -2160,7 +2297,7 @@ export default function TablePage() {
           </div>
 
           <TabsContent value="matches">
-            {matches.length === 0 ? (
+            {daySummaries.length === 0 ? (
               <Card className="phyrexian-panel">
                 <CardContent className="py-12 text-center">
                   <Skull className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -2219,6 +2356,11 @@ export default function TablePage() {
                         </div>
                         <CollapsibleContent>
                           <div className="space-y-3 p-3">
+                            {dayGroup.matches.length === 0 && isExpanded ? (
+                              <p className="py-4 text-center text-sm text-muted-foreground">
+                                {t({ it: 'Nessuna partita in questa giornata', en: 'No matches on this day' })}
+                              </p>
+                            ) : null}
                             {dayGroup.matches.map((match) => (
                               <Card key={match.id} className="border-border/70 bg-background/20 transition-colors hover:border-violet-500/40">
                                 <CardContent className="py-4">
@@ -2264,6 +2406,11 @@ export default function TablePage() {
                                           );
                                         })}
                                       </div>
+                                      {match.is_draw ? (
+                                        <span className="mb-2 inline-flex rounded-full border border-slate-400/40 bg-slate-500/15 px-2.5 py-0.5 text-xs font-medium text-slate-200">
+                                          {t({ it: 'Patta', en: 'Draw' })}
+                                        </span>
+                                      ) : null}
                                       {match.notes ? <FormattedMarkdown value={match.notes} className="italic" /> : null}
                                     </div>
                                     <div className="flex items-center gap-1">
@@ -2797,6 +2944,40 @@ export default function TablePage() {
             )}
           </TabsContent>
         </Tabs>
+
+        {(canLeaveCurrentArena || canManageGroup) && (
+          <Card className="mt-6 border-border/70 bg-card/65 lg:hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-foreground">
+                {t({ it: 'Gestione arena', en: 'Arena management' })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              {canLeaveCurrentArena && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openLeaveArenaModal}
+                  className="h-11 justify-start border-border text-foreground"
+                >
+                  <DoorOpen className="mr-2 h-4 w-4" />
+                  {t({ it: 'Esci dall\'arena', en: 'Leave arena' })}
+                </Button>
+              )}
+              {canManageGroup && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openDeleteArenaModal}
+                  className="h-11 justify-start border-destructive/35 text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t({ it: 'Elimina arena', en: 'Delete arena' })}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       {showMatchModal && (
@@ -2899,7 +3080,20 @@ export default function TablePage() {
                 </div>
 
                 {selectedParticipantKeys.length >= 2 && (
-                  <div>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <Checkbox
+                        checked={matchIsDraw}
+                        onCheckedChange={(checked) => {
+                          const isDraw = checked === true;
+                          setMatchIsDraw(isDraw);
+                          if (isDraw) setWinnerKey('');
+                        }}
+                      />
+                      {t({ it: 'Patta', en: 'Draw' })}
+                    </label>
+                    {!matchIsDraw ? (
+                    <div>
                     <label className="text-sm font-medium text-foreground mb-3 block">{t({ it: 'Vincitore', en: 'Victor' })}</label>
                     <Select value={winnerKey} onValueChange={(value) => setWinnerKey(value as ParticipantKey)}>
                       <SelectTrigger className="w-full bg-background border-border text-foreground"><SelectValue placeholder={t({ it: 'Seleziona il vincitore', en: 'Select the victor' })} /></SelectTrigger>
@@ -2918,6 +3112,8 @@ export default function TablePage() {
                         })}
                       </SelectContent>
                     </Select>
+                    </div>
+                    ) : null}
                   </div>
                 )}
                 <div>
@@ -3369,25 +3565,40 @@ export default function TablePage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-3 block">{t({ it: 'Vincitore', en: 'Winner' })}</label>
-                  <Select value={editMatchWinnerKey} onValueChange={(value) => setEditMatchWinnerKey(value as ParticipantKey)}>
-                    <SelectTrigger className="w-full bg-background border-border text-foreground">
-                      <SelectValue placeholder={t({ it: 'Seleziona il vincitore', en: 'Select the victor' })} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      {editingMatch.match_participants.map((p) => {
-                        const participantKey = getParticipantKey(p);
-                        if (!participantKey) return null;
-                        const selectedDeck = getSelectedEditMatchDeck(participantKey);
-                        return (
-                          <SelectItem key={participantKey} value={participantKey}>
-                            {getParticipantDisplayName(p)}{selectedDeck ? ` (${selectedDeck.commander})` : ''}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Checkbox
+                      checked={editMatchIsDraw}
+                      onCheckedChange={(checked) => {
+                        const isDraw = checked === true;
+                        setEditMatchIsDraw(isDraw);
+                        if (isDraw) setEditMatchWinnerKey('');
+                      }}
+                    />
+                    {t({ it: 'Patta', en: 'Draw' })}
+                  </label>
+                  {!editMatchIsDraw ? (
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-3 block">{t({ it: 'Vincitore', en: 'Winner' })}</label>
+                      <Select value={editMatchWinnerKey} onValueChange={(value) => setEditMatchWinnerKey(value as ParticipantKey)}>
+                        <SelectTrigger className="w-full bg-background border-border text-foreground">
+                          <SelectValue placeholder={t({ it: 'Seleziona il vincitore', en: 'Select the victor' })} />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {editingMatch.match_participants.map((p) => {
+                            const participantKey = getParticipantKey(p);
+                            if (!participantKey) return null;
+                            const selectedDeck = getSelectedEditMatchDeck(participantKey);
+                            return (
+                              <SelectItem key={participantKey} value={participantKey}>
+                                {getParticipantDisplayName(p)}{selectedDeck ? ` (${selectedDeck.commander})` : ''}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
                 </div>
 
                 <RichTextEditor
@@ -3420,7 +3631,7 @@ export default function TablePage() {
                 </Button>
                 <Button
                   onClick={handleSaveEditMatch}
-                  disabled={savingEditMatch || !editMatchWinnerKey}
+                  disabled={savingEditMatch || (!editMatchIsDraw && !editMatchWinnerKey)}
                   className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
                 >
                   {savingEditMatch ? t({ it: 'Salvataggio...', en: 'Saving...' }) : t({ it: 'Salva modifiche', en: 'Save Changes' })}

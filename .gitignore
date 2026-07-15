@@ -39,6 +39,9 @@ yarn-error.log*
 # agent/debug scratch scripts
 scripts/_tmp-*.mjs
 
+# local UI research recordings (large, not runtime assets)
+expo/assets/reference/
+
 # supabase cli
 supabase/.temp/
 

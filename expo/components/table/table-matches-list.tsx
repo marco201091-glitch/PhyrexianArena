@@ -25,6 +25,7 @@ type TableMatchesListProps = {
   onDeleteMatch: (matchId: string) => void;
   onRecordBattle: () => void;
   exportDayLabel: string;
+  drawLabel: string;
   onExportDay: (dayKey: string) => void;
 };
 
@@ -41,6 +42,7 @@ export function TableMatchesList({
   onDeleteMatch,
   onRecordBattle,
   exportDayLabel,
+  drawLabel,
   onExportDay,
 }: TableMatchesListProps) {
   if (dayGroups.length === 0) {
@@ -75,6 +77,7 @@ export function TableMatchesList({
             <MatchCard
               key={match.id}
               match={match}
+              drawLabel={drawLabel}
               onEdit={() => onEditMatch(match)}
               onShare={() => onShareMatch(match)}
               onDelete={() => onDeleteMatch(match.id)}

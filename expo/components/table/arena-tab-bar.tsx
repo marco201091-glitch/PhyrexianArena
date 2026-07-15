@@ -24,7 +24,12 @@ export function ArenaTabBar({ activeTab, labels, onChange }: ArenaTabBarProps) {
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === tab }}
           >
-            <Text style={[styles.label, activeTab === tab && styles.labelActive]}>
+            <Text
+              style={[styles.label, activeTab === tab && styles.labelActive]}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.82}
+            >
               {labels[tab]}
             </Text>
           </Pressable>
@@ -44,11 +49,13 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
+    minHeight: 44,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.surfaceMuted,
   },
   tabActive: {
@@ -56,9 +63,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySurface,
   },
   label: {
+    flexShrink: 1,
     color: colors.muted,
     fontWeight: '600',
     fontSize: 12,
+    textAlign: 'center',
   },
   labelActive: {
     color: colors.foreground,

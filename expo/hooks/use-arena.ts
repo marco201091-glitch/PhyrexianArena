@@ -16,6 +16,12 @@ import { addDeckToGuest, createGuestWithDeck } from '@/lib/guest-arena';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import type { ArenaDetail, ArenaMatch, ArenaProfile, MemberDeck } from '@/lib/types/arena';
+import {
+  clearArenaCache,
+  loadArenaCache,
+  saveArenaCache,
+  type ArenaCacheSnapshot,
+} from '@/lib/arena-cache';
 
 export function useArena(groupId: string | undefined, userId: string | undefined) {
   const [group, setGroup] = useState<ArenaDetail | null>(null);
@@ -25,12 +31,24 @@ export function useArena(groupId: string | undefined, userId: string | undefined
   const [decks, setDecks] = useState<MemberDeck[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const applySnapshot = useCallback((snapshot: ArenaCacheSnapshot) => {
+    setGroup(snapshot.group);
+    setMembers(snapshot.members);
+    setMatches(snapshot.matches);
+    setGuests(snapshot.guests);
+    setDecks(snapshot.decks);
+  }, []);
+
   const refreshMatches = useCallback(async () => {
     if (!groupId) return [] as ArenaMatch[];
     const loaded = await fetchArenaMatches(supabase, groupId);
     setMatches(loaded);
+    if (userId) {
+      const cached = await loadArenaCache(groupId, userId);
+      if (cached) await saveArenaCache({ ...cached, matches: loaded });
+    }
     return loaded;
-  }, [groupId]);
+  }, [groupId, userId]);
 
   const loadMemberDecks = useCallback(async (memberIds: string[]) => {
     const loadedDecks = await fetchArenaMemberDecks(supabase, memberIds);
@@ -38,13 +56,13 @@ export function useArena(groupId: string | undefined, userId: string | undefined
     return loadedDecks;
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (showLoading = true) => {
     if (!groupId || !userId) {
       setLoading(false);
       return null;
     }
 
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const [groupData, loadedMatches, guestData] = await Promise.all([
         fetchArenaGroup(supabase, groupId),
@@ -58,6 +76,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
         setMatches([]);
         setGuests([]);
         setDecks([]);
+        await clearArenaCache(groupId, userId);
         return null;
       }
 
@@ -68,6 +87,16 @@ export function useArena(groupId: string | undefined, userId: string | undefined
 
       const memberIds = groupData.group_members.map((member) => member.user_id);
       const loadedDecks = await loadMemberDecks(memberIds);
+
+      await saveArenaCache({
+        groupId,
+        userId,
+        group: groupData,
+        members: groupData.group_members.map((member) => member.profiles),
+        matches: loadedMatches,
+        guests: guestData,
+        decks: loadedDecks,
+      });
 
       const participantDecks = loadedMatches.flatMap((match) =>
         match.match_participants.map((participant) => getParticipantDeckSnapshot(participant)),
@@ -89,8 +118,10 @@ export function useArena(groupId: string | undefined, userId: string | undefined
         ),
       ], { background: true });
 
-      void refreshMissingImportedDeckImages(loadedDecks).then(() => {
-        void loadMemberDecks(memberIds);
+      void refreshMissingImportedDeckImages(loadedDecks).then(async () => {
+        const repairedDecks = await loadMemberDecks(memberIds);
+        const cached = await loadArenaCache(groupId, userId);
+        if (cached) await saveArenaCache({ ...cached, decks: repairedDecks });
       });
 
       return groupData;
@@ -103,14 +134,35 @@ export function useArena(groupId: string | undefined, userId: string | undefined
   }, [groupId, loadMemberDecks, userId]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (!groupId || !userId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setGroup(null);
+    setMembers([]);
+    setMatches([]);
+    setGuests([]);
+    setDecks([]);
+    setLoading(true);
+    void (async () => {
+      const cached = await loadArenaCache(groupId, userId);
+      if (cancelled) return;
+      if (cached) {
+        applySnapshot(cached);
+        setLoading(false);
+      }
+      await refresh(!cached);
+    })();
+    return () => { cancelled = true; };
+  }, [applySnapshot, groupId, refresh, userId]);
 
   const playerStats = useMemo(() => calculatePlayerStats(matches), [matches]);
 
   const createMatch = useCallback(async (input: {
     selectedParticipantKeys: string[];
-    winnerKey: string;
+    winnerKey: string | null;
+    isDraw: boolean;
     participantDecks: Record<string, string>;
     matchPlayedAtIso: string;
     matchNotes: string;
@@ -119,13 +171,16 @@ export function useArena(groupId: string | undefined, userId: string | undefined
       throw new Error('Missing arena context');
     }
 
-    const winnerParsed = parseParticipantKey(input.winnerKey);
+    const winnerParsed = !input.isDraw && input.winnerKey
+      ? parseParticipantKey(input.winnerKey)
+      : null;
     const { data: match, error: matchError } = await supabase
       .from('matches')
       .insert({
         group_id: groupId,
-        winner_id: winnerParsed?.type === 'user' ? winnerParsed.id : null,
-        winner_guest_id: winnerParsed?.type === 'guest' ? winnerParsed.id : null,
+        is_draw: input.isDraw,
+        winner_id: !input.isDraw && winnerParsed?.type === 'user' ? winnerParsed.id : null,
+        winner_guest_id: !input.isDraw && winnerParsed?.type === 'guest' ? winnerParsed.id : null,
         created_by: userId,
         notes: input.matchNotes || null,
         played_at: input.matchPlayedAtIso,
@@ -146,7 +201,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
         guest_id: isGuest ? parsed?.id : null,
         deck_id: isGuest ? null : deckId,
         guest_deck_id: isGuest ? deckId : null,
-        is_winner: participantKey === input.winnerKey,
+        is_winner: !input.isDraw && participantKey === input.winnerKey,
       };
     });
 
@@ -202,7 +257,8 @@ export function useArena(groupId: string | undefined, userId: string | undefined
 
   const updateMatch = useCallback(async (input: {
     matchId: string;
-    winnerKey: string;
+    winnerKey: string | null;
+    isDraw: boolean;
     participantDecks: Record<string, string>;
     matchPlayedAtIso: string;
     matchNotes: string;
@@ -212,12 +268,15 @@ export function useArena(groupId: string | undefined, userId: string | undefined
       isGuest: boolean;
     }>;
   }) => {
-    const winnerParsed = parseParticipantKey(input.winnerKey);
+    const winnerParsed = !input.isDraw && input.winnerKey
+      ? parseParticipantKey(input.winnerKey)
+      : null;
     const { error: matchError } = await supabase
       .from('matches')
       .update({
-        winner_id: winnerParsed?.type === 'user' ? winnerParsed.id : null,
-        winner_guest_id: winnerParsed?.type === 'guest' ? winnerParsed.id : null,
+        is_draw: input.isDraw,
+        winner_id: !input.isDraw && winnerParsed?.type === 'user' ? winnerParsed.id : null,
+        winner_guest_id: !input.isDraw && winnerParsed?.type === 'guest' ? winnerParsed.id : null,
         notes: input.matchNotes || null,
         played_at: input.matchPlayedAtIso,
       })
@@ -235,7 +294,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
         .update({
           deck_id: participant.isGuest ? null : deckId,
           guest_deck_id: participant.isGuest ? deckId : null,
-          is_winner: participant.participantKey === input.winnerKey,
+          is_winner: !input.isDraw && participant.participantKey === input.winnerKey,
         })
         .eq('id', participant.id);
 
