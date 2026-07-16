@@ -11,34 +11,8 @@ import { Screen } from '@/components/ui/screen';
 import { useLanguage } from '@/contexts/language-context';
 import { colors } from '@/constants/theme';
 import { showAppAlert } from '@/lib/app-alert';
+import { parsePasswordRecoveryUrl } from '@/lib/password-recovery-url';
 import { supabase } from '@/lib/supabase';
-
-function parseTokensFromUrl(url: string) {
-  const parsed = Linking.parse(url);
-  const code = typeof parsed.queryParams?.code === 'string' ? parsed.queryParams.code : null;
-  const accessToken = typeof parsed.queryParams?.access_token === 'string'
-    ? parsed.queryParams.access_token
-    : null;
-  const refreshToken = typeof parsed.queryParams?.refresh_token === 'string'
-    ? parsed.queryParams.refresh_token
-    : null;
-
-  if (accessToken && refreshToken) {
-    return { code: null, accessToken, refreshToken };
-  }
-
-  const hashIndex = url.indexOf('#');
-  if (hashIndex >= 0) {
-    const hashParams = new URLSearchParams(url.slice(hashIndex + 1));
-    const hashAccessToken = hashParams.get('access_token');
-    const hashRefreshToken = hashParams.get('refresh_token');
-    if (hashAccessToken && hashRefreshToken) {
-      return { code: null, accessToken: hashAccessToken, refreshToken: hashRefreshToken };
-    }
-  }
-
-  return { code, accessToken: null, refreshToken: null };
-}
 
 export default function ResetPasswordScreen() {
   const { copy } = useLanguage();
@@ -61,7 +35,7 @@ export default function ResetPasswordScreen() {
         let refreshToken = typeof params.refresh_token === 'string' ? params.refresh_token : null;
 
         if (url) {
-          const parsed = parseTokensFromUrl(url);
+          const parsed = parsePasswordRecoveryUrl(url);
           code = code || parsed.code;
           accessToken = accessToken || parsed.accessToken;
           refreshToken = refreshToken || parsed.refreshToken;

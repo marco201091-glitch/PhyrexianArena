@@ -218,7 +218,12 @@ export function TableSeat({
             <Ionicons name="skull-outline" size={28} color="#fecaca" />
             <Text style={styles.eliminatedLabel}>{labels.eliminated}</Text>
             {onRevive ? (
-              <Pressable style={styles.reviveBtn} onPress={onRevive}>
+              <Pressable
+                style={styles.reviveBtn}
+                onPress={onRevive}
+                accessibilityRole="button"
+                accessibilityLabel={`${labels.revive}: ${player.displayName}`}
+              >
                 <Text style={styles.reviveText}>{labels.revive}</Text>
               </Pressable>
             ) : null}
