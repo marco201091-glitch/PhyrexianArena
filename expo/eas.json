@@ -18,6 +18,15 @@
         "simulator": true
       }
     },
+    "ios-unsigned": {
+      "environment": "preview",
+      "ios": {
+        "withoutCredentials": true,
+        "resourceClass": "m-medium",
+        "image": "latest",
+        "config": "unsigned-ios.yml"
+      }
+    },
     "preview": {
       "distribution": "internal",
       "android": {

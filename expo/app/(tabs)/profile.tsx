@@ -37,7 +37,7 @@ import { MANA_COLOR_ORDER } from '@/lib/mana-colors';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import type { ProfileDeck } from '@/lib/types/profile';
-import { isTabletViewport } from '@/lib/layout';
+import { responsiveGridColumns } from '@/lib/layout';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
   const { width } = useWindowDimensions();
-  const deckColumns = isTabletViewport(width) ? 2 : 1;
+  const deckColumns = responsiveGridColumns(width, 290, 3, spacing.md);
   const [searchQuery, setSearchQuery] = useState('');
   const [deckColorFilter, setDeckColorFilter] = useState('all');
   const [refreshingAllDecks, setRefreshingAllDecks] = useState(false);
@@ -317,6 +317,10 @@ export default function ProfileScreen() {
         columnWrapperStyle={deckColumns > 1 ? styles.deckGridRow : undefined}
         keyExtractor={(deck) => deck.id}
         renderItem={renderDeckItem}
+        initialNumToRender={deckColumns * 2}
+        maxToRenderPerBatch={deckColumns * 2}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
         ListHeaderComponent={listHeader}
         ItemSeparatorComponent={() => <View style={styles.deckSeparator} />}
         contentContainerStyle={scrollContentStyle}

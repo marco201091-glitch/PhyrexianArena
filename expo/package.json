@@ -32,6 +32,7 @@
     "eas:build:preview": "npx eas-cli build --platform android --profile preview",
     "eas:build:production": "npx eas-cli build --platform android --profile production",
     "eas:build:ios:simulator": "npx eas-cli build --platform ios --profile ios-simulator",
+    "eas:build:ios:unsigned": "npx eas-cli build --platform ios --profile ios-unsigned",
     "eas:build:ios:preview": "npx eas-cli build --platform ios --profile preview",
     "eas:build:ios:production": "npx eas-cli build --platform ios --profile production",
     "eas:submit:ios": "npx eas-cli submit --platform ios --profile production",

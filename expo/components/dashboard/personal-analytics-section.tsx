@@ -72,7 +72,13 @@ export function PersonalAnalyticsSection({
               { label: winsLabel, value: analytics.wins },
               { label: winRateLabel, value: `${Math.round((analytics.wins / analytics.gamesPlayed) * 100)}%` },
             ].map((item) => (
-              <StatCard key={item.label} label={item.label} value={item.value} compact />
+              <StatCard
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                compact
+                style={styles.summaryCard}
+              />
             ))}
           </View>
 
@@ -81,12 +87,14 @@ export function PersonalAnalyticsSection({
               label={currentWinStreakLabel}
               value={formatStreak(analytics.currentWinStreak)}
               compact
+              style={styles.summaryCard}
               valueColor={analytics.currentWinStreak > 0 ? colors.successBright : undefined}
             />
             <StatCard
               label={longestWinStreakLabel}
               value={formatStreak(analytics.longestWinStreak)}
               compact
+              style={styles.summaryCard}
               valueColor={analytics.longestWinStreak > 0 ? colors.amber : undefined}
             />
           </View>
@@ -244,8 +252,12 @@ const styles = StyleSheet.create({
   },
   summaryRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'stretch',
     gap: cardRowGap,
+  },
+  summaryCard: {
+    minWidth: 140,
   },
   cardTitle: {
     color: colors.foreground,

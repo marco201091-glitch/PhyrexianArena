@@ -15,6 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": false,
       "bundleIdentifier": "com.phyrexianarena.app",
       "buildNumber": "20812",
       "icon": "./assets/icon.png",

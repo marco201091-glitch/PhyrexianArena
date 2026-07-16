@@ -3,6 +3,9 @@ mobile/
 artifacts/
 .git/
 
+# EAS environments provide build-time values; never upload local env files.
+**/.env*
+
 # Dependencies and generated output are restored by EAS.
 node_modules/
 expo/node_modules/

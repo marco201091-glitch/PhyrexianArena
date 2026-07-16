@@ -9,6 +9,7 @@ import {
   isTabletViewport,
   resolveSafeAreaEdges,
   resolveTabBarHeight,
+  responsiveGridColumns,
   scaleForWidth,
   screenContentMaxWidth,
   tabBarHorizontalInset,
@@ -80,6 +81,24 @@ describe('responsive breakpoints', () => {
     expect(screenContentMaxWidth('artwork')).toBe(layout.contentMaxWidth);
     expect(tabBarHorizontalInset(720)).toBe(0);
     expect(tabBarHorizontalInset(1024)).toBe(152);
+  });
+});
+
+describe('responsiveGridColumns', () => {
+  it('uses native tablet density on full-size iPads', () => {
+    expect(responsiveGridColumns(768, 340, 2, 14)).toBe(2);
+    expect(responsiveGridColumns(1024, 290, 3, 12)).toBe(3);
+    expect(responsiveGridColumns(1366, 290, 3, 12)).toBe(3);
+  });
+
+  it('collapses cleanly in iPad Split View instead of scaling the UI', () => {
+    expect(responsiveGridColumns(507, 340, 2, 14)).toBe(1);
+    expect(responsiveGridColumns(375, 290, 3, 12)).toBe(1);
+  });
+
+  it('always returns a safe column count for invalid limits', () => {
+    expect(responsiveGridColumns(1024, 290, 1)).toBe(1);
+    expect(responsiveGridColumns(1024, 0, 3)).toBe(1);
   });
 });
 
