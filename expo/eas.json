@@ -23,7 +23,7 @@
       "ios": {
         "withoutCredentials": true,
         "resourceClass": "m-medium",
-        "image": "latest",
+        "image": "sdk-53",
         "config": "unsigned-ios.yml"
       }
     },
