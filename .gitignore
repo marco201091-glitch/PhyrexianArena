@@ -68,4 +68,4 @@ mobile/android/keystore.properties
 # expo native prebuild output
 expo/.expo/
 expo/node_modules/
-artifacts/PhyrexianArena-2.8.12.apk
+artifacts/
