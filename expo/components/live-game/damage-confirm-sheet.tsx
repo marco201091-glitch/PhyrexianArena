@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { colors, radii, spacing } from '@/constants/theme';
-import type { DamageMode, LiveGamePlayer } from '@/lib/live-game';
+import type { DamageMode, GroupDamageScope, LiveGamePlayer } from '@/lib/live-game';
 
 const QUICK_AMOUNTS = [1, 2, 3, 5, 10, 15] as const;
 
@@ -23,9 +23,12 @@ type DamageConfirmSheetProps = {
     infectDamage: string;
     apply: string;
     cancel: string;
+    thisPlayer: string;
+    eachOpponent: string;
+    everyone: string;
   };
   onClose: () => void;
-  onConfirm: (input: { amount: number; mode: DamageMode }) => void;
+  onConfirm: (input: { amount: number; mode: DamageMode; scope: 'single' | GroupDamageScope }) => void;
 };
 
 export function DamageConfirmSheet({
@@ -37,13 +40,15 @@ export function DamageConfirmSheet({
   onClose,
   onConfirm,
 }: DamageConfirmSheetProps) {
-  const [amount, setAmount] = useState(1);
+  const [amount, setAmount] = useState(0);
   const [mode, setMode] = useState<DamageMode>(defaultMode);
+  const [scope, setScope] = useState<'single' | GroupDamageScope>('single');
 
   useEffect(() => {
     if (!visible) return;
-    setAmount(1);
+    setAmount(0);
     setMode(defaultMode);
+    setScope('single');
   }, [visible, defaultMode, source?.participantKey, target?.participantKey]);
 
   if (!source || !target) return null;
@@ -54,13 +59,14 @@ export function DamageConfirmSheet({
       onClose={onClose}
       scroll={false}
       presentation="dialog"
-      maxWidth={520}
+      maxWidth={760}
       footer={(
         <View style={styles.footerRow}>
           <Button label={labels.cancel} variant="outline" onPress={onClose} style={styles.footerButton} />
           <Button
             label={labels.apply}
-            onPress={() => onConfirm({ amount, mode })}
+            onPress={() => onConfirm({ amount, mode, scope })}
+            disabled={amount === 0}
             style={styles.footerButton}
           />
         </View>
@@ -73,64 +79,6 @@ export function DamageConfirmSheet({
         onClose={onClose}
       />
 
-      <View style={styles.matchupRow}>
-        <View style={styles.matchupPlayer}>
-          <DeckImage
-            uri={source.commanderImage}
-            alt={source.commander}
-            style={styles.matchupImage}
-            containerStyle={styles.matchupImageWrap}
-          />
-          <Text style={styles.matchupName} numberOfLines={1}>{source.displayName}</Text>
-        </View>
-
-        <View style={styles.arrowWrap}>
-          <Ionicons name="arrow-forward" size={22} color={colors.primaryLight} />
-        </View>
-
-        <View style={styles.matchupPlayer}>
-          <DeckImage
-            uri={target.commanderImage}
-            alt={target.commander}
-            style={styles.matchupImage}
-            containerStyle={styles.matchupImageWrap}
-          />
-          <Text style={styles.matchupName} numberOfLines={1}>{target.displayName}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.sectionLabel}>{labels.amount}</Text>
-      <View style={styles.stepperRow}>
-        <Pressable
-          style={styles.stepButton}
-          onPress={() => setAmount((value) => Math.max(1, value - 1))}
-        >
-          <Ionicons name="remove" size={22} color={colors.foreground} />
-        </Pressable>
-        <Text style={styles.amountValue}>{amount}</Text>
-        <Pressable
-          style={styles.stepButton}
-          onPress={() => setAmount((value) => Math.min(99, value + 1))}
-        >
-          <Ionicons name="add" size={22} color={colors.foreground} />
-        </Pressable>
-      </View>
-
-      <View style={styles.quickRow}>
-        {QUICK_AMOUNTS.map((value) => {
-          const active = amount === value;
-          return (
-            <Pressable
-              key={value}
-              onPress={() => setAmount(value)}
-              style={[styles.quickChip, active && styles.quickChipActive]}
-            >
-              <Text style={[styles.quickChipText, active && styles.quickChipTextActive]}>{value}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
       <View style={styles.typeSegment}>
         {([
           { value: 'life' as const, label: labels.lifeDamage, icon: 'heart-dislike-outline' as const },
@@ -142,7 +90,10 @@ export function DamageConfirmSheet({
           <Pressable
             key={option.value}
             style={[styles.typePill, active && styles.typePillActive]}
-            onPress={() => setMode(option.value)}
+            onPress={() => {
+              setMode(option.value);
+              if (option.value !== 'life') setScope('single');
+            }}
           >
             <Ionicons name={option.icon} size={16} color={active ? colors.primaryForeground : colors.muted} />
             <Text style={[styles.typePillText, active && styles.typePillTextActive]}>
@@ -152,75 +103,129 @@ export function DamageConfirmSheet({
           );
         })}
       </View>
+
+      {mode === 'life' ? (
+        <View style={styles.typeSegment}>
+          {([
+            { value: 'single' as const, label: labels.thisPlayer },
+            { value: 'opponents' as const, label: labels.eachOpponent },
+            { value: 'all_players' as const, label: labels.everyone },
+          ]).map((option) => {
+            const active = scope === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                style={[styles.scopePill, active && styles.scopePillActive]}
+                onPress={() => setScope(option.value)}
+              >
+                <Text style={[styles.scopeText, active && styles.scopeTextActive]}>{option.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      <View style={styles.amountStage}>
+        <DeckImage
+          uri={target.commanderImage}
+          alt={target.commander}
+          style={styles.stageImage}
+          containerStyle={styles.stageImageWrap}
+        />
+        <View style={styles.stageShade} />
+        <View style={styles.stepperRow}>
+          <Pressable
+            style={styles.stepButton}
+            onPress={() => setAmount((value) => Math.max(0, value - 1))}
+            accessibilityRole="button"
+          >
+            <Ionicons name="remove" size={30} color={colors.foreground} />
+          </Pressable>
+          <View style={styles.amountCopy}>
+            <Text style={styles.amountValue}>{amount}</Text>
+            <Text style={styles.amountContext} numberOfLines={2}>
+              {mode === 'life' ? labels.lifeDamage : mode === 'commander' ? labels.commanderDamage : labels.infectDamage}
+              {' · '}
+              {scope === 'opponents' ? labels.eachOpponent : scope === 'all_players' ? labels.everyone : target.displayName}
+            </Text>
+          </View>
+          <Pressable
+            style={styles.stepButton}
+            onPress={() => setAmount((value) => Math.min(99, value + 1))}
+            accessibilityRole="button"
+          >
+            <Ionicons name="add" size={30} color={colors.foreground} />
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.quickRow}>
+        {QUICK_AMOUNTS.map((value) => {
+          const active = amount === value;
+          return (
+            <Pressable
+              key={value}
+              onPress={() => setAmount(value)}
+              style={[styles.quickChip, active && styles.quickChipActive]}
+            >
+              <Text style={[styles.quickChipText, active && styles.quickChipTextActive]}>+{value}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  matchupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  matchupPlayer: {
-    flex: 1,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  matchupImageWrap: {
-    width: 56,
-    height: 78,
-    borderRadius: radii.md,
-    overflow: 'hidden',
-  },
-  matchupImage: {
-    width: 56,
-    height: 78,
-  },
-  matchupName: {
-    color: colors.foreground,
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  arrowWrap: {
-    width: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionLabel: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    textAlign: 'center',
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.lg,
-  },
-  stepButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  amountStage: {
+    minHeight: 188,
+    borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
+    borderColor: 'rgba(248,113,113,0.38)',
+    overflow: 'hidden',
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
+  stageImageWrap: { ...StyleSheet.absoluteFillObject },
+  stageImage: { width: '100%', height: '100%' },
+  stageShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(24,4,12,0.76)' },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+  },
+  stepButton: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.42)',
+  },
+  amountCopy: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+  },
   amountValue: {
-    minWidth: 72,
     textAlign: 'center',
     color: colors.foreground,
-    fontSize: 44,
-    fontWeight: '800',
+    fontSize: 72,
+    lineHeight: 78,
+    fontWeight: '900',
     fontVariant: ['tabular-nums'],
+  },
+  amountContext: {
+    color: colors.foreground,
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   quickRow: {
     flexDirection: 'row',
@@ -279,6 +284,26 @@ const styles = StyleSheet.create({
   },
   typePillTextActive: {
     color: colors.primaryForeground,
+  },
+  scopePill: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.xs,
+  },
+  scopePillActive: {
+    backgroundColor: colors.selectionTintStrong,
+  },
+  scopeText: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  scopeTextActive: {
+    color: colors.foreground,
   },
   footerRow: {
     flexDirection: 'row',

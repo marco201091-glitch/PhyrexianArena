@@ -9,6 +9,7 @@ import {
   type WinCondition,
 } from '@/lib/live-game';
 import type { PendingLiveGameFinalization } from '@/lib/live-game-offline';
+import { recordLiveGameMutationSync } from '@/lib/live-game-telemetry';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export async function fetchActiveLiveGame(
@@ -134,6 +135,8 @@ export async function applyQueuedLiveGameMutation(
   initialRecord: LiveGameRecord,
   queued: QueuedLiveGameMutation,
 ): Promise<LiveGameRecord> {
+  const startedAt = Date.now();
+  let conflicts = 0;
   let base = initialRecord;
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const nextState = applyLiveGameMutation(base.state, queued.mutation);
@@ -149,9 +152,14 @@ export async function applyQueuedLiveGameMutation(
       ...result.record,
       state: parseLiveGameState(result.record.state),
     } as LiveGameRecord;
-    if (result.applied) return record;
+    if (result.applied) {
+      recordLiveGameMutationSync({ durationMs: Date.now() - startedAt, conflicts });
+      return record;
+    }
+    conflicts += 1;
     base = record;
   }
+  recordLiveGameMutationSync({ durationMs: Date.now() - startedAt, conflicts, failed: true });
   throw new Error('Live game state stayed busy after multiple retries');
 }
 

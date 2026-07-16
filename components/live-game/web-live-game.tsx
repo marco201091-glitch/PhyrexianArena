@@ -45,6 +45,7 @@ import {
   isValidLiveGameResult,
   pickRandomPlayer,
   type DamageMode,
+  type GroupDamageScope,
   type LiveGameMutation,
   type LiveGameRecord,
   type QueuedLiveGameMutation,
@@ -75,6 +76,7 @@ import {
   saveWebLiveGameJournal,
   type PendingLiveGameFinalization,
 } from '@/lib/live-game-offline';
+import { recordLiveGameQueueDepth } from '@/lib/live-game-telemetry';
 import {
   createDefaultWebLiveGameSetup,
   loadWebLiveGameSetup,
@@ -112,6 +114,7 @@ type DamageDraft = {
   sourceKey: ParticipantKey;
   targetKey: ParticipantKey;
   mode: DamageMode;
+  scope: 'single' | GroupDamageScope;
 };
 
 const WIN_CONDITIONS: Array<{
@@ -229,7 +232,7 @@ export function WebLiveGame({
   const [starting, setStarting] = useState(false);
 
   const [damageDraft, setDamageDraft] = useState<DamageDraft | null>(null);
-  const [damageAmount, setDamageAmount] = useState('1');
+  const [damageAmount, setDamageAmount] = useState('0');
   const [damagePanelKey, setDamagePanelKey] = useState<ParticipantKey | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [highlight, setHighlight] = useState<ParticipantKey | null>(null);
@@ -608,8 +611,9 @@ export function WebLiveGame({
       occurredAt: mutation.occurredAt ?? new Date().toISOString(),
     };
     queueRef.current = [...queueRef.current, { id, mutation: tracked }];
+    recordLiveGameQueueDepth(queueRef.current.length);
     if (inverse) {
-      undoRef.current = [...undoRef.current.slice(-29), inverse];
+      undoRef.current = [...undoRef.current.slice(-29), { ...inverse, isCorrection: true }];
       setUndoDepth(undoRef.current.length);
     }
     const next = { ...current, state: applyLiveGameMutation(current.state, tracked) };
@@ -674,8 +678,8 @@ export function WebLiveGame({
     const up = () => {
       setDrag((current) => {
         if (current?.targetKey) {
-          setDamageDraft({ sourceKey: current.sourceKey, targetKey: current.targetKey, mode: 'life' });
-          setDamageAmount('1');
+          setDamageDraft({ sourceKey: current.sourceKey, targetKey: current.targetKey, mode: 'life', scope: 'single' });
+          setDamageAmount('0');
         }
         return null;
       });
@@ -692,20 +696,35 @@ export function WebLiveGame({
 
   const applyDamageDraft = () => {
     if (!damageDraft) return;
-    const amount = Math.max(1, Math.min(999, Number(damageAmount) || 1));
-    enqueue({
-      type: 'adjust',
-      targetKey: damageDraft.targetKey,
-      sourceKey: damageDraft.sourceKey,
-      amount,
-      mode: damageDraft.mode,
-    }, {
-      type: 'adjust',
-      targetKey: damageDraft.targetKey,
-      sourceKey: damageDraft.sourceKey,
-      amount: -amount,
-      mode: damageDraft.mode,
-    });
+    const amount = Math.max(0, Math.min(999, Number(damageAmount) || 0));
+    if (amount === 0) return;
+    if (damageDraft.scope !== 'single' && damageDraft.mode === 'life') {
+      enqueue({
+        type: 'adjust_many',
+        sourceKey: damageDraft.sourceKey,
+        amount,
+        scope: damageDraft.scope,
+      }, {
+        type: 'adjust_many',
+        sourceKey: damageDraft.sourceKey,
+        amount: -amount,
+        scope: damageDraft.scope,
+      });
+    } else {
+      enqueue({
+        type: 'adjust',
+        targetKey: damageDraft.targetKey,
+        sourceKey: damageDraft.sourceKey,
+        amount,
+        mode: damageDraft.mode,
+      }, {
+        type: 'adjust',
+        targetKey: damageDraft.targetKey,
+        sourceKey: damageDraft.sourceKey,
+        amount: -amount,
+        mode: damageDraft.mode,
+      });
+    }
     setDamageDraft(null);
   };
 
@@ -1029,7 +1048,45 @@ export function WebLiveGame({
 
       {drag && <svg className="pointer-events-none fixed inset-0 z-50 h-full w-full"><defs><marker id="damage-arrow" markerWidth="14" markerHeight="14" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fb7185" /></marker><filter id="damage-glow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs><path d={`M ${drag.startX} ${drag.startY} Q ${(drag.startX + drag.x) / 2} ${Math.min(drag.startY, drag.y) - 90} ${drag.x} ${drag.y}`} fill="none" stroke="#fb7185" strokeWidth="7" strokeLinecap="round" markerEnd="url(#damage-arrow)" filter="url(#damage-glow)" strokeDasharray="12 8"><animate attributeName="stroke-dashoffset" from="40" to="0" dur=".7s" repeatCount="indefinite" /></path></svg>}
 
-      {damageDraft && <ModalOverlay><ModalCard><ModalTitle icon={Swords} title={copy({ it: 'Assegna danno', en: 'Assign damage' })} onClose={() => setDamageDraft(null)} /><div className="space-y-5 overflow-y-auto p-5"><div className="grid grid-cols-3 gap-2">{(['life', 'commander', 'infect'] as DamageMode[]).map((mode) => <button key={mode} onClick={() => setDamageDraft({ ...damageDraft, mode })} className={cn('rounded-xl border p-3 text-sm font-black capitalize', damageDraft.mode === mode ? 'border-violet-400 bg-violet-500/25' : 'border-border bg-background')}>{mode}</button>)}</div><div className="grid grid-cols-5 gap-2">{[1, 2, 3, 5, 10].map((amount) => <button key={amount} onClick={() => setDamageAmount(String(amount))} className={cn('h-11 rounded-xl border font-black', damageAmount === String(amount) ? 'border-rose-400 bg-rose-500/20' : 'border-border')}>{amount}</button>)}</div><input value={damageAmount} onChange={(event) => setDamageAmount(event.target.value.replace(/\D/g, ''))} inputMode="numeric" className="h-12 w-full rounded-xl border border-input bg-background px-4 text-center text-xl font-black outline-none focus:border-violet-400" /><Button onClick={applyDamageDraft} className="h-12 w-full bg-gradient-to-r from-rose-600 to-orange-600 font-black">{copy({ it: 'Applica danno', en: 'Apply damage' })}</Button></div></ModalCard></ModalOverlay>}
+      {damageDraft && (() => {
+        const source = record.state.players.find((player) => player.participantKey === damageDraft.sourceKey);
+        const target = record.state.players.find((player) => player.participantKey === damageDraft.targetKey);
+        const amount = Math.max(0, Math.min(999, Number(damageAmount) || 0));
+        const targetCount = damageDraft.scope === 'all_players'
+          ? record.state.players.filter((player) => !player.isEliminated).length
+          : damageDraft.scope === 'opponents'
+            ? record.state.players.filter((player) => !player.isEliminated && player.participantKey !== damageDraft.sourceKey).length
+            : 1;
+        const scopeLabel = damageDraft.scope === 'opponents'
+          ? copy({ it: 'ogni avversario', en: 'each opponent' })
+          : damageDraft.scope === 'all_players'
+            ? copy({ it: 'tutti i giocatori', en: 'all players' })
+            : target?.displayName || '';
+        const modeLabel = damageDraft.mode === 'life'
+          ? copy({ it: 'danno', en: 'damage' })
+          : damageDraft.mode === 'commander' ? copy({ it: 'danno commander', en: 'commander damage' }) : 'infect';
+        return <ModalOverlay className="bg-black/90"><ModalCard size="lg" className="relative overflow-hidden border-rose-400/25 bg-zinc-950">
+          {target?.commanderImage ? <DeckImage src={target.commanderImage} alt={target.commander} className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-20" /> : null}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950/95 via-rose-950/65 to-zinc-950/95" />
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <ModalTitle icon={Swords} title={copy({ it: 'Assegna danno', en: 'Assign damage' })} onClose={() => setDamageDraft(null)} />
+          <div className="space-y-4 overflow-y-auto p-4 sm:p-5">
+          <p className="truncate text-center text-xs font-bold uppercase tracking-[0.18em] text-zinc-300">{source?.displayName} <span className="px-2 text-rose-300">→</span> {target?.displayName}</p>
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/35 p-1">{(['life', 'commander', 'infect'] as DamageMode[]).map((mode) => <button key={mode} onClick={() => setDamageDraft({ ...damageDraft, mode, scope: mode === 'life' ? damageDraft.scope : 'single' })} className={cn('min-h-11 rounded-xl px-2 text-xs font-black uppercase tracking-wide transition', damageDraft.mode === mode ? 'bg-violet-500 text-white shadow-lg' : 'text-zinc-400 hover:bg-white/5')}>{mode === 'life' ? copy({ it: 'Normale', en: 'Normal' }) : mode === 'commander' ? 'Commander' : 'Infect'}</button>)}</div>
+          {damageDraft.mode === 'life' ? <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/25 p-1">{([
+            ['single', copy({ it: 'Questo giocatore', en: 'This player' })],
+            ['opponents', copy({ it: 'Ogni avversario', en: 'Each opponent' })],
+            ['all_players', copy({ it: 'Tutti', en: 'Everyone' })],
+          ] as const).map(([scope, label]) => <button key={scope} onClick={() => setDamageDraft({ ...damageDraft, scope })} className={cn('min-h-11 rounded-xl px-2 py-2 text-[11px] font-bold transition', damageDraft.scope === scope ? 'bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/70' : 'text-zinc-400 hover:bg-white/5')}>{label}</button>)}</div> : null}
+          <div className="relative flex min-h-52 items-center justify-between overflow-hidden rounded-3xl border border-rose-400/30 bg-black/35 px-5 sm:px-10">
+            <button type="button" onClick={() => setDamageAmount(String(Math.max(0, amount - 1)))} className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/25 bg-black/40 text-3xl font-light transition active:scale-90">−</button>
+            <div className="min-w-0 flex-1 text-center"><input aria-label={copy({ it: 'Quantità danno', en: 'Damage amount' })} value={damageAmount} onChange={(event) => setDamageAmount(event.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" className="h-24 w-full bg-transparent text-center text-7xl font-black leading-none tabular-nums text-white outline-none" /><p className="truncate text-sm font-black uppercase tracking-wide text-zinc-100">{modeLabel} · {scopeLabel}</p></div>
+            <button type="button" onClick={() => setDamageAmount(String(Math.min(999, amount + 1)))} className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/25 bg-black/40 text-3xl font-light transition active:scale-90">+</button>
+          </div>
+          <div className="grid grid-cols-6 gap-2">{[1, 2, 3, 5, 10, 15].map((quickAmount) => <button key={quickAmount} onClick={() => setDamageAmount(String(quickAmount))} className={cn('h-10 rounded-xl border text-sm font-black transition', damageAmount === String(quickAmount) ? 'border-rose-400 bg-rose-500/25 text-white' : 'border-white/10 bg-black/25 text-zinc-400')}>+{quickAmount}</button>)}</div>
+          <div className="grid grid-cols-2 gap-3 pt-1"><Button variant="outline" onClick={() => setDamageDraft(null)} className="h-12 border-white/20 bg-black/20 font-black">{copy({ it: 'Annulla', en: 'Cancel' })}</Button><Button onClick={applyDamageDraft} disabled={amount === 0} className="h-12 bg-gradient-to-r from-rose-600 to-orange-600 font-black disabled:opacity-40">{damageDraft.scope === 'single' ? copy({ it: 'Risolvi', en: 'Resolve' }) : `${copy({ it: 'Risolvi', en: 'Resolve' })} ${amount} × ${targetCount}`}</Button></div>
+        </div></div></ModalCard></ModalOverlay>;
+      })()}
 
       {panelPlayer && (
         <ModalOverlay>

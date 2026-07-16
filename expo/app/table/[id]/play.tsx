@@ -69,6 +69,7 @@ import {
   saveLiveGameOfflineSession,
   type PendingLiveGameFinalization,
 } from '@/lib/live-game-offline';
+import { recordLiveGameQueueDepth } from '@/lib/live-game-telemetry';
 import {
   applyLiveGameImmersive,
   clearLiveGameImmersive,
@@ -550,8 +551,9 @@ export default function LiveGameScreen() {
     };
     const queued = { id, mutation: trackedMutation };
     mutationQueueRef.current = [...mutationQueueRef.current, queued];
+    recordLiveGameQueueDepth(mutationQueueRef.current.length);
     if (inverse) {
-      undoStackRef.current = [...undoStackRef.current.slice(-29), inverse];
+      undoStackRef.current = [...undoStackRef.current.slice(-29), { ...inverse, isCorrection: true }];
       setUndoDepth(undoStackRef.current.length);
     }
     setOptimisticRecord({ ...current, state: applyLiveGameMutation(current.state, trackedMutation) });
@@ -755,20 +757,38 @@ export default function LiveGameScreen() {
     targetKey: ParticipantKey;
     amount: number;
     mode: DamageMode;
+    scope: 'single' | import('@/lib/live-game').GroupDamageScope;
   }) => {
     if (input.sourceKey === input.targetKey || input.amount <= 0) return;
-    pulseDamage(input.targetKey);
-    const mutation: LiveGameMutation = {
-      type: 'adjust',
-      targetKey: input.targetKey,
-      amount: input.amount,
-      mode: input.mode,
-      sourceKey: input.sourceKey,
-    };
-    const player = liveGameRef.current?.state.players.find(
-      (entry) => entry.participantKey === input.targetKey,
-    );
-    enqueueMutation(mutation, player ? { type: 'restore-player', player } : undefined);
+    if (input.scope !== 'single' && input.mode === 'life') {
+      liveGameRef.current?.state.players
+        .filter((player) => !player.isEliminated && (input.scope === 'all_players' || player.participantKey !== input.sourceKey))
+        .forEach((player) => pulseDamage(player.participantKey));
+      enqueueMutation({
+        type: 'adjust_many',
+        sourceKey: input.sourceKey,
+        amount: input.amount,
+        scope: input.scope,
+      }, {
+        type: 'adjust_many',
+        sourceKey: input.sourceKey,
+        amount: -input.amount,
+        scope: input.scope,
+      });
+    } else {
+      pulseDamage(input.targetKey);
+      const mutation: LiveGameMutation = {
+        type: 'adjust',
+        targetKey: input.targetKey,
+        amount: input.amount,
+        mode: input.mode,
+        sourceKey: input.sourceKey,
+      };
+      const player = liveGameRef.current?.state.players.find(
+        (entry) => entry.participantKey === input.targetKey,
+      );
+      enqueueMutation(mutation, player ? { type: 'restore-player', player } : undefined);
+    }
     hapticSuccess();
   };
 
@@ -1009,6 +1029,9 @@ export default function LiveGameScreen() {
             counterclockwise: copy('liveGameCounterclockwise'),
             damageReceived: copy('liveGameDamageReceived'),
             undo: copy('liveGameUndo'),
+            thisPlayer: copy('liveGameThisPlayer'),
+            eachOpponent: copy('liveGameEachOpponent'),
+            everyone: copy('liveGameEveryone'),
           }}
           onBack={() => setShowExitChoice(true)}
           canUndo={undoDepth > 0}

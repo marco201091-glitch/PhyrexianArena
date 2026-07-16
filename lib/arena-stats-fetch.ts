@@ -7,18 +7,36 @@ export interface ArenaStatsParticipantRow {
   match_id: string;
   played_at: string;
   is_draw: boolean;
+  duration_seconds: number | null;
+  win_condition: string | null;
+  tracking_version: number | null;
   user_id: string | null;
   guest_id: string | null;
   deck_id: string | null;
   guest_deck_id: string | null;
   is_winner: boolean;
+  placement: number | null;
+  was_starting_player: boolean;
+  tracked_event_count: number;
+  life_lost: number;
+  life_gained: number;
+  life_damage_dealt: number;
+  commander_damage_taken: number;
+  commander_damage_dealt: number;
+  infect_received: number;
+  infect_dealt: number;
+  eliminations_caused: number;
+  group_damage_dealt: number;
+  group_damage_events: number;
   username: string | null;
   display_name: string | null;
   guest_display_name: string | null;
+  deck_name: string | null;
   deck_commander: string | null;
   deck_commander_image: string | null;
   deck_bracket: string | null;
   deck_color_identity: string[] | null;
+  guest_deck_name: string | null;
   guest_deck_commander: string | null;
   guest_deck_commander_image: string | null;
   guest_deck_bracket: string | null;
@@ -110,11 +128,24 @@ export async function fetchArenaStatsParticipants(
         deck_id,
         guest_deck_id,
         is_winner,
+        placement,
+        was_starting_player,
+        tracked_event_count,
+        life_lost,
+        life_gained,
+        life_damage_dealt,
+        commander_damage_taken,
+        commander_damage_dealt,
+        infect_received,
+        infect_dealt,
+        eliminations_caused,
+        group_damage_dealt,
+        group_damage_events,
         profiles (username, display_name),
         arena_guests (display_name),
-        decks (commander, commander_image, bracket, color_identity),
-        arena_guest_decks (commander, commander_image, bracket, color_identity),
-        matches!inner (group_id, played_at, is_draw)
+        decks (name, commander, commander_image, bracket, color_identity),
+        arena_guest_decks (name, commander, commander_image, bracket, color_identity),
+        matches!inner (group_id, played_at, is_draw, duration_seconds, win_condition, tracking_version)
       `)
       .eq('matches.group_id', groupId);
 
@@ -130,23 +161,47 @@ export async function fetchArenaStatsParticipants(
         return new Date(playedAt).getTime() >= sinceMs;
       })
       .map((row) => {
-        const match = row.matches as unknown as { played_at: string; is_draw?: boolean };
+        const match = row.matches as unknown as {
+          played_at: string;
+          is_draw?: boolean;
+          duration_seconds?: number | null;
+          win_condition?: string | null;
+          tracking_version?: number | null;
+        };
         return {
         match_id: row.match_id,
         played_at: match.played_at,
         is_draw: Boolean(match.is_draw),
+        duration_seconds: match.duration_seconds ?? null,
+        win_condition: match.win_condition ?? null,
+        tracking_version: match.tracking_version ?? null,
         user_id: row.user_id,
         guest_id: row.guest_id,
         deck_id: row.deck_id,
         guest_deck_id: row.guest_deck_id,
         is_winner: row.is_winner,
+        placement: (row as typeof row & { placement?: number | null }).placement ?? null,
+        was_starting_player: Boolean((row as typeof row & { was_starting_player?: boolean }).was_starting_player),
+        tracked_event_count: Number((row as typeof row & { tracked_event_count?: number }).tracked_event_count || 0),
+        life_lost: Number((row as typeof row & { life_lost?: number }).life_lost || 0),
+        life_gained: Number((row as typeof row & { life_gained?: number }).life_gained || 0),
+        life_damage_dealt: Number((row as typeof row & { life_damage_dealt?: number }).life_damage_dealt || 0),
+        commander_damage_taken: Number((row as typeof row & { commander_damage_taken?: number }).commander_damage_taken || 0),
+        commander_damage_dealt: Number((row as typeof row & { commander_damage_dealt?: number }).commander_damage_dealt || 0),
+        infect_received: Number((row as typeof row & { infect_received?: number }).infect_received || 0),
+        infect_dealt: Number((row as typeof row & { infect_dealt?: number }).infect_dealt || 0),
+        eliminations_caused: Number((row as typeof row & { eliminations_caused?: number }).eliminations_caused || 0),
+        group_damage_dealt: Number((row as typeof row & { group_damage_dealt?: number }).group_damage_dealt || 0),
+        group_damage_events: Number((row as typeof row & { group_damage_events?: number }).group_damage_events || 0),
         username: (row.profiles as { username?: string } | null)?.username ?? null,
         display_name: (row.profiles as { display_name?: string | null } | null)?.display_name ?? null,
         guest_display_name: (row.arena_guests as { display_name?: string } | null)?.display_name ?? null,
+        deck_name: (row.decks as { name?: string } | null)?.name ?? null,
         deck_commander: (row.decks as { commander?: string } | null)?.commander ?? null,
         deck_commander_image: (row.decks as { commander_image?: string | null } | null)?.commander_image ?? null,
         deck_bracket: (row.decks as { bracket?: string | null } | null)?.bracket ?? null,
         deck_color_identity: (row.decks as { color_identity?: string[] | null } | null)?.color_identity ?? null,
+        guest_deck_name: (row.arena_guest_decks as { name?: string } | null)?.name ?? null,
         guest_deck_commander: (row.arena_guest_decks as { commander?: string } | null)?.commander ?? null,
         guest_deck_commander_image: (row.arena_guest_decks as { commander_image?: string | null } | null)?.commander_image ?? null,
         guest_deck_bracket: (row.arena_guest_decks as { bracket?: string | null } | null)?.bracket ?? null,
@@ -202,7 +257,7 @@ export function buildPlayerStatsFromRows(
 export function buildCommanderStatsFromRows(
   rows: ArenaStatsParticipantRow[],
   bracketFilter: string,
-  sort: 'winRate' | 'wins' | 'gamesPlayed' = 'winRate',
+  sort: 'winRate' | 'gamesPlayed' = 'winRate',
 ): CommanderStatsRow[] {
   const map = new Map<string, CommanderStatsRow>();
 
@@ -238,7 +293,6 @@ export function buildCommanderStatsFromRows(
 
   return results.sort((a, b) => {
     if (sort === 'gamesPlayed') return b.gamesPlayed - a.gamesPlayed || b.wins - a.wins;
-    if (sort === 'wins') return b.wins - a.wins || b.winRate - a.winRate;
     return b.winRate - a.winRate || b.wins - a.wins;
   });
 }

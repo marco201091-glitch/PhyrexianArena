@@ -224,6 +224,24 @@ describe('live game mutations', () => {
     expect(next.players[0]?.isEliminated).toBe(true);
   });
 
+  it('applies and reverses table-wide damage atomically', () => {
+    const damaged = applyLiveGameMutation(makeState(), {
+      type: 'adjust_many', sourceKey: keys[0], amount: 6, scope: 'opponents',
+      eventId: 'group-hit', occurredAt: '2026-07-16T12:00:00.000Z',
+    });
+    const restored = applyLiveGameMutation(damaged, {
+      type: 'adjust_many', sourceKey: keys[0], amount: -6, scope: 'opponents',
+      eventId: 'undo-group-hit', occurredAt: '2026-07-16T12:00:01.000Z', isCorrection: true,
+    });
+
+    expect(damaged.version).toBe(1);
+    expect(damaged.players.map((player) => player.life)).toEqual([40, 34]);
+    expect(damaged.summary?.byParticipant[keys[0]]?.groupDamageDealt).toBe(6);
+    expect(restored.version).toBe(2);
+    expect(restored.players.map((player) => player.life)).toEqual([40, 40]);
+    expect(restored.summary?.byParticipant[keys[0]]?.groupDamageDealt).toBe(0);
+  });
+
   it('requires an alternative win condition unless only one player remains', () => {
     const activeState = makeState();
     expect(getDefaultWinCondition(activeState)).toBeNull();

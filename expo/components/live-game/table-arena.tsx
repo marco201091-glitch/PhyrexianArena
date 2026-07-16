@@ -29,7 +29,7 @@ import {
   type PodBounds,
   type TableLayoutVariant,
 } from '@/lib/live-game-table-layout';
-import type { DamageMode, LiveGamePlayer, PlayDirection } from '@/lib/live-game';
+import type { DamageMode, GroupDamageScope, LiveGamePlayer, PlayDirection } from '@/lib/live-game';
 import type { ParticipantKey } from '@/lib/participant-keys';
 
 type PendingTransfer = {
@@ -74,6 +74,9 @@ type TableArenaProps = {
     counterclockwise: string;
     damageReceived: string;
     undo: string;
+    thisPlayer: string;
+    eachOpponent: string;
+    everyone: string;
   };
   onBack: () => void;
   canUndo: boolean;
@@ -85,6 +88,7 @@ type TableArenaProps = {
     targetKey: ParticipantKey;
     amount: number;
     mode: DamageMode;
+    scope: 'single' | GroupDamageScope;
   }) => void;
   onEliminate: (key: ParticipantKey) => void;
   onRevive: (key: ParticipantKey) => void;
@@ -517,9 +521,12 @@ export function TableArena({
           infectDamage: labels.infect,
           apply: labels.applyDamage,
           cancel: labels.cancel,
+          thisPlayer: labels.thisPlayer,
+          eachOpponent: labels.eachOpponent,
+          everyone: labels.everyone,
         }}
         onClose={() => setPendingTransfer(null)}
-        onConfirm={({ amount, mode }) => {
+        onConfirm={({ amount, mode, scope }) => {
           if (!pendingTransfer) return;
           const sourceName = playersByKey.get(pendingTransfer.sourceKey)?.displayName ?? '';
           const targetName = playersByKey.get(pendingTransfer.targetKey)?.displayName ?? '';
@@ -531,8 +538,12 @@ export function TableArena({
             targetKey: pendingTransfer.targetKey,
             amount,
             mode,
+            scope,
           });
-          setDamageFeedback(`${sourceName} → ${targetName} · ${amount} ${modeLabel}`);
+          const destination = scope === 'opponents'
+            ? labels.eachOpponent
+            : scope === 'all_players' ? labels.everyone : targetName;
+          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}`);
           setTimeout(() => setDamageFeedback(null), 3200);
           setPendingTransfer(null);
         }}

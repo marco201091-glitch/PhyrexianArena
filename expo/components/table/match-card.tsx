@@ -17,9 +17,10 @@ type MatchCardProps = {
   onEdit: () => void;
   onShare: () => void;
   onDelete: () => void;
+  onDetails?: () => void;
 };
 
-export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete }: MatchCardProps) {
+export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete, onDetails }: MatchCardProps) {
   return (
     <PhyrexianPanel variant="inset" padded={false}>
       {match.is_draw ? (
@@ -86,6 +87,7 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
       ) : null}
 
       <View style={styles.actions}>
+        {onDetails ? <Pressable onPress={onDetails} hitSlop={8} style={styles.detailsButton} accessibilityRole="button"><Ionicons name="stats-chart-outline" size={16} color={colors.primaryMuted} /><Text style={styles.detailsText}>Details</Text></Pressable> : null}
         <Pressable onPress={onShare} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
           <Ionicons name="share-outline" size={18} color={colors.muted} />
         </Pressable>
@@ -207,4 +209,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  detailsButton: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.sm, marginRight: 'auto' },
+  detailsText: { color: colors.primaryMuted, fontSize: 12, fontWeight: '700' },
 });

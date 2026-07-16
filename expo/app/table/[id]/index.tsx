@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { showAppAlert } from '@/lib/app-alert';
 import { AddGuestModal, type GuestModalMode } from '@/components/table/add-guest-modal';
 import { EditMatchModal } from '@/components/table/edit-match-modal';
+import { MatchDetailsModal } from '@/components/table/match-details-modal';
 import { ArenaFilterPanel } from '@/components/table/arena-filter-panel';
 import { ArenaTabBar } from '@/components/table/arena-tab-bar';
 import { ArenaCommandPanel } from '@/components/table/arena-command-panel';
@@ -23,6 +24,7 @@ import { TableDecksTab } from '@/components/table/table-decks-tab';
 import { TableGuestsSection } from '@/components/table/table-guests-section';
 import { TableMatchesList } from '@/components/table/table-matches-list';
 import { TableMetaTab } from '@/components/table/table-meta-tab';
+import { TableAwardsTab } from '@/components/table/table-awards-tab';
 import { TablePlayersTab } from '@/components/table/table-players-tab';
 import { RecordMatchModal } from '@/components/table/record-match-modal';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
@@ -58,6 +60,7 @@ import { buildMatchShareText } from '@/lib/arena-match-share';
 import { groupMatchesByDay } from '@/lib/arena-session';
 import { buildArenaShareText } from '@/lib/arena-share';
 import { calculatePlayerStats, getMatchWinnerName } from '@/lib/arena-stats';
+import { calculateArenaAwards } from '@/lib/arena-awards';
 import { getSiteUrl } from '@/lib/env';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
@@ -68,7 +71,7 @@ import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import type { ArenaMatch } from '@/lib/types/arena';
 
-type ArenaTab = 'matches' | 'players' | 'decks' | 'meta';
+type ArenaTab = 'matches' | 'players' | 'decks' | 'awards' | 'meta';
 
 const DATE_FILTERS: ArenaDateFilter[] = ['all', '7d', '30d', '90d'];
 
@@ -79,10 +82,9 @@ const DATE_FILTER_KEYS = {
   '90d': 'filter90d',
 } as const;
 
-const DECK_SORT_KEYS: Record<DeckStatsSort, 'deckSortWinRate' | 'deckSortGamesPlayed' | 'deckSortWins'> = {
+const DECK_SORT_KEYS: Record<DeckStatsSort, 'deckSortWinRate' | 'deckSortGamesPlayed'> = {
   winRate: 'deckSortWinRate',
   gamesPlayed: 'deckSortGamesPlayed',
-  wins: 'deckSortWins',
 };
 
 export default function TableScreen() {
@@ -129,6 +131,7 @@ export default function TableScreen() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingMatch, setEditingMatch] = useState<ArenaMatch | null>(null);
+  const [detailsMatch, setDetailsMatch] = useState<ArenaMatch | null>(null);
   const [exportDayKey, setExportDayKey] = useState<string | null>(null);
   const [exportIntro, setExportIntro] = useState('');
   const [savingMatch, setSavingMatch] = useState(false);
@@ -200,6 +203,7 @@ export default function TableScreen() {
     () => computeArenaColorAnalytics(filteredMatches, new Map(), bracketFilter),
     [bracketFilter, filteredMatches],
   );
+  const arenaAwards = useMemo(() => calculateArenaAwards(filteredMatches), [filteredMatches]);
 
   const matchDayGroups = useMemo(() => {
     const locale = language === 'it' ? 'it-IT' : 'en-US';
@@ -411,6 +415,9 @@ export default function TableScreen() {
         draw: copy('liveGameDraw'),
         comment: copy('comment'),
         noComment: copy('noComment'),
+        duration: copy('matchDuration'),
+        damageDealt: copy('damageDealt'),
+        eliminations: copy('eliminations'),
       }, locale);
       setSharePreview({ title: copy('shareMatchLog'), message });
     },
@@ -586,6 +593,7 @@ export default function TableScreen() {
             matches: copy('matchesTab'),
             players: copy('playersTab'),
             decks: copy('decksTab'),
+            awards: copy('awardsTab'),
             meta: copy('metaTab'),
           }}
           onChange={setActiveTab}
@@ -607,7 +615,6 @@ export default function TableScreen() {
           deckSortLabels={{
             winRate: copy(DECK_SORT_KEYS.winRate),
             gamesPlayed: copy(DECK_SORT_KEYS.gamesPlayed),
-            wins: copy(DECK_SORT_KEYS.wins),
           }}
           labels={{
             filterPeriod: copy('filterPeriod'),
@@ -632,6 +639,7 @@ export default function TableScreen() {
             onEditMatch={setEditingMatch}
             onShareMatch={handleShareMatch}
             onDeleteMatch={handleDeleteMatch}
+            onDetailsMatch={setDetailsMatch}
             onRecordBattle={() => setShowRecordModal(true)}
             exportDayLabel={copy('exportDay')}
             drawLabel={copy('liveGameDraw')}
@@ -685,6 +693,22 @@ export default function TableScreen() {
               deckRankings: copy('deckRankings'),
               bracket: copy('bracket'),
               games: copy('games'),
+            }}
+          />
+        ) : null}
+
+        {activeTab === 'awards' ? (
+          <TableAwardsTab
+            awards={arenaAwards}
+            labels={{
+              emptyTitle: copy('awardsEmptyTitle'),
+              emptyBody: copy('awardsEmptyBody'),
+              hint: copy('awardsHint'),
+              fastest: copy('awardFastest'),
+              slugger: 'Group Slugger',
+              executioner: 'Executioner',
+              runnerUp: copy('awardRunnerUp'),
+              trackedGames: copy('trackedGames'),
             }}
           />
         ) : null}
@@ -920,6 +944,23 @@ export default function TableScreen() {
           } finally {
             setSavingMatch(false);
           }
+        }}
+      />
+
+      <MatchDetailsModal
+        visible={Boolean(detailsMatch)}
+        match={detailsMatch}
+        onClose={() => setDetailsMatch(null)}
+        labels={{
+          title: copy('matchDetailsTitle'),
+          duration: copy('matchDuration'),
+          events: copy('trackedEvents'),
+          damageDealt: copy('damageDealt'),
+          lifeLost: copy('lifeLost'),
+          lifeGained: copy('lifeGained'),
+          commander: copy('liveGameCommanderDamage'),
+          infect: copy('liveGameInfect'),
+          started: copy('startedPlayer'),
         }}
       />
 

@@ -51,6 +51,11 @@ export interface MatchParticipantRecord {
   eliminations_caused?: number;
   revives?: number;
   corrections?: number;
+  placement?: number | null;
+  eliminated_at?: string | null;
+  was_starting_player?: boolean;
+  group_damage_dealt?: number;
+  group_damage_events?: number;
   profiles?: {
     id: string;
     username: string;

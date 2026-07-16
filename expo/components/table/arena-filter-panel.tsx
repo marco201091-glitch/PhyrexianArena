@@ -6,7 +6,7 @@ import { spacing } from '@/constants/theme';
 import type { ArenaDateFilter } from '@/lib/arena-filters';
 import type { DeckStatsSort } from '@/lib/arena-deck-stats';
 
-type ArenaTab = 'matches' | 'players' | 'decks' | 'meta';
+type ArenaTab = 'matches' | 'players' | 'decks' | 'awards' | 'meta';
 
 type ArenaFilterPanelProps = {
   activeTab: ArenaTab;
@@ -103,7 +103,7 @@ export function ArenaFilterPanel({
       title: labels.sortBy,
       content: (
         <ChipRow>
-          {(['winRate', 'gamesPlayed', 'wins'] as DeckStatsSort[]).map((sort) => (
+          {(['winRate', 'gamesPlayed'] as DeckStatsSort[]).map((sort) => (
             <FilterChip
               key={sort}
               label={deckSortLabels[sort]}
