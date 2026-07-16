@@ -1,5 +1,6 @@
 # Monorepo: EAS builds the expo app; skip unrelated trees.
 mobile/
+artifacts/
 .git/
 
 # Native folders are regenerated on EAS.
@@ -9,3 +10,4 @@ expo/ios/
 # Local Gradle / Metro caches.
 **/.gradle/
 **/build/
+expo/coverage/

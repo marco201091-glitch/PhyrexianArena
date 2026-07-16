@@ -16,7 +16,6 @@
     "android:clean": "npm run android:stop-gradle && cd android && gradlew.bat clean --no-build-cache && cd ..",
     "android:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
     "android:open": "adb shell am start -n com.phyrexianarena.app/.MainActivity",
-    "ios": "expo run:ios",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && npm run verify:logos",

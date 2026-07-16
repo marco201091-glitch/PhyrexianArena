@@ -3,6 +3,7 @@
     "name": "Phyrexian Arena",
     "slug": "phyrexian-arena",
     "version": "2.8.12",
+    "platforms": ["android", "web"],
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "phyrexianarena",
@@ -12,11 +13,6 @@
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0a0a0f"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.phyrexianarena.app",
-      "icon": "./assets/icon.png"
     },
     "android": {
       "package": "com.phyrexianarena.app",

@@ -7,6 +7,7 @@
 
 # testing
 /coverage
+expo/coverage/
 
 # next.js
 /.next/
@@ -67,3 +68,4 @@ mobile/android/keystore.properties
 # expo native prebuild output
 expo/.expo/
 expo/node_modules/
+artifacts/
