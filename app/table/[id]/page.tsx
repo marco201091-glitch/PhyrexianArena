@@ -20,6 +20,8 @@ import { AppLoader } from '@/components/ui/app-loader';
 import { ManaLogo } from '@/components/ui/mana-logo';
 import { AppProfileButton } from '@/components/navigation/app-profile-button';
 import { DeckImage } from '@/components/deck-image';
+import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
+import { ArenaInviteQrDialog } from '@/components/arena/arena-invite-qr-dialog';
 import { useLanguage } from '@/components/language-provider';
 import { usePlatformAdmin } from '@/hooks/use-platform-admin';
 
@@ -71,7 +73,8 @@ import {
   fetchArenaStatsParticipants,
 } from '@/lib/arena-stats-fetch';
 import { fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
-import { fetchActiveLiveGame } from '@/lib/live-game-service';
+import { fetchActiveLiveGame, fetchLiveGameByMatchId } from '@/lib/live-game-service';
+import type { LiveGameRecord } from '@/lib/live-game';
 import { formatGameDuration } from '@/lib/live-game-duration';
 import { buildArenaAwards, buildDeckPerformanceStats } from '@/lib/deck-performance-analytics';
 
@@ -131,6 +134,7 @@ import {
   Crosshair,
   Crown,
   Clock3,
+  QrCode,
 } from 'lucide-react';
 
 const ARENA_DECK_PICKER_COLUMNS = `
@@ -414,6 +418,9 @@ export default function TablePage() {
 
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [detailsMatch, setDetailsMatch] = useState<Match | null>(null);
+  const [detailsLiveGame, setDetailsLiveGame] = useState<LiveGameRecord | null>(null);
+  const [detailsRecapLoading, setDetailsRecapLoading] = useState(false);
+  const [showInviteQr, setShowInviteQr] = useState(false);
   const [selectedParticipantKeys, setSelectedParticipantKeys] = useState<ParticipantKey[]>([]);
   const [participantDecks, setParticipantDecks] = useState<Record<string, string>>({});
   const [participantDeckSearches, setParticipantDeckSearches] = useState<Record<string, string>>({});
@@ -637,6 +644,21 @@ export default function TablePage() {
 
   // Keep refreshMatches stable when loading matches changes the color-sync callback.
   const ensureArenaDeckColorsRef = useRef(ensureArenaDeckColors);
+  useEffect(() => {
+    if (!detailsMatch?.id || detailsMatch.tracking_version == null) {
+      setDetailsLiveGame(null);
+      setDetailsRecapLoading(false);
+      return;
+    }
+    let active = true;
+    setDetailsRecapLoading(true);
+    void fetchLiveGameByMatchId(supabase, detailsMatch.id)
+      .then((game) => { if (active) setDetailsLiveGame(game); })
+      .catch(() => { if (active) setDetailsLiveGame(null); })
+      .finally(() => { if (active) setDetailsRecapLoading(false); });
+    return () => { active = false; };
+  }, [detailsMatch?.id, detailsMatch?.tracking_version]);
+
   useEffect(() => {
     ensureArenaDeckColorsRef.current = ensureArenaDeckColors;
   }, [ensureArenaDeckColors]);
@@ -2188,6 +2210,10 @@ export default function TablePage() {
                 <Copy className="mr-2 h-4 w-4" />
                 {t({ it: 'Condividi invito', en: 'Share invite' })}
               </Button>
+              <Button type="button" variant="outline" onClick={() => setShowInviteQr(true)} className="border-cyan-500/30 text-cyan-100">
+                <QrCode className="mr-2 h-4 w-4" />
+                QR
+              </Button>
             </>
           )}
         >
@@ -3555,6 +3581,9 @@ export default function TablePage() {
                 </div>
               </div>
 
+              {detailsRecapLoading ? <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-6 text-center text-sm text-cyan-100">{t({ it: 'Caricamento riepilogo…', en: 'Loading recap…' })}</div> : null}
+              {detailsLiveGame ? <LiveGameRecapView record={detailsLiveGame} labels={{ timeline: t({ it: 'Andamento vite', en: 'Life timeline' }), highlights: t({ it: 'Momenti chiave', en: 'Highlights' }), empty: t({ it: 'Nessun momento chiave registrato.', en: 'No highlights recorded.' }) }} /> : null}
+
               <div className="space-y-3">
                 {detailsMatch.match_participants
                   .slice()
@@ -3599,6 +3628,18 @@ export default function TablePage() {
           </ModalCard>
         </ModalOverlay>
       )}
+
+      {group ? <ArenaInviteQrDialog
+        open={showInviteQr}
+        inviteCode={group.invite_code}
+        arenaName={group.name}
+        onClose={() => setShowInviteQr(false)}
+        labels={{
+          title: t({ it: 'QR Arena', en: 'Arena QR' }),
+          hint: t({ it: 'Scansiona per entrare in questa Arena.', en: 'Scan to join this Arena.' }),
+          close: t({ it: 'Chiudi', en: 'Close' }),
+        }}
+      /> : null}
 
       {editingMatch && (
         <ModalOverlay>

@@ -5,6 +5,7 @@ import {
   type QueuedLiveGameMutation,
   type WinCondition,
 } from '@/lib/live-game';
+import { parseLiveGameHistory, type LiveGameHistory } from '@/lib/live-game-history';
 
 const STORAGE_PREFIX = 'phyrexian-arena:live-game:v2:';
 const OUTBOX_KEY = 'phyrexian-arena:live-game:v2:outbox';
@@ -30,6 +31,7 @@ export type LiveGameOfflineSession = {
   mutations: QueuedLiveGameMutation[];
   pendingFinalization: PendingLiveGameFinalization | null;
   pendingCancel: boolean;
+  history: LiveGameHistory;
   savedAt: string;
 };
 
@@ -67,6 +69,7 @@ export async function loadLiveGameOfflineSession(
       mutations: Array.isArray(parsed.mutations) ? parsed.mutations : [],
       pendingFinalization: parsed.pendingFinalization ?? null,
       pendingCancel: Boolean(parsed.pendingCancel),
+      history: parseLiveGameHistory(parsed.history),
       savedAt: parsed.savedAt ?? new Date(0).toISOString(),
     };
   } catch {

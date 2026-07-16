@@ -283,6 +283,53 @@ export interface Database {
           updated_at?: string;
         };
       };
+      live_game_telemetry: {
+        Row: {
+          id: string;
+          user_id: string;
+          live_game_id: string | null;
+          session_id: string;
+          client_platform: string;
+          mutation_syncs: number;
+          version_conflicts: number;
+          failed_syncs: number;
+          max_queue_depth: number;
+          slowest_sync_ms: number;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          live_game_id?: string | null;
+          session_id: string;
+          client_platform: string;
+          mutation_syncs?: number;
+          version_conflicts?: number;
+          failed_syncs?: number;
+          max_queue_depth?: number;
+          slowest_sync_ms?: number;
+          last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          live_game_id?: string | null;
+          session_id?: string;
+          client_platform?: string;
+          mutation_syncs?: number;
+          version_conflicts?: number;
+          failed_syncs?: number;
+          max_queue_depth?: number;
+          slowest_sync_ms?: number;
+          last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       match_participants: {
         Row: {
           id: string;
@@ -425,6 +472,12 @@ export interface Database {
         Returns: Json;
       };
       purge_old_access_logs: {
+        Args: {
+          p_retention_days?: number;
+        };
+        Returns: number;
+      };
+      purge_old_live_game_telemetry: {
         Args: {
           p_retention_days?: number;
         };

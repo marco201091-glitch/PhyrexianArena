@@ -74,6 +74,7 @@ type TableArenaProps = {
     counterclockwise: string;
     damageReceived: string;
     undo: string;
+    redo: string;
     thisPlayer: string;
     eachOpponent: string;
     everyone: string;
@@ -81,6 +82,13 @@ type TableArenaProps = {
   onBack: () => void;
   canUndo: boolean;
   onUndo: () => void;
+  canRedo: boolean;
+  onRedo: () => void;
+  syncStatus: 'offline' | 'pending' | 'syncing' | 'synced' | 'error';
+  syncLabel: string;
+  pendingSyncCount: number;
+  syncError: string | null;
+  onRetrySync: () => void;
   onEndGame: () => void;
   onAdjust: (key: ParticipantKey, delta: number) => void;
   onApplyDragDamage: (input: {
@@ -124,6 +132,13 @@ export function TableArena({
   onBack,
   canUndo,
   onUndo,
+  canRedo,
+  onRedo,
+  syncStatus,
+  syncLabel,
+  pendingSyncCount,
+  syncError,
+  onRetrySync,
   onEndGame,
   onAdjust,
   onApplyDragDamage,
@@ -188,7 +203,7 @@ export function TableArena({
     ? centerToolbarBand?.height ?? 0
     : centerToolbarBand?.width ?? 0;
   const toolbarButtonSize = centerToolbarBand
-    ? Math.max(34, Math.min(56, (centerToolbarMainSize - 98) / 5))
+    ? Math.max(32, Math.min(56, (centerToolbarMainSize - 98) / 6))
     : 44;
   const toolbarButtonStyle = {
     width: toolbarButtonSize,
@@ -343,6 +358,21 @@ export function TableArena({
       </Pressable>
 
       <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle, !canRedo && styles.toolBtnDisabled]}
+        onPress={onRedo}
+        disabled={!canRedo}
+        accessibilityRole="button"
+        accessibilityLabel={labels.redo}
+        accessibilityState={{ disabled: !canRedo }}
+      >
+        <Ionicons
+          name="arrow-redo-outline"
+          size={23}
+          color={canRedo ? colors.foreground : 'rgba(244,244,245,0.28)'}
+        />
+      </Pressable>
+
+      <Pressable
         style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
         onPress={() => {
           setActivePickerKey(null);
@@ -384,6 +414,27 @@ export function TableArena({
 
   return (
     <View style={styles.root}>
+      <Pressable
+        onPress={onRetrySync}
+        accessibilityRole="button"
+        accessibilityLabel={syncLabel}
+        style={[
+          styles.syncBadge,
+          { top: Math.max(insets.top, SYSTEM_GESTURE_GUARD) + 6, right: Math.max(insets.right, SYSTEM_GESTURE_GUARD) + 6 },
+          syncStatus === 'error' && styles.syncBadgeError,
+          syncStatus === 'offline' && styles.syncBadgeOffline,
+        ]}
+      >
+        <Ionicons
+          name={syncStatus === 'syncing' ? 'sync' : syncStatus === 'offline' ? 'cloud-offline-outline' : syncStatus === 'error' ? 'warning-outline' : 'cloud-done-outline'}
+          size={13}
+          color={syncStatus === 'error' ? '#fecaca' : syncStatus === 'offline' ? '#fde68a' : '#bbf7d0'}
+        />
+        <Text style={styles.syncBadgeText} numberOfLines={1}>
+          {syncLabel}{pendingSyncCount > 0 ? ` · ${pendingSyncCount}` : ''}
+        </Text>
+        {syncError ? <Ionicons name="refresh" size={12} color="#fecaca" /> : null}
+      </Pressable>
       <View
         style={[
           styles.gridHost,
@@ -581,6 +632,32 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#050508',
+  },
+  syncBadge: {
+    position: 'absolute',
+    zIndex: 90,
+    maxWidth: 150,
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.3)',
+    borderRadius: 16,
+    backgroundColor: 'rgba(4,4,8,0.82)',
+    paddingHorizontal: 9,
+  },
+  syncBadgeError: {
+    borderColor: 'rgba(248,113,113,0.45)',
+  },
+  syncBadgeOffline: {
+    borderColor: 'rgba(251,191,36,0.4)',
+  },
+  syncBadgeText: {
+    flexShrink: 1,
+    color: colors.foreground,
+    fontSize: 10,
+    fontWeight: '800',
   },
   gridHost: {
     flex: 1,

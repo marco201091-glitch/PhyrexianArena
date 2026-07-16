@@ -18,6 +18,7 @@ export const API_RATE_LIMITS = {
   authResendConfirmation: { maxRequests: 5, windowSeconds: 60 * 60 },
   authDemoLogin: { maxRequests: 20, windowSeconds: 60 * 60 },
   accessLog: { maxRequests: 120, windowSeconds: 60 * 60 },
+  inviteQr: { maxRequests: 60, windowSeconds: 10 * 60 },
 } as const satisfies Record<string, RateLimitConfig>;
 
 interface RateLimitResult {

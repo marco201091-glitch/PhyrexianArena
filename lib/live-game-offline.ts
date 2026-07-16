@@ -4,6 +4,7 @@ import {
   type QueuedLiveGameMutation,
   type WinCondition,
 } from '@/lib/live-game';
+import { parseLiveGameHistory, type LiveGameHistory } from '@/lib/live-game-history';
 
 export type PendingLiveGameFinalization = {
   winnerKey: string | null;
@@ -26,6 +27,7 @@ export type WebLiveGameJournal = {
   mutations: QueuedLiveGameMutation[];
   pendingFinalization: PendingLiveGameFinalization | null;
   pendingCancel: boolean;
+  history: LiveGameHistory;
   savedAt: string;
 };
 
@@ -47,6 +49,7 @@ export function loadWebLiveGameJournal(groupId: string): WebLiveGameJournal | nu
       mutations: Array.isArray(value.mutations) ? value.mutations : [],
       pendingFinalization: value.pendingFinalization ?? null,
       pendingCancel: Boolean(value.pendingCancel),
+      history: parseLiveGameHistory(value.history),
     };
   } catch {
     return null;

@@ -9,7 +9,7 @@ import {
   type WinCondition,
 } from '@/lib/live-game';
 import type { PendingLiveGameFinalization } from '@/lib/live-game-offline';
-import { recordLiveGameMutationSync } from '@/lib/live-game-telemetry';
+import { recordLiveGameMutationSync, recordLiveGameSyncError } from '@/lib/live-game-telemetry';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export async function fetchActiveLiveGame(
@@ -138,29 +138,46 @@ export async function applyQueuedLiveGameMutation(
   const startedAt = Date.now();
   let conflicts = 0;
   let base = initialRecord;
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const nextState = applyLiveGameMutation(base.state, queued.mutation);
-    const { data, error } = await supabase.rpc('apply_live_game_mutation', {
-      p_live_game_id: base.id,
-      p_mutation_id: queued.id,
-      p_expected_version: base.state.version,
-      p_next_state: nextState,
-    });
-    if (error) throw error;
-    const result = data as MutationRpcResult;
-    const record = {
-      ...result.record,
-      state: parseLiveGameState(result.record.state),
-    } as LiveGameRecord;
-    if (result.applied) {
-      recordLiveGameMutationSync({ durationMs: Date.now() - startedAt, conflicts });
-      return record;
+  try {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const nextState = applyLiveGameMutation(base.state, queued.mutation);
+      const { data, error } = await supabase.rpc('apply_live_game_mutation', {
+        p_live_game_id: base.id,
+        p_mutation_id: queued.id,
+        p_expected_version: base.state.version,
+        p_next_state: nextState,
+      });
+      if (error) throw error;
+      const result = data as MutationRpcResult;
+      const record = {
+        ...result.record,
+        state: parseLiveGameState(result.record.state),
+      } as LiveGameRecord;
+      if (result.applied) {
+        recordLiveGameMutationSync({ durationMs: Date.now() - startedAt, conflicts });
+        return record;
+      }
+      conflicts += 1;
+      base = record;
     }
-    conflicts += 1;
-    base = record;
+    throw new Error('Live game state stayed busy after multiple retries');
+  } catch (error) {
+    recordLiveGameSyncError(error);
+    throw error;
   }
-  recordLiveGameMutationSync({ durationMs: Date.now() - startedAt, conflicts, failed: true });
-  throw new Error('Live game state stayed busy after multiple retries');
+}
+
+export async function fetchLiveGameByMatchId(
+  supabase: SupabaseClient,
+  matchId: string,
+): Promise<LiveGameRecord | null> {
+  const { data, error } = await supabase
+    .from('live_games')
+    .select('*')
+    .eq('match_id', matchId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { ...data, state: parseLiveGameState(data.state) } as LiveGameRecord : null;
 }
 
 export async function updateLiveGameState(

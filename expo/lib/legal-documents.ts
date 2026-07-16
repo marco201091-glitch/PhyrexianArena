@@ -79,6 +79,10 @@ export const privacyPolicyDocument: LegalDocument = {
           en: 'Technical data: IP address and browser/device information for security, rate limiting, and captcha verification on sensitive operations.',
         },
         {
+          it: 'Metriche diagnostiche aggregate della sincronizzazione partite: piattaforma, conteggi di sincronizzazioni, conflitti ed errori, profondita massima della coda, durata massima e ultimo messaggio di errore abbreviato. Non includono eventi o contenuti della partita.',
+          en: 'Aggregated match-sync diagnostics: platform, sync, conflict and error counts, maximum queue depth and duration, and the latest shortened error message. They do not include match events or content.',
+        },
+        {
           it: 'Preferenze locali: lingua dell’interfaccia e, se attivata, l’opzione "Ricordami" tramite cookie/storage del browser. Per il dettaglio consulta l’Informativa sui cookie.',
           en: 'Local preferences: interface language and, if enabled, the "Remember me" option via browser cookies/storage. See our Cookie Policy for details.',
         },
@@ -149,6 +153,10 @@ export const privacyPolicyDocument: LegalDocument = {
         {
           it: 'I log di accesso vengono conservati per un periodo limitato (attualmente 30 giorni) e poi eliminati automaticamente.',
           en: 'Access logs are kept for a limited period (currently 30 days) and then deleted automatically.',
+        },
+        {
+          it: 'Le metriche diagnostiche aggregate della sincronizzazione vengono conservate per 30 giorni dall’ultimo aggiornamento e poi eliminate automaticamente.',
+          en: 'Aggregated sync diagnostics are kept for 30 days after their latest update and then deleted automatically.',
         },
         {
           it: 'Backup e log tecnici dei fornitori possono avere tempi di conservazione propri, compatibili con le finalita indicate.',

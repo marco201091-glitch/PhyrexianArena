@@ -16,6 +16,7 @@ import { showAppAlert } from '@/lib/app-alert';
 import { AddGuestModal, type GuestModalMode } from '@/components/table/add-guest-modal';
 import { EditMatchModal } from '@/components/table/edit-match-modal';
 import { MatchDetailsModal } from '@/components/table/match-details-modal';
+import { ArenaInviteQrModal } from '@/components/table/arena-invite-qr-modal';
 import { ArenaFilterPanel } from '@/components/table/arena-filter-panel';
 import { ArenaTabBar } from '@/components/table/arena-tab-bar';
 import { ArenaCommandPanel } from '@/components/table/arena-command-panel';
@@ -65,7 +66,8 @@ import { getSiteUrl } from '@/lib/env';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 
-import { fetchActiveLiveGame } from '@/lib/live-game-service';
+import { fetchActiveLiveGame, fetchLiveGameByMatchId } from '@/lib/live-game-service';
+import type { LiveGameRecord } from '@/lib/live-game';
 import { toUserParticipantKey } from '@/lib/participant-keys';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
@@ -130,8 +132,11 @@ export default function TableScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showInviteQr, setShowInviteQr] = useState(false);
   const [editingMatch, setEditingMatch] = useState<ArenaMatch | null>(null);
   const [detailsMatch, setDetailsMatch] = useState<ArenaMatch | null>(null);
+  const [detailsLiveGame, setDetailsLiveGame] = useState<LiveGameRecord | null>(null);
+  const [detailsRecapLoading, setDetailsRecapLoading] = useState(false);
   const [exportDayKey, setExportDayKey] = useState<string | null>(null);
   const [exportIntro, setExportIntro] = useState('');
   const [savingMatch, setSavingMatch] = useState(false);
@@ -147,6 +152,21 @@ export default function TableScreen() {
   const [expandedDayKeys, setExpandedDayKeys] = useState<Set<string>>(new Set());
   const [sharePreview, setSharePreview] = useState<{ title: string; message: string } | null>(null);
   const [sharing, setSharing] = useState(false);
+
+  useEffect(() => {
+    if (!detailsMatch?.id || detailsMatch.tracking_version == null) {
+      setDetailsLiveGame(null);
+      setDetailsRecapLoading(false);
+      return;
+    }
+    let active = true;
+    setDetailsRecapLoading(true);
+    void fetchLiveGameByMatchId(supabase, detailsMatch.id)
+      .then((game) => { if (active) setDetailsLiveGame(game); })
+      .catch(() => { if (active) setDetailsLiveGame(null); })
+      .finally(() => { if (active) setDetailsRecapLoading(false); });
+    return () => { active = false; };
+  }, [detailsMatch?.id, detailsMatch?.tracking_version]);
 
   const refreshActiveLiveGame = useCallback(async () => {
     if (!groupId || !user) {
@@ -586,6 +606,12 @@ export default function TableScreen() {
           onPlayGame={() => router.push(`/table/${groupId}/play`)}
           onRecordBattle={() => setShowRecordModal(true)}
         />
+        <Button
+          label={copy('inviteQr')}
+          icon="qr-code-outline"
+          variant="outline"
+          onPress={() => setShowInviteQr(true)}
+        />
 
         <ArenaTabBar
           activeTab={activeTab}
@@ -950,7 +976,9 @@ export default function TableScreen() {
       <MatchDetailsModal
         visible={Boolean(detailsMatch)}
         match={detailsMatch}
-        onClose={() => setDetailsMatch(null)}
+        liveGame={detailsLiveGame}
+        recapLoading={detailsRecapLoading}
+        onClose={() => { setDetailsMatch(null); setDetailsLiveGame(null); }}
         labels={{
           title: copy('matchDetailsTitle'),
           duration: copy('matchDuration'),
@@ -961,7 +989,19 @@ export default function TableScreen() {
           commander: copy('liveGameCommanderDamage'),
           infect: copy('liveGameInfect'),
           started: copy('startedPlayer'),
+          timeline: copy('liveGameLifeTimeline'),
+          highlights: copy('liveGameHighlights'),
+          empty: copy('liveGameLogEmpty'),
+          recap: copy('liveGameRecap'),
         }}
+      />
+
+      <ArenaInviteQrModal
+        visible={showInviteQr}
+        inviteCode={group.invite_code}
+        arenaName={group.name}
+        onClose={() => setShowInviteQr(false)}
+        labels={{ title: copy('inviteQr'), hint: copy('inviteQrHint'), close: copy('close') }}
       />
 
       <EditMatchModal

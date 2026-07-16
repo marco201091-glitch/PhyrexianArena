@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ACCESS_LOG_RETENTION_DAYS } from '@/lib/access-log';
+import { LIVE_GAME_TELEMETRY_RETENTION_DAYS } from '@/lib/live-game-telemetry';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 export const runtime = 'nodejs';
@@ -22,18 +23,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Service role is not configured.' }, { status: 500 });
   }
 
-  const { data, error } = await adminClient.rpc('purge_old_access_logs', {
-    p_retention_days: ACCESS_LOG_RETENTION_DAYS,
-  });
+  const [accessLogs, telemetry] = await Promise.all([
+    adminClient.rpc('purge_old_access_logs', { p_retention_days: ACCESS_LOG_RETENTION_DAYS }),
+    adminClient.rpc('purge_old_live_game_telemetry', {
+      p_retention_days: LIVE_GAME_TELEMETRY_RETENTION_DAYS,
+    }),
+  ]);
 
-  if (error) {
-    console.error('Access log purge failed:', error.message);
-    return NextResponse.json({ error: 'Access log purge failed.' }, { status: 500 });
+  if (accessLogs.error || telemetry.error) {
+    console.error('Technical log purge failed:', accessLogs.error?.message ?? telemetry.error?.message);
+    return NextResponse.json({ error: 'Technical log purge failed.' }, { status: 500 });
   }
 
   return NextResponse.json({
     ok: true,
-    deleted: typeof data === 'number' ? data : 0,
+    deleted: {
+      accessLogs: typeof accessLogs.data === 'number' ? accessLogs.data : 0,
+      liveGameTelemetry: typeof telemetry.data === 'number' ? telemetry.data : 0,
+    },
     retentionDays: ACCESS_LOG_RETENTION_DAYS,
     purgedAt: new Date().toISOString(),
   });

@@ -12,7 +12,7 @@ describe('legal-site', () => {
   });
 
   it('exposes the current app version', () => {
-    expect(APP_VERSION).toBe('4.0.1');
+    expect(APP_VERSION).toBe('4.1.0');
   });
 
   it('uses the official support email by default', () => {

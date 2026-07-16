@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
   Pause,
   Plus,
+  Redo2,
   RotateCcw,
   Shield,
   Skull,
@@ -31,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DeckImage } from '@/components/deck-image';
+import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
 import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
 import { useLanguage } from '@/components/language-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -76,7 +78,14 @@ import {
   saveWebLiveGameJournal,
   type PendingLiveGameFinalization,
 } from '@/lib/live-game-offline';
-import { recordLiveGameQueueDepth } from '@/lib/live-game-telemetry';
+import {
+  createLiveGameHistory,
+  recordLiveGameHistory,
+  redoLiveGameHistory,
+  undoLiveGameHistory,
+  type LiveGameHistory,
+} from '@/lib/live-game-history';
+import { persistLiveGameTelemetry, recordLiveGameQueueDepth } from '@/lib/live-game-telemetry';
 import {
   createDefaultWebLiveGameSetup,
   loadWebLiveGameSetup,
@@ -217,11 +226,15 @@ export function WebLiveGame({
   const needsCreateRef = useRef(false);
   const pendingFinalizationRef = useRef<PendingLiveGameFinalization | null>(null);
   const pendingCancelRef = useRef(false);
-  const undoRef = useRef<LiveGameMutation[]>([]);
+  const historyRef = useRef<LiveGameHistory>(createLiveGameHistory());
   const [undoDepth, setUndoDepth] = useState(0);
+  const [redoDepth, setRedoDepth] = useState(0);
   const syncingRef = useRef(false);
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const telemetrySessionRef = useRef(globalThis.crypto.randomUUID());
   const [duration, setDuration] = useState('00:00');
 
   const initialSetup = useMemo(() => loadWebLiveGameSetup(groupId, userId), [groupId, userId]);
@@ -320,6 +333,7 @@ export function WebLiveGame({
       mutations: queueRef.current,
       pendingFinalization: pendingFinalizationRef.current,
       pendingCancel: pendingCancelRef.current,
+      history: historyRef.current,
     });
   }, [groupId]);
 
@@ -329,8 +343,10 @@ export function WebLiveGame({
     serverRef.current = null;
     queueRef.current = [];
     needsCreateRef.current = false;
-    undoRef.current = [];
+    historyRef.current = createLiveGameHistory();
     setUndoDepth(0);
+    setRedoDepth(0);
+    setPendingSyncCount(0);
     setOptimisticRecord(null);
     setEndOpen(false);
   }, [setEndOpen, setOptimisticRecord]);
@@ -339,8 +355,10 @@ export function WebLiveGame({
     serverRef.current = null;
     queueRef.current = [];
     needsCreateRef.current = false;
-    undoRef.current = [];
+    historyRef.current = createLiveGameHistory();
     setUndoDepth(0);
+    setRedoDepth(0);
+    setPendingSyncCount(0);
     setOptimisticRecord(null);
     setConfirmCancel(false);
   }, [setConfirmCancel, setOptimisticRecord]);
@@ -349,6 +367,7 @@ export function WebLiveGame({
     if (syncingRef.current || !recordRef.current || !serverRef.current || !navigator.onLine) return false;
     syncingRef.current = true;
     setSyncing(true);
+    setSyncError(null);
     try {
       let server = serverRef.current;
       if (needsCreateRef.current) {
@@ -361,6 +380,7 @@ export function WebLiveGame({
         server = await applyQueuedLiveGameMutation(supabase, server, queued);
         serverRef.current = server;
         queueRef.current = queueRef.current.slice(1);
+        setPendingSyncCount(queueRef.current.length);
         setOptimisticRecord(replay(server, queueRef.current));
         persist(recordRef.current);
       }
@@ -387,13 +407,20 @@ export function WebLiveGame({
       return true;
     } catch (error) {
       persist(recordRef.current);
+      setSyncError(error instanceof Error ? error.message : 'Sync failed');
       console.error('Web live-game sync failed', error);
       return false;
     } finally {
       syncingRef.current = false;
       setSyncing(false);
+      void persistLiveGameTelemetry(supabase, {
+        userId,
+        liveGameId: recordRef.current?.id ?? null,
+        sessionId: telemetrySessionRef.current,
+        platform: 'web',
+      }).catch(() => undefined);
     }
-  }, [clearCancelledGame, groupId, persist, setOptimisticRecord, showCompletedGame]);
+  }, [clearCancelledGame, groupId, persist, setOptimisticRecord, showCompletedGame, userId]);
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -421,6 +448,10 @@ export function WebLiveGame({
         needsCreateRef.current = cached.needsCreate;
         pendingFinalizationRef.current = cached.pendingFinalization;
         pendingCancelRef.current = cached.pendingCancel;
+        historyRef.current = cached.history;
+        setUndoDepth(cached.history.undo.length);
+        setRedoDepth(cached.history.redo.length);
+        setPendingSyncCount(cached.mutations.length);
         setOptimisticRecord(cached.record);
       }
       try {
@@ -430,6 +461,7 @@ export function WebLiveGame({
           const queue = cached?.record.id === remote.id ? queueRef.current : [];
           serverRef.current = remote;
           queueRef.current = queue;
+          setPendingSyncCount(queue.length);
           needsCreateRef.current = false;
           setOptimisticRecord(replay(remote, queue));
           persist(recordRef.current);
@@ -580,6 +612,10 @@ export function WebLiveGame({
       };
       serverRef.current = created;
       queueRef.current = [];
+      setPendingSyncCount(0);
+      historyRef.current = createLiveGameHistory();
+      setUndoDepth(0);
+      setRedoDepth(0);
       needsCreateRef.current = true;
       pendingFinalizationRef.current = null;
       pendingCancelRef.current = false;
@@ -601,7 +637,11 @@ export function WebLiveGame({
     }
   };
 
-  const enqueue = useCallback((mutation: LiveGameMutation, inverse?: LiveGameMutation) => {
+  const enqueue = useCallback((
+    mutation: LiveGameMutation,
+    inverse?: LiveGameMutation,
+    historyMode: 'record' | 'skip' = 'record',
+  ) => {
     const current = recordRef.current;
     if (!current) return;
     const id = crypto.randomUUID();
@@ -611,10 +651,12 @@ export function WebLiveGame({
       occurredAt: mutation.occurredAt ?? new Date().toISOString(),
     };
     queueRef.current = [...queueRef.current, { id, mutation: tracked }];
+    setPendingSyncCount(queueRef.current.length);
     recordLiveGameQueueDepth(queueRef.current.length);
-    if (inverse) {
-      undoRef.current = [...undoRef.current.slice(-29), { ...inverse, isCorrection: true }];
-      setUndoDepth(undoRef.current.length);
+    if (inverse && historyMode === 'record') {
+      historyRef.current = recordLiveGameHistory(historyRef.current, { forward: mutation, inverse });
+      setUndoDepth(historyRef.current.undo.length);
+      setRedoDepth(0);
     }
     const next = { ...current, state: applyLiveGameMutation(current.state, tracked) };
     setOptimisticRecord(next);
@@ -623,10 +665,21 @@ export function WebLiveGame({
   }, [flush, persist, setOptimisticRecord]);
 
   const undoLastMutation = () => {
-    const inverse = undoRef.current.pop();
-    if (!inverse) return;
-    setUndoDepth(undoRef.current.length);
-    enqueue(inverse);
+    const result = undoLiveGameHistory(historyRef.current);
+    if (!result) return;
+    historyRef.current = result.history;
+    setUndoDepth(result.history.undo.length);
+    setRedoDepth(result.history.redo.length);
+    enqueue(result.mutation, undefined, 'skip');
+  };
+
+  const redoLastMutation = () => {
+    const result = redoLiveGameHistory(historyRef.current);
+    if (!result) return;
+    historyRef.current = result.history;
+    setUndoDepth(result.history.undo.length);
+    setRedoDepth(result.history.redo.length);
+    enqueue(result.mutation, undefined, 'skip');
   };
 
   const runRoulette = (pool: ParticipantKey[], winner?: ParticipantKey) => {
@@ -838,6 +891,14 @@ export function WebLiveGame({
               </div>
             </div>
             <div className="space-y-3 p-5 sm:p-7">
+              <LiveGameRecapView
+                record={completedRecord}
+                labels={{
+                  timeline: copy({ it: 'Andamento vite', en: 'Life timeline' }),
+                  highlights: copy({ it: 'Momenti chiave', en: 'Highlights' }),
+                  empty: copy({ it: 'Nessun momento chiave registrato.', en: 'No highlights recorded.' }),
+                }}
+              />
               <Button onClick={() => setConfirmRematch(true)} className="h-13 w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 font-black">
                 <RotateCcw className="mr-2 h-5 w-5" />
                 {copy({ it: 'Nuova partita · stessi mazzi', en: 'New game · same decks' })}
@@ -965,7 +1026,7 @@ export function WebLiveGame({
   const toolbarCrossSize = centerToolbarBand?.axis === 'vertical'
     ? centerToolbarBand.width
     : centerToolbarBand?.height ?? 0;
-  const toolbarControlSize = Math.max(34, Math.min(56, toolbarCrossSize - 12, (toolbarMainSize - 96) / 6));
+  const toolbarControlSize = Math.max(32, Math.min(56, toolbarCrossSize - 12, (toolbarMainSize - 96) / 7));
   const toolbarButtonStyle = { width: toolbarControlSize, height: toolbarControlSize };
   const toolbarDurationStyle = centerToolbarBand?.axis === 'vertical'
     ? { width: toolbarControlSize, height: Math.min(80, toolbarControlSize * 1.5) }
@@ -1030,6 +1091,7 @@ export function WebLiveGame({
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => setExitChoiceOpen(true)} title="Back"><ArrowLeft /></Button>
           <div className={cn('flex shrink-0 items-center justify-center gap-1 rounded-full bg-zinc-900 px-1.5 text-xs font-bold text-zinc-300', centerToolbarBand.axis === 'vertical' && 'flex-col px-1')} style={toolbarDurationStyle}><Clock3 className="h-4 w-4 shrink-0" />{duration}</div>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={undoLastMutation} disabled={!undoDepth} title="Undo"><RotateCcw /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={redoLastMutation} disabled={!redoDepth} title="Redo"><Redo2 /></Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => runRoulette(activePlayers.map((player) => player.participantKey))} title="Random player"><Dices /></Button>
           <Button variant={randomOpponentMode ? 'default' : 'ghost'} size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => setRandomOpponentMode((value) => !value)} title="Random opponent">
             <span className="relative block h-5 w-5">
@@ -1039,10 +1101,20 @@ export function WebLiveGame({
           </Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={openEnd} title="End game"><Flag /></Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={toggleTrackerFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>{fullscreen ? <Minimize2 /> : <Maximize2 />}</Button>
-          {!online && <WifiOff className="mx-2 h-4 w-4 text-amber-400" />}
-          {syncing && <Loader2 className="mx-2 h-4 w-4 animate-spin text-violet-300" />}
         </div>
         </div>}
+        <button
+          type="button"
+          onClick={() => void flush()}
+          className={cn(
+            'absolute right-2 top-[calc(env(safe-area-inset-top)+.5rem)] z-40 flex items-center gap-1.5 rounded-full border bg-black/75 px-2.5 py-1 text-[10px] font-bold backdrop-blur',
+            syncError ? 'border-rose-400/50 text-rose-200' : online ? 'border-emerald-400/30 text-emerald-200' : 'border-amber-400/40 text-amber-200',
+          )}
+          title={syncError ?? undefined}
+        >
+          {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : online ? <CircleDot className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+          {syncError ? copy({ it: 'Riprova sync', en: 'Retry sync' }) : syncing ? copy({ it: 'Sincronizzo', en: 'Syncing' }) : pendingSyncCount ? `${pendingSyncCount} ${copy({ it: 'in attesa', en: 'pending' })}` : online ? copy({ it: 'Sincronizzato', en: 'Synced' }) : 'Offline'}
+        </button>
         {randomOpponentMode && <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+1rem)] z-40 mx-auto max-w-md rounded-2xl border border-violet-400/40 bg-violet-950/95 px-4 py-3 text-center text-sm font-bold shadow-2xl backdrop-blur">{copy({ it: 'Tocca qualsiasi punto della card del giocatore attivo da escludere.', en: 'Tap anywhere on the active player card to exclude them.' })}</div>}
       </div>
 

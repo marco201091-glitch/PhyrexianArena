@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
 import { LiveGameConfigurator, type SetupParticipant } from '@/components/live-game/live-game-configurator';
 import { TableArena } from '@/components/live-game/table-arena';
+import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
 import { toDeckOption } from '@/components/table/match-participant-row';
 import { Button } from '@/components/ui/button';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
@@ -69,7 +70,14 @@ import {
   saveLiveGameOfflineSession,
   type PendingLiveGameFinalization,
 } from '@/lib/live-game-offline';
-import { recordLiveGameQueueDepth } from '@/lib/live-game-telemetry';
+import { persistLiveGameTelemetry, recordLiveGameQueueDepth } from '@/lib/live-game-telemetry';
+import {
+  createLiveGameHistory,
+  recordLiveGameHistory,
+  redoLiveGameHistory,
+  undoLiveGameHistory,
+  type LiveGameHistory,
+} from '@/lib/live-game-history';
 import {
   applyLiveGameImmersive,
   clearLiveGameImmersive,
@@ -148,6 +156,7 @@ export default function LiveGameScreen() {
   const [showExitChoice, setShowExitChoice] = useState(false);
   const [discardingGame, setDiscardingGame] = useState(false);
   const [showRematch, setShowRematch] = useState(false);
+  const [completedGame, setCompletedGame] = useState<LiveGameRecord | null>(null);
   const [completedDurationSeconds, setCompletedDurationSeconds] = useState(0);
   const rouletteTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const previousActivePlayerCountRef = useRef<number | null>(null);
@@ -161,9 +170,13 @@ export default function LiveGameScreen() {
   const syncRunningRef = useRef(false);
   const syncPromiseRef = useRef<Promise<void> | null>(null);
   const journalWriteRef = useRef<Promise<void>>(Promise.resolve());
-  const completedGameRef = useRef<LiveGameRecord | null>(null);
-  const undoStackRef = useRef<LiveGameMutation[]>([]);
+  const historyRef = useRef<LiveGameHistory>(createLiveGameHistory());
   const [undoDepth, setUndoDepth] = useState(0);
+  const [redoDepth, setRedoDepth] = useState(0);
+  const [syncStatus, setSyncStatus] = useState<'offline' | 'pending' | 'syncing' | 'synced' | 'error'>('synced');
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const telemetrySessionRef = useRef(Crypto.randomUUID());
   const setupHydratedRef = useRef<string | null>(null);
 
   const openEndGameModal = useCallback((state: LiveGameState) => {
@@ -313,6 +326,7 @@ export default function LiveGameScreen() {
       mutations: [...mutationQueueRef.current],
       pendingFinalization: pendingFinalizationRef.current,
       pendingCancel: pendingCancelRef.current,
+      history: historyRef.current,
     };
     journalWriteRef.current = journalWriteRef.current
       .catch(() => undefined)
@@ -355,8 +369,11 @@ export default function LiveGameScreen() {
   const syncJournal = useCallback(() => {
     if (syncPromiseRef.current) return syncPromiseRef.current;
     syncRunningRef.current = true;
+    setSyncStatus('syncing');
+    setSyncError(null);
     let tracked: Promise<void>;
     tracked = (async () => {
+      let failed = false;
       try {
         await flushOutbox();
         let serverRecord = serverRecordRef.current;
@@ -373,6 +390,7 @@ export default function LiveGameScreen() {
           serverRecord = await applyQueuedLiveGameMutation(supabase, serverRecord, queued);
           serverRecordRef.current = serverRecord;
           mutationQueueRef.current = mutationQueueRef.current.slice(1);
+          setPendingSyncCount(mutationQueueRef.current.length);
           setOptimisticRecord(replayQueuedMutations(serverRecord, mutationQueueRef.current));
           await saveJournal();
         }
@@ -382,17 +400,31 @@ export default function LiveGameScreen() {
           pendingCancelRef.current = false;
           await clearLiveGameOfflineSession(groupId);
         }
-      } catch {
+      } catch (error) {
+        failed = true;
+        setSyncError(error instanceof Error ? error.message : 'Sync failed');
+        setSyncStatus('error');
         // Offline, timeout or a transient Realtime gap: the durable journal retries later.
       } finally {
         syncRunningRef.current = false;
+        if (!failed) {
+          setSyncStatus(mutationQueueRef.current.length ? 'pending' : 'synced');
+        }
+        if (user) {
+          void persistLiveGameTelemetry(supabase, {
+            userId: user.id,
+            liveGameId: liveGameRef.current?.id ?? null,
+            sessionId: telemetrySessionRef.current,
+            platform: 'expo',
+          }).catch(() => undefined);
+        }
       }
     })().finally(() => {
       if (syncPromiseRef.current === tracked) syncPromiseRef.current = null;
     });
     syncPromiseRef.current = tracked;
     return tracked;
-  }, [flushOutbox, groupId, saveJournal, setOptimisticRecord]);
+  }, [flushOutbox, groupId, saveJournal, setOptimisticRecord, user]);
 
   useEffect(() => {
     if (!groupId || !user) return;
@@ -413,6 +445,11 @@ export default function LiveGameScreen() {
         needsCreateRef.current = cached.needsCreate;
         pendingFinalizationRef.current = cached.pendingFinalization;
         pendingCancelRef.current = cached.pendingCancel;
+        historyRef.current = cached.history;
+        setUndoDepth(cached.history.undo.length);
+        setRedoDepth(cached.history.redo.length);
+        setPendingSyncCount(cached.mutations.length);
+        setSyncStatus(cached.mutations.length ? 'pending' : 'synced');
         setOptimisticRecord(cached.record);
       }
 
@@ -423,6 +460,7 @@ export default function LiveGameScreen() {
           serverRecordRef.current = remote;
           const queue = cached?.record.id === remote.id ? mutationQueueRef.current : [];
           mutationQueueRef.current = queue;
+          setPendingSyncCount(queue.length);
           needsCreateRef.current = false;
           setOptimisticRecord(replayQueuedMutations(remote, queue));
           await saveJournal();
@@ -430,6 +468,10 @@ export default function LiveGameScreen() {
           await clearLiveGameOfflineSession(groupId);
           serverRecordRef.current = null;
           mutationQueueRef.current = [];
+          setPendingSyncCount(0);
+          historyRef.current = createLiveGameHistory();
+          setUndoDepth(0);
+          setRedoDepth(0);
           setOptimisticRecord(null);
         } else if (!remote && !cached) {
           setOptimisticRecord(null);
@@ -453,7 +495,12 @@ export default function LiveGameScreen() {
       setOptimisticRecord(replayQueuedMutations(remote, mutationQueueRef.current));
       void saveJournal();
     }, (status) => {
-      if (status === 'SUBSCRIBED') void syncJournal();
+      if (status === 'SUBSCRIBED') {
+        setSyncStatus(mutationQueueRef.current.length ? 'pending' : 'synced');
+        void syncJournal();
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        setSyncStatus('offline');
+      }
     });
   }, [liveGame?.id, saveJournal, setOptimisticRecord, syncJournal]);
 
@@ -535,12 +582,11 @@ export default function LiveGameScreen() {
     }, [liveGameId]),
   );
 
-  useEffect(() => {
-    undoStackRef.current = [];
-    setUndoDepth(0);
-  }, [liveGame?.id]);
-
-  const enqueueMutation = useCallback((mutation: LiveGameMutation, inverse?: LiveGameMutation) => {
+  const enqueueMutation = useCallback((
+    mutation: LiveGameMutation,
+    inverse?: LiveGameMutation,
+    historyMode: 'record' | 'skip' = 'record',
+  ) => {
     const current = liveGameRef.current;
     if (!current) return;
     const id = Crypto.randomUUID();
@@ -551,20 +597,35 @@ export default function LiveGameScreen() {
     };
     const queued = { id, mutation: trackedMutation };
     mutationQueueRef.current = [...mutationQueueRef.current, queued];
+    setPendingSyncCount(mutationQueueRef.current.length);
+    setSyncStatus('pending');
     recordLiveGameQueueDepth(mutationQueueRef.current.length);
-    if (inverse) {
-      undoStackRef.current = [...undoStackRef.current.slice(-29), { ...inverse, isCorrection: true }];
-      setUndoDepth(undoStackRef.current.length);
+    if (inverse && historyMode === 'record') {
+      historyRef.current = recordLiveGameHistory(historyRef.current, { forward: mutation, inverse });
+      setUndoDepth(historyRef.current.undo.length);
+      setRedoDepth(0);
     }
     setOptimisticRecord({ ...current, state: applyLiveGameMutation(current.state, trackedMutation) });
     void saveJournal().then(() => syncJournal());
   }, [saveJournal, setOptimisticRecord, syncJournal]);
 
   const handleUndo = () => {
-    const inverse = undoStackRef.current.pop();
-    if (!inverse) return;
-    setUndoDepth(undoStackRef.current.length);
-    enqueueMutation(inverse);
+    const result = undoLiveGameHistory(historyRef.current);
+    if (!result) return;
+    historyRef.current = result.history;
+    setUndoDepth(result.history.undo.length);
+    setRedoDepth(result.history.redo.length);
+    enqueueMutation(result.mutation, undefined, 'skip');
+    void hapticLight();
+  };
+
+  const handleRedo = () => {
+    const result = redoLiveGameHistory(historyRef.current);
+    if (!result) return;
+    historyRef.current = result.history;
+    setUndoDepth(result.history.undo.length);
+    setRedoDepth(result.history.redo.length);
+    enqueueMutation(result.mutation, undefined, 'skip');
     void hapticLight();
   };
 
@@ -713,6 +774,10 @@ export default function LiveGameScreen() {
       };
       serverRecordRef.current = created;
       mutationQueueRef.current = [];
+      setPendingSyncCount(0);
+      historyRef.current = createLiveGameHistory();
+      setUndoDepth(0);
+      setRedoDepth(0);
       needsCreateRef.current = true;
       pendingFinalizationRef.current = null;
       pendingCancelRef.current = false;
@@ -822,6 +887,10 @@ export default function LiveGameScreen() {
       });
       serverRecordRef.current = null;
       mutationQueueRef.current = [];
+      setPendingSyncCount(0);
+      historyRef.current = createLiveGameHistory();
+      setUndoDepth(0);
+      setRedoDepth(0);
       setOptimisticRecord(null);
       await syncJournal();
       hapticSuccess();
@@ -881,7 +950,7 @@ export default function LiveGameScreen() {
       const durationSeconds = getGameDurationSeconds(liveGame.started_at, pending.endedAt);
       setCompletedDurationSeconds(durationSeconds);
 
-      completedGameRef.current = liveGame;
+      setCompletedGame(liveGame);
       await syncPromiseRef.current;
       await journalWriteRef.current.catch(() => undefined);
       await archiveAndClearLiveGameSession(groupId, {
@@ -894,6 +963,10 @@ export default function LiveGameScreen() {
       });
       serverRecordRef.current = null;
       mutationQueueRef.current = [];
+      setPendingSyncCount(0);
+      historyRef.current = createLiveGameHistory();
+      setUndoDepth(0);
+      setRedoDepth(0);
       needsCreateRef.current = false;
       setOptimisticRecord(null);
       await syncJournal();
@@ -910,7 +983,7 @@ export default function LiveGameScreen() {
   };
 
   const preparePreviousPod = useCallback(() => {
-    const previous = completedGameRef.current;
+    const previous = completedGame;
     if (!previous) return null;
     const orderedPlayers = [...previous.state.players].sort((a, b) => a.slot - b.slot);
     setPlayerCount(orderedPlayers.length);
@@ -921,7 +994,7 @@ export default function LiveGameScreen() {
     })));
     applyStartingLife(previous.starting_life);
     return previous;
-  }, [applySeatSetups, applyStartingLife]);
+  }, [applySeatSetups, applyStartingLife, completedGame]);
 
   const handleRematchSameDecks = useCallback(async () => {
     if (!user) return;
@@ -964,6 +1037,10 @@ export default function LiveGameScreen() {
     };
     serverRecordRef.current = record;
     mutationQueueRef.current = [];
+    setPendingSyncCount(0);
+    historyRef.current = createLiveGameHistory();
+    setUndoDepth(0);
+    setRedoDepth(0);
     needsCreateRef.current = true;
     setOptimisticRecord(record);
     revealStartingPlayer(record.state.startingPlayerKey ?? null, keys);
@@ -1029,6 +1106,7 @@ export default function LiveGameScreen() {
             counterclockwise: copy('liveGameCounterclockwise'),
             damageReceived: copy('liveGameDamageReceived'),
             undo: copy('liveGameUndo'),
+            redo: copy('liveGameRedo'),
             thisPlayer: copy('liveGameThisPlayer'),
             eachOpponent: copy('liveGameEachOpponent'),
             everyone: copy('liveGameEveryone'),
@@ -1036,6 +1114,19 @@ export default function LiveGameScreen() {
           onBack={() => setShowExitChoice(true)}
           canUndo={undoDepth > 0}
           onUndo={handleUndo}
+          canRedo={redoDepth > 0}
+          onRedo={handleRedo}
+          syncStatus={syncStatus}
+          syncLabel={copy(syncStatus === 'offline'
+            ? 'liveGameSyncOffline'
+            : syncStatus === 'pending'
+              ? 'liveGameSyncPending'
+              : syncStatus === 'syncing'
+                ? 'liveGameSyncing'
+                : syncStatus === 'error' ? 'liveGameSyncError' : 'liveGameSynced')}
+          pendingSyncCount={pendingSyncCount}
+          syncError={syncError}
+          onRetrySync={() => void syncJournal()}
           onEndGame={() => openEndGameModal(liveGame.state)}
           onAdjust={handleAdjust}
           onApplyDragDamage={handleApplyDragDamage}
@@ -1436,6 +1527,16 @@ export default function LiveGameScreen() {
           icon="refresh-outline"
           onClose={() => setShowRematch(false)}
         />
+        {completedGame ? (
+          <LiveGameRecapView
+            record={completedGame}
+            labels={{
+              timeline: copy('liveGameLifeTimeline'),
+              highlights: copy('liveGameHighlights'),
+              empty: copy('liveGameLogEmpty'),
+            }}
+          />
+        ) : null}
         <View style={styles.rematchActions}>
           <Button
             label={copy('liveGameSameDecks')}
