@@ -66,4 +66,4 @@ build:
         name: Upload unsigned IPA
         inputs:
           type: application-archive
-          path: artifacts/ios/PhyrexianArena-unsigned.ipa
+          path: expo/artifacts/ios/PhyrexianArena-unsigned.ipa
