@@ -25,3 +25,5 @@ expo/ios/
 # Local Gradle / Metro caches.
 **/.gradle/
 **/build/
+!expo/.eas/build/
+!expo/.eas/build/*.yml
