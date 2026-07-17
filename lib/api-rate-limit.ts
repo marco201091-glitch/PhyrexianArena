@@ -19,6 +19,11 @@ export const API_RATE_LIMITS = {
   authDemoLogin: { maxRequests: 20, windowSeconds: 60 * 60 },
   accessLog: { maxRequests: 120, windowSeconds: 60 * 60 },
   inviteQr: { maxRequests: 60, windowSeconds: 10 * 60 },
+  publicCommanderSearch: { maxRequests: 60, windowSeconds: 10 * 60 },
+  guestLobbyCreate: { maxRequests: 20, windowSeconds: 60 * 60 },
+  guestLobbyJoin: { maxRequests: 20, windowSeconds: 60 * 60 },
+  guestLobbySession: { maxRequests: 600, windowSeconds: 10 * 60 },
+  guestLobbyRecovery: { maxRequests: 10, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitConfig>;
 
 interface RateLimitResult {

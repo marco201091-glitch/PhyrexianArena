@@ -17,14 +17,12 @@ import {
   type LiveGamePlayer,
   type PlayDirection,
 } from '@/lib/live-game';
-import type { SeatControlPlacement } from '@/lib/live-game-table-layout';
 import type { ParticipantKey } from '@/lib/participant-keys';
 
 type TableSeatProps = {
   player: LiveGamePlayer;
   allPlayers: LiveGamePlayer[];
   seatRotation: number;
-  controlPlacement: SeatControlPlacement;
   damageMode: DamageMode;
   isSource: boolean;
   isDragHover: boolean;
@@ -157,7 +155,7 @@ export function TableSeat({
       ]}
     >
       <View style={[styles.playerCanvas, canvasStyle]}>
-        <View style={styles.backgroundWrap} pointerEvents="none">
+        <View style={[styles.backgroundWrap, player.backgroundColor ? { backgroundColor: player.backgroundColor } : null]} pointerEvents="none">
           <DeckImage
             uri={player.commanderImage}
             alt={player.commander}

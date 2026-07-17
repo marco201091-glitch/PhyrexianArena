@@ -15,6 +15,7 @@ type DamageConfirmSheetProps = {
   source: LiveGamePlayer | null;
   target: LiveGamePlayer | null;
   defaultMode?: DamageMode;
+  commanderMode?: boolean;
   labels: {
     title: string;
     amount: string;
@@ -36,6 +37,7 @@ export function DamageConfirmSheet({
   source,
   target,
   defaultMode = 'life',
+  commanderMode = true,
   labels,
   onClose,
   onConfirm,
@@ -84,7 +86,7 @@ export function DamageConfirmSheet({
           { value: 'life' as const, label: labels.lifeDamage, icon: 'heart-dislike-outline' as const },
           { value: 'commander' as const, label: labels.commanderDamage, icon: 'shield-outline' as const },
           { value: 'infect' as const, label: labels.infectDamage, icon: 'skull-outline' as const },
-        ]).map((option) => {
+        ].filter((option) => commanderMode || option.value !== 'commander')).map((option) => {
           const active = mode === option.value;
           return (
           <Pressable

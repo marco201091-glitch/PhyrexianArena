@@ -204,6 +204,9 @@ function LoginForm() {
               <GoogleSignInButton disabled={loading} onClick={handleGoogleLogin} />
 
               <DemoLoginButton disabled={loading} redirectPath={redirectPath} />
+              <Button asChild variant="outline" className="mt-3 w-full border-cyan-400/30 text-cyan-100">
+                <Link href="/counter">Segnapunti senza account</Link>
+              </Button>
             </>
           )}
 

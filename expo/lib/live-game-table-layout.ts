@@ -42,6 +42,19 @@ export type CenterToolbarBand = {
 /** MTG card width:height — used to frame commander art in live seats. */
 export const COMMANDER_CARD_ART_RATIO = 5 / 7;
 
+/**
+ * Non-negotiable local coordinate system for every rotated player card.
+ * Rotate the whole coordinate system toward player; never swap these anchors.
+ */
+export const SEAT_UI_DOGMA = Object.freeze({
+  orientation: 'landscape',
+  longEdge: 'toward-player',
+  minus: 'left',
+  plus: 'right',
+  name: 'above-life',
+  shield: 'below-life',
+} as const);
+
 export function fitCommanderArtFrame(
   seatWidth: number,
   seatHeight: number,

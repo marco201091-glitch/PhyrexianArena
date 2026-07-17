@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
@@ -25,6 +25,8 @@ import { colors, radii, spacing } from '@/constants/theme';
 import { useArena } from '@/hooks/use-arena';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
+import { apiGet, apiPatch, apiPost } from '@/lib/api';
+import { getApiBaseUrl } from '@/lib/env';
 import { getLastDeckSelectionForParticipant } from '@/lib/arena-participants';
 import { getPreferredDeckId } from '@/lib/arena-deck-selection';
 import {
@@ -92,6 +94,16 @@ import { supabase } from '@/lib/supabase';
 import type { MemberDeck } from '@/lib/types/arena';
 
 type LifePreset = '20' | '25' | '30' | '40' | '60' | 'custom';
+type LobbyGuestStatus = {
+  id: string;
+  ready: boolean;
+  arena_guests: { display_name: string } | Array<{ display_name: string }> | null;
+  arena_guest_decks: { commander: string } | Array<{ commander: string }> | null;
+};
+
+function relationOne<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
 
 const LIFE_PRESETS: LifePreset[] = ['20', '25', '30', '40', '60'];
 const ALTERNATIVE_WIN_CONDITIONS: Array<{
@@ -142,6 +154,11 @@ export default function LiveGameScreen() {
   const [lifePreset, setLifePreset] = useState<LifePreset>('40');
   const [customLife, setCustomLife] = useState('40');
   const [starting, setStarting] = useState(false);
+  const [lobbyId, setLobbyId] = useState<string | null>(null);
+  const lobbyIdRef = useRef<string | null>(null);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [lobbyGuests, setLobbyGuests] = useState<LobbyGuestStatus[]>([]);
+  const [creatingInvite, setCreatingInvite] = useState(false);
 
   const [damagePulse, setDamagePulse] = useState<Record<string, number>>({});
   const [randomHighlight, setRandomHighlight] = useState<ParticipantKey | null>(null);
@@ -178,6 +195,31 @@ export default function LiveGameScreen() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const telemetrySessionRef = useRef(Crypto.randomUUID());
   const setupHydratedRef = useRef<string | null>(null);
+
+  const createGameInvite = useCallback(async () => {
+    if (!groupId) return;
+    setCreatingInvite(true);
+    const result = await apiPost<{ id: string; token: string }>('/api/live-game-lobby', { groupId });
+    setCreatingInvite(false);
+    if (!result.data?.id || !result.data.token) {
+      showToast(result.error ?? 'Invito non creato');
+      return;
+    }
+    lobbyIdRef.current = result.data.id;
+    setLobbyId(result.data.id);
+    setInviteToken(result.data.token);
+  }, [groupId, showToast]);
+
+  useEffect(() => {
+    if (!lobbyId || liveGame) return;
+    const refresh = async () => {
+      const result = await apiGet<{ guests: LobbyGuestStatus[] }>(`/api/live-game-lobby?id=${encodeURIComponent(lobbyId)}`);
+      if (result.data?.guests) setLobbyGuests(result.data.guests);
+    };
+    void refresh();
+    const timer = setInterval(() => void refresh(), 1500);
+    return () => clearInterval(timer);
+  }, [liveGame, lobbyId]);
 
   const openEndGameModal = useCallback((state: LiveGameState) => {
     const suggested = getSuggestedWinner(state);
@@ -382,6 +424,13 @@ export default function LiveGameScreen() {
           serverRecord = await ensureLiveGameCreated(supabase, serverRecord);
           serverRecordRef.current = serverRecord;
           needsCreateRef.current = false;
+          if (lobbyIdRef.current) {
+            const linked = await apiPatch('/api/live-game-lobby', {
+              lobbyId: lobbyIdRef.current,
+              liveGameId: serverRecord.id,
+            });
+            if (linked.status >= 400) throw new Error(linked.error ?? 'Guest lobby link failed');
+          }
           await saveJournal();
         }
 
@@ -1140,6 +1189,17 @@ export default function LiveGameScreen() {
             );
           }}
           onPickRandom={runRandomPick}
+          onAdjustCounter={(key, counter, amount) => enqueueMutation(
+            { type: 'adjust_counter', targetKey: key, counter, amount },
+            { type: 'adjust_counter', targetKey: key, counter, amount: -amount },
+          )}
+          onSetEmblem={(key, emblem, active) => {
+            const holderKey = liveGame.state.players.find((player) => player.counters[emblem])?.participantKey ?? null;
+            enqueueMutation(
+              { type: 'set_emblem', targetKey: key, emblem, active },
+              { type: 'restore_emblem', emblem, holderKey },
+            );
+          }}
         />
 
         <Modal
@@ -1424,6 +1484,43 @@ export default function LiveGameScreen() {
             <Text style={styles.setupTitle}>{copy('liveGameSetupTitle')}</Text>
             <Text style={styles.setupHint}>{copy('liveGameSetupHint')}</Text>
 
+            <View style={styles.invitePanel}>
+              <View style={styles.inviteHeader}>
+                <Ionicons name="qr-code-outline" size={24} color={colors.primaryLight} />
+                <View style={styles.inviteCopy}>
+                  <Text style={styles.inviteTitle}>Invita guest con QR</Text>
+                  <Text style={styles.inviteHint}>Nessun account · mazzo · stato pronto</Text>
+                </View>
+                {!inviteToken ? <Button
+                  label={creatingInvite ? 'Creo…' : 'Genera'}
+                  icon="qr-code-outline"
+                  onPress={createGameInvite}
+                  disabled={creatingInvite}
+                /> : null}
+              </View>
+              {inviteToken ? <View style={styles.inviteBody}>
+                <Image
+                  source={{ uri: `${getApiBaseUrl()}/api/game-invite-qr?token=${inviteToken}&format=png` }}
+                  style={styles.inviteQr}
+                  alt="QR invito partita"
+                />
+                <View style={styles.inviteGuests}>
+                  {lobbyGuests.length ? lobbyGuests.map((entry) => {
+                    const profile = relationOne(entry.arena_guests);
+                    const deck = relationOne(entry.arena_guest_decks);
+                    return <View key={entry.id} style={styles.inviteGuestRow}>
+                      <View style={[styles.readyDot, entry.ready ? styles.readyDotOn : styles.readyDotWaiting]} />
+                      <View style={styles.inviteCopy}>
+                        <Text style={styles.inviteGuestName} numberOfLines={1}>{profile?.display_name ?? 'Guest'}</Text>
+                        <Text style={styles.inviteHint} numberOfLines={1}>{deck?.commander}</Text>
+                      </View>
+                      <Text style={[styles.readyText, entry.ready && styles.readyTextOn]}>{entry.ready ? 'PRONTO' : 'ATTESA'}</Text>
+                    </View>;
+                  }) : <Text style={styles.inviteHint}>In attesa della prima scansione…</Text>}
+                </View>
+              </View> : null}
+            </View>
+
             <LiveGameConfigurator
               playerCount={playerCount}
               layoutVariant={layoutVariant}
@@ -1589,6 +1686,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  invitePanel: {
+    overflow: 'hidden',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.3)',
+    backgroundColor: 'rgba(91,33,182,0.12)',
+  },
+  inviteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  inviteCopy: { flex: 1, minWidth: 0 },
+  inviteTitle: { color: colors.foreground, fontSize: 15, fontWeight: '900' },
+  inviteHint: { color: colors.muted, fontSize: 11, marginTop: 2 },
+  inviteBody: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    padding: spacing.md,
+  },
+  inviteQr: { width: 132, height: 132, borderRadius: radii.md, backgroundColor: '#fff' },
+  inviteGuests: { flex: 1, gap: spacing.xs, justifyContent: 'center' },
+  inviteGuestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    padding: spacing.sm,
+  },
+  inviteGuestName: { color: colors.foreground, fontSize: 13, fontWeight: '800' },
+  readyDot: { width: 9, height: 9, borderRadius: 5 },
+  readyDotOn: { backgroundColor: '#34d399' },
+  readyDotWaiting: { backgroundColor: '#fbbf24' },
+  readyText: { color: '#fde68a', fontSize: 9, fontWeight: '900' },
+  readyTextOn: { color: '#a7f3d0' },
   sectionLabel: {
     color: colors.foreground,
     fontSize: 13,

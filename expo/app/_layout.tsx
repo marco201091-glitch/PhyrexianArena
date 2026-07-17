@@ -28,7 +28,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inJoinRoute = segments[0] === 'join';
     const inArenaRoute = segments[0] === 'arena';
     const inLegalRoute = segments[0] === 'legal';
-    const isPublicRoute = inAuthGroup || inJoinRoute || inArenaRoute || inLegalRoute;
+    const inCounterRoute = String(segments[0]) === 'counter';
+    const isPublicRoute = inAuthGroup || inJoinRoute || inArenaRoute || inLegalRoute || inCounterRoute;
 
     if (!user && !isPublicRoute) {
       router.replace({
@@ -74,6 +75,7 @@ export default function RootLayout() {
             <Stack.Screen name="join/[code]" />
             <Stack.Screen name="arena/[code]" />
             <Stack.Screen name="legal/[slug]" />
+            <Stack.Screen name="counter" />
           </Stack>
           </AuthGate>
           </ToastProvider>

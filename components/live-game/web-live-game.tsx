@@ -8,6 +8,8 @@ import {
   ChevronRight,
   CircleDot,
   Clock3,
+  Crown,
+  Box,
   Dices,
   Flag,
   Heart,
@@ -18,6 +20,7 @@ import {
   MoreHorizontal,
   Pause,
   Plus,
+  QrCode,
   Redo2,
   RotateCcw,
   Shield,
@@ -53,6 +56,7 @@ import {
   type QueuedLiveGameMutation,
   type WinCondition,
 } from '@/lib/live-game';
+import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import {
   getLandscapeSeatRotation,
   getCenterToolbarBand,
@@ -109,6 +113,27 @@ export type WebTrackerParticipant = {
   guestId: string | null;
   decks: WebTrackerDeck[];
 };
+
+type LobbyGuest = {
+  id: string;
+  ready: boolean;
+  guest_id: string;
+  guest_deck_id: string;
+  arena_guests: { display_name: string } | Array<{ display_name: string }> | null;
+  arena_guest_decks: {
+    name: string;
+    commander: string;
+    commander_image: string | null;
+  } | Array<{
+    name: string;
+    commander: string;
+    commander_image: string | null;
+  }> | null;
+};
+
+function relationOne<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
 
 type DragState = {
   sourceKey: ParticipantKey;
@@ -208,7 +233,7 @@ export function WebLiveGame({
   groupId,
   arenaName,
   userId,
-  participants,
+  participants: baseParticipants,
 }: {
   groupId: string;
   arenaName: string;
@@ -243,6 +268,110 @@ export function WebLiveGame({
   const [startingLife, setStartingLife] = useState(initialSetup.startingLife);
   const [seats, setSeats] = useState<WebLiveGameSeatSetup[]>(initialSetup.seats);
   const [starting, setStarting] = useState(false);
+  const [lobbyId, setLobbyId] = useState<string | null>(null);
+  const lobbyIdRef = useRef<string | null>(null);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [lobbyGuests, setLobbyGuests] = useState<LobbyGuest[]>([]);
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [inviteOrigin, setInviteOrigin] = useState('');
+  const participants = useMemo<WebTrackerParticipant[]>(() => [
+    ...baseParticipants,
+    ...lobbyGuests.map((entry) => {
+      const guest = relationOne(entry.arena_guests);
+      const deck = relationOne(entry.arena_guest_decks);
+      return {
+        key: `guest:${entry.guest_id}` as ParticipantKey,
+        displayName: guest?.display_name ?? copy({ it: 'Ospite', en: 'Guest' }),
+        isGuest: true,
+        userId: null,
+        guestId: entry.guest_id,
+        decks: deck ? [{
+          id: entry.guest_deck_id,
+          name: deck.name,
+          commander: deck.commander,
+          commanderImage: deck.commander_image,
+        }] : [],
+      };
+    }),
+  ], [baseParticipants, copy, lobbyGuests]);
+
+  useEffect(() => {
+    setInviteOrigin(window.location.origin);
+    const raw = localStorage.getItem(`phyrexian:live-lobby:${groupId}`);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as { id?: string; token?: string };
+      if (saved.id && saved.token) {
+        lobbyIdRef.current = saved.id;
+        setLobbyId(saved.id);
+        setInviteToken(saved.token);
+      }
+    } catch {
+      localStorage.removeItem(`phyrexian:live-lobby:${groupId}`);
+    }
+  }, [groupId]);
+
+  const refreshLobby = useCallback(async () => {
+    if (!lobbyIdRef.current) return;
+    const response = await fetch(`/api/live-game-lobby?id=${encodeURIComponent(lobbyIdRef.current)}`, { cache: 'no-store' });
+    if (!response.ok) return;
+    const result = await response.json() as { guests?: LobbyGuest[] };
+    setLobbyGuests(result.guests ?? []);
+  }, []);
+
+  useEffect(() => {
+    if (!lobbyId || record) return;
+    void refreshLobby();
+    const timer = window.setInterval(() => void refreshLobby(), 1500);
+    return () => window.clearInterval(timer);
+  }, [lobbyId, record, refreshLobby]);
+
+  useEffect(() => {
+    if (record || lobbyGuests.length === 0) return;
+    setSeats((current) => {
+      const next = [...current];
+      let changed = false;
+      for (const guest of lobbyGuests) {
+        const key = `guest:${guest.guest_id}` as ParticipantKey;
+        if (next.some((seat) => seat.participantKey === key)) continue;
+        const empty = next.findIndex((seat) => !seat.participantKey);
+        if (empty >= 0) {
+          next[empty] = { participantKey: key, deckId: guest.guest_deck_id };
+          changed = true;
+        } else if (next.length < 6) {
+          next.push({ participantKey: key, deckId: guest.guest_deck_id });
+          changed = true;
+        }
+      }
+      if (changed) setPlayerCount(next.length);
+      return changed ? next : current;
+    });
+  }, [lobbyGuests, record]);
+
+  const createInvite = async () => {
+    setCreatingInvite(true);
+    try {
+      const response = await fetch('/api/live-game-lobby', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? 'Invite creation failed');
+      lobbyIdRef.current = result.id;
+      setLobbyId(result.id);
+      setInviteToken(result.token);
+      localStorage.setItem(`phyrexian:live-lobby:${groupId}`, JSON.stringify({ id: result.id, token: result.token }));
+    } catch (error) {
+      toast({
+        title: copy({ it: 'Invito non creato', en: 'Invite not created' }),
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
 
   const [damageDraft, setDamageDraft] = useState<DamageDraft | null>(null);
   const [damageAmount, setDamageAmount] = useState('0');
@@ -250,6 +379,8 @@ export function WebLiveGame({
   const [drag, setDrag] = useState<DragState | null>(null);
   const [highlight, setHighlight] = useState<ParticipantKey | null>(null);
   const [randomOpponentMode, setRandomOpponentMode] = useState(false);
+  const [randomizerOpen, setRandomizerOpen] = useState(false);
+  const [randomizerResult, setRandomizerResult] = useState<string | number | null>(null);
   const rouletteTimers = useRef<number[]>([]);
   const [endOpen, setEndOpen] = useState(false);
   const [winnerKey, setWinnerKey] = useState<ParticipantKey | ''>('');
@@ -374,6 +505,14 @@ export function WebLiveGame({
         server = await ensureLiveGameCreated(supabase, recordRef.current);
         serverRef.current = server;
         needsCreateRef.current = false;
+        if (lobbyIdRef.current) {
+          const response = await fetch('/api/live-game-lobby', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lobbyId: lobbyIdRef.current, liveGameId: server.id }),
+          });
+          if (!response.ok) throw new Error('Guest lobby link failed');
+        }
       }
       while (queueRef.current.length > 0) {
         const queued = queueRef.current[0]!;
@@ -967,6 +1106,50 @@ export function WebLiveGame({
               <p className="mt-1 text-sm text-muted-foreground">{copy({ it: 'Scegli layout, posti e mazzi. L’ultima configurazione viene ricordata.', en: 'Choose layout, seats and decks. Your last setup is remembered.' })}</p>
             </div>
             <div className="space-y-7 p-4 sm:p-7">
+              <section className="overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-500/15 via-background/70 to-cyan-500/10">
+                <div className="flex items-center gap-3 border-b border-white/10 p-4">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-200"><QrCode className="h-5 w-5" /></span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-black">{copy({ it: 'Invita giocatori con QR', en: 'Invite players with QR' })}</h3>
+                    <p className="text-xs text-muted-foreground">{copy({ it: 'Ingresso guest senza account · mazzo e stato pronto', en: 'Guest join without account · deck and ready status' })}</p>
+                  </div>
+                  {!inviteToken ? <Button onClick={() => void createInvite()} disabled={creatingInvite} className="font-black">
+                    {creatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
+                    {copy({ it: 'Genera', en: 'Generate' })}
+                  </Button> : null}
+                </div>
+                {inviteToken ? <div className="grid gap-4 p-4 sm:grid-cols-[160px_1fr]">
+                  <div className="rounded-2xl bg-white p-2 shadow-xl">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/game-invite-qr?token=${encodeURIComponent(inviteToken)}`}
+                      alt={copy({ it: 'QR invito partita', en: 'Game invite QR' })}
+                      className="aspect-square w-full"
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard.writeText(`${inviteOrigin}/game/join/${inviteToken}`)}
+                      className="w-full truncate rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-left text-xs text-violet-200"
+                    >
+                      {inviteOrigin}/game/join/{inviteToken}
+                    </button>
+                    <div className="space-y-2">
+                      {lobbyGuests.length ? lobbyGuests.map((guest) => {
+                        const profile = relationOne(guest.arena_guests);
+                        const deck = relationOne(guest.arena_guest_decks);
+                        return <div key={guest.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+                          <span className={cn('h-2.5 w-2.5 rounded-full', guest.ready ? 'bg-emerald-400 shadow-[0_0_12px_#34d399]' : 'bg-amber-400')} />
+                          <div className="min-w-0 flex-1"><b className="block truncate">{profile?.display_name ?? 'Guest'}</b><span className="block truncate text-xs text-muted-foreground">{deck?.commander}</span></div>
+                          <span className={cn('rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider', guest.ready ? 'bg-emerald-500/15 text-emerald-200' : 'bg-amber-500/15 text-amber-200')}>{guest.ready ? copy({ it: 'Pronto', en: 'Ready' }) : copy({ it: 'In attesa', en: 'Waiting' })}</span>
+                        </div>;
+                      }) : <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-muted-foreground">{copy({ it: 'In attesa della prima scansione…', en: 'Waiting for first scan…' })}</p>}
+                    </div>
+                  </div>
+                </div> : null}
+              </section>
+
               <section>
                 <div className="mb-3 flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-violet-600 text-xs font-black">1</span><h3 className="font-bold">{copy({ it: 'Numero giocatori', en: 'Number of players' })}</h3></div>
                 <div className="grid grid-cols-5 gap-2">
@@ -1026,7 +1209,7 @@ export function WebLiveGame({
   const toolbarCrossSize = centerToolbarBand?.axis === 'vertical'
     ? centerToolbarBand.width
     : centerToolbarBand?.height ?? 0;
-  const toolbarControlSize = Math.max(32, Math.min(56, toolbarCrossSize - 12, (toolbarMainSize - 96) / 7));
+  const toolbarControlSize = Math.max(30, Math.min(56, toolbarCrossSize - 12, (toolbarMainSize - 96) / 8));
   const toolbarButtonStyle = { width: toolbarControlSize, height: toolbarControlSize };
   const toolbarDurationStyle = centerToolbarBand?.axis === 'vertical'
     ? { width: toolbarControlSize, height: Math.min(80, toolbarControlSize * 1.5) }
@@ -1093,6 +1276,7 @@ export function WebLiveGame({
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={undoLastMutation} disabled={!undoDepth} title="Undo"><RotateCcw /></Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={redoLastMutation} disabled={!redoDepth} title="Redo"><Redo2 /></Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => runRoulette(activePlayers.map((player) => player.participantKey))} title="Random player"><Dices /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => { setRandomizerResult(null); setRandomizerOpen(true); }} title="Dado o moneta"><Box /></Button>
           <Button variant={randomOpponentMode ? 'default' : 'ghost'} size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => setRandomOpponentMode((value) => !value)} title="Random opponent">
             <span className="relative block h-5 w-5">
               <UserRound className="absolute left-0 top-0 h-[18px] w-[18px]" />
@@ -1119,6 +1303,13 @@ export function WebLiveGame({
       </div>
 
       {drag && <svg className="pointer-events-none fixed inset-0 z-50 h-full w-full"><defs><marker id="damage-arrow" markerWidth="14" markerHeight="14" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fb7185" /></marker><filter id="damage-glow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs><path d={`M ${drag.startX} ${drag.startY} Q ${(drag.startX + drag.x) / 2} ${Math.min(drag.startY, drag.y) - 90} ${drag.x} ${drag.y}`} fill="none" stroke="#fb7185" strokeWidth="7" strokeLinecap="round" markerEnd="url(#damage-arrow)" filter="url(#damage-glow)" strokeDasharray="12 8"><animate attributeName="stroke-dashoffset" from="40" to="0" dur=".7s" repeatCount="indefinite" /></path></svg>}
+
+      {randomizerOpen && <ModalOverlay><ModalCard><div className="space-y-5 p-5"><div className="flex items-center justify-between"><h2 className="text-xl font-black">{copy({ it: 'Dado o moneta', en: 'Die or coin' })}</h2><button onClick={() => setRandomizerOpen(false)} aria-label="Close"><X /></button></div><div className="grid grid-cols-4 gap-2">{([
+        ['coin', copy({ it: 'Moneta', en: 'Coin' })],
+        ['d4', 'd4'],
+        ['d6', 'd6'],
+        ['d20', 'd20'],
+      ] as Array<[TableRandomKind, string]>).map(([kind, label]) => <button key={kind} onClick={() => setRandomizerResult(rollTableRandom(kind))} className="rounded-2xl border border-violet-400/25 bg-violet-500/10 p-4 font-black transition active:scale-95">{label}</button>)}</div>{randomizerResult !== null ? <div className="rounded-3xl border border-violet-400/20 bg-black/30 p-8 text-center text-7xl font-black text-violet-200">{randomizerResult === 'heads' ? copy({ it: 'Testa', en: 'Heads' }) : randomizerResult === 'tails' ? copy({ it: 'Croce', en: 'Tails' }) : randomizerResult}</div> : null}</div></ModalCard></ModalOverlay>}
 
       {damageDraft && (() => {
         const source = record.state.players.find((player) => player.participantKey === damageDraft.sourceKey);
@@ -1169,6 +1360,27 @@ export function WebLiveGame({
               onClose={() => setDamagePanelKey(null)}
             />
             <div className="space-y-3 overflow-y-auto p-5">
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ['monarch', copy({ it: 'Monarca', en: 'Monarch' }), Crown],
+                  ['initiative', copy({ it: 'Iniziativa', en: 'Initiative' }), Swords],
+                ] as const).map(([emblem, label, Icon]) => <button
+                  key={emblem}
+                  onClick={() => {
+                    const holderKey = record.state.players.find((entry) => entry.counters[emblem])?.participantKey ?? null;
+                    enqueue(
+                      { type: 'set_emblem', targetKey: panelPlayer.participantKey, emblem, active: !panelPlayer.counters[emblem] },
+                      { type: 'restore_emblem', emblem, holderKey },
+                    );
+                  }}
+                  className={cn('rounded-2xl border p-4 text-left transition', panelPlayer.counters[emblem] ? 'border-amber-300/70 bg-amber-500/20 text-amber-100' : 'border-border bg-background/60')}
+                ><Icon className="mb-3 h-5 w-5" /><b>{label}</b></button>)}
+              </div>
+              {([
+                ['energy', copy({ it: 'Energia', en: 'Energy' }), Sparkles],
+                ['experience', copy({ it: 'Esperienza', en: 'Experience' }), Trophy],
+                ['commanderTax', 'Commander Tax', Shield],
+              ] as const).map(([counter, label, Icon]) => <div key={counter} className="flex items-center gap-3 rounded-2xl border border-border bg-background/60 p-3"><Icon className="h-5 w-5 text-violet-300" /><b className="flex-1">{label}</b><Button variant="outline" size="icon" onClick={() => enqueue({ type: 'adjust_counter', targetKey: panelPlayer.participantKey, counter, amount: -1 }, { type: 'adjust_counter', targetKey: panelPlayer.participantKey, counter, amount: 1 })}><Minus /></Button><strong className="w-8 text-center text-xl">{panelPlayer.counters[counter]}</strong><Button variant="outline" size="icon" onClick={() => enqueue({ type: 'adjust_counter', targetKey: panelPlayer.participantKey, counter, amount: 1 }, { type: 'adjust_counter', targetKey: panelPlayer.participantKey, counter, amount: -1 })}><Plus /></Button></div>)}
               <div className="flex items-center justify-between rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-3">
                 <div>
                   <p className="font-black text-emerald-100">Infect</p>

@@ -1,0 +1,248 @@
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import {
+  ArrowLeft, Crown, Dices, Download, Minus, Plus, RotateCcw, Shield,
+  Sparkles, Swords,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DeckImage } from '@/components/deck-image';
+import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
+import {
+  applyLiveGameMutation,
+  createLiveGamePlayer,
+  createLiveGameSummary,
+  parseLiveGameState,
+  type LiveGameMutation,
+  type LiveGamePlayer,
+  type LiveGameState,
+  type PlayerCounter,
+  type PlayerEmblem,
+} from '@/lib/live-game';
+import {
+  getCenterToolbarBand, getLandscapeSeatRotation, getSeatRotation,
+  getSquareTableLayouts, getViewportTableOrientation, mapPlayersToSeats,
+  type SquareSeatLayout,
+} from '@/lib/live-game-table-layout';
+import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
+import type { ParticipantKey } from '@/lib/participant-keys';
+
+const STORAGE_KEY = 'phyrexian:standalone-counter:v1';
+const COLORS = ['#18181b', '#7f1d1d', '#1e3a8a', '#14532d', '#713f12', '#581c87'];
+
+type Format = 'commander' | 'classic';
+type SetupPlayer = { name: string; commander: string; image: string | null; color: string };
+type StoredCounter = { format: Format; state: LiveGameState; startedAt: string };
+type CommanderResult = { id: string; name: string; imageUrl: string | null };
+
+function defaultSetup(index: number): SetupPlayer {
+  return { name: `Player ${index + 1}`, commander: '', image: null, color: COLORS[index % COLORS.length] };
+}
+
+function oneSeat(width: number, height: number): SquareSeatLayout[] {
+  return [{ left: 4, top: 4, width: width - 8, height: height - 72, role: 'bottom' }];
+}
+
+function exportRecap(state: LiveGameState, startedAt: string) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 630;
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  const gradient = context.createLinearGradient(0, 0, 1200, 630);
+  gradient.addColorStop(0, '#09090f');
+  gradient.addColorStop(1, '#2e1065');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 1200, 630);
+  context.fillStyle = '#c4b5fd';
+  context.font = '700 28px system-ui';
+  context.fillText('PHYREXIAN ARENA', 64, 70);
+  context.fillStyle = '#ffffff';
+  context.font = '900 54px system-ui';
+  context.fillText('Riepilogo partita', 64, 136);
+  context.fillStyle = '#a1a1aa';
+  context.font = '24px system-ui';
+  context.fillText(new Date(startedAt).toLocaleString(), 64, 178);
+  state.players.forEach((player, index) => {
+    const x = 64 + (index % 2) * 550;
+    const y = 245 + Math.floor(index / 2) * 115;
+    context.fillStyle = ['#a78bfa', '#22d3ee', '#fb7185', '#fbbf24', '#4ade80', '#f472b6'][index];
+    context.fillRect(x, y - 35, 8, 72);
+    context.fillStyle = '#ffffff';
+    context.font = '800 28px system-ui';
+    context.fillText(player.displayName, x + 28, y - 4);
+    context.fillStyle = '#d4d4d8';
+    context.font = '20px system-ui';
+    context.fillText(player.commander || 'Magic classico', x + 28, y + 28);
+    context.fillStyle = '#ffffff';
+    context.font = '900 48px system-ui';
+    context.textAlign = 'right';
+    context.fillText(String(player.life), x + 510, y + 18);
+    context.textAlign = 'left';
+  });
+  const link = document.createElement('a');
+  link.download = `phyrexian-recap-${new Date().toISOString().slice(0, 10)}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+export function StandaloneCounter() {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [format, setFormat] = useState<Format>('commander');
+  const [playerCount, setPlayerCount] = useState(4);
+  const [setup, setSetup] = useState(() => Array.from({ length: 6 }, (_, index) => defaultSetup(index)));
+  const [state, setState] = useState<LiveGameState | null>(null);
+  const [startedAt, setStartedAt] = useState('');
+  const [history, setHistory] = useState<LiveGameState[]>([]);
+  const [redo, setRedo] = useState<LiveGameState[]>([]);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [shieldKey, setShieldKey] = useState<ParticipantKey | null>(null);
+  const [randomOpen, setRandomOpen] = useState(false);
+  const [randomResult, setRandomResult] = useState<string | number | null>(null);
+  const [searchIndex, setSearchIndex] = useState<number | null>(null);
+  const [searchResults, setSearchResults] = useState<CommanderResult[]>([]);
+
+  useEffect(() => {
+    navigator.serviceWorker?.register('/counter-sw.js').catch(() => undefined);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const stored = JSON.parse(raw) as StoredCounter;
+      if (stored?.state?.players?.length) {
+        setFormat(stored.format);
+        setState(parseLiveGameState(stored.state));
+        setStartedAt(stored.startedAt);
+      }
+    } catch { /* Ignore damaged local session. */ }
+  }, []);
+
+  useEffect(() => {
+    if (!state) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ format, state, startedAt } satisfies StoredCounter));
+  }, [format, startedAt, state]);
+
+  useEffect(() => {
+    if (!state || !hostRef.current) return;
+    const observer = new ResizeObserver(([entry]) => setSize({
+      width: entry.contentRect.width,
+      height: entry.contentRect.height,
+    }));
+    observer.observe(hostRef.current);
+    return () => observer.disconnect();
+  }, [state]);
+
+  const mutate = (mutation: LiveGameMutation) => {
+    if (!state) return;
+    setHistory((current) => [...current.slice(-29), state]);
+    setRedo([]);
+    setState(applyLiveGameMutation(state, {
+      ...mutation,
+      eventId: crypto.randomUUID(),
+      occurredAt: new Date().toISOString(),
+    }));
+  };
+
+  const start = () => {
+    const startingLife = format === 'commander' ? 40 : 20;
+    const keys = Array.from({ length: playerCount }, (_, index) => `guest:local-${index + 1}` as ParticipantKey);
+    const players = keys.map((key, index) => createLiveGamePlayer({
+      slot: index,
+      participantKey: key,
+      deckId: `local-${index + 1}`,
+      displayName: setup[index].name.trim() || `Player ${index + 1}`,
+      commander: format === 'commander' ? setup[index].commander.trim() || 'Commander' : 'Magic',
+      commanderImage: format === 'commander' ? setup[index].image : null,
+      backgroundColor: setup[index].color,
+      startingLife,
+      allParticipantKeys: keys,
+    }));
+    setState({ version: 0, players, events: [], summary: createLiveGameSummary(), layoutVariant: 'classic' });
+    setStartedAt(new Date().toISOString());
+    setHistory([]);
+    setRedo([]);
+  };
+
+  const searchCommander = async (index: number, query: string) => {
+    setSetup((current) => current.map((player, playerIndex) => playerIndex === index
+      ? { ...player, commander: query, image: null } : player));
+    setSearchIndex(index);
+    if (query.trim().length < 2 || !navigator.onLine) return setSearchResults([]);
+    const response = await fetch(`/api/public-commanders?q=${encodeURIComponent(query.trim())}`);
+    const payload = await response.json().catch(() => ({ data: [] }));
+    setSearchResults(response.ok ? payload.data ?? [] : []);
+  };
+
+  if (!state) {
+    return <main className="min-h-dvh bg-[radial-gradient(circle_at_top,#2e1065_0,#09090b_48%)] px-4 py-8 text-white">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className="flex items-center justify-between">
+          <Link href="/auth/login" className="inline-flex items-center gap-2 text-sm text-zinc-300"><ArrowLeft className="h-4 w-4" /> Login</Link>
+          <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-200">Offline ready</span>
+        </div>
+        <header><h1 className="text-4xl font-black">Segnapunti</h1><p className="mt-2 text-zinc-400">Nessun account. Nessun dato sul server.</p></header>
+        <section className="rounded-3xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur">
+          <div className="grid grid-cols-2 gap-2">
+            {(['commander', 'classic'] as Format[]).map((value) => <button key={value} onClick={() => setFormat(value)} className={`rounded-2xl border p-4 font-black ${format === value ? 'border-violet-400 bg-violet-500/20' : 'border-white/10 bg-white/5'}`}>{value === 'commander' ? 'Commander · 40' : 'Magic classico · 20'}</button>)}
+          </div>
+          <div className="mt-5 flex items-center justify-between"><b>Giocatori</b><div className="flex items-center gap-3"><Button size="icon" variant="outline" onClick={() => setPlayerCount(Math.max(1, playerCount - 1))}><Minus /></Button><strong className="w-8 text-center text-2xl">{playerCount}</strong><Button size="icon" variant="outline" onClick={() => setPlayerCount(Math.min(6, playerCount + 1))}><Plus /></Button></div></div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {setup.slice(0, playerCount).map((player, index) => <div key={index} className="relative rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+              <label className="text-xs font-black uppercase tracking-wider text-zinc-400">Player {index + 1}</label>
+              <input value={player.name} onChange={(event) => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 font-bold outline-none focus:border-violet-400" />
+              {format === 'commander' ? <div className="relative mt-2">
+                <input placeholder="Cerca comandante…" value={player.commander} onChange={(event) => void searchCommander(index, event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 outline-none focus:border-violet-400" />
+                {searchIndex === index && searchResults.length ? <div className="absolute inset-x-0 top-12 z-30 max-h-52 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950 shadow-2xl">{searchResults.map((result) => <button key={result.id} onClick={() => { setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, commander: result.name, image: result.imageUrl } : item)); setSearchResults([]); }} className="flex w-full items-center gap-3 border-b border-white/5 p-2 text-left hover:bg-white/5"><DeckImage src={result.imageUrl} alt={result.name} className="h-12 w-9 rounded object-cover" /><span className="text-sm font-bold">{result.name}</span></button>)}</div> : null}
+              </div> : null}
+              <div className="mt-3 flex gap-2">{COLORS.map((color) => <button key={color} aria-label={color} onClick={() => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color, image: null } : item))} className={`h-7 flex-1 rounded-full border ${player.color === color && !player.image ? 'border-white ring-2 ring-violet-400' : 'border-white/10'}`} style={{ backgroundColor: color }} />)}</div>
+            </div>)}
+          </div>
+          <Button onClick={start} className="mt-6 h-13 w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-lg font-black">Avvia partita</Button>
+        </section>
+      </div>
+    </main>;
+  }
+
+  const orientation = getViewportTableOrientation(size.width, size.height);
+  const layouts = state.players.length === 1 ? oneSeat(size.width, size.height) : getSquareTableLayouts(state.players.length, size.width, size.height, 'classic', orientation);
+  const assignments = mapPlayersToSeats(state.players, layouts, null);
+  const toolbar = state.players.length === 1 ? null : getCenterToolbarBand(state.players.length, size.width, size.height, 'classic', orientation);
+  const shieldPlayer = state.players.find((player) => player.participantKey === shieldKey) ?? null;
+  const counterRows: Array<[PlayerCounter, string]> = [['energy', 'Energia'], ['experience', 'Esperienza'], ['commanderTax', 'Commander Tax']];
+
+  return <main ref={hostRef} className="fixed inset-0 select-none overflow-hidden bg-black text-white">
+    {size.width > 0 && assignments.map(({ player, layout }) => {
+      const rotation = orientation === 'landscape' ? getLandscapeSeatRotation(layout, size.width) : getSeatRotation(layout.role, state.players.length);
+      const sideways = Math.abs(rotation) === 90;
+      const contentWidth = sideways ? layout.height : layout.width;
+      const contentHeight = sideways ? layout.width : layout.height;
+      const shortest = Math.min(contentWidth, contentHeight);
+      return <section key={player.participantKey} className="absolute overflow-hidden rounded-2xl border-2 border-black bg-zinc-950" style={{ left: layout.left, top: layout.top, width: layout.width, height: layout.height, backgroundColor: player.backgroundColor ?? '#18181b' }}>
+        {player.commanderImage ? <DeckImage src={player.commanderImage} alt={player.commander} className="absolute inset-0 h-full w-full rounded-none object-cover opacity-70" /> : null}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/55" />
+        <div className="absolute left-1/2 top-1/2" style={{ width: contentWidth, height: contentHeight, transform: `translate(-50%,-50%) rotate(${rotation}deg)` }}>
+          <button onClick={() => mutate({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} className="absolute left-[5%] top-1/2 z-10 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-3xl"><Minus /></button>
+          <button onClick={() => mutate({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} className="absolute right-[5%] top-1/2 z-10 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-3xl"><Plus /></button>
+          <div className="pointer-events-none absolute left-1/2 top-[8%] max-w-[70%] -translate-x-1/2 truncate rounded-full border border-white/15 bg-black/65 px-4 py-1 font-black">{player.displayName}</div>
+          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-black leading-none drop-shadow-xl" style={{ fontSize: Math.max(52, Math.min(110, shortest * .3)) }}>{player.life}</div>
+          <button onClick={() => setShieldKey(player.participantKey)} className="absolute left-1/2 top-[74%] grid h-12 w-12 -translate-x-1/2 place-items-center rounded-full border border-violet-200/30 bg-black/65"><Shield /></button>
+        </div>
+      </section>;
+    })}
+    <div className="absolute z-40 flex items-center justify-center gap-1 rounded-2xl border border-white/10 bg-zinc-950/95 p-1 shadow-2xl" style={toolbar ? { left: toolbar.left, top: toolbar.top, width: toolbar.width, height: toolbar.height, flexDirection: toolbar.axis === 'vertical' ? 'column' : 'row' } : { left: 8, right: 8, bottom: 8, height: 56 }}>
+      <Button size="icon" variant="ghost" onClick={() => { setState(null); localStorage.removeItem(STORAGE_KEY); }}><ArrowLeft /></Button>
+      <Button size="icon" variant="ghost" disabled={!history.length} onClick={() => { const previous = history.at(-1); if (!previous) return; setRedo((current) => [...current, state]); setState(previous); setHistory((current) => current.slice(0, -1)); }}><RotateCcw /></Button>
+      <Button size="icon" variant="ghost" disabled={!redo.length} onClick={() => { const next = redo.at(-1); if (!next) return; setHistory((current) => [...current, state]); setState(next); setRedo((current) => current.slice(0, -1)); }}><RotateCcw className="-scale-x-100" /></Button>
+      <Button size="icon" variant="ghost" onClick={() => setRandomOpen(true)}><Dices /></Button>
+      <Button size="icon" variant="ghost" onClick={() => exportRecap(state, startedAt)}><Download /></Button>
+    </div>
+
+    {randomOpen ? <ModalOverlay><ModalCard><div className="space-y-5 p-5"><div className="flex items-center justify-between"><h2 className="text-xl font-black">Lancio</h2><button onClick={() => setRandomOpen(false)}>×</button></div><div className="grid grid-cols-4 gap-2">{([['coin', 'Moneta'], ['d4', 'd4'], ['d6', 'd6'], ['d20', 'd20']] as Array<[TableRandomKind, string]>).map(([kind, label]) => <button key={kind} onClick={() => setRandomResult(rollTableRandom(kind))} className="rounded-2xl border border-violet-400/25 bg-violet-500/10 p-4 font-black">{label}</button>)}</div>{randomResult !== null ? <div className="rounded-3xl bg-black/35 p-8 text-center text-7xl font-black text-violet-200">{randomResult === 'heads' ? 'Testa' : randomResult === 'tails' ? 'Croce' : randomResult}</div> : null}</div></ModalCard></ModalOverlay> : null}
+
+    {shieldPlayer ? <ModalOverlay><ModalCard size="lg"><div className="space-y-4 overflow-y-auto p-5"><div className="flex items-center justify-between"><div><h2 className="text-xl font-black">{shieldPlayer.displayName}</h2><p className="text-xs text-zinc-400">Segnalini e stato</p></div><button onClick={() => setShieldKey(null)}>×</button></div>
+      <div className="grid grid-cols-2 gap-3">{([['monarch', 'Monarca', Crown], ['initiative', 'Iniziativa', Swords]] as Array<[PlayerEmblem, string, typeof Crown]>).map(([emblem, label, Icon]) => <button key={emblem} onClick={() => mutate({ type: 'set_emblem', targetKey: shieldPlayer.participantKey, emblem, active: !shieldPlayer.counters[emblem] })} className={`rounded-2xl border p-4 text-left ${shieldPlayer.counters[emblem] ? 'border-amber-300 bg-amber-500/20' : 'border-white/10 bg-white/5'}`}><Icon className="mb-3" /><b>{label}</b></button>)}</div>
+      <div className="space-y-2">{counterRows.filter(([counter]) => format === 'commander' || counter !== 'commanderTax').map(([counter, label]) => <div key={counter} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3"><Sparkles className="text-violet-300" /><b className="flex-1">{label}</b><Button size="icon" variant="outline" onClick={() => mutate({ type: 'adjust_counter', targetKey: shieldPlayer.participantKey, counter, amount: -1 })}><Minus /></Button><strong className="w-8 text-center text-xl">{shieldPlayer.counters[counter]}</strong><Button size="icon" variant="outline" onClick={() => mutate({ type: 'adjust_counter', targetKey: shieldPlayer.participantKey, counter, amount: 1 })}><Plus /></Button></div>)}</div>
+      <div className="flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-3"><Shield className="text-emerald-300" /><b className="flex-1">{format === 'commander' ? 'Infect' : 'Poison'}</b><Button size="icon" variant="outline" onClick={() => mutate({ type: 'adjust', targetKey: shieldPlayer.participantKey, amount: -1, mode: 'infect' })}><Minus /></Button><strong className="w-8 text-center text-xl">{shieldPlayer.infect}</strong><Button size="icon" variant="outline" onClick={() => mutate({ type: 'adjust', targetKey: shieldPlayer.participantKey, amount: 1, mode: 'infect' })}><Plus /></Button></div>
+    </div></ModalCard></ModalOverlay> : null}
+  </main>;
+}

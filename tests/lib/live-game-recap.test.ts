@@ -10,7 +10,7 @@ describe('live-game recap', () => {
       created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:10:00.000Z',
       state: {
         version: 2,
-        players: [{ slot: 0, participantKey: 'user:a', deckId: 'deck', displayName: 'A', commander: 'Atraxa', commanderImage: null, life: 38, infect: 0, commanderDamageFrom: {}, isEliminated: false, eliminatedAt: null }],
+        players: [{ slot: 0, participantKey: 'user:a', deckId: 'deck', displayName: 'A', commander: 'Atraxa', commanderImage: null, life: 38, infect: 0, commanderDamageFrom: {}, counters: { energy: 0, experience: 0, commanderTax: 0, monarch: false, initiative: false }, isEliminated: false, eliminatedAt: null }],
         events: [
           { id: '1', type: 'damage', occurredAt: '2026-01-01T00:01:00.000Z', targetKey: 'user:a', sourceKey: null, amount: 5 },
           { id: '2', type: 'lifegain', occurredAt: '2026-01-01T00:02:00.000Z', targetKey: 'user:a', sourceKey: null, amount: 3 },

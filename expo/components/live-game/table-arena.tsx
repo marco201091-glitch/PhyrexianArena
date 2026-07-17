@@ -14,13 +14,14 @@ import { DamageConfirmSheet } from '@/components/live-game/damage-confirm-sheet'
 import { DamageDragOverlay } from '@/components/live-game/damage-drag-overlay';
 import { TableSeat } from '@/components/live-game/table-seat';
 import { PlayerDamageSheet } from '@/components/live-game/player-damage-sheet';
+import { Modal } from '@/components/ui/modal';
+import { ModalHeader } from '@/components/ui/modal-header';
 import { colors, radii, spacing } from '@/constants/theme';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import {
   findPodAtPoint,
   getCenterToolbarBand,
   getLandscapeSeatRotation,
-  getSeatControlPlacement,
   getSeatRotation,
   getSquareTableLayouts,
   getViewportTableOrientation,
@@ -29,7 +30,8 @@ import {
   type PodBounds,
   type TableLayoutVariant,
 } from '@/lib/live-game-table-layout';
-import type { DamageMode, GroupDamageScope, LiveGamePlayer, PlayDirection } from '@/lib/live-game';
+import type { DamageMode, GroupDamageScope, LiveGamePlayer, PlayDirection, PlayerCounter, PlayerEmblem } from '@/lib/live-game';
+import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import type { ParticipantKey } from '@/lib/participant-keys';
 
 type PendingTransfer = {
@@ -45,6 +47,7 @@ type TableArenaProps = {
   startingHighlight: ParticipantKey | null;
   startingDirection: PlayDirection | null;
   layoutVariant: TableLayoutVariant;
+  commanderMode?: boolean;
   damagePulse: Record<string, number>;
   activePlayers: LiveGamePlayer[];
   labels: {
@@ -101,6 +104,8 @@ type TableArenaProps = {
   onEliminate: (key: ParticipantKey) => void;
   onRevive: (key: ParticipantKey) => void;
   onPickRandom: (pool?: ParticipantKey[]) => void;
+  onAdjustCounter: (key: ParticipantKey, counter: PlayerCounter, amount: number) => void;
+  onSetEmblem: (key: ParticipantKey, emblem: PlayerEmblem, active: boolean) => void;
 };
 
 const SYSTEM_GESTURE_GUARD = 10;
@@ -126,6 +131,7 @@ export function TableArena({
   startingHighlight,
   startingDirection,
   layoutVariant,
+  commanderMode = true,
   damagePulse,
   activePlayers,
   labels,
@@ -145,6 +151,8 @@ export function TableArena({
   onEliminate,
   onRevive,
   onPickRandom,
+  onAdjustCounter,
+  onSetEmblem,
 }: TableArenaProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -156,6 +164,8 @@ export function TableArena({
   const [pendingTransfer, setPendingTransfer] = useState<PendingTransfer | null>(null);
   const [detailsPlayerKey, setDetailsPlayerKey] = useState<ParticipantKey | null>(null);
   const [damageFeedback, setDamageFeedback] = useState<string | null>(null);
+  const [randomizerOpen, setRandomizerOpen] = useState(false);
+  const [randomizerResult, setRandomizerResult] = useState<string | number | null>(null);
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
   const dragSourceX = useSharedValue(0);
@@ -203,7 +213,7 @@ export function TableArena({
     ? centerToolbarBand?.height ?? 0
     : centerToolbarBand?.width ?? 0;
   const toolbarButtonSize = centerToolbarBand
-    ? Math.max(32, Math.min(56, (centerToolbarMainSize - 98) / 6))
+    ? Math.max(30, Math.min(56, (centerToolbarMainSize - 98) / 8))
     : 44;
   const toolbarButtonStyle = {
     width: toolbarButtonSize,
@@ -385,6 +395,18 @@ export function TableArena({
       </Pressable>
 
       <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
+        onPress={() => {
+          setRandomizerResult(null);
+          setRandomizerOpen(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Dado o moneta"
+      >
+        <Ionicons name="cube-outline" size={22} color={colors.foreground} />
+      </Pressable>
+
+      <Pressable
         style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle, activePlayers.length < 2 && styles.toolBtnDisabled]}
         disabled={activePlayers.length < 2}
         onPress={() => {
@@ -470,7 +492,6 @@ export function TableArena({
               seatRotation={tableOrientation === 'landscape'
                 ? getLandscapeSeatRotation(layout, arenaWidth)
                 : getSeatRotation(layout.role, playerCount, layoutVariant)}
-              controlPlacement={getSeatControlPlacement(layout.role)}
               damageMode="life"
               isSource={dragSource === player.participantKey}
               isDragHover={dragHoverKey === player.participantKey}
@@ -564,6 +585,7 @@ export function TableArena({
         source={pendingSource}
         target={pendingTarget}
         defaultMode="life"
+        commanderMode={commanderMode}
         labels={{
           title: labels.damageConfirmTitle,
           amount: labels.damageAmount,
@@ -606,8 +628,45 @@ export function TableArena({
         title={labels.damageReceived}
         commanderLabel={labels.commanderDamageMeta}
         infectLabel={labels.infect}
+        commanderMode={commanderMode}
         onClose={() => setDetailsPlayerKey(null)}
+        onAdjustCounter={(counter, amount) => {
+          if (detailsPlayerKey) onAdjustCounter(detailsPlayerKey, counter, amount);
+        }}
+        onSetEmblem={(emblem, active) => {
+          if (detailsPlayerKey) onSetEmblem(detailsPlayerKey, emblem, active);
+        }}
       />
+
+      <Modal visible={randomizerOpen} onClose={() => setRandomizerOpen(false)} presentation="dialog" maxWidth={440}>
+        <ModalHeader title="Dado o moneta" icon="cube-outline" onClose={() => setRandomizerOpen(false)} />
+        <View style={styles.randomizerChoices}>
+          {([
+            ['coin', 'Moneta'],
+            ['d4', 'd4'],
+            ['d6', 'd6'],
+            ['d20', 'd20'],
+          ] as Array<[TableRandomKind, string]>).map(([kind, label]) => (
+            <Pressable
+              key={kind}
+              style={styles.randomizerButton}
+              onPress={() => {
+                setRandomizerResult(rollTableRandom(kind));
+                void hapticSuccess();
+              }}
+            >
+              <Text style={styles.randomizerButtonText}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {randomizerResult !== null ? (
+          <View style={styles.randomizerResult}>
+            <Text style={styles.randomizerResultText}>
+              {randomizerResult === 'heads' ? 'Testa' : randomizerResult === 'tails' ? 'Croce' : randomizerResult}
+            </Text>
+          </View>
+        ) : null}
+      </Modal>
 
 
       {damageFeedback ? (
@@ -848,5 +907,37 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
     fontSize: 12,
     fontWeight: '800',
+  },
+  randomizerChoices: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  randomizerButton: {
+    flex: 1,
+    minHeight: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.32)',
+    backgroundColor: 'rgba(124,58,237,0.13)',
+  },
+  randomizerButtonText: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  randomizerResult: {
+    minHeight: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.lg,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  randomizerResultText: {
+    color: '#ddd6fe',
+    fontSize: 64,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
   },
 });

@@ -146,6 +146,12 @@ export default function LoginScreen() {
             disabled={authBusy}
             onPress={handleGoogleSignIn}
           />
+          <Button
+            label="Segnapunti senza account"
+            icon="heart-outline"
+            variant="outline"
+            onPress={() => router.push('/counter' as Href)}
+          />
         </View>
       </PhyrexianPanel>
 

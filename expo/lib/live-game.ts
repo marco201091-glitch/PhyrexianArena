@@ -10,6 +10,15 @@ export type LiveGameStatus = 'setup' | 'active' | 'ended' | 'cancelled';
 export type DamageMode = 'life' | 'commander' | 'infect';
 export type GroupDamageScope = 'opponents' | 'all_players';
 export type PlayDirection = 'clockwise' | 'counterclockwise';
+export type PlayerCounter = 'energy' | 'experience' | 'commanderTax';
+export type PlayerEmblem = 'monarch' | 'initiative';
+export interface LiveGamePlayerCounters {
+  energy: number;
+  experience: number;
+  commanderTax: number;
+  monarch: boolean;
+  initiative: boolean;
+}
 export type WinCondition = 'last_standing' | 'combo' | 'concession' | 'alternate_card' | 'other';
 export type LiveGameEventDirection = 'increase' | 'decrease';
 export type LiveGameEventType =
@@ -70,9 +79,11 @@ export interface LiveGamePlayer {
   displayName: string;
   commander: string;
   commanderImage: string | null;
+  backgroundColor?: string | null;
   life: number;
   infect: number;
   commanderDamageFrom: Record<ParticipantKey, number>;
+  counters: LiveGamePlayerCounters;
   isEliminated: boolean;
   eliminatedAt: string | null;
 }
@@ -114,6 +125,9 @@ export type LiveGameMutation = (
   | { type: 'eliminate'; targetKey: ParticipantKey; eliminatedAt: string }
   | { type: 'revive'; targetKey: ParticipantKey; startingLife: number }
   | { type: 'restore-player'; player: LiveGamePlayer }
+  | { type: 'adjust_counter'; targetKey: ParticipantKey; counter: PlayerCounter; amount: number }
+  | { type: 'set_emblem'; targetKey: ParticipantKey; emblem: PlayerEmblem; active: boolean }
+  | { type: 'restore_emblem'; emblem: PlayerEmblem; holderKey: ParticipantKey | null }
 ) & LiveGameMutationMetadata;
 
 export interface QueuedLiveGameMutation {
@@ -270,6 +284,7 @@ export function createLiveGamePlayer(input: {
   displayName: string;
   commander: string;
   commanderImage: string | null;
+  backgroundColor?: string | null;
   startingLife: number;
   allParticipantKeys: ParticipantKey[];
 }): LiveGamePlayer {
@@ -286,9 +301,17 @@ export function createLiveGamePlayer(input: {
     displayName: input.displayName,
     commander: input.commander,
     commanderImage: input.commanderImage,
+    backgroundColor: input.backgroundColor ?? null,
     life: input.startingLife,
     infect: 0,
     commanderDamageFrom,
+    counters: {
+      energy: 0,
+      experience: 0,
+      commanderTax: 0,
+      monarch: false,
+      initiative: false,
+    },
     isEliminated: false,
     eliminatedAt: null,
   };
@@ -533,6 +556,31 @@ export function applyLiveGameMutation(
       amount: null,
     });
   }
+  if (mutation.type === 'adjust_counter') {
+    const players = state.players.map((player) => player.participantKey === mutation.targetKey
+      ? {
+          ...player,
+          counters: {
+            ...player.counters,
+            [mutation.counter]: Math.max(0, (player.counters?.[mutation.counter] ?? 0) + mutation.amount),
+          },
+        }
+      : player);
+    return bumpLiveGameState({ ...state, players });
+  }
+  if (mutation.type === 'set_emblem' || mutation.type === 'restore_emblem') {
+    const holderKey = mutation.type === 'restore_emblem'
+      ? mutation.holderKey
+      : mutation.active ? mutation.targetKey : null;
+    const players = state.players.map((player) => ({
+      ...player,
+      counters: {
+        ...player.counters,
+        [mutation.emblem]: player.participantKey === holderKey,
+      },
+    }));
+    return bumpLiveGameState({ ...state, players });
+  }
 
   const players = state.players.map((player) => (
     player.participantKey === mutation.player.participantKey ? mutation.player : player
@@ -611,7 +659,16 @@ export function parseLiveGameState(raw: unknown): LiveGameState {
     : summarizeLiveGameEvents(events);
   return {
     version: typeof value.version === 'number' ? value.version : 0,
-    players: Array.isArray(value.players) ? value.players as LiveGamePlayer[] : [],
+    players: Array.isArray(value.players) ? (value.players as LiveGamePlayer[]).map((player) => ({
+      ...player,
+      counters: {
+        energy: Math.max(0, player.counters?.energy ?? 0),
+        experience: Math.max(0, player.counters?.experience ?? 0),
+        commanderTax: Math.max(0, player.counters?.commanderTax ?? 0),
+        monarch: Boolean(player.counters?.monarch),
+        initiative: Boolean(player.counters?.initiative),
+      },
+    })) : [],
     layoutVariant: value.layoutVariant === 'opposed' ? 'opposed' : 'classic',
     startingPlayerKey: typeof value.startingPlayerKey === 'string'
       ? value.startingPlayerKey as ParticipantKey
