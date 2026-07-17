@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Crown, Dices, Minus, Plus, Shield, Sparkles, Swords } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HoldActionButton } from '@/components/ui/hold-action-button';
 import { Input } from '@/components/ui/input';
 import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
 import { DeckImage } from '@/components/deck-image';
@@ -13,6 +14,8 @@ import {
 } from '@/lib/live-game-table-layout';
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
+import { subscribeGuestRealtime } from '@/lib/guest-realtime';
+import { supabase } from '@/lib/supabase';
 
 type GuestSessionPayload = {
   session: {
@@ -22,7 +25,9 @@ type GuestSessionPayload = {
     arena_guest_decks: { name: string; commander: string } | null;
   };
   game: LiveGameRecord | null;
+  realtimeTopic: string;
 };
+type CommanderResult = { id: string; name: string; imageUrl: string | null; colorIdentity?: string[] };
 
 export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
   const storageKey = `phyrexian:guest-game:${inviteToken}`;
@@ -32,6 +37,9 @@ export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
   const [displayName, setDisplayName] = useState('');
   const [deckName, setDeckName] = useState('');
   const [commander, setCommander] = useState('');
+  const [commanderImage, setCommanderImage] = useState<string | null>(null);
+  const [commanderColors, setCommanderColors] = useState<string[]>([]);
+  const [commanderResults, setCommanderResults] = useState<CommanderResult[]>([]);
   const [recoveryInput, setRecoveryInput] = useState('');
   const [recoveryCode, setRecoveryCode] = useState('');
   const [error, setError] = useState('');
@@ -49,7 +57,10 @@ export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
       cache: 'no-store',
       headers: { Authorization: `Bearer ${sessionToken}` },
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 410) setPayload(null);
+      return;
+    }
     const next = await response.json();
     if (next.game) next.game.state = parseLiveGameState(next.game.state);
     setPayload(next);
@@ -58,9 +69,31 @@ export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
   useEffect(() => {
     void refresh();
     if (!sessionToken) return;
-    const timer = window.setInterval(() => void refresh(), 800);
+    const timer = window.setInterval(() => void refresh(), 15_000);
     return () => window.clearInterval(timer);
   }, [refresh, sessionToken]);
+
+  useEffect(() => {
+    if (!payload?.realtimeTopic) return;
+    return subscribeGuestRealtime(supabase, {
+      scope: 'game',
+      secret: payload.realtimeTopic,
+      onState: () => void refresh(),
+    });
+  }, [payload?.realtimeTopic, refresh]);
+
+  useEffect(() => {
+    if (commander.trim().length < 2 || commanderImage) {
+      setCommanderResults([]);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      const response = await fetch(`/api/public-commanders?q=${encodeURIComponent(commander.trim())}`);
+      const result = await response.json().catch(() => ({ data: [] }));
+      setCommanderResults(response.ok && Array.isArray(result.data) ? result.data : []);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [commander, commanderImage]);
 
   useEffect(() => {
     if (!payload?.game || !hostRef.current) return;
@@ -75,7 +108,7 @@ export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
     const response = await fetch('/api/live-game-guest/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: inviteToken, displayName, deckName, commander }),
+      body: JSON.stringify({ token: inviteToken, displayName, deckName, commander, commanderImage, colorIdentity: commanderColors }),
     });
     const result = await response.json().catch(() => ({}));
     setLoading(false);
@@ -106,9 +139,9 @@ export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
     if (response.ok) await refresh();
   };
 
-  if (!sessionToken) return <main className="min-h-dvh bg-[radial-gradient(circle_at_top,#2e1065,#09090b_52%)] px-4 py-8 text-white"><div className="mx-auto max-w-md space-y-5"><div><p className="text-xs font-black uppercase tracking-[.2em] text-violet-300">Phyrexian Arena</p><h1 className="mt-2 text-3xl font-black">Entra nella partita</h1><p className="mt-2 text-sm text-zinc-400">Nessun account necessario.</p></div><div className="space-y-3 rounded-3xl border border-white/10 bg-black/35 p-5 backdrop-blur"><Input placeholder="Nome giocatore" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /><Input placeholder="Nome mazzo" value={deckName} onChange={(event) => setDeckName(event.target.value)} /><Input placeholder="Comandante" value={commander} onChange={(event) => setCommander(event.target.value)} />{error ? <p className="text-sm text-rose-300">{error}</p> : null}<Button className="w-full" onClick={join} disabled={loading}>{loading ? 'Ingresso…' : 'Entra'}</Button></div><div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4"><b className="text-sm">Recupera sessione</b><div className="flex gap-2"><Input placeholder="Codice recupero" value={recoveryInput} onChange={(event) => setRecoveryInput(event.target.value.toUpperCase())} /><Button variant="outline" onClick={recover}>Recupera</Button></div></div></div></main>;
+  if (!sessionToken) return <main className="min-h-dvh bg-[radial-gradient(circle_at_top,#2e1065,#09090b_52%)] px-4 py-8 text-white"><div className="mx-auto max-w-md space-y-5"><div><p className="text-xs font-black uppercase tracking-[.2em] text-violet-300">Phyrexian Arena</p><h1 className="mt-2 text-3xl font-black">Entra nella partita</h1><p className="mt-2 text-sm text-zinc-400">Nessun account necessario.</p></div><div className="space-y-3 rounded-3xl border border-white/10 bg-black/35 p-5 backdrop-blur"><Input placeholder="Nome giocatore" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /><Input placeholder="Nome mazzo" value={deckName} onChange={(event) => setDeckName(event.target.value)} /><div className="relative"><Input placeholder="Cerca comandante" value={commander} onChange={(event) => { setCommander(event.target.value); setCommanderImage(null); }} />{commanderResults.length ? <div className="absolute inset-x-0 top-12 z-30 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950 shadow-2xl">{commanderResults.map((result) => <button type="button" key={result.id} onClick={() => { setCommander(result.name); setCommanderImage(result.imageUrl); setCommanderColors(result.colorIdentity ?? []); setCommanderResults([]); }} className="flex w-full items-center gap-3 border-b border-white/5 p-2 text-left hover:bg-white/5"><DeckImage src={result.imageUrl} alt={result.name} className="h-14 w-10 rounded object-cover" /><b className="text-sm">{result.name}</b></button>)}</div> : null}</div>{error ? <p className="text-sm text-rose-300">{error}</p> : null}<Button className="w-full" onClick={join} disabled={loading || !displayName.trim() || !commanderImage}>{loading ? 'Ingresso…' : 'Entra'}</Button></div><div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4"><b className="text-sm">Recupera sessione</b><p className="text-xs text-zinc-400">Hai già partecipato? Inserisci codice salvato.</p><div className="flex gap-2"><Input placeholder="Codice recupero" value={recoveryInput} onChange={(event) => setRecoveryInput(event.target.value.toUpperCase())} /><Button variant="outline" onClick={recover}>Recupera</Button></div></div></div></main>;
 
-  if (!payload?.game) return <main className="grid min-h-dvh place-items-center bg-black px-4 text-white"><div className="w-full max-w-md space-y-5 rounded-3xl border border-violet-400/20 bg-violet-500/10 p-6 text-center"><div className="mx-auto h-4 w-4 animate-pulse rounded-full bg-emerald-400" /><h1 className="text-2xl font-black">Lobby partita</h1><p className="text-zinc-300">{payload?.session.arena_guests?.display_name ?? displayName} · {payload?.session.arena_guest_decks?.commander ?? commander}</p>{recoveryCode ? <div className="rounded-2xl bg-black/30 p-4"><p className="text-xs text-zinc-400">Codice recupero</p><strong className="mt-1 block font-mono text-xl tracking-widest text-amber-200">{recoveryCode}</strong><p className="mt-2 text-xs text-zinc-500">Conservalo fino a fine partita.</p></div> : null}<Button onClick={async () => { const ready = !payload?.session.ready; await fetch('/api/live-game-guest/session', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken, ready }) }); await refresh(); }} className="w-full">{payload?.session.ready ? 'Pronto ✓' : 'Segna come pronto'}</Button><p className="text-sm text-zinc-400">In attesa che l’host avvii la partita…</p></div></main>;
+  if (!payload?.game) return <main className="grid min-h-dvh place-items-center bg-black px-4 text-white"><div className="w-full max-w-md space-y-5 rounded-3xl border border-violet-400/20 bg-violet-500/10 p-6 text-center"><div className="mx-auto h-4 w-4 animate-pulse rounded-full bg-emerald-400" /><h1 className="text-2xl font-black">Lobby partita</h1><p className="text-zinc-300">{payload?.session.arena_guests?.display_name ?? displayName} · {payload?.session.arena_guest_decks?.commander ?? commander}</p>{recoveryCode ? <div className="rounded-2xl bg-black/30 p-4"><p className="text-xs text-zinc-400">Codice recupero</p><strong className="mt-1 block font-mono text-xl tracking-widest text-amber-200">{recoveryCode}</strong><div className="mt-3 flex gap-2"><Button variant="outline" className="flex-1" onClick={() => void navigator.clipboard.writeText(recoveryCode)}>Copia</Button></div><p className="mt-2 text-xs text-zinc-500">Conservalo fino a fine partita.</p></div> : null}<Button onClick={async () => { const ready = !payload?.session.ready; await fetch('/api/live-game-guest/session', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken, ready }) }); await refresh(); }} className="w-full">{payload?.session.ready ? 'Pronto ✓' : 'Segna come pronto'}</Button><p className="text-sm text-zinc-400">In attesa che host avvii…</p></div></main>;
 
   const state = payload.game.state;
   const orientation = getViewportTableOrientation(size.width, size.height);
@@ -127,8 +160,8 @@ export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
         <DeckImage src={player.commanderImage} alt={player.commander} className="absolute inset-0 h-full w-full rounded-none object-cover opacity-70" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/55" />
         <div className="absolute left-1/2 top-1/2" style={{ width: contentWidth, height: contentHeight, transform: `translate(-50%,-50%) rotate(${rotation}deg)` }}>
-          <button onClick={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} className="absolute left-[5%] top-1/2 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55"><Minus /></button>
-          <button onClick={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} className="absolute right-[5%] top-1/2 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55"><Plus /></button>
+          <HoldActionButton variant="ghost" onShort={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} onLong={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' })} className="absolute left-[5%] top-1/2 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55"><Minus /></HoldActionButton>
+          <HoldActionButton variant="ghost" onShort={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} onLong={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' })} className="absolute right-[5%] top-1/2 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55"><Plus /></HoldActionButton>
           <div className="absolute left-1/2 top-[8%] max-w-[70%] -translate-x-1/2 truncate rounded-full bg-black/65 px-4 py-1 font-black">{player.displayName}</div>
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-7xl font-black">{player.life}</div>
           <button onClick={() => setShieldKey(player.participantKey)} className="absolute left-1/2 top-[74%] grid h-12 w-12 -translate-x-1/2 place-items-center rounded-full border border-violet-200/30 bg-black/65"><Shield /></button>

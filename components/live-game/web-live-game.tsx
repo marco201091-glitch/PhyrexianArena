@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleDot,
   Clock3,
@@ -34,6 +35,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HoldActionButton } from '@/components/ui/hold-action-button';
 import { DeckImage } from '@/components/deck-image';
 import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
 import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
@@ -274,6 +276,7 @@ export function WebLiveGame({
   const [lobbyGuests, setLobbyGuests] = useState<LobbyGuest[]>([]);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [inviteOrigin, setInviteOrigin] = useState('');
+  const [inviteExpanded, setInviteExpanded] = useState(true);
   const participants = useMemo<WebTrackerParticipant[]>(() => [
     ...baseParticipants,
     ...lobbyGuests.map((entry) => {
@@ -371,6 +374,29 @@ export function WebLiveGame({
     } finally {
       setCreatingInvite(false);
     }
+  };
+
+  const rotateInvite = async () => {
+    if (!lobbyIdRef.current) return;
+    const response = await fetch('/api/live-game-lobby', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lobbyId: lobbyIdRef.current, action: 'rotate' }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.token) return;
+    setInviteToken(result.token);
+    localStorage.setItem(`phyrexian:live-lobby:${groupId}`, JSON.stringify({ id: lobbyIdRef.current, token: result.token }));
+  };
+
+  const removeLobbyGuest = async (guestSessionId: string) => {
+    if (!lobbyIdRef.current) return;
+    await fetch('/api/live-game-lobby', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lobbyId: lobbyIdRef.current, action: 'remove', guestSessionId }),
+    });
+    await refreshLobby();
   };
 
   const [damageDraft, setDamageDraft] = useState<DamageDraft | null>(null);
@@ -1105,8 +1131,8 @@ export function WebLiveGame({
               <h2 className="text-xl font-black">{copy({ it: 'Configura la partita', en: 'Set up the game' })}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{copy({ it: 'Scegli layout, posti e mazzi. L’ultima configurazione viene ricordata.', en: 'Choose layout, seats and decks. Your last setup is remembered.' })}</p>
             </div>
-            <div className="space-y-7 p-4 sm:p-7">
-              <section className="overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-500/15 via-background/70 to-cyan-500/10">
+            <div className="flex flex-col gap-7 p-4 sm:p-7">
+              <section className="order-last overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-500/15 via-background/70 to-cyan-500/10">
                 <div className="flex items-center gap-3 border-b border-white/10 p-4">
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-200"><QrCode className="h-5 w-5" /></span>
                   <div className="min-w-0 flex-1">
@@ -1117,8 +1143,9 @@ export function WebLiveGame({
                     {creatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
                     {copy({ it: 'Genera', en: 'Generate' })}
                   </Button> : null}
+                  {inviteToken ? <Button size="icon" variant="ghost" onClick={() => setInviteExpanded((value) => !value)}><ChevronDown className={cn('transition', inviteExpanded && 'rotate-180')} /></Button> : null}
                 </div>
-                {inviteToken ? <div className="grid gap-4 p-4 sm:grid-cols-[160px_1fr]">
+                {inviteToken && inviteExpanded ? <div className="grid gap-4 p-4 sm:grid-cols-[160px_1fr]">
                   <div className="rounded-2xl bg-white p-2 shadow-xl">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -1135,6 +1162,7 @@ export function WebLiveGame({
                     >
                       {inviteOrigin}/game/join/{inviteToken}
                     </button>
+                    <Button variant="outline" className="w-full" onClick={() => void rotateInvite()}>{copy({ it: 'Rigenera QR', en: 'Regenerate QR' })}</Button>
                     <div className="space-y-2">
                       {lobbyGuests.length ? lobbyGuests.map((guest) => {
                         const profile = relationOne(guest.arena_guests);
@@ -1143,6 +1171,7 @@ export function WebLiveGame({
                           <span className={cn('h-2.5 w-2.5 rounded-full', guest.ready ? 'bg-emerald-400 shadow-[0_0_12px_#34d399]' : 'bg-amber-400')} />
                           <div className="min-w-0 flex-1"><b className="block truncate">{profile?.display_name ?? 'Guest'}</b><span className="block truncate text-xs text-muted-foreground">{deck?.commander}</span></div>
                           <span className={cn('rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider', guest.ready ? 'bg-emerald-500/15 text-emerald-200' : 'bg-amber-500/15 text-amber-200')}>{guest.ready ? copy({ it: 'Pronto', en: 'Ready' }) : copy({ it: 'In attesa', en: 'Waiting' })}</span>
+                          <Button size="icon" variant="ghost" onClick={() => void removeLobbyGuest(guest.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>;
                       }) : <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-muted-foreground">{copy({ it: 'In attesa della prima scansione…', en: 'Waiting for first scan…' })}</p>}
                     </div>
@@ -1238,8 +1267,8 @@ export function WebLiveGame({
               <DeckImage src={player.commanderImage} alt={player.commander} className="absolute inset-0 h-full w-full rounded-none object-cover opacity-75" fallbackClassName="absolute inset-0 h-full w-full rounded-none" />
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/50" />
               <div className="absolute left-1/2 top-1/2" style={{ width: contentWidth, height: contentHeight, transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}>
-                <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }); }} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ left: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Riduci punti vita di', en: 'Reduce life for' })} ${player.displayName}`}><Minus style={{ width: iconSize, height: iconSize }} /></button>
-                <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }); }} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ right: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Aumenta punti vita di', en: 'Increase life for' })} ${player.displayName}`}><Plus style={{ width: iconSize, height: iconSize }} /></button>
+                <HoldActionButton variant="ghost" stopPropagation onShort={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} onLong={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' })} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ left: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Riduci punti vita di', en: 'Reduce life for' })} ${player.displayName}`}><Minus style={{ width: iconSize, height: iconSize }} /></HoldActionButton>
+                <HoldActionButton variant="ghost" stopPropagation onShort={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} onLong={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' })} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ right: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Aumenta punti vita di', en: 'Increase life for' })} ${player.displayName}`}><Plus style={{ width: iconSize, height: iconSize }} /></HoldActionButton>
                 <div className="pointer-events-none absolute left-1/2 top-[7%] z-10 max-w-[66%] -translate-x-1/2 truncate rounded-full border border-white/15 bg-gradient-to-r from-black/75 via-zinc-900/80 to-black/75 px-[clamp(10px,3%,20px)] py-[clamp(4px,1.5%,9px)] font-black tracking-wide text-white shadow-xl backdrop-blur-md" style={{ fontSize: `clamp(11px, ${shortestSide * 0.052}px, 22px)` }}>{player.displayName}</div>
                 <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-black leading-none drop-shadow-[0_3px_4px_rgba(0,0,0,.9)]" style={{ fontSize: `clamp(54px, ${shortestSide * 0.28}px, 112px)` }}>{player.life}</div>
                 <button

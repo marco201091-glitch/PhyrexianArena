@@ -8,7 +8,7 @@ async function findSession(sessionToken: string) {
   const admin = getSupabaseAdminClient();
   if (!admin || !/^[a-f0-9]{48}$/.test(sessionToken)) return null;
   const { data } = await admin.from('live_game_lobby_guests')
-    .select('id, ready, guest_id, guest_deck_id, lobby_id, live_game_lobbies(live_game_id, expires_at), arena_guests(display_name), arena_guest_decks(name, commander, commander_image, color_identity)')
+    .select('id, ready, guest_id, guest_deck_id, lobby_id, live_game_lobbies(live_game_id, expires_at, realtime_topic, closed_at), arena_guests(display_name), arena_guest_decks(name, commander, commander_image, color_identity)')
     .eq('session_token_hash', hashGuestSecret(sessionToken))
     .is('revoked_at', null)
     .maybeSingle();
@@ -22,14 +22,15 @@ export async function GET(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
   const session = await findSession(token);
   if (!admin || !session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
-  const lobby = session.live_game_lobbies as unknown as { live_game_id: string | null; expires_at: string };
+  const lobby = session.live_game_lobbies as unknown as { live_game_id: string | null; expires_at: string; realtime_topic: string; closed_at: string | null };
+  if (lobby.closed_at) return NextResponse.json({ error: 'Session closed' }, { status: 410 });
   if (new Date(lobby.expires_at) <= new Date()) return NextResponse.json({ error: 'Session expired' }, { status: 410 });
   let game = null;
   if (lobby.live_game_id) {
     const result = await admin.from('live_games').select('*').eq('id', lobby.live_game_id).maybeSingle();
     game = result.data;
   }
-  return NextResponse.json({ session, game });
+  return NextResponse.json({ session, game, realtimeTopic: lobby.realtime_topic });
 }
 
 export async function PATCH(request: Request) {

@@ -159,6 +159,7 @@ export default function LiveGameScreen() {
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [lobbyGuests, setLobbyGuests] = useState<LobbyGuestStatus[]>([]);
   const [creatingInvite, setCreatingInvite] = useState(false);
+  const [inviteExpanded, setInviteExpanded] = useState(true);
 
   const [damagePulse, setDamagePulse] = useState<Record<string, number>>({});
   const [randomHighlight, setRandomHighlight] = useState<ParticipantKey | null>(null);
@@ -209,6 +210,25 @@ export default function LiveGameScreen() {
     setLobbyId(result.data.id);
     setInviteToken(result.data.token);
   }, [groupId, showToast]);
+
+  const rotateGameInvite = useCallback(async () => {
+    if (!lobbyIdRef.current) return;
+    const result = await apiPatch<{ token: string }>('/api/live-game-lobby', {
+      lobbyId: lobbyIdRef.current,
+      action: 'rotate',
+    });
+    if (result.data?.token) setInviteToken(result.data.token);
+  }, []);
+
+  const removeLobbyGuest = useCallback(async (guestSessionId: string) => {
+    if (!lobbyIdRef.current) return;
+    await apiPatch('/api/live-game-lobby', {
+      lobbyId: lobbyIdRef.current,
+      action: 'remove',
+      guestSessionId,
+    });
+    setLobbyGuests((current) => current.filter((entry) => entry.id !== guestSessionId));
+  }, []);
 
   useEffect(() => {
     if (!lobbyId || liveGame) return;
@@ -1496,15 +1516,16 @@ export default function LiveGameScreen() {
                   icon="qr-code-outline"
                   onPress={createGameInvite}
                   disabled={creatingInvite}
-                /> : null}
+                /> : <Button label={inviteExpanded ? 'Comprimi' : 'Apri'} variant="ghost" onPress={() => setInviteExpanded((value) => !value)} />}
               </View>
-              {inviteToken ? <View style={styles.inviteBody}>
+              {inviteToken && inviteExpanded ? <View style={styles.inviteBody}>
                 <Image
                   source={{ uri: `${getApiBaseUrl()}/api/game-invite-qr?token=${inviteToken}&format=png` }}
                   style={styles.inviteQr}
                   alt="QR invito partita"
                 />
                 <View style={styles.inviteGuests}>
+                  <Button label="Rigenera QR" variant="outline" onPress={rotateGameInvite} />
                   {lobbyGuests.length ? lobbyGuests.map((entry) => {
                     const profile = relationOne(entry.arena_guests);
                     const deck = relationOne(entry.arena_guest_decks);
@@ -1515,6 +1536,7 @@ export default function LiveGameScreen() {
                         <Text style={styles.inviteHint} numberOfLines={1}>{deck?.commander}</Text>
                       </View>
                       <Text style={[styles.readyText, entry.ready && styles.readyTextOn]}>{entry.ready ? 'PRONTO' : 'ATTESA'}</Text>
+                      <Pressable onPress={() => void removeLobbyGuest(entry.id)}><Ionicons name="trash-outline" size={20} color={colors.destructive} /></Pressable>
                     </View>;
                   }) : <Text style={styles.inviteHint}>In attesa della prima scansione…</Text>}
                 </View>

@@ -5,6 +5,7 @@ import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
+import { HoldPressable } from '@/components/ui/hold-pressable';
 import { colors, radii, spacing } from '@/constants/theme';
 import type { DamageMode, GroupDamageScope, LiveGamePlayer } from '@/lib/live-game';
 
@@ -136,13 +137,14 @@ export function DamageConfirmSheet({
         />
         <View style={styles.stageShade} />
         <View style={styles.stepperRow}>
-          <Pressable
+          <HoldPressable
             style={styles.stepButton}
-            onPress={() => setAmount((value) => Math.max(0, value - 1))}
+            onShort={() => setAmount((value) => Math.max(0, value - 1))}
+            onLong={() => setAmount((value) => Math.max(0, value - 10))}
             accessibilityRole="button"
           >
             <Ionicons name="remove" size={30} color={colors.foreground} />
-          </Pressable>
+          </HoldPressable>
           <View style={styles.amountCopy}>
             <Text style={styles.amountValue}>{amount}</Text>
             <Text style={styles.amountContext} numberOfLines={2}>
@@ -151,13 +153,14 @@ export function DamageConfirmSheet({
               {scope === 'opponents' ? labels.eachOpponent : scope === 'all_players' ? labels.everyone : target.displayName}
             </Text>
           </View>
-          <Pressable
+          <HoldPressable
             style={styles.stepButton}
-            onPress={() => setAmount((value) => Math.min(99, value + 1))}
+            onShort={() => setAmount((value) => Math.min(99, value + 1))}
+            onLong={() => setAmount((value) => Math.min(99, value + 10))}
             accessibilityRole="button"
           >
             <Ionicons name="add" size={30} color={colors.foreground} />
-          </Pressable>
+          </HoldPressable>
         </View>
       </View>
 

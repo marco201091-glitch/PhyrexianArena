@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { DeckImage } from '@/components/deck/deck-image';
+import { HoldPressable } from '@/components/ui/hold-pressable';
 import { colors, radii } from '@/constants/theme';
 import {
   type DamageMode,
@@ -215,23 +216,25 @@ export function TableSeat({
           </View>
         ) : (
           <>
-            <Pressable
+            <HoldPressable
               style={[styles.edgeButton, styles.minusButton]}
-              onPress={() => onAdjust(-1)}
+              onShort={() => onAdjust(-1)}
+              onLong={() => onAdjust(-10)}
               accessibilityRole="button"
               accessibilityLabel={`${player.displayName} -1`}
             >
               <Text style={styles.edgeButtonText}>−</Text>
-            </Pressable>
+            </HoldPressable>
 
-            <Pressable
+            <HoldPressable
               style={[styles.edgeButton, styles.plusButton]}
-              onPress={() => onAdjust(1)}
+              onShort={() => onAdjust(1)}
+              onLong={() => onAdjust(10)}
               accessibilityRole="button"
               accessibilityLabel={`${player.displayName} +1`}
             >
               <Text style={styles.edgeButtonText}>+</Text>
-            </Pressable>
+            </HoldPressable>
 
             <GestureDetector gesture={dragGesture}>
               <AnimatedView style={[styles.lifeReadout, lifeStyle]}>

@@ -23,15 +23,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Service role is not configured.' }, { status: 500 });
   }
 
-  const [accessLogs, telemetry] = await Promise.all([
+  const [accessLogs, telemetry, guestSessions] = await Promise.all([
     adminClient.rpc('purge_old_access_logs', { p_retention_days: ACCESS_LOG_RETENTION_DAYS }),
     adminClient.rpc('purge_old_live_game_telemetry', {
       p_retention_days: LIVE_GAME_TELEMETRY_RETENTION_DAYS,
     }),
+    adminClient.rpc('purge_finished_guest_sessions'),
   ]);
 
-  if (accessLogs.error || telemetry.error) {
-    console.error('Technical log purge failed:', accessLogs.error?.message ?? telemetry.error?.message);
+  if (accessLogs.error || telemetry.error || guestSessions.error) {
+    console.error('Technical cleanup failed:', accessLogs.error?.message ?? telemetry.error?.message ?? guestSessions.error?.message);
     return NextResponse.json({ error: 'Technical log purge failed.' }, { status: 500 });
   }
 
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
     deleted: {
       accessLogs: typeof accessLogs.data === 'number' ? accessLogs.data : 0,
       liveGameTelemetry: typeof telemetry.data === 'number' ? telemetry.data : 0,
+      guestSessions: typeof guestSessions.data === 'number' ? guestSessions.data : 0,
     },
     retentionDays: ACCESS_LOG_RETENTION_DAYS,
     purgedAt: new Date().toISOString(),

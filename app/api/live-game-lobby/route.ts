@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     group_id: groupId,
     created_by: auth.user.id,
     invite_token_hash: hashGuestSecret(token),
-  }).select('id, expires_at').single();
+  }).select('id, expires_at, realtime_topic').single();
   if (error) return NextResponse.json({ error: 'Lobby creation failed' }, { status: 500 });
   return NextResponse.json({ ...data, token });
 }
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   const admin = getSupabaseAdminClient();
   const lobbyId = new URL(request.url).searchParams.get('id');
   if (!admin || !lobbyId) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  const { data: lobby } = await admin.from('live_game_lobbies').select('id, group_id, live_game_id, expires_at').eq('id', lobbyId).eq('created_by', auth.user.id).maybeSingle();
+  const { data: lobby } = await admin.from('live_game_lobbies').select('id, group_id, live_game_id, expires_at, realtime_topic, closed_at').eq('id', lobbyId).eq('created_by', auth.user.id).maybeSingle();
   if (!lobby) return NextResponse.json({ error: 'Lobby not found' }, { status: 404 });
   const { data: guests } = await admin.from('live_game_lobby_guests').select('id, ready, joined_at, guest_id, guest_deck_id, arena_guests(display_name), arena_guest_decks(name, commander, commander_image, color_identity)').eq('lobby_id', lobbyId).is('revoked_at', null).order('joined_at');
   return NextResponse.json({ lobby, guests: guests ?? [] });
@@ -45,17 +45,46 @@ export async function PATCH(request: Request) {
   const admin = getSupabaseAdminClient();
   if (!admin) return NextResponse.json({ error: 'Server unavailable' }, { status: 503 });
   const body = await request.json().catch(() => ({}));
-  if (typeof body.lobbyId !== 'string' || typeof body.liveGameId !== 'string') return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  if (typeof body.lobbyId !== 'string') return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   const { data: lobby } = await admin.from('live_game_lobbies')
     .select('group_id')
     .eq('id', body.lobbyId)
     .eq('created_by', auth.user.id)
     .maybeSingle();
+  if (!lobby) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  if (body.action === 'rotate') {
+    const token = createGuestSecret();
+    const { error } = await admin.from('live_game_lobbies')
+      .update({ invite_token_hash: hashGuestSecret(token) })
+      .eq('id', body.lobbyId);
+    if (error) return NextResponse.json({ error: 'QR rotation failed' }, { status: 500 });
+    return NextResponse.json({ ok: true, token });
+  }
+
+  if (body.action === 'remove') {
+    if (typeof body.guestSessionId !== 'string') return NextResponse.json({ error: 'Invalid guest' }, { status: 400 });
+    const { error } = await admin.from('live_game_lobby_guests')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', body.guestSessionId)
+      .eq('lobby_id', body.lobbyId);
+    if (error) return NextResponse.json({ error: 'Guest removal failed' }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === 'close') {
+    await admin.from('live_game_lobbies')
+      .update({ closed_at: new Date().toISOString() })
+      .eq('id', body.lobbyId);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (typeof body.liveGameId !== 'string') return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   const { data: game } = await admin.from('live_games')
     .select('group_id, created_by')
     .eq('id', body.liveGameId)
     .maybeSingle();
-  if (!lobby || !game || lobby.group_id !== game.group_id || game.created_by !== auth.user.id) {
+  if (!game || lobby.group_id !== game.group_id || game.created_by !== auth.user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const { error } = await admin.from('live_game_lobbies').update({ live_game_id: body.liveGameId }).eq('id', body.lobbyId);

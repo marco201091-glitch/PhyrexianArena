@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { showAppAlert } from '@/lib/app-alert';
 import { isPasswordPolicyValid, PasswordRequirements } from '@/components/auth/password-requirements';
@@ -27,6 +27,12 @@ import { supabase } from '@/lib/supabase';
 import { hapticSuccess } from '@/lib/haptics';
 import { APP_DISPLAY_VERSION } from '@/lib/app-version';
 import { colors, spacing } from '@/constants/theme';
+import {
+  DEFAULT_ACCESSIBILITY_PREFERENCES,
+  loadAccessibilityPreferences,
+  saveAccessibilityPreferences,
+  type AccessibilityPreferences,
+} from '@/lib/accessibility-preferences';
 
 export default function SettingsScreen() {
   const { copy, language, setLanguage } = useLanguage();
@@ -46,6 +52,17 @@ export default function SettingsScreen() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [accessibility, setAccessibility] = useState<AccessibilityPreferences>(DEFAULT_ACCESSIBILITY_PREFERENCES);
+
+  useEffect(() => {
+    void loadAccessibilityPreferences().then(setAccessibility);
+  }, []);
+
+  const updateAccessibility = (key: keyof AccessibilityPreferences, value: boolean) => {
+    const next = { ...accessibility, [key]: value };
+    setAccessibility(next);
+    void saveAccessibilityPreferences(next);
+  };
 
   const languageOptions: { id: AppLanguage; label: string }[] = [
     { id: 'en', label: copy('english') },
@@ -173,6 +190,18 @@ export default function SettingsScreen() {
             onPress={() => setShowLanguageModal(true)}
           />
         </View>
+      </PhyrexianPanel>
+
+      <PhyrexianPanel style={styles.card}>
+        <SectionHeader title="Accessibilità" />
+        {([
+          ['reducedMotion', 'Riduci animazioni', 'Default attivo'],
+          ['highContrast', 'Contrasto alto', 'Default disattivo'],
+          ['largeText', 'Testo grande', 'Default disattivo'],
+        ] as const).map(([key, label, hint]) => <View key={key} style={styles.preferenceRow}>
+          <View style={styles.preferenceCopy}><Text style={styles.preferenceLabel}>{label}</Text><Text style={styles.preferenceHint}>{hint}</Text></View>
+          <Switch value={accessibility[key]} onValueChange={(value) => updateAccessibility(key, value)} trackColor={{ true: colors.primary }} />
+        </View>)}
       </PhyrexianPanel>
 
       <PhyrexianPanel style={styles.card}>
@@ -355,5 +384,22 @@ const styles = StyleSheet.create({
   },
   modalCancel: {
     marginTop: spacing.xs,
+  },
+  preferenceRow: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  preferenceCopy: {
+    flex: 1,
+  },
+  preferenceLabel: {
+    color: colors.foreground,
+    fontWeight: '700',
+  },
+  preferenceHint: {
+    color: colors.muted,
+    fontSize: 12,
   },
 });

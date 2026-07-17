@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
+import { HoldPressable } from '@/components/ui/hold-pressable';
 import { colors, radii, spacing } from '@/constants/theme';
 import type { LiveGamePlayer, PlayerCounter, PlayerEmblem } from '@/lib/live-game';
 
@@ -80,13 +81,13 @@ export function PlayerDamageSheet({
           <View key={counter} style={styles.counterRow}>
             <Ionicons name={icon} size={19} color={colors.primaryMuted} />
             <Text style={styles.counterLabel}>{label}</Text>
-            <Pressable style={styles.counterButton} onPress={() => onAdjustCounter?.(counter as PlayerCounter, -1)}>
+            <HoldPressable style={styles.counterButton} onShort={() => onAdjustCounter?.(counter as PlayerCounter, -1)} onLong={() => onAdjustCounter?.(counter as PlayerCounter, -10)}>
               <Ionicons name="remove" size={20} color={colors.foreground} />
-            </Pressable>
+            </HoldPressable>
             <Text style={styles.counterValue}>{player.counters[counter]}</Text>
-            <Pressable style={styles.counterButton} onPress={() => onAdjustCounter?.(counter as PlayerCounter, 1)}>
+            <HoldPressable style={styles.counterButton} onShort={() => onAdjustCounter?.(counter as PlayerCounter, 1)} onLong={() => onAdjustCounter?.(counter as PlayerCounter, 10)}>
               <Ionicons name="add" size={20} color={colors.foreground} />
-            </Pressable>
+            </HoldPressable>
           </View>
         ))}
       </View>
