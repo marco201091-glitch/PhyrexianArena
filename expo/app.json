@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 40100,
+      "versionCode": 40302,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"

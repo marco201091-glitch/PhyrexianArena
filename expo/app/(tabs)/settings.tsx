@@ -195,7 +195,7 @@ export default function SettingsScreen() {
       <PhyrexianPanel style={styles.card}>
         <SectionHeader title="Accessibilità" />
         {([
-          ['reducedMotion', 'Riduci animazioni', 'Default attivo'],
+          ['reducedMotion', 'Riduci animazioni', 'Default disattivo'],
           ['highContrast', 'Contrasto alto', 'Default disattivo'],
           ['largeText', 'Testo grande', 'Default disattivo'],
         ] as const).map(([key, label, hint]) => <View key={key} style={styles.preferenceRow}>

@@ -1136,12 +1136,12 @@ export function WebLiveGame({
                 <div className="flex items-center gap-3 border-b border-white/10 p-4">
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-200"><QrCode className="h-5 w-5" /></span>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-black">{copy({ it: 'Invita giocatori con QR', en: 'Invite players with QR' })}</h3>
-                    <p className="text-xs text-muted-foreground">{copy({ it: 'Ingresso guest senza account · mazzo e stato pronto', en: 'Guest join without account · deck and ready status' })}</p>
+                    <h3 className="font-black">{copy({ it: 'Guest da remoto', en: 'Remote guests' })}</h3>
+                    <p className="text-xs text-muted-foreground">{copy({ it: 'Aggiungi altri giocatori tramite link o QR.', en: 'Add other players through a link or QR code.' })}</p>
                   </div>
                   {!inviteToken ? <Button onClick={() => void createInvite()} disabled={creatingInvite} className="font-black">
                     {creatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-                    {copy({ it: 'Genera', en: 'Generate' })}
+                    {copy({ it: 'Crea invito', en: 'Create invite' })}
                   </Button> : null}
                   {inviteToken ? <Button size="icon" variant="ghost" onClick={() => setInviteExpanded((value) => !value)}><ChevronDown className={cn('transition', inviteExpanded && 'rotate-180')} /></Button> : null}
                 </div>
@@ -1162,7 +1162,7 @@ export function WebLiveGame({
                     >
                       {inviteOrigin}/game/join/{inviteToken}
                     </button>
-                    <Button variant="outline" className="w-full" onClick={() => void rotateInvite()}>{copy({ it: 'Rigenera QR', en: 'Regenerate QR' })}</Button>
+                    <Button variant="outline" className="w-full" onClick={() => void rotateInvite()}>{copy({ it: 'Crea nuovo invito', en: 'Create new invite' })}</Button>
                     <div className="space-y-2">
                       {lobbyGuests.length ? lobbyGuests.map((guest) => {
                         const profile = relationOne(guest.arena_guests);
@@ -1173,7 +1173,7 @@ export function WebLiveGame({
                           <span className={cn('rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider', guest.ready ? 'bg-emerald-500/15 text-emerald-200' : 'bg-amber-500/15 text-amber-200')}>{guest.ready ? copy({ it: 'Pronto', en: 'Ready' }) : copy({ it: 'In attesa', en: 'Waiting' })}</span>
                           <Button size="icon" variant="ghost" onClick={() => void removeLobbyGuest(guest.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>;
-                      }) : <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-muted-foreground">{copy({ it: 'In attesa della prima scansione…', en: 'Waiting for first scan…' })}</p>}
+                      }) : <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-muted-foreground">{copy({ it: 'Nessun guest collegato.', en: 'No guests connected.' })}</p>}
                     </div>
                   </div>
                 </div> : null}

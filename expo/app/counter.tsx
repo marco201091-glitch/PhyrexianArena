@@ -1,12 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import { useEffect, useState } from 'react';
-import { Image as NativeImage, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { TableArena } from '@/components/live-game/table-arena';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { QrCode } from '@/components/ui/qr-code';
 import { Screen } from '@/components/ui/screen';
 import { colors, radii, spacing } from '@/constants/theme';
 import {
@@ -21,14 +23,16 @@ import {
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { searchCommandersDirect } from '@/lib/scryfall-search';
 import type { CommanderSearchResult } from '@/lib/commander-types';
-import { getApiBaseUrl } from '@/lib/env';
+import { getApiBaseUrl, getSiteUrl } from '@/lib/env';
+import { subscribePublicCounterRealtime } from '@/lib/guest-realtime';
+import { buildCounterGuestInviteUrl } from '@/lib/invite-links';
 
 const STORAGE_KEY = 'phyrexian:standalone-counter:v1';
 const CARD_COLORS = ['#18181b', '#7f1d1d', '#1e3a8a', '#14532d', '#713f12', '#581c87'];
 type Format = 'commander' | 'classic';
 type SetupPlayer = { name: string; commander: string; commanderImage: string | null; color: string };
 type OnlineGuest = { id: string; display_name: string; commander: string; commander_image: string | null; ready: boolean };
-type OnlineSession = { hostToken: string; inviteToken: string; guests: OnlineGuest[] };
+type OnlineSession = { hostToken: string; inviteToken: string; realtimeTopic: string; guests: OnlineGuest[] };
 const ONLINE_STORAGE_KEY = 'phyrexian:standalone-counter-online:v1';
 
 export default function CounterScreen() {
@@ -82,7 +86,7 @@ export default function CounterScreen() {
     const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { headers: { Authorization: `Bearer ${hostToken}` } });
     if (!response.ok) return;
     const payload = await response.json();
-    setOnline((current) => current ? { ...current, guests: payload.guests ?? [] } : current);
+    setOnline((current) => current ? { ...current, realtimeTopic: payload.session.realtimeTopic, guests: payload.guests ?? [] } : current);
     if (payload.session.state) setState(parseLiveGameState(payload.session.state));
   };
 
@@ -99,6 +103,11 @@ export default function CounterScreen() {
   }, [onlineHostToken, state]);
 
   useEffect(() => {
+    if (!online?.realtimeTopic || !onlineHostToken) return;
+    return subscribePublicCounterRealtime(online.realtimeTopic, () => void refreshOnline(onlineHostToken));
+  }, [online?.realtimeTopic, onlineHostToken]);
+
+  useEffect(() => {
     if (!state || !startedAt) return;
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ format, state, startedAt }));
   }, [format, startedAt, state]);
@@ -109,7 +118,7 @@ export default function CounterScreen() {
     setRedo([]);
     const next = applyLiveGameMutation(state, {
       ...mutation,
-      eventId: globalThis.crypto.randomUUID(),
+      eventId: Crypto.randomUUID(),
       occurredAt: new Date().toISOString(),
     });
     setState(next);
@@ -152,7 +161,7 @@ export default function CounterScreen() {
     const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', format }) });
     if (!response.ok) return;
     const payload = await response.json();
-    setOnline({ hostToken: payload.hostToken, inviteToken: payload.inviteToken, guests: [] });
+    setOnline({ hostToken: payload.hostToken, inviteToken: payload.inviteToken, realtimeTopic: payload.realtimeTopic, guests: [] });
     setGuestsEnabled(true);
   };
 
@@ -183,10 +192,10 @@ export default function CounterScreen() {
     return <Screen background="solid">
       <ScrollView contentContainerStyle={styles.setupContent}>
         <Text style={styles.title}>Riepilogo partita</Text>
-        <Text style={styles.subtitle}>{format === 'commander' ? 'Commander' : 'Magic classico'} · {durationMinutes} min</Text>
+        <Text style={styles.subtitle}>{format === 'commander' ? 'Commander' : 'Magic classico'} · {durationMinutes} min · {winner ? `Vince ${winner.displayName}` : 'Vincitore non determinato'}</Text>
         {recap.players.map((player) => <View key={player.participantKey} style={styles.recapPlayer}>
           <View style={[styles.recapAccent, { backgroundColor: player.backgroundColor ?? colors.primary }]} />
-          <View style={styles.recapCopy}><Text style={styles.recapName}>{player.displayName}</Text><Text style={styles.subtitle}>{player.commander}</Text></View>
+          <View style={styles.recapCopy}><Text style={styles.recapName} numberOfLines={1}>{player.displayName}</Text><Text style={styles.recapCommander} numberOfLines={1}>{player.commander}</Text><Text style={styles.recapMeta}>{player.infect} poison · {Object.values(player.commanderDamageFrom).reduce((sum, value) => sum + value, 0)} danni commander</Text></View>
           <Text style={styles.recapLife}>{player.life}</Text>
         </View>)}
         <Button label="Esporta riepilogo" icon="share-outline" onPress={() => void Share.share({ title: 'Phyrexian Arena', message: recapText })} />
@@ -202,8 +211,8 @@ export default function CounterScreen() {
   if (!state) {
     return <Screen background="solid">
       <ScrollView contentContainerStyle={styles.setupContent}>
-        <Text style={styles.title}>Segnapunti</Text>
-        <Text style={styles.subtitle}>Offline · nessun account richiesto</Text>
+        <Text style={styles.title}>Partita veloce</Text>
+        <Text style={styles.subtitle}>Configura giocatori, formato e punti vita</Text>
         <View style={styles.formatRow}>
           {(['commander', 'classic'] as Format[]).map((value) => <Pressable key={value} onPress={() => setFormat(value)} style={[styles.formatCard, format === value && styles.formatCardActive]}><Text style={styles.formatTitle}>{value === 'commander' ? 'Commander · 40' : 'Magic classico · 20'}</Text></Pressable>)}
         </View>
@@ -213,7 +222,7 @@ export default function CounterScreen() {
           {format === 'commander' ? <><Input label="Cerca comandante" value={player.commander} onChangeText={(value) => void searchCommander(index, value)} />{searchIndex === index && searchResults.length ? <View style={styles.searchResults}>{searchResults.slice(0, 8).map((result) => <Pressable key={result.id} style={styles.searchResult} onPress={() => { setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, commander: result.name, commanderImage: result.imageUrl } : item)); setSearchResults([]); }}><DeckImage uri={result.imageUrl} alt={result.name} style={styles.searchImage} containerStyle={styles.searchImageWrap} /><Text style={styles.searchName} numberOfLines={2}>{result.name}</Text></Pressable>)}</View> : null}</> : null}
           <View style={styles.colorRow}>{CARD_COLORS.map((color) => <Pressable key={color} onPress={() => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color } : item))} style={[styles.color, { backgroundColor: color }, player.color === color && styles.colorActive]} />)}</View>
         </View>)}
-        <View style={styles.guestPanel}><View style={styles.guestToggle}><View style={styles.guestCopy}><Text style={styles.sectionTitle}>Ci sono guest?</Text><Text style={styles.subtitle}>{guestsEnabled ? 'Lobby online temporanea · no statistiche' : 'No: tutto offline su questo dispositivo'}</Text></View><Switch value={guestsEnabled} onValueChange={(value) => void toggleGuests(value)} /></View>{online ? <><NativeImage source={{ uri: `${getApiBaseUrl()}/api/counter-invite-qr?token=${online.inviteToken}` }} style={styles.qr} /><Text style={styles.qrHint}>Guest: {online.guests.length} · pronti {online.guests.filter((guest) => guest.ready).length}</Text><Button label="Rigenera QR" variant="outline" onPress={async () => { const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', sessionToken: online.hostToken }) }); const payload = await response.json(); if (response.ok) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }} />{online.guests.map((guest) => <View key={guest.id} style={styles.guestRow}><Text style={styles.guestName}>{guest.ready ? '✓' : '○'} {guest.display_name} · {guest.commander}</Text><Pressable onPress={async () => { await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove', sessionToken: online.hostToken, guestId: guest.id }) }); await refreshOnline(online.hostToken); }}><Text style={styles.removeGuest}>Rimuovi</Text></Pressable></View>)}</> : null}</View>
+        <View style={styles.guestPanel}><View style={styles.guestToggle}><View style={styles.guestCopy}><Text style={styles.sectionTitle}>Ci sono guest?</Text><Text style={styles.subtitle}>{guestsEnabled ? 'Lobby online temporanea · no statistiche' : 'No: tutto offline su questo dispositivo'}</Text></View><Switch value={guestsEnabled} onValueChange={(value) => void toggleGuests(value)} /></View>{online ? <><View style={styles.qr}><QrCode value={buildCounterGuestInviteUrl(getSiteUrl(), online.inviteToken)} size={224} label="QR invito guest" /></View><Text style={styles.qrHint}>Guest: {online.guests.length} · pronti {online.guests.filter((guest) => guest.ready).length}</Text><Button label="Crea nuovo invito" variant="outline" onPress={async () => { const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', sessionToken: online.hostToken }) }); const payload = await response.json(); if (response.ok) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }} />{online.guests.map((guest) => <View key={guest.id} style={styles.guestRow}><Text style={styles.guestName}>{guest.ready ? '✓' : '○'} {guest.display_name} · {guest.commander}</Text><Pressable onPress={async () => { await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove', sessionToken: online.hostToken, guestId: guest.id }) }); await refreshOnline(online.hostToken); }}><Text style={styles.removeGuest}>Rimuovi</Text></Pressable></View>)}</> : null}</View>
         <Button label="Avvia partita" icon="play" disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} onPress={() => void start()} />
         <Button label="Indietro" variant="ghost" onPress={() => router.back()} />
       </ScrollView>
@@ -311,7 +320,7 @@ const styles = StyleSheet.create({
   guestPanel: { gap: spacing.sm, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardInset, padding: spacing.md },
   guestToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   guestCopy: { flex: 1 },
-  qr: { width: 220, height: 220, alignSelf: 'center', borderRadius: radii.md },
+  qr: { alignSelf: 'center' },
   qrHint: { color: colors.muted, textAlign: 'center' },
   guestName: { color: colors.foreground, fontWeight: '600' },
   guestRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -321,5 +330,7 @@ const styles = StyleSheet.create({
   recapAccent: { alignSelf: 'stretch', width: 7 },
   recapCopy: { flex: 1, minWidth: 0, padding: spacing.md },
   recapName: { color: colors.foreground, fontSize: 17, fontWeight: '900' },
+  recapCommander: { color: colors.muted, fontSize: 12 },
+  recapMeta: { color: colors.primaryMuted, fontSize: 11, marginTop: 3 },
   recapLife: { color: colors.foreground, fontSize: 38, fontWeight: '900', paddingHorizontal: spacing.lg },
 });

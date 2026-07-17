@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
+import { QrCode } from '@/components/ui/qr-code';
 import { Screen } from '@/components/ui/screen';
 import { ArenaSkeleton } from '@/components/ui/screen-skeletons';
 import { useAuth } from '@/contexts/auth-context';
@@ -26,7 +27,8 @@ import { useArena } from '@/hooks/use-arena';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import { apiGet, apiPatch, apiPost } from '@/lib/api';
-import { getApiBaseUrl } from '@/lib/env';
+import { getSiteUrl } from '@/lib/env';
+import { buildGameGuestInviteUrl } from '@/lib/invite-links';
 import { getLastDeckSelectionForParticipant } from '@/lib/arena-participants';
 import { getPreferredDeckId } from '@/lib/arena-deck-selection';
 import {
@@ -1504,45 +1506,6 @@ export default function LiveGameScreen() {
             <Text style={styles.setupTitle}>{copy('liveGameSetupTitle')}</Text>
             <Text style={styles.setupHint}>{copy('liveGameSetupHint')}</Text>
 
-            <View style={styles.invitePanel}>
-              <View style={styles.inviteHeader}>
-                <Ionicons name="qr-code-outline" size={24} color={colors.primaryLight} />
-                <View style={styles.inviteCopy}>
-                  <Text style={styles.inviteTitle}>Invita guest con QR</Text>
-                  <Text style={styles.inviteHint}>Nessun account · mazzo · stato pronto</Text>
-                </View>
-                {!inviteToken ? <Button
-                  label={creatingInvite ? 'Creo…' : 'Genera'}
-                  icon="qr-code-outline"
-                  onPress={createGameInvite}
-                  disabled={creatingInvite}
-                /> : <Button label={inviteExpanded ? 'Comprimi' : 'Apri'} variant="ghost" onPress={() => setInviteExpanded((value) => !value)} />}
-              </View>
-              {inviteToken && inviteExpanded ? <View style={styles.inviteBody}>
-                <Image
-                  source={{ uri: `${getApiBaseUrl()}/api/game-invite-qr?token=${inviteToken}&format=png` }}
-                  style={styles.inviteQr}
-                  alt="QR invito partita"
-                />
-                <View style={styles.inviteGuests}>
-                  <Button label="Rigenera QR" variant="outline" onPress={rotateGameInvite} />
-                  {lobbyGuests.length ? lobbyGuests.map((entry) => {
-                    const profile = relationOne(entry.arena_guests);
-                    const deck = relationOne(entry.arena_guest_decks);
-                    return <View key={entry.id} style={styles.inviteGuestRow}>
-                      <View style={[styles.readyDot, entry.ready ? styles.readyDotOn : styles.readyDotWaiting]} />
-                      <View style={styles.inviteCopy}>
-                        <Text style={styles.inviteGuestName} numberOfLines={1}>{profile?.display_name ?? 'Guest'}</Text>
-                        <Text style={styles.inviteHint} numberOfLines={1}>{deck?.commander}</Text>
-                      </View>
-                      <Text style={[styles.readyText, entry.ready && styles.readyTextOn]}>{entry.ready ? 'PRONTO' : 'ATTESA'}</Text>
-                      <Pressable onPress={() => void removeLobbyGuest(entry.id)}><Ionicons name="trash-outline" size={20} color={colors.destructive} /></Pressable>
-                    </View>;
-                  }) : <Text style={styles.inviteHint}>In attesa della prima scansione…</Text>}
-                </View>
-              </View> : null}
-            </View>
-
             <LiveGameConfigurator
               playerCount={playerCount}
               layoutVariant={layoutVariant}
@@ -1624,6 +1587,45 @@ export default function LiveGameScreen() {
               disabled={starting}
               icon="play"
             />
+
+            <View style={styles.invitePanel}>
+              <View style={styles.inviteHeader}>
+                <Ionicons name="people-outline" size={24} color={colors.primaryLight} />
+                <View style={styles.inviteCopy}>
+                  <Text style={styles.inviteTitle}>Guest da remoto</Text>
+                  <Text style={styles.inviteHint}>Aggiungi altri giocatori tramite link o QR.</Text>
+                </View>
+                {!inviteToken ? <Button
+                  label={creatingInvite ? 'Creazione…' : 'Crea invito'}
+                  icon="qr-code-outline"
+                  onPress={createGameInvite}
+                  disabled={creatingInvite}
+                /> : <Button label={inviteExpanded ? 'Nascondi' : 'Mostra invito'} variant="ghost" onPress={() => setInviteExpanded((value) => !value)} />}
+              </View>
+              {inviteToken && inviteExpanded ? <View style={styles.inviteBody}>
+                <QrCode
+                  value={buildGameGuestInviteUrl(getSiteUrl(), inviteToken)}
+                  size={200}
+                  label="QR invito partita"
+                />
+                <View style={styles.inviteGuests}>
+                  <Button label="Crea nuovo invito" variant="outline" onPress={rotateGameInvite} />
+                  {lobbyGuests.length ? lobbyGuests.map((entry) => {
+                    const profile = relationOne(entry.arena_guests);
+                    const deck = relationOne(entry.arena_guest_decks);
+                    return <View key={entry.id} style={styles.inviteGuestRow}>
+                      <View style={[styles.readyDot, entry.ready ? styles.readyDotOn : styles.readyDotWaiting]} />
+                      <View style={styles.inviteCopy}>
+                        <Text style={styles.inviteGuestName} numberOfLines={1}>{profile?.display_name ?? 'Guest'}</Text>
+                        <Text style={styles.inviteHint} numberOfLines={1}>{deck?.commander}</Text>
+                      </View>
+                      <Text style={[styles.readyText, entry.ready && styles.readyTextOn]}>{entry.ready ? 'PRONTO' : 'ATTESA'}</Text>
+                      <Pressable onPress={() => void removeLobbyGuest(entry.id)}><Ionicons name="trash-outline" size={20} color={colors.destructive} /></Pressable>
+                    </View>;
+                  }) : <Text style={styles.inviteHint}>Nessun guest collegato.</Text>}
+                </View>
+              </View> : null}
+            </View>
           </PhyrexianPanel>
       </ScrollView>
       <Modal
@@ -1731,7 +1733,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     padding: spacing.md,
   },
-  inviteQr: { width: 132, height: 132, borderRadius: radii.md, backgroundColor: '#fff' },
   inviteGuests: { flex: 1, gap: spacing.xs, justifyContent: 'center' },
   inviteGuestRow: {
     flexDirection: 'row',

@@ -295,9 +295,8 @@ export default function TableScreen() {
 
   const shareInvite = useCallback(() => {
     if (!group) return;
-    const url = `${getSiteUrl()}/join/${group.invite_code}`;
-    setSharePreview({ title: copy('shareInvite'), message: url });
-  }, [copy, group]);
+    setShowInviteQr(true);
+  }, [group]);
 
   const buildArenaStatsShareMessage = useCallback(() => {
     if (!group) return '';
@@ -606,13 +605,6 @@ export default function TableScreen() {
           onPlayGame={() => router.push(`/table/${groupId}/play`)}
           onRecordBattle={() => setShowRecordModal(true)}
         />
-        <Button
-          label={copy('inviteQr')}
-          icon="qr-code-outline"
-          variant="outline"
-          onPress={() => setShowInviteQr(true)}
-        />
-
         <ArenaTabBar
           activeTab={activeTab}
           labels={{
@@ -1001,7 +993,14 @@ export default function TableScreen() {
         inviteCode={group.invite_code}
         arenaName={group.name}
         onClose={() => setShowInviteQr(false)}
-        labels={{ title: copy('inviteQr'), hint: copy('inviteQrHint'), close: copy('close') }}
+        labels={{
+          title: copy('shareInvite'),
+          hint: copy('inviteQrHint'),
+          close: copy('close'),
+          link: 'Link',
+          qr: copy('inviteQr'),
+          share: copy('shareNow'),
+        }}
       />
 
       <EditMatchModal

@@ -205,7 +205,7 @@ function LoginForm() {
 
               <DemoLoginButton disabled={loading} redirectPath={redirectPath} />
               <Button asChild variant="outline" className="mt-3 w-full border-cyan-400/30 text-cyan-100">
-                <Link href="/counter">Segnapunti senza account</Link>
+                <Link href="/counter">{t({ it: 'Partita veloce', en: 'Quick game' })}</Link>
               </Button>
             </>
           )}

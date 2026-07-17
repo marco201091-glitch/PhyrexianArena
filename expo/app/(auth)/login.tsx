@@ -147,7 +147,7 @@ export default function LoginScreen() {
             onPress={handleGoogleSignIn}
           />
           <Button
-            label="Segnapunti senza account"
+            label="Partita veloce"
             icon="heart-outline"
             variant="outline"
             onPress={() => router.push('/counter' as Href)}

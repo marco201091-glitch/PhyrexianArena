@@ -46,6 +46,13 @@ type OnlineGuest = { id: string; display_name: string; deck_name: string; comman
 type OnlineSession = { id: string; hostToken: string; inviteToken: string; realtimeTopic: string; guests: OnlineGuest[] };
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 type CounterPreferences = { reducedMotion: boolean; highContrast: boolean; largeText: boolean };
+type StoredCounterPreferences = Partial<CounterPreferences> & { schemaVersion?: number };
+
+const DEFAULT_COUNTER_PREFERENCES: CounterPreferences = {
+  reducedMotion: false,
+  highContrast: false,
+  largeText: false,
+};
 
 function defaultSetup(index: number): SetupPlayer {
   return { name: `Player ${index + 1}`, commander: '', image: null, color: COLORS[index % COLORS.length] };
@@ -124,7 +131,7 @@ export function StandaloneCounter() {
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [updateReady, setUpdateReady] = useState<ServiceWorker | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [preferences, setPreferences] = useState<CounterPreferences>({ reducedMotion: true, highContrast: false, largeText: false });
+  const [preferences, setPreferences] = useState<CounterPreferences>(DEFAULT_COUNTER_PREFERENCES);
 
   useEffect(() => {
     navigator.serviceWorker?.register('/counter-sw.js').then((registration) => {
@@ -141,15 +148,16 @@ export function StandaloneCounter() {
     };
     window.addEventListener('beforeinstallprompt', captureInstall);
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try {
-      const stored = JSON.parse(raw) as StoredCounter;
-      if (stored?.state?.players?.length) {
-        setFormat(stored.format);
-        setState(parseLiveGameState(stored.state));
-        setStartedAt(stored.startedAt);
-      }
-    } catch { /* Ignore damaged local session. */ }
+    if (raw) {
+      try {
+        const stored = JSON.parse(raw) as StoredCounter;
+        if (stored?.state?.players?.length) {
+          setFormat(stored.format);
+          setState(parseLiveGameState(stored.state));
+          setStartedAt(stored.startedAt);
+        }
+      } catch { /* Ignore damaged local session. */ }
+    }
     try {
       const savedOnline = JSON.parse(localStorage.getItem(ONLINE_STORAGE_KEY) ?? 'null') as OnlineSession | null;
       if (savedOnline?.hostToken) {
@@ -158,14 +166,26 @@ export function StandaloneCounter() {
       }
     } catch { /* Ignore damaged online recovery data. */ }
     try {
-      const savedPreferences = JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? 'null') as Partial<CounterPreferences> | null;
-      if (savedPreferences) setPreferences((current) => ({ ...current, ...savedPreferences }));
+      const savedPreferences = JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? 'null') as StoredCounterPreferences | null;
+      if (savedPreferences?.schemaVersion === 2) {
+        setPreferences({
+          reducedMotion: savedPreferences.reducedMotion === true,
+          highContrast: savedPreferences.highContrast === true,
+          largeText: savedPreferences.largeText === true,
+        });
+      } else if (savedPreferences) {
+        setPreferences({
+          reducedMotion: false,
+          highContrast: savedPreferences.highContrast === true,
+          largeText: savedPreferences.largeText === true,
+        });
+      }
     } catch { /* Keep safe defaults. */ }
     return () => window.removeEventListener('beforeinstallprompt', captureInstall);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+    localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ schemaVersion: 2, ...preferences }));
   }, [preferences]);
 
   const refreshOnline = useCallback(async (hostToken: string) => {
@@ -308,7 +328,7 @@ export function StandaloneCounter() {
           <div className="flex gap-2"><button aria-label="Impostazioni accessibilità" className="grid h-8 w-8 place-items-center rounded-full border border-white/10" onClick={() => setSettingsOpen(true)}><Settings className="h-4 w-4" /></button>{installPrompt ? <button className="rounded-full border border-violet-400/30 px-3 py-1 text-xs font-bold" onClick={async () => { await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}>Installa</button> : null}<span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-200">Offline ready</span></div>
         </div>
         {updateReady ? <button className="w-full rounded-2xl border border-amber-400/25 bg-amber-500/10 p-3 text-sm font-bold text-amber-100" onClick={() => { updateReady.postMessage('SKIP_WAITING'); location.reload(); }}>Aggiornamento pronto · applica ora</button> : null}
-        <header><h1 className="text-4xl font-black">Segnapunti</h1><p className="mt-2 text-zinc-400">Nessun account. Nessun dato sul server.</p></header>
+        <header><h1 className="text-4xl font-black">Partita veloce</h1><p className="mt-2 text-zinc-400">Configura giocatori, formato e punti vita.</p></header>
         <section className="rounded-3xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur">
           <div className="grid grid-cols-2 gap-2">
             {(['commander', 'classic'] as Format[]).map((value) => <button key={value} onClick={() => setFormat(value)} className={`rounded-2xl border p-4 font-black ${format === value ? 'border-violet-400 bg-violet-500/20' : 'border-white/10 bg-white/5'}`}>{value === 'commander' ? 'Commander · 40' : 'Magic classico · 20'}</button>)}
@@ -335,7 +355,7 @@ export function StandaloneCounter() {
               <button type="button" onClick={() => setGuestPanelOpen((value) => !value)} className="flex w-full items-center gap-2 p-4 text-left"><QrCode className="h-5 w-5" /><b className="flex-1">Invito guest · {online.guests.length}</b><ChevronDown className={`h-5 w-5 transition ${guestPanelOpen ? 'rotate-180' : ''}`} /></button>
               {guestPanelOpen ? <div className="space-y-4 px-4 pb-4">
                 <Image unoptimized width={224} height={224} src={`/api/counter-invite-qr?token=${online.inviteToken}`} alt="QR invito guest" className="mx-auto w-full max-w-56 rounded-2xl bg-white p-2" />
-                <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => void navigator.clipboard.writeText(`${location.origin}/counter/join/${online.inviteToken}`)}>Copia link</Button><Button variant="outline" className="flex-1" onClick={async () => { const response = await fetch('/api/public-counter-session', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', sessionToken: online.hostToken }) }); const payload = await response.json(); if (response.ok) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }}>Rigenera QR</Button></div>
+                <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => void navigator.clipboard.writeText(`${location.origin}/counter/join/${online.inviteToken}`)}>Copia link</Button><Button variant="outline" className="flex-1" onClick={async () => { const response = await fetch('/api/public-counter-session', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', sessionToken: online.hostToken }) }); const payload = await response.json(); if (response.ok) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }}>Crea nuovo invito</Button></div>
                 <div className="space-y-2">{online.guests.length ? online.guests.map((guest) => <div key={guest.id} className="flex items-center gap-3 rounded-xl bg-black/30 p-3"><span className={`h-2.5 w-2.5 rounded-full ${guest.ready ? 'bg-emerald-400' : 'bg-amber-400'}`} /><div className="min-w-0 flex-1"><b className="block truncate">{guest.display_name}</b><small className="block truncate text-zinc-400">{guest.commander}</small></div><Button size="icon" variant="ghost" onClick={async () => { await fetch('/api/public-counter-session', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove', sessionToken: online.hostToken, guestId: guest.id }) }); await refreshOnline(online.hostToken); }}><Trash2 className="h-4 w-4" /></Button></div>) : <p className="text-center text-sm text-zinc-400">In attesa di guest…</p>}</div>
                 {playerCount + online.guests.length > 6 ? <p className="text-sm font-bold text-amber-300">Massimo 6: riduci giocatori locali.</p> : null}
               </div> : null}
@@ -343,7 +363,7 @@ export function StandaloneCounter() {
           </div>
           <Button onClick={() => void start()} disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} className="mt-6 h-13 w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-lg font-black">Avvia partita</Button>
         </section>
-        {settingsOpen ? <ModalOverlay><ModalCard><div className="space-y-4 p-5"><h2 className="text-xl font-black">Accessibilità</h2>{([['reducedMotion', 'Riduci animazioni', 'Default ON'], ['highContrast', 'Contrasto alto', 'Default OFF'], ['largeText', 'Testo grande', 'Default OFF']] as const).map(([key, label, hint]) => <div key={key} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3"><div className="flex-1"><b className="block">{label}</b><small className="text-zinc-400">{hint}</small></div><button onClick={() => setPreferences((current) => ({ ...current, [key]: !current[key] }))} className={`h-8 w-14 rounded-full p-1 ${preferences[key] ? 'bg-violet-600' : 'bg-zinc-700'}`}><span className={`block h-6 w-6 rounded-full bg-white transition ${preferences[key] ? 'translate-x-6' : ''}`} /></button></div>)}<Button className="w-full" onClick={() => setSettingsOpen(false)}>Chiudi</Button></div></ModalCard></ModalOverlay> : null}
+        {settingsOpen ? <ModalOverlay><ModalCard><div className="space-y-4 p-5"><h2 className="text-xl font-black">Accessibilità</h2>{([['reducedMotion', 'Riduci animazioni', 'Default OFF'], ['highContrast', 'Contrasto alto', 'Default OFF'], ['largeText', 'Testo grande', 'Default OFF']] as const).map(([key, label, hint]) => <div key={key} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3"><div className="flex-1"><b className="block">{label}</b><small className="text-zinc-400">{hint}</small></div><button onClick={() => setPreferences((current) => ({ ...current, [key]: !current[key] }))} className={`h-8 w-14 rounded-full p-1 ${preferences[key] ? 'bg-violet-600' : 'bg-zinc-700'}`}><span className={`block h-6 w-6 rounded-full bg-white transition ${preferences[key] ? 'translate-x-6' : ''}`} /></button></div>)}<Button className="w-full" onClick={() => setSettingsOpen(false)}>Chiudi</Button></div></ModalCard></ModalOverlay> : null}
       </div>
     </main>;
   }
@@ -383,7 +403,7 @@ export function StandaloneCounter() {
     </div>
 
     {randomOpen ? <ModalOverlay><ModalCard><div className="space-y-5 p-5"><div className="flex items-center justify-between"><h2 className="text-xl font-black">Lancio</h2><button onClick={() => setRandomOpen(false)}>×</button></div><div className="grid grid-cols-4 gap-2">{([['coin', 'Moneta'], ['d4', 'd4'], ['d6', 'd6'], ['d20', 'd20']] as Array<[TableRandomKind, string]>).map(([kind, label]) => <button key={kind} onClick={() => setRandomResult(rollTableRandom(kind))} className="rounded-2xl border border-violet-400/25 bg-violet-500/10 p-4 font-black">{label}</button>)}</div>{randomResult !== null ? <div className="rounded-3xl bg-black/35 p-8 text-center text-7xl font-black text-violet-200">{randomResult === 'heads' ? 'Testa' : randomResult === 'tails' ? 'Croce' : randomResult}</div> : null}</div></ModalCard></ModalOverlay> : null}
-    {confirmExit ? <ModalOverlay><ModalCard><div className="space-y-4 p-5"><h2 className="text-xl font-black">Terminare segnapunti?</h2><p className="text-sm text-zinc-400">Esporterai ancora recap prima di uscire, se serve.</p><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setConfirmExit(false)}>Continua</Button><Button variant="destructive" className="flex-1" onClick={async () => { if (online) await fetch('/api/public-counter-session', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken: online.hostToken }) }); localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(ONLINE_STORAGE_KEY); setOnline(null); setGuestsEnabled(false); setState(null); setConfirmExit(false); }}>Termina</Button></div></div></ModalCard></ModalOverlay> : null}
+    {confirmExit ? <ModalOverlay><ModalCard><div className="space-y-4 p-5"><h2 className="text-xl font-black">Terminare la partita veloce?</h2><p className="text-sm text-zinc-400">Potrai esportare il riepilogo prima di uscire.</p><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setConfirmExit(false)}>Continua</Button><Button variant="destructive" className="flex-1" onClick={async () => { if (online) await fetch('/api/public-counter-session', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken: online.hostToken }) }); localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(ONLINE_STORAGE_KEY); setOnline(null); setGuestsEnabled(false); setState(null); setConfirmExit(false); }}>Termina</Button></div></div></ModalCard></ModalOverlay> : null}
 
     {shieldPlayer ? <ModalOverlay><ModalCard size="lg"><div className="space-y-4 overflow-y-auto p-5"><div className="flex items-center justify-between"><div><h2 className="text-xl font-black">{shieldPlayer.displayName}</h2><p className="text-xs text-zinc-400">Segnalini e stato</p></div><button onClick={() => setShieldKey(null)}>×</button></div>
       <div className="grid grid-cols-2 gap-3">{([['monarch', 'Monarca', Crown], ['initiative', 'Iniziativa', Swords]] as Array<[PlayerEmblem, string, typeof Crown]>).map(([emblem, label, Icon]) => <button key={emblem} onClick={() => mutate({ type: 'set_emblem', targetKey: shieldPlayer.participantKey, emblem, active: !shieldPlayer.counters[emblem] })} className={`rounded-2xl border p-4 text-left ${shieldPlayer.counters[emblem] ? 'border-amber-300 bg-amber-500/20' : 'border-white/10 bg-white/5'}`}><Icon className="mb-3" /><b>{label}</b></button>)}</div>
