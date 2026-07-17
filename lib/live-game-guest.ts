@@ -14,6 +14,15 @@ export function hashGuestSecret(value: string) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+export function createLiveGameLobbySecrets() {
+  const token = createGuestSecret();
+  return {
+    token,
+    inviteTokenHash: hashGuestSecret(token),
+    realtimeTopic: createGuestSecret(),
+  };
+}
+
 export function normalizeGuestDisplayName(value: unknown) {
   if (typeof value !== 'string') return null;
   const name = value.trim().replace(/\s+/g, ' ').slice(0, 40);

@@ -1,8 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 import { ManaLogo } from '@/components/ui/mana-logo';
 import { useLanguage } from '@/contexts/language-context';
+import { t } from '@/lib/i18n/translations';
 
-export function AuthBranding() {
+export function AuthBranding({ forceEnglish = false }: { forceEnglish?: boolean }) {
   const { copy } = useLanguage();
 
   return (
@@ -11,7 +12,7 @@ export function AuthBranding() {
         size="xl"
         showText
         layout="stacked"
-        subtitle={copy('appSubtitle')}
+        subtitle={forceEnglish ? t('en', 'appSubtitle') : copy('appSubtitle')}
       />
     </View>
   );

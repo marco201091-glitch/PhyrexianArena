@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuthOr401 } from '@/app/api/_lib/require-auth';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
-import { createGuestSecret, hashGuestSecret } from '@/lib/live-game-guest';
+import { createGuestSecret, createLiveGameLobbySecrets, hashGuestSecret } from '@/lib/live-game-guest';
 import { enforceUserRateLimit } from '@/lib/api-rate-limit';
 
 export async function POST(request: Request) {
@@ -17,13 +17,17 @@ export async function POST(request: Request) {
   const { data: group } = await admin.from('groups').select('created_by').eq('id', groupId).maybeSingle();
   if (!membership && group?.created_by !== auth.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const token = createGuestSecret();
+  const { token, inviteTokenHash, realtimeTopic } = createLiveGameLobbySecrets();
   const { data, error } = await admin.from('live_game_lobbies').insert({
     group_id: groupId,
     created_by: auth.user.id,
-    invite_token_hash: hashGuestSecret(token),
+    invite_token_hash: inviteTokenHash,
+    realtime_topic: realtimeTopic,
   }).select('id, expires_at, realtime_topic').single();
-  if (error) return NextResponse.json({ error: 'Lobby creation failed' }, { status: 500 });
+  if (error) {
+    console.error('[live-game-lobby] creation failed', { code: error.code });
+    return NextResponse.json({ error: 'Lobby creation failed' }, { status: 500 });
+  }
   return NextResponse.json({ ...data, token });
 }
 

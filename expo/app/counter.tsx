@@ -26,6 +26,7 @@ import type { CommanderSearchResult } from '@/lib/commander-types';
 import { getApiBaseUrl, getSiteUrl } from '@/lib/env';
 import { subscribePublicCounterRealtime } from '@/lib/guest-realtime';
 import { buildCounterGuestInviteUrl } from '@/lib/invite-links';
+import { useLanguage } from '@/contexts/language-context';
 
 const STORAGE_KEY = 'phyrexian:standalone-counter:v1';
 const CARD_COLORS = ['#18181b', '#7f1d1d', '#1e3a8a', '#14532d', '#713f12', '#581c87'];
@@ -37,6 +38,7 @@ const ONLINE_STORAGE_KEY = 'phyrexian:standalone-counter-online:v1';
 
 export default function CounterScreen() {
   const router = useRouter();
+  const { copy } = useLanguage();
   const [format, setFormat] = useState<Format>('commander');
   const [playerCount, setPlayerCount] = useState(4);
   const [setup, setSetup] = useState<SetupPlayer[]>(() => Array.from({ length: 6 }, (_, index) => ({
@@ -211,20 +213,20 @@ export default function CounterScreen() {
   if (!state) {
     return <Screen background="solid">
       <ScrollView contentContainerStyle={styles.setupContent}>
-        <Text style={styles.title}>Partita veloce</Text>
-        <Text style={styles.subtitle}>Configura giocatori, formato e punti vita</Text>
+        <Text style={styles.title}>{copy('quickGame')}</Text>
+        <Text style={styles.subtitle}>{copy('quickGameSetupHint')}</Text>
         <View style={styles.formatRow}>
-          {(['commander', 'classic'] as Format[]).map((value) => <Pressable key={value} onPress={() => setFormat(value)} style={[styles.formatCard, format === value && styles.formatCardActive]}><Text style={styles.formatTitle}>{value === 'commander' ? 'Commander · 40' : 'Magic classico · 20'}</Text></Pressable>)}
+          {(['commander', 'classic'] as Format[]).map((value) => <Pressable key={value} onPress={() => setFormat(value)} style={[styles.formatCard, format === value && styles.formatCardActive]}><Text style={styles.formatTitle}>{value === 'commander' ? 'Commander · 40' : `${copy('classicMagic')} · 20`}</Text></Pressable>)}
         </View>
-        <View style={styles.countRow}><Text style={styles.sectionTitle}>Giocatori</Text><Button label="−" variant="outline" onPress={() => setPlayerCount(Math.max(2, playerCount - 1))} /><Text style={styles.count}>{playerCount}</Text><Button label="+" variant="outline" onPress={() => setPlayerCount(Math.min(6, playerCount + 1))} /></View>
+        <View style={styles.countRow}><Text style={styles.sectionTitle}>{copy('players')}</Text><Button label="−" variant="outline" onPress={() => setPlayerCount(Math.max(2, playerCount - 1))} /><Text style={styles.count}>{playerCount}</Text><Button label="+" variant="outline" onPress={() => setPlayerCount(Math.min(6, playerCount + 1))} /></View>
         {setup.slice(0, playerCount).map((player, index) => <View key={index} style={styles.playerCard}>
           <Input label={`Player ${index + 1}`} value={player.name} onChangeText={(name) => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name } : item))} />
-          {format === 'commander' ? <><Input label="Cerca comandante" value={player.commander} onChangeText={(value) => void searchCommander(index, value)} />{searchIndex === index && searchResults.length ? <View style={styles.searchResults}>{searchResults.slice(0, 8).map((result) => <Pressable key={result.id} style={styles.searchResult} onPress={() => { setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, commander: result.name, commanderImage: result.imageUrl } : item)); setSearchResults([]); }}><DeckImage uri={result.imageUrl} alt={result.name} style={styles.searchImage} containerStyle={styles.searchImageWrap} /><Text style={styles.searchName} numberOfLines={2}>{result.name}</Text></Pressable>)}</View> : null}</> : null}
+          {format === 'commander' ? <><Input label={copy('searchCommander')} value={player.commander} onChangeText={(value) => void searchCommander(index, value)} />{searchIndex === index && searchResults.length ? <View style={styles.searchResults}>{searchResults.slice(0, 8).map((result) => <Pressable key={result.id} style={styles.searchResult} onPress={() => { setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, commander: result.name, commanderImage: result.imageUrl } : item)); setSearchResults([]); }}><DeckImage uri={result.imageUrl} alt={result.name} style={styles.searchImage} containerStyle={styles.searchImageWrap} /><Text style={styles.searchName} numberOfLines={2}>{result.name}</Text></Pressable>)}</View> : null}</> : null}
           <View style={styles.colorRow}>{CARD_COLORS.map((color) => <Pressable key={color} onPress={() => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color } : item))} style={[styles.color, { backgroundColor: color }, player.color === color && styles.colorActive]} />)}</View>
         </View>)}
-        <View style={styles.guestPanel}><View style={styles.guestToggle}><View style={styles.guestCopy}><Text style={styles.sectionTitle}>Ci sono guest?</Text><Text style={styles.subtitle}>{guestsEnabled ? 'Lobby online temporanea · no statistiche' : 'No: tutto offline su questo dispositivo'}</Text></View><Switch value={guestsEnabled} onValueChange={(value) => void toggleGuests(value)} /></View>{online ? <><View style={styles.qr}><QrCode value={buildCounterGuestInviteUrl(getSiteUrl(), online.inviteToken)} size={224} label="QR invito guest" /></View><Text style={styles.qrHint}>Guest: {online.guests.length} · pronti {online.guests.filter((guest) => guest.ready).length}</Text><Button label="Crea nuovo invito" variant="outline" onPress={async () => { const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', sessionToken: online.hostToken }) }); const payload = await response.json(); if (response.ok) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }} />{online.guests.map((guest) => <View key={guest.id} style={styles.guestRow}><Text style={styles.guestName}>{guest.ready ? '✓' : '○'} {guest.display_name} · {guest.commander}</Text><Pressable onPress={async () => { await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove', sessionToken: online.hostToken, guestId: guest.id }) }); await refreshOnline(online.hostToken); }}><Text style={styles.removeGuest}>Rimuovi</Text></Pressable></View>)}</> : null}</View>
-        <Button label="Avvia partita" icon="play" disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} onPress={() => void start()} />
-        <Button label="Indietro" variant="ghost" onPress={() => router.back()} />
+        <View style={styles.guestPanel}><View style={styles.guestToggle}><View style={styles.guestCopy}><Text style={styles.sectionTitle}>{copy('guestsQuestion')}</Text><Text style={styles.subtitle}>{guestsEnabled ? copy('temporaryOnlineLobby') : copy('offlineSingleDevice')}</Text></View><Switch value={guestsEnabled} onValueChange={(value) => void toggleGuests(value)} /></View>{online ? <><View style={styles.qr}><QrCode value={buildCounterGuestInviteUrl(getSiteUrl(), online.inviteToken)} size={224} label={copy('gameInviteQr')} /></View><Text style={styles.qrHint}>Guest: {online.guests.length} · {copy('readyGuests')} {online.guests.filter((guest) => guest.ready).length}</Text><Button label={copy('rotateInvite')} variant="outline" onPress={async () => { const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', sessionToken: online.hostToken }) }); const payload = await response.json(); if (response.ok) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }} />{online.guests.map((guest) => <View key={guest.id} style={styles.guestRow}><Text style={styles.guestName}>{guest.ready ? '✓' : '○'} {guest.display_name} · {guest.commander}</Text><Pressable onPress={async () => { await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove', sessionToken: online.hostToken, guestId: guest.id }) }); await refreshOnline(online.hostToken); }}><Text style={styles.removeGuest}>{copy('remove')}</Text></Pressable></View>)}</> : null}</View>
+        <Button label={copy('startGame')} icon="play" disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} onPress={() => void start()} />
+        <Button label={copy('back')} variant="ghost" onPress={() => router.back()} />
       </ScrollView>
     </Screen>;
   }
@@ -244,14 +246,40 @@ export default function CounterScreen() {
       damagePulse={{}}
       activePlayers={activePlayers}
       labels={{
-        damageLife: 'Vite', damageCommander: 'Commander', damageInfect: format === 'commander' ? 'Infect' : 'Poison',
-        randomAll: 'Giocatore casuale', randomOpponents: 'Avversario casuale', selectActivePlayer: 'Scegli giocatore',
-        dragDamage: 'Trascina danno', dropDamage: 'Rilascia', damageConfirmTitle: 'Assegna danno', damageAmount: 'Danno',
-        lifeDamage: 'Normale', commanderDamage: 'Commander', applyDamage: 'Applica', cancel: 'Annulla',
-        commanderDamageMeta: 'Danni Commander', infect: format === 'commander' ? 'Infect' : 'Poison', eliminated: 'Eliminato',
-        revive: 'Rianima', selected: 'Scelto', ko: 'Elimina', endGame: 'Termina', startingPlayer: 'Inizia',
-        clockwise: 'Orario', counterclockwise: 'Antiorario', damageReceived: 'Segnalini', undo: 'Annulla',
-        redo: 'Ripeti', thisPlayer: 'Questo', eachOpponent: 'Ogni avversario', everyone: 'Tutti',
+        damageLife: copy('liveGameDamageLife'),
+        damageCommander: copy('liveGameDamageCommander'),
+        damageInfect: format === 'commander' ? copy('liveGameDamageInfect') : 'Poison',
+        randomAll: copy('liveGameRandomAll'),
+        randomOpponents: copy('liveGameRandomOpponents'),
+        selectActivePlayer: copy('liveGameSelectActivePlayer'),
+        dragDamage: copy('liveGameDragDamage'),
+        dropDamage: copy('liveGameDropDamage'),
+        damageConfirmTitle: copy('liveGameDamageConfirmTitle'),
+        damageAmount: copy('liveGameDamageAmount'),
+        lifeDamage: copy('liveGameLifeDamage'),
+        commanderDamage: copy('liveGameCommanderDamage'),
+        applyDamage: copy('liveGameApplyDamage'),
+        cancel: copy('cancel'),
+        commanderDamageMeta: copy('liveGameCommanderDamage'),
+        infect: format === 'commander' ? copy('liveGameInfect') : 'Poison',
+        eliminated: copy('liveGameEliminated'),
+        revive: copy('liveGameRevive'),
+        selected: copy('liveGameSelected'),
+        ko: copy('liveGameKo'),
+        endGame: copy('liveGameEnd'),
+        startingPlayer: copy('liveGameStartingPlayer'),
+        clockwise: copy('liveGameClockwise'),
+        counterclockwise: copy('liveGameCounterclockwise'),
+        damageReceived: copy('liveGameDamageReceived'),
+        undo: copy('liveGameUndo'),
+        redo: copy('liveGameRedo'),
+        thisPlayer: copy('liveGameThisPlayer'),
+        eachOpponent: copy('liveGameEachOpponent'),
+        everyone: copy('liveGameEveryone'),
+        dieOrCoin: copy('dieOrCoin'),
+        coin: copy('coin'),
+        heads: copy('heads'),
+        tails: copy('tails'),
       }}
       onBack={() => router.back()}
       canUndo={history.length > 0}

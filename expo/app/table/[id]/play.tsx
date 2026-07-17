@@ -1181,6 +1181,10 @@ export default function LiveGameScreen() {
             thisPlayer: copy('liveGameThisPlayer'),
             eachOpponent: copy('liveGameEachOpponent'),
             everyone: copy('liveGameEveryone'),
+            dieOrCoin: copy('dieOrCoin'),
+            coin: copy('coin'),
+            heads: copy('heads'),
+            tails: copy('tails'),
           }}
           onBack={() => setShowExitChoice(true)}
           canUndo={undoDepth > 0}
@@ -1592,24 +1596,25 @@ export default function LiveGameScreen() {
               <View style={styles.inviteHeader}>
                 <Ionicons name="people-outline" size={24} color={colors.primaryLight} />
                 <View style={styles.inviteCopy}>
-                  <Text style={styles.inviteTitle}>Guest da remoto</Text>
-                  <Text style={styles.inviteHint}>Aggiungi altri giocatori tramite link o QR.</Text>
+                  <Text style={styles.inviteTitle}>{copy('remoteGuests')}</Text>
+                  <Text style={styles.inviteHint}>{copy('remoteGuestsHint')}</Text>
                 </View>
                 {!inviteToken ? <Button
-                  label={creatingInvite ? 'Creazione…' : 'Crea invito'}
+                  label={creatingInvite ? copy('creatingInvite') : copy('createInvite')}
                   icon="qr-code-outline"
                   onPress={createGameInvite}
                   disabled={creatingInvite}
-                /> : <Button label={inviteExpanded ? 'Nascondi' : 'Mostra invito'} variant="ghost" onPress={() => setInviteExpanded((value) => !value)} />}
+                  style={styles.inviteAction}
+                /> : <Button label={inviteExpanded ? copy('hideInvite') : copy('showInvite')} variant="ghost" onPress={() => setInviteExpanded((value) => !value)} style={styles.inviteAction} />}
               </View>
               {inviteToken && inviteExpanded ? <View style={styles.inviteBody}>
                 <QrCode
                   value={buildGameGuestInviteUrl(getSiteUrl(), inviteToken)}
                   size={200}
-                  label="QR invito partita"
+                  label={copy('gameInviteQr')}
                 />
                 <View style={styles.inviteGuests}>
-                  <Button label="Crea nuovo invito" variant="outline" onPress={rotateGameInvite} />
+                  <Button label={copy('rotateInvite')} variant="outline" onPress={rotateGameInvite} />
                   {lobbyGuests.length ? lobbyGuests.map((entry) => {
                     const profile = relationOne(entry.arena_guests);
                     const deck = relationOne(entry.arena_guest_decks);
@@ -1619,10 +1624,10 @@ export default function LiveGameScreen() {
                         <Text style={styles.inviteGuestName} numberOfLines={1}>{profile?.display_name ?? 'Guest'}</Text>
                         <Text style={styles.inviteHint} numberOfLines={1}>{deck?.commander}</Text>
                       </View>
-                      <Text style={[styles.readyText, entry.ready && styles.readyTextOn]}>{entry.ready ? 'PRONTO' : 'ATTESA'}</Text>
+                      <Text style={[styles.readyText, entry.ready && styles.readyTextOn]}>{entry.ready ? copy('ready') : copy('waiting')}</Text>
                       <Pressable onPress={() => void removeLobbyGuest(entry.id)}><Ionicons name="trash-outline" size={20} color={colors.destructive} /></Pressable>
                     </View>;
-                  }) : <Text style={styles.inviteHint}>Nessun guest collegato.</Text>}
+                  }) : <Text style={styles.inviteHint}>{copy('noRemoteGuests')}</Text>}
                 </View>
               </View> : null}
             </View>
@@ -1719,21 +1724,23 @@ const styles = StyleSheet.create({
   },
   inviteHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.md,
   },
   inviteCopy: { flex: 1, minWidth: 0 },
+  inviteAction: { width: '100%' },
   inviteTitle: { color: colors.foreground, fontSize: 15, fontWeight: '900' },
   inviteHint: { color: colors.muted, fontSize: 11, marginTop: 2 },
   inviteBody: {
-    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     padding: spacing.md,
   },
-  inviteGuests: { flex: 1, gap: spacing.xs, justifyContent: 'center' },
+  inviteGuests: { width: '100%', gap: spacing.xs, justifyContent: 'center' },
   inviteGuestRow: {
     flexDirection: 'row',
     alignItems: 'center',

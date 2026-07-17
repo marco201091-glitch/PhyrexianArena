@@ -81,6 +81,10 @@ type TableArenaProps = {
     thisPlayer: string;
     eachOpponent: string;
     everyone: string;
+    dieOrCoin: string;
+    coin: string;
+    heads: string;
+    tails: string;
   };
   onBack: () => void;
   canUndo: boolean;
@@ -224,6 +228,15 @@ export function TableArena({
   const seatAssignments = useMemo(
     () => mapPlayersToSeats(players, seatLayouts, null),
     [players, seatLayouts],
+  );
+  const seatRotations = useMemo(
+    () => new Map(seatAssignments.map(({ player, layout }) => [
+      player.participantKey,
+      tableOrientation === 'landscape'
+        ? getLandscapeSeatRotation(layout, arenaWidth)
+        : getSeatRotation(layout.role, playerCount, layoutVariant),
+    ])),
+    [arenaWidth, layoutVariant, playerCount, seatAssignments, tableOrientation],
   );
 
   const playersByKey = useMemo(
@@ -401,7 +414,7 @@ export function TableArena({
           setRandomizerOpen(true);
         }}
         accessibilityRole="button"
-        accessibilityLabel="Dado o moneta"
+        accessibilityLabel={labels.dieOrCoin}
       >
         <Ionicons name="cube-outline" size={22} color={colors.foreground} />
       </Pressable>
@@ -584,6 +597,7 @@ export function TableArena({
         visible={Boolean(pendingTransfer)}
         source={pendingSource}
         target={pendingTarget}
+        sourceRotation={pendingTransfer ? seatRotations.get(pendingTransfer.sourceKey) ?? 0 : 0}
         defaultMode="life"
         commanderMode={commanderMode}
         labels={{
@@ -639,10 +653,10 @@ export function TableArena({
       />
 
       <Modal visible={randomizerOpen} onClose={() => setRandomizerOpen(false)} presentation="dialog" maxWidth={440}>
-        <ModalHeader title="Dado o moneta" icon="cube-outline" onClose={() => setRandomizerOpen(false)} />
+        <ModalHeader title={labels.dieOrCoin} icon="cube-outline" onClose={() => setRandomizerOpen(false)} />
         <View style={styles.randomizerChoices}>
           {([
-            ['coin', 'Moneta'],
+            ['coin', labels.coin],
             ['d4', 'd4'],
             ['d6', 'd6'],
             ['d20', 'd20'],
@@ -662,7 +676,7 @@ export function TableArena({
         {randomizerResult !== null ? (
           <View style={styles.randomizerResult}>
             <Text style={styles.randomizerResultText}>
-              {randomizerResult === 'heads' ? 'Testa' : randomizerResult === 'tails' ? 'Croce' : randomizerResult}
+              {randomizerResult === 'heads' ? labels.heads : randomizerResult === 'tails' ? labels.tails : randomizerResult}
             </Text>
           </View>
         ) : null}

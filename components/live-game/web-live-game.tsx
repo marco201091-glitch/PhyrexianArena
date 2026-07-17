@@ -1133,13 +1133,13 @@ export function WebLiveGame({
             </div>
             <div className="flex flex-col gap-7 p-4 sm:p-7">
               <section className="order-last overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-500/15 via-background/70 to-cyan-500/10">
-                <div className="flex items-center gap-3 border-b border-white/10 p-4">
+                <div className="flex flex-wrap items-center gap-3 border-b border-white/10 p-4">
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-200"><QrCode className="h-5 w-5" /></span>
                   <div className="min-w-0 flex-1">
                     <h3 className="font-black">{copy({ it: 'Guest da remoto', en: 'Remote guests' })}</h3>
                     <p className="text-xs text-muted-foreground">{copy({ it: 'Aggiungi altri giocatori tramite link o QR.', en: 'Add other players through a link or QR code.' })}</p>
                   </div>
-                  {!inviteToken ? <Button onClick={() => void createInvite()} disabled={creatingInvite} className="font-black">
+                  {!inviteToken ? <Button onClick={() => void createInvite()} disabled={creatingInvite} className="w-full font-black sm:w-auto">
                     {creatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
                     {copy({ it: 'Crea invito', en: 'Create invite' })}
                   </Button> : null}
@@ -1343,6 +1343,16 @@ export function WebLiveGame({
       {damageDraft && (() => {
         const source = record.state.players.find((player) => player.participantKey === damageDraft.sourceKey);
         const target = record.state.players.find((player) => player.participantKey === damageDraft.targetKey);
+        const sourceAssignment = assignments.find(({ player }) => player.participantKey === damageDraft.sourceKey);
+        const sourceRotation = sourceAssignment
+          ? orientation === 'landscape'
+            ? getLandscapeSeatRotation(sourceAssignment.layout, tableSize.width)
+            : getSeatRotation(
+              sourceAssignment.layout.role,
+              record.state.players.length,
+              record.state.layoutVariant ?? 'classic',
+            )
+          : 0;
         const amount = Math.max(0, Math.min(999, Number(damageAmount) || 0));
         const targetCount = damageDraft.scope === 'all_players'
           ? record.state.players.filter((player) => !player.isEliminated).length
@@ -1370,10 +1380,15 @@ export function WebLiveGame({
             ['opponents', copy({ it: 'Ogni avversario', en: 'Each opponent' })],
             ['all_players', copy({ it: 'Tutti', en: 'Everyone' })],
           ] as const).map(([scope, label]) => <button key={scope} onClick={() => setDamageDraft({ ...damageDraft, scope })} className={cn('min-h-11 rounded-xl px-2 py-2 text-[11px] font-bold transition', damageDraft.scope === scope ? 'bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/70' : 'text-zinc-400 hover:bg-white/5')}>{label}</button>)}</div> : null}
-          <div className="relative flex min-h-52 items-center justify-between overflow-hidden rounded-3xl border border-rose-400/30 bg-black/35 px-5 sm:px-10">
-            <button type="button" onClick={() => setDamageAmount(String(Math.max(0, amount - 1)))} className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/25 bg-black/40 text-3xl font-light transition active:scale-90">−</button>
-            <div className="min-w-0 flex-1 text-center"><input aria-label={copy({ it: 'Quantità danno', en: 'Damage amount' })} value={damageAmount} onChange={(event) => setDamageAmount(event.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" className="h-24 w-full bg-transparent text-center text-7xl font-black leading-none tabular-nums text-white outline-none" /><p className="truncate text-sm font-black uppercase tracking-wide text-zinc-100">{modeLabel} · {scopeLabel}</p></div>
-            <button type="button" onClick={() => setDamageAmount(String(Math.min(999, amount + 1)))} className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/25 bg-black/40 text-3xl font-light transition active:scale-90">+</button>
+          <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-3xl border border-rose-400/30 bg-black/35">
+            <div
+              className="absolute inset-0 flex items-center justify-between px-5 sm:px-8"
+              style={{ transform: `rotate(${sourceRotation}deg)` }}
+            >
+              <button type="button" onClick={() => setDamageAmount(String(Math.max(0, amount - 1)))} className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/25 bg-black/40 text-3xl font-light transition active:scale-90" aria-label={copy({ it: 'Riduci danno', en: 'Reduce damage' })}>−</button>
+              <div className="min-w-0 flex-1 text-center"><input aria-label={copy({ it: 'Quantità danno', en: 'Damage amount' })} value={damageAmount} onChange={(event) => setDamageAmount(event.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" className="h-24 w-full bg-transparent text-center text-7xl font-black leading-none tabular-nums text-white outline-none" /><p className="truncate text-sm font-black uppercase tracking-wide text-zinc-100">{modeLabel} · {scopeLabel}</p></div>
+              <button type="button" onClick={() => setDamageAmount(String(Math.min(999, amount + 1)))} className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/25 bg-black/40 text-3xl font-light transition active:scale-90" aria-label={copy({ it: 'Aumenta danno', en: 'Increase damage' })}>+</button>
+            </div>
           </div>
           <div className="grid grid-cols-6 gap-2">{[1, 2, 3, 5, 10, 15].map((quickAmount) => <button key={quickAmount} onClick={() => setDamageAmount(String(quickAmount))} className={cn('h-10 rounded-xl border text-sm font-black transition', damageAmount === String(quickAmount) ? 'border-rose-400 bg-rose-500/25 text-white' : 'border-white/10 bg-black/25 text-zinc-400')}>+{quickAmount}</button>)}</div>
           <div className="grid grid-cols-2 gap-3 pt-1"><Button variant="outline" onClick={() => setDamageDraft(null)} className="h-12 border-white/20 bg-black/20 font-black">{copy({ it: 'Annulla', en: 'Cancel' })}</Button><Button onClick={applyDamageDraft} disabled={amount === 0} className="h-12 bg-gradient-to-r from-rose-600 to-orange-600 font-black disabled:opacity-40">{damageDraft.scope === 'single' ? copy({ it: 'Risolvi', en: 'Resolve' }) : `${copy({ it: 'Risolvi', en: 'Resolve' })} ${amount} × ${targetCount}`}</Button></div>

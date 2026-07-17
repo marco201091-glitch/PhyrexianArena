@@ -193,13 +193,13 @@ export default function SettingsScreen() {
       </PhyrexianPanel>
 
       <PhyrexianPanel style={styles.card}>
-        <SectionHeader title="Accessibilità" />
+        <SectionHeader title={copy('accessibility')} />
         {([
-          ['reducedMotion', 'Riduci animazioni', 'Default disattivo'],
-          ['highContrast', 'Contrasto alto', 'Default disattivo'],
-          ['largeText', 'Testo grande', 'Default disattivo'],
-        ] as const).map(([key, label, hint]) => <View key={key} style={styles.preferenceRow}>
-          <View style={styles.preferenceCopy}><Text style={styles.preferenceLabel}>{label}</Text><Text style={styles.preferenceHint}>{hint}</Text></View>
+          ['reducedMotion', copy('reducedMotion')],
+          ['highContrast', copy('highContrast')],
+          ['largeText', copy('largeText')],
+        ] as const).map(([key, label]) => <View key={key} style={styles.preferenceRow}>
+          <View style={styles.preferenceCopy}><Text style={styles.preferenceLabel}>{label}</Text><Text style={styles.preferenceHint}>{copy('disabledByDefault')}</Text></View>
           <Switch value={accessibility[key]} onValueChange={(value) => updateAccessibility(key, value)} trackColor={{ true: colors.primary }} />
         </View>)}
       </PhyrexianPanel>
