@@ -2,7 +2,8 @@
   "expo": {
     "name": "Phyrexian Arena",
     "slug": "phyrexian-arena",
-    "version": "2.8.12",
+    "version": "4.4.0",
+    "platforms": ["android", "ios", "web"],
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "phyrexianarena",
@@ -17,7 +18,7 @@
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "com.phyrexianarena.app",
-      "buildNumber": "20812",
+      "buildNumber": "40400",
       "icon": "./assets/icon.png",
       "backgroundColor": "#0a0a0f",
       "associatedDomains": [
@@ -46,7 +47,7 @@
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 20812,
+      "versionCode": 40400,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -54,6 +55,16 @@
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            {
+              "scheme": "phyrexianarena",
+              "host": "callback"
+            }
+          ]
+        },
         {
           "action": "VIEW",
           "autoVerify": true,

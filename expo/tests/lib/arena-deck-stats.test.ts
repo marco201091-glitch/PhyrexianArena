@@ -37,7 +37,7 @@ describe('arena commander stats', () => {
     expect(calculateCommanderStats(matches, 'all', 'gamesPlayed').map((entry) => entry.key)).toEqual([
       'Atraxa::3', 'Krenko::2', 'Atraxa::4',
     ]);
-    expect(calculateCommanderStats(matches, 'all', 'wins')).toHaveLength(3);
+    expect(calculateCommanderStats(matches, 'all', 'winRate')).toHaveLength(3);
   });
 
   it('ignores participants without deck snapshots', () => {

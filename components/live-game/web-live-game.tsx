@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleDot,
   Clock3,
+  Crown,
+  Box,
   Dices,
   Flag,
   Heart,
@@ -18,6 +21,8 @@ import {
   MoreHorizontal,
   Pause,
   Plus,
+  QrCode,
+  Redo2,
   RotateCcw,
   Shield,
   Skull,
@@ -30,7 +35,9 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HoldActionButton } from '@/components/ui/hold-action-button';
 import { DeckImage } from '@/components/deck-image';
+import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
 import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
 import { useLanguage } from '@/components/language-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -45,11 +52,13 @@ import {
   isValidLiveGameResult,
   pickRandomPlayer,
   type DamageMode,
+  type GroupDamageScope,
   type LiveGameMutation,
   type LiveGameRecord,
   type QueuedLiveGameMutation,
   type WinCondition,
 } from '@/lib/live-game';
+import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import {
   getLandscapeSeatRotation,
   getCenterToolbarBand,
@@ -61,7 +70,7 @@ import {
 } from '@/lib/live-game-table-layout';
 import { buildRouletteSequence } from '@/lib/live-game-roulette';
 import {
-  applyQueuedLiveGameMutation,
+  applyQueuedLiveGameMutations,
   cancelLiveGame,
   ensureLiveGameCreated,
   fetchActiveLiveGame,
@@ -76,12 +85,26 @@ import {
   type PendingLiveGameFinalization,
 } from '@/lib/live-game-offline';
 import {
+  createLiveGameHistory,
+  recordLiveGameHistory,
+  redoLiveGameHistory,
+  undoLiveGameHistory,
+  type LiveGameHistory,
+} from '@/lib/live-game-history';
+import { persistLiveGameTelemetry, recordLiveGameQueueDepth } from '@/lib/live-game-telemetry';
+import {
   createDefaultWebLiveGameSetup,
   loadWebLiveGameSetup,
   saveWebLiveGameSetup,
   type WebLiveGameSeatSetup,
 } from '@/lib/live-game-setup';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { RecentLifeDelta } from '@/components/ui/recent-life-delta';
+import { useScreenWakeLock } from '@/hooks/use-screen-wake-lock';
+import {
+  LIVE_GAME_SYNC_BATCH_SIZE,
+  getLiveGameSyncDelay,
+} from '@/lib/live-game-sync-policy';
 
 export type WebTrackerDeck = {
   id: string;
@@ -99,6 +122,27 @@ export type WebTrackerParticipant = {
   decks: WebTrackerDeck[];
 };
 
+type LobbyGuest = {
+  id: string;
+  ready: boolean;
+  guest_id: string;
+  guest_deck_id: string;
+  arena_guests: { display_name: string } | Array<{ display_name: string }> | null;
+  arena_guest_decks: {
+    name: string;
+    commander: string;
+    commander_image: string | null;
+  } | Array<{
+    name: string;
+    commander: string;
+    commander_image: string | null;
+  }> | null;
+};
+
+function relationOne<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
 type DragState = {
   sourceKey: ParticipantKey;
   startX: number;
@@ -112,6 +156,7 @@ type DamageDraft = {
   sourceKey: ParticipantKey;
   targetKey: ParticipantKey;
   mode: DamageMode;
+  scope: 'single' | GroupDamageScope;
 };
 
 const WIN_CONDITIONS: Array<{
@@ -196,7 +241,7 @@ export function WebLiveGame({
   groupId,
   arenaName,
   userId,
-  participants,
+  participants: baseParticipants,
 }: {
   groupId: string;
   arenaName: string;
@@ -214,12 +259,18 @@ export function WebLiveGame({
   const needsCreateRef = useRef(false);
   const pendingFinalizationRef = useRef<PendingLiveGameFinalization | null>(null);
   const pendingCancelRef = useRef(false);
-  const undoRef = useRef<LiveGameMutation[]>([]);
+  const historyRef = useRef<LiveGameHistory>(createLiveGameHistory());
   const [undoDepth, setUndoDepth] = useState(0);
+  const [redoDepth, setRedoDepth] = useState(0);
   const syncingRef = useRef(false);
+  const syncTimerRef = useRef<number | null>(null);
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const telemetrySessionRef = useRef(globalThis.crypto.randomUUID());
   const [duration, setDuration] = useState('00:00');
+  useScreenWakeLock(Boolean(record));
 
   const initialSetup = useMemo(() => loadWebLiveGameSetup(groupId, userId), [groupId, userId]);
   const [playerCount, setPlayerCount] = useState(initialSetup.playerCount);
@@ -227,13 +278,143 @@ export function WebLiveGame({
   const [startingLife, setStartingLife] = useState(initialSetup.startingLife);
   const [seats, setSeats] = useState<WebLiveGameSeatSetup[]>(initialSetup.seats);
   const [starting, setStarting] = useState(false);
+  const [lobbyId, setLobbyId] = useState<string | null>(null);
+  const lobbyIdRef = useRef<string | null>(null);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [lobbyGuests, setLobbyGuests] = useState<LobbyGuest[]>([]);
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [inviteOrigin, setInviteOrigin] = useState('');
+  const [inviteExpanded, setInviteExpanded] = useState(true);
+  const participants = useMemo<WebTrackerParticipant[]>(() => [
+    ...baseParticipants,
+    ...lobbyGuests.map((entry) => {
+      const guest = relationOne(entry.arena_guests);
+      const deck = relationOne(entry.arena_guest_decks);
+      return {
+        key: `guest:${entry.guest_id}` as ParticipantKey,
+        displayName: guest?.display_name ?? copy({ it: 'Ospite', en: 'Guest' }),
+        isGuest: true,
+        userId: null,
+        guestId: entry.guest_id,
+        decks: deck ? [{
+          id: entry.guest_deck_id,
+          name: deck.name,
+          commander: deck.commander,
+          commanderImage: deck.commander_image,
+        }] : [],
+      };
+    }),
+  ], [baseParticipants, copy, lobbyGuests]);
+
+  useEffect(() => {
+    setInviteOrigin(window.location.origin);
+    const raw = localStorage.getItem(`phyrexian:live-lobby:${groupId}`);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as { id?: string; token?: string };
+      if (saved.id && saved.token) {
+        lobbyIdRef.current = saved.id;
+        setLobbyId(saved.id);
+        setInviteToken(saved.token);
+      }
+    } catch {
+      localStorage.removeItem(`phyrexian:live-lobby:${groupId}`);
+    }
+  }, [groupId]);
+
+  const refreshLobby = useCallback(async () => {
+    if (!lobbyIdRef.current) return;
+    const response = await fetch(`/api/live-game-lobby?id=${encodeURIComponent(lobbyIdRef.current)}`, { cache: 'no-store' });
+    if (!response.ok) return;
+    const result = await response.json() as { guests?: LobbyGuest[] };
+    setLobbyGuests(result.guests ?? []);
+  }, []);
+
+  useEffect(() => {
+    if (!lobbyId || record) return;
+    void refreshLobby();
+    const timer = window.setInterval(() => void refreshLobby(), 1500);
+    return () => window.clearInterval(timer);
+  }, [lobbyId, record, refreshLobby]);
+
+  useEffect(() => {
+    if (record || lobbyGuests.length === 0) return;
+    setSeats((current) => {
+      const next = [...current];
+      let changed = false;
+      for (const guest of lobbyGuests) {
+        const key = `guest:${guest.guest_id}` as ParticipantKey;
+        if (next.some((seat) => seat.participantKey === key)) continue;
+        const empty = next.findIndex((seat) => !seat.participantKey);
+        if (empty >= 0) {
+          next[empty] = { participantKey: key, deckId: guest.guest_deck_id };
+          changed = true;
+        } else if (next.length < 6) {
+          next.push({ participantKey: key, deckId: guest.guest_deck_id });
+          changed = true;
+        }
+      }
+      if (changed) setPlayerCount(next.length);
+      return changed ? next : current;
+    });
+  }, [lobbyGuests, record]);
+
+  const createInvite = async () => {
+    setCreatingInvite(true);
+    try {
+      const response = await fetch('/api/live-game-lobby', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? 'Invite creation failed');
+      lobbyIdRef.current = result.id;
+      setLobbyId(result.id);
+      setInviteToken(result.token);
+      localStorage.setItem(`phyrexian:live-lobby:${groupId}`, JSON.stringify({ id: result.id, token: result.token }));
+    } catch (error) {
+      toast({
+        title: copy({ it: 'Invito non creato', en: 'Invite not created' }),
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
+
+  const rotateInvite = async () => {
+    if (!lobbyIdRef.current) return;
+    const response = await fetch('/api/live-game-lobby', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lobbyId: lobbyIdRef.current, action: 'rotate' }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.token) return;
+    setInviteToken(result.token);
+    localStorage.setItem(`phyrexian:live-lobby:${groupId}`, JSON.stringify({ id: lobbyIdRef.current, token: result.token }));
+  };
+
+  const removeLobbyGuest = async (guestSessionId: string) => {
+    if (!lobbyIdRef.current) return;
+    await fetch('/api/live-game-lobby', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lobbyId: lobbyIdRef.current, action: 'remove', guestSessionId }),
+    });
+    await refreshLobby();
+  };
 
   const [damageDraft, setDamageDraft] = useState<DamageDraft | null>(null);
-  const [damageAmount, setDamageAmount] = useState('1');
+  const [damageAmount, setDamageAmount] = useState('0');
   const [damagePanelKey, setDamagePanelKey] = useState<ParticipantKey | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [highlight, setHighlight] = useState<ParticipantKey | null>(null);
   const [randomOpponentMode, setRandomOpponentMode] = useState(false);
+  const [randomizerOpen, setRandomizerOpen] = useState(false);
+  const [randomizerResult, setRandomizerResult] = useState<string | number | null>(null);
   const rouletteTimers = useRef<number[]>([]);
   const [endOpen, setEndOpen] = useState(false);
   const [winnerKey, setWinnerKey] = useState<ParticipantKey | ''>('');
@@ -317,6 +498,7 @@ export function WebLiveGame({
       mutations: queueRef.current,
       pendingFinalization: pendingFinalizationRef.current,
       pendingCancel: pendingCancelRef.current,
+      history: historyRef.current,
     });
   }, [groupId]);
 
@@ -326,8 +508,10 @@ export function WebLiveGame({
     serverRef.current = null;
     queueRef.current = [];
     needsCreateRef.current = false;
-    undoRef.current = [];
+    historyRef.current = createLiveGameHistory();
     setUndoDepth(0);
+    setRedoDepth(0);
+    setPendingSyncCount(0);
     setOptimisticRecord(null);
     setEndOpen(false);
   }, [setEndOpen, setOptimisticRecord]);
@@ -336,28 +520,44 @@ export function WebLiveGame({
     serverRef.current = null;
     queueRef.current = [];
     needsCreateRef.current = false;
-    undoRef.current = [];
+    historyRef.current = createLiveGameHistory();
     setUndoDepth(0);
+    setRedoDepth(0);
+    setPendingSyncCount(0);
     setOptimisticRecord(null);
     setConfirmCancel(false);
   }, [setConfirmCancel, setOptimisticRecord]);
 
   const flush = useCallback(async () => {
+    if (syncTimerRef.current !== null) {
+      window.clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
     if (syncingRef.current || !recordRef.current || !serverRef.current || !navigator.onLine) return false;
     syncingRef.current = true;
     setSyncing(true);
+    setSyncError(null);
     try {
       let server = serverRef.current;
       if (needsCreateRef.current) {
         server = await ensureLiveGameCreated(supabase, recordRef.current);
         serverRef.current = server;
         needsCreateRef.current = false;
+        if (lobbyIdRef.current) {
+          const response = await fetch('/api/live-game-lobby', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lobbyId: lobbyIdRef.current, liveGameId: server.id }),
+          });
+          if (!response.ok) throw new Error('Guest lobby link failed');
+        }
       }
       while (queueRef.current.length > 0) {
-        const queued = queueRef.current[0]!;
-        server = await applyQueuedLiveGameMutation(supabase, server, queued);
+        const batch = queueRef.current.slice(0, LIVE_GAME_SYNC_BATCH_SIZE);
+        server = await applyQueuedLiveGameMutations(supabase, server, batch);
         serverRef.current = server;
-        queueRef.current = queueRef.current.slice(1);
+        queueRef.current = queueRef.current.slice(batch.length);
+        setPendingSyncCount(queueRef.current.length);
         setOptimisticRecord(replay(server, queueRef.current));
         persist(recordRef.current);
       }
@@ -384,13 +584,57 @@ export function WebLiveGame({
       return true;
     } catch (error) {
       persist(recordRef.current);
+      setSyncError(error instanceof Error ? error.message : 'Sync failed');
       console.error('Web live-game sync failed', error);
       return false;
     } finally {
       syncingRef.current = false;
       setSyncing(false);
+      void persistLiveGameTelemetry(supabase, {
+        userId,
+        liveGameId: recordRef.current?.id ?? null,
+        sessionId: telemetrySessionRef.current,
+        platform: 'web',
+      }).catch(() => undefined);
     }
-  }, [clearCancelledGame, groupId, persist, setOptimisticRecord, showCompletedGame]);
+  }, [clearCancelledGame, groupId, persist, setOptimisticRecord, showCompletedGame, userId]);
+
+  const scheduleFlush = useCallback(() => {
+    if (syncTimerRef.current !== null) window.clearTimeout(syncTimerRef.current);
+    const delay = getLiveGameSyncDelay({
+      hasRemoteGuests: lobbyGuests.length > 0,
+      queueDepth: queueRef.current.length,
+    });
+    syncTimerRef.current = window.setTimeout(() => {
+      syncTimerRef.current = null;
+      void flush();
+    }, delay);
+  }, [flush, lobbyGuests.length]);
+
+  useEffect(() => {
+    if (queueRef.current.length > 0) scheduleFlush();
+    return () => {
+      if (syncTimerRef.current !== null) {
+        window.clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+    };
+  }, [scheduleFlush]);
+
+  useEffect(() => {
+    const flushBeforeBackground = () => {
+      if (document.visibilityState === 'hidden' && queueRef.current.length > 0) void flush();
+    };
+    const flushBeforeExit = () => {
+      if (queueRef.current.length > 0) void flush();
+    };
+    document.addEventListener('visibilitychange', flushBeforeBackground);
+    window.addEventListener('pagehide', flushBeforeExit);
+    return () => {
+      document.removeEventListener('visibilitychange', flushBeforeBackground);
+      window.removeEventListener('pagehide', flushBeforeExit);
+    };
+  }, [flush]);
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -418,6 +662,10 @@ export function WebLiveGame({
         needsCreateRef.current = cached.needsCreate;
         pendingFinalizationRef.current = cached.pendingFinalization;
         pendingCancelRef.current = cached.pendingCancel;
+        historyRef.current = cached.history;
+        setUndoDepth(cached.history.undo.length);
+        setRedoDepth(cached.history.redo.length);
+        setPendingSyncCount(cached.mutations.length);
         setOptimisticRecord(cached.record);
       }
       try {
@@ -427,6 +675,7 @@ export function WebLiveGame({
           const queue = cached?.record.id === remote.id ? queueRef.current : [];
           serverRef.current = remote;
           queueRef.current = queue;
+          setPendingSyncCount(queue.length);
           needsCreateRef.current = false;
           setOptimisticRecord(replay(remote, queue));
           persist(recordRef.current);
@@ -463,28 +712,6 @@ export function WebLiveGame({
     const timer = window.setInterval(() => setDuration(formatDuration(record.started_at)), 1000);
     return () => window.clearInterval(timer);
   }, [record?.started_at]);
-
-  useEffect(() => {
-    if (!activeRecordId || !('wakeLock' in navigator)) return;
-    let lock: WakeLockSentinel | null = null;
-    let disposed = false;
-    const acquire = async () => {
-      if (disposed || document.visibilityState !== 'visible') return;
-      try {
-        lock = await navigator.wakeLock.request('screen');
-      } catch {
-        // Safari/embedded browsers may reject wake lock; gameplay still works.
-      }
-    };
-    const onVisibility = () => { if (document.visibilityState === 'visible') void acquire(); };
-    void acquire();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      disposed = true;
-      document.removeEventListener('visibilitychange', onVisibility);
-      void lock?.release();
-    };
-  }, [activeRecordId]);
 
   useEffect(() => {
     const element = tableRef.current;
@@ -577,6 +804,10 @@ export function WebLiveGame({
       };
       serverRef.current = created;
       queueRef.current = [];
+      setPendingSyncCount(0);
+      historyRef.current = createLiveGameHistory();
+      setUndoDepth(0);
+      setRedoDepth(0);
       needsCreateRef.current = true;
       pendingFinalizationRef.current = null;
       pendingCancelRef.current = false;
@@ -598,7 +829,11 @@ export function WebLiveGame({
     }
   };
 
-  const enqueue = useCallback((mutation: LiveGameMutation, inverse?: LiveGameMutation) => {
+  const enqueue = useCallback((
+    mutation: LiveGameMutation,
+    inverse?: LiveGameMutation,
+    historyMode: 'record' | 'skip' = 'record',
+  ) => {
     const current = recordRef.current;
     if (!current) return;
     const id = crypto.randomUUID();
@@ -608,21 +843,35 @@ export function WebLiveGame({
       occurredAt: mutation.occurredAt ?? new Date().toISOString(),
     };
     queueRef.current = [...queueRef.current, { id, mutation: tracked }];
-    if (inverse) {
-      undoRef.current = [...undoRef.current.slice(-29), inverse];
-      setUndoDepth(undoRef.current.length);
+    setPendingSyncCount(queueRef.current.length);
+    recordLiveGameQueueDepth(queueRef.current.length);
+    if (inverse && historyMode === 'record') {
+      historyRef.current = recordLiveGameHistory(historyRef.current, { forward: mutation, inverse });
+      setUndoDepth(historyRef.current.undo.length);
+      setRedoDepth(0);
     }
     const next = { ...current, state: applyLiveGameMutation(current.state, tracked) };
     setOptimisticRecord(next);
     persist(next);
-    void flush();
-  }, [flush, persist, setOptimisticRecord]);
+    scheduleFlush();
+  }, [persist, scheduleFlush, setOptimisticRecord]);
 
   const undoLastMutation = () => {
-    const inverse = undoRef.current.pop();
-    if (!inverse) return;
-    setUndoDepth(undoRef.current.length);
-    enqueue(inverse);
+    const result = undoLiveGameHistory(historyRef.current);
+    if (!result) return;
+    historyRef.current = result.history;
+    setUndoDepth(result.history.undo.length);
+    setRedoDepth(result.history.redo.length);
+    enqueue(result.mutation, undefined, 'skip');
+  };
+
+  const redoLastMutation = () => {
+    const result = redoLiveGameHistory(historyRef.current);
+    if (!result) return;
+    historyRef.current = result.history;
+    setUndoDepth(result.history.undo.length);
+    setRedoDepth(result.history.redo.length);
+    enqueue(result.mutation, undefined, 'skip');
   };
 
   const runRoulette = (pool: ParticipantKey[], winner?: ParticipantKey) => {
@@ -674,8 +923,8 @@ export function WebLiveGame({
     const up = () => {
       setDrag((current) => {
         if (current?.targetKey) {
-          setDamageDraft({ sourceKey: current.sourceKey, targetKey: current.targetKey, mode: 'life' });
-          setDamageAmount('1');
+          setDamageDraft({ sourceKey: current.sourceKey, targetKey: current.targetKey, mode: 'life', scope: 'single' });
+          setDamageAmount('0');
         }
         return null;
       });
@@ -692,20 +941,35 @@ export function WebLiveGame({
 
   const applyDamageDraft = () => {
     if (!damageDraft) return;
-    const amount = Math.max(1, Math.min(999, Number(damageAmount) || 1));
-    enqueue({
-      type: 'adjust',
-      targetKey: damageDraft.targetKey,
-      sourceKey: damageDraft.sourceKey,
-      amount,
-      mode: damageDraft.mode,
-    }, {
-      type: 'adjust',
-      targetKey: damageDraft.targetKey,
-      sourceKey: damageDraft.sourceKey,
-      amount: -amount,
-      mode: damageDraft.mode,
-    });
+    const amount = Math.max(0, Math.min(999, Number(damageAmount) || 0));
+    if (amount === 0) return;
+    if (damageDraft.scope !== 'single' && damageDraft.mode === 'life') {
+      enqueue({
+        type: 'adjust_many',
+        sourceKey: damageDraft.sourceKey,
+        amount,
+        scope: damageDraft.scope,
+      }, {
+        type: 'adjust_many',
+        sourceKey: damageDraft.sourceKey,
+        amount: -amount,
+        scope: damageDraft.scope,
+      });
+    } else {
+      enqueue({
+        type: 'adjust',
+        targetKey: damageDraft.targetKey,
+        sourceKey: damageDraft.sourceKey,
+        amount,
+        mode: damageDraft.mode,
+      }, {
+        type: 'adjust',
+        targetKey: damageDraft.targetKey,
+        sourceKey: damageDraft.sourceKey,
+        amount: -amount,
+        mode: damageDraft.mode,
+      });
+    }
     setDamageDraft(null);
   };
 
@@ -819,6 +1083,14 @@ export function WebLiveGame({
               </div>
             </div>
             <div className="space-y-3 p-5 sm:p-7">
+              <LiveGameRecapView
+                record={completedRecord}
+                labels={{
+                  timeline: copy({ it: 'Andamento vite', en: 'Life timeline' }),
+                  highlights: copy({ it: 'Momenti chiave', en: 'Highlights' }),
+                  empty: copy({ it: 'Nessun momento chiave registrato.', en: 'No highlights recorded.' }),
+                }}
+              />
               <Button onClick={() => setConfirmRematch(true)} className="h-13 w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 font-black">
                 <RotateCcw className="mr-2 h-5 w-5" />
                 {copy({ it: 'Nuova partita · stessi mazzi', en: 'New game · same decks' })}
@@ -886,7 +1158,54 @@ export function WebLiveGame({
               <h2 className="text-xl font-black">{copy({ it: 'Configura la partita', en: 'Set up the game' })}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{copy({ it: 'Scegli layout, posti e mazzi. L’ultima configurazione viene ricordata.', en: 'Choose layout, seats and decks. Your last setup is remembered.' })}</p>
             </div>
-            <div className="space-y-7 p-4 sm:p-7">
+            <div className="flex flex-col gap-7 p-4 sm:p-7">
+              <section className="order-last overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-500/15 via-background/70 to-cyan-500/10">
+                <div className="flex flex-wrap items-center gap-3 border-b border-white/10 p-4">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-200"><QrCode className="h-5 w-5" /></span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-black">{copy({ it: 'Guest da remoto', en: 'Remote guests' })}</h3>
+                    <p className="text-xs text-muted-foreground">{copy({ it: 'Aggiungi altri giocatori tramite link o QR.', en: 'Add other players through a link or QR code.' })}</p>
+                  </div>
+                  {!inviteToken ? <Button onClick={() => void createInvite()} disabled={creatingInvite} className="w-full font-black sm:w-auto">
+                    {creatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
+                    {copy({ it: 'Crea invito', en: 'Create invite' })}
+                  </Button> : null}
+                  {inviteToken ? <Button size="icon" variant="ghost" onClick={() => setInviteExpanded((value) => !value)}><ChevronDown className={cn('transition', inviteExpanded && 'rotate-180')} /></Button> : null}
+                </div>
+                {inviteToken && inviteExpanded ? <div className="grid gap-4 p-4 sm:grid-cols-[160px_1fr]">
+                  <div className="rounded-2xl bg-white p-2 shadow-xl">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/game-invite-qr?token=${encodeURIComponent(inviteToken)}`}
+                      alt={copy({ it: 'QR invito partita', en: 'Game invite QR' })}
+                      className="aspect-square w-full"
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard.writeText(`${inviteOrigin}/game/join/${inviteToken}`)}
+                      className="w-full truncate rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-left text-xs text-violet-200"
+                    >
+                      {inviteOrigin}/game/join/{inviteToken}
+                    </button>
+                    <Button variant="outline" className="w-full" onClick={() => void rotateInvite()}>{copy({ it: 'Crea nuovo invito', en: 'Create new invite' })}</Button>
+                    <div className="space-y-2">
+                      {lobbyGuests.length ? lobbyGuests.map((guest) => {
+                        const profile = relationOne(guest.arena_guests);
+                        const deck = relationOne(guest.arena_guest_decks);
+                        return <div key={guest.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+                          <span className={cn('h-2.5 w-2.5 rounded-full', guest.ready ? 'bg-emerald-400 shadow-[0_0_12px_#34d399]' : 'bg-amber-400')} />
+                          <div className="min-w-0 flex-1"><b className="block truncate">{profile?.display_name ?? 'Guest'}</b><span className="block truncate text-xs text-muted-foreground">{deck?.commander}</span></div>
+                          <span className={cn('rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider', guest.ready ? 'bg-emerald-500/15 text-emerald-200' : 'bg-amber-500/15 text-amber-200')}>{guest.ready ? copy({ it: 'Pronto', en: 'Ready' }) : copy({ it: 'In attesa', en: 'Waiting' })}</span>
+                          <Button size="icon" variant="ghost" onClick={() => void removeLobbyGuest(guest.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>;
+                      }) : <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-muted-foreground">{copy({ it: 'Nessun guest collegato.', en: 'No guests connected.' })}</p>}
+                    </div>
+                  </div>
+                </div> : null}
+              </section>
+
               <section>
                 <div className="mb-3 flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-violet-600 text-xs font-black">1</span><h3 className="font-bold">{copy({ it: 'Numero giocatori', en: 'Number of players' })}</h3></div>
                 <div className="grid grid-cols-5 gap-2">
@@ -906,7 +1225,66 @@ export function WebLiveGame({
                 <div className="grid gap-3 md:grid-cols-2">
                   {seats.map((seat, index) => {
                     const participant = participants.find((entry) => entry.key === seat.participantKey);
-                    return <div key={index} className="rounded-2xl border border-border bg-background/55 p-3"><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground"><span className="grid h-6 w-6 place-items-center rounded-full bg-secondary">{index + 1}</span>{copy({ it: 'Posto', en: 'Seat' })} {index + 1}</div><select value={seat.participantKey ?? ''} onChange={(event) => updateSeatParticipant(index, (event.target.value || null) as ParticipantKey | null)} className="h-12 w-full rounded-xl border border-input bg-card px-3 font-semibold outline-none focus:border-violet-400"><option value="">{copy({ it: 'Scegli giocatore', en: 'Choose player' })}</option>{participants.map((entry) => <option key={entry.key} value={entry.key} disabled={usedKeys.includes(entry.key) && entry.key !== seat.participantKey}>{entry.displayName}</option>)}</select>{participant && <select value={seat.deckId ?? ''} onChange={(event) => setSeats((current) => current.map((item, seatIndex) => seatIndex === index ? { ...item, deckId: event.target.value || null } : item))} className="mt-2 h-12 w-full rounded-xl border border-input bg-card px-3 outline-none focus:border-violet-400"><option value="">{copy({ it: 'Scegli mazzo', en: 'Choose deck' })}</option>{participant.decks.map((deck) => <option key={deck.id} value={deck.id}>{deck.name} · {deck.commander}</option>)}</select>}</div>;
+                    return (
+                      <div key={index} className="min-w-0 rounded-2xl border border-border bg-background/55 p-3">
+                        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          <span className="grid h-6 w-6 place-items-center rounded-full bg-secondary">{index + 1}</span>
+                          {copy({ it: 'Posto', en: 'Seat' })} {index + 1}
+                        </div>
+                        <select
+                          value={seat.participantKey ?? ''}
+                          onChange={(event) => updateSeatParticipant(index, (event.target.value || null) as ParticipantKey | null)}
+                          className="h-12 w-full rounded-xl border border-input bg-card px-3 font-semibold outline-none focus:border-violet-400"
+                        >
+                          <option value="">{copy({ it: 'Scegli giocatore', en: 'Choose player' })}</option>
+                          {participants.map((entry) => (
+                            <option
+                              key={entry.key}
+                              value={entry.key}
+                              disabled={usedKeys.includes(entry.key) && entry.key !== seat.participantKey}
+                            >
+                              {entry.displayName}
+                            </option>
+                          ))}
+                        </select>
+                        {participant ? (
+                          <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+                            {participant.decks.map((deck) => {
+                              const selected = seat.deckId === deck.id;
+                              return (
+                                <button
+                                  key={deck.id}
+                                  type="button"
+                                  aria-pressed={selected}
+                                  onClick={() => setSeats((current) => current.map((item, seatIndex) => (
+                                    seatIndex === index ? { ...item, deckId: deck.id } : item
+                                  )))}
+                                  className={cn(
+                                    'w-28 shrink-0 overflow-hidden rounded-xl border bg-card text-left transition active:scale-[.98]',
+                                    selected
+                                      ? 'border-violet-400 ring-2 ring-violet-500/25'
+                                      : 'border-border hover:border-violet-500/60',
+                                  )}
+                                >
+                                  <DeckImage
+                                    src={deck.commanderImage}
+                                    alt={deck.commander}
+                                    className="h-28 w-full rounded-none object-cover object-top"
+                                    fallbackClassName="h-28 w-full rounded-none"
+                                  />
+                                  <span className="block p-2">
+                                    <b className="line-clamp-2 text-xs leading-tight">{deck.commander}</b>
+                                    {deck.name !== deck.commander ? (
+                                      <small className="mt-1 block truncate text-[10px] text-muted-foreground">{deck.name}</small>
+                                    ) : null}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
                   })}
                 </div>
               </section>
@@ -946,7 +1324,7 @@ export function WebLiveGame({
   const toolbarCrossSize = centerToolbarBand?.axis === 'vertical'
     ? centerToolbarBand.width
     : centerToolbarBand?.height ?? 0;
-  const toolbarControlSize = Math.max(34, Math.min(56, toolbarCrossSize - 12, (toolbarMainSize - 96) / 6));
+  const toolbarControlSize = Math.max(30, Math.min(56, toolbarCrossSize - 12, (toolbarMainSize - 96) / 8));
   const toolbarButtonStyle = { width: toolbarControlSize, height: toolbarControlSize };
   const toolbarDurationStyle = centerToolbarBand?.axis === 'vertical'
     ? { width: toolbarControlSize, height: Math.min(80, toolbarControlSize * 1.5) }
@@ -975,10 +1353,13 @@ export function WebLiveGame({
               <DeckImage src={player.commanderImage} alt={player.commander} className="absolute inset-0 h-full w-full rounded-none object-cover opacity-75" fallbackClassName="absolute inset-0 h-full w-full rounded-none" />
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/50" />
               <div className="absolute left-1/2 top-1/2" style={{ width: contentWidth, height: contentHeight, transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}>
-                <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }); }} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ left: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Riduci punti vita di', en: 'Reduce life for' })} ${player.displayName}`}><Minus style={{ width: iconSize, height: iconSize }} /></button>
-                <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }); }} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ right: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Aumenta punti vita di', en: 'Increase life for' })} ${player.displayName}`}><Plus style={{ width: iconSize, height: iconSize }} /></button>
+                <HoldActionButton variant="ghost" stopPropagation onShort={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} onLong={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' })} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ left: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Riduci punti vita di', en: 'Reduce life for' })} ${player.displayName}`}><Minus style={{ width: iconSize, height: iconSize }} /></HoldActionButton>
+                <HoldActionButton variant="ghost" stopPropagation onShort={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} onLong={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' })} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ right: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Aumenta punti vita di', en: 'Increase life for' })} ${player.displayName}`}><Plus style={{ width: iconSize, height: iconSize }} /></HoldActionButton>
                 <div className="pointer-events-none absolute left-1/2 top-[7%] z-10 max-w-[66%] -translate-x-1/2 truncate rounded-full border border-white/15 bg-gradient-to-r from-black/75 via-zinc-900/80 to-black/75 px-[clamp(10px,3%,20px)] py-[clamp(4px,1.5%,9px)] font-black tracking-wide text-white shadow-xl backdrop-blur-md" style={{ fontSize: `clamp(11px, ${shortestSide * 0.052}px, 22px)` }}>{player.displayName}</div>
-                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-black leading-none drop-shadow-[0_3px_4px_rgba(0,0,0,.9)]" style={{ fontSize: `clamp(54px, ${shortestSide * 0.28}px, 112px)` }}>{player.life}</div>
+                <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+                  <RecentLifeDelta life={player.life} className="mb-1 text-xl" />
+                  <div className="font-black leading-none drop-shadow-[0_3px_4px_rgba(0,0,0,.9)]" style={{ fontSize: `clamp(54px, ${shortestSide * 0.28}px, 112px)` }}>{player.life}</div>
+                </div>
                 <button
                   onClick={(event) => { event.stopPropagation(); setDamagePanelKey(player.participantKey); }}
                   className="absolute left-1/2 top-3/4 z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-violet-200/30 bg-black/65 text-violet-100 shadow-lg backdrop-blur transition active:scale-90"
@@ -1011,7 +1392,9 @@ export function WebLiveGame({
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => setExitChoiceOpen(true)} title="Back"><ArrowLeft /></Button>
           <div className={cn('flex shrink-0 items-center justify-center gap-1 rounded-full bg-zinc-900 px-1.5 text-xs font-bold text-zinc-300', centerToolbarBand.axis === 'vertical' && 'flex-col px-1')} style={toolbarDurationStyle}><Clock3 className="h-4 w-4 shrink-0" />{duration}</div>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={undoLastMutation} disabled={!undoDepth} title="Undo"><RotateCcw /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={redoLastMutation} disabled={!redoDepth} title="Redo"><Redo2 /></Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => runRoulette(activePlayers.map((player) => player.participantKey))} title="Random player"><Dices /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => { setRandomizerResult(null); setRandomizerOpen(true); }} title="Dado o moneta"><Box /></Button>
           <Button variant={randomOpponentMode ? 'default' : 'ghost'} size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={() => setRandomOpponentMode((value) => !value)} title="Random opponent">
             <span className="relative block h-5 w-5">
               <UserRound className="absolute left-0 top-0 h-[18px] w-[18px]" />
@@ -1020,16 +1403,86 @@ export function WebLiveGame({
           </Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={openEnd} title="End game"><Flag /></Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={toggleTrackerFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>{fullscreen ? <Minimize2 /> : <Maximize2 />}</Button>
-          {!online && <WifiOff className="mx-2 h-4 w-4 text-amber-400" />}
-          {syncing && <Loader2 className="mx-2 h-4 w-4 animate-spin text-violet-300" />}
         </div>
         </div>}
+        <button
+          type="button"
+          onClick={() => void flush()}
+          className={cn(
+            'absolute right-2 top-[calc(env(safe-area-inset-top)+.5rem)] z-40 flex items-center gap-1.5 rounded-full border bg-black/75 px-2.5 py-1 text-[10px] font-bold backdrop-blur',
+            syncError ? 'border-rose-400/50 text-rose-200' : online ? 'border-emerald-400/30 text-emerald-200' : 'border-amber-400/40 text-amber-200',
+          )}
+          title={syncError ?? undefined}
+        >
+          {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : online ? <CircleDot className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+          {syncError ? copy({ it: 'Riprova sync', en: 'Retry sync' }) : syncing ? copy({ it: 'Sincronizzo', en: 'Syncing' }) : pendingSyncCount ? `${pendingSyncCount} ${copy({ it: 'in attesa', en: 'pending' })}` : online ? copy({ it: 'Sincronizzato', en: 'Synced' }) : 'Offline'}
+        </button>
         {randomOpponentMode && <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+1rem)] z-40 mx-auto max-w-md rounded-2xl border border-violet-400/40 bg-violet-950/95 px-4 py-3 text-center text-sm font-bold shadow-2xl backdrop-blur">{copy({ it: 'Tocca qualsiasi punto della card del giocatore attivo da escludere.', en: 'Tap anywhere on the active player card to exclude them.' })}</div>}
       </div>
 
       {drag && <svg className="pointer-events-none fixed inset-0 z-50 h-full w-full"><defs><marker id="damage-arrow" markerWidth="14" markerHeight="14" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fb7185" /></marker><filter id="damage-glow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs><path d={`M ${drag.startX} ${drag.startY} Q ${(drag.startX + drag.x) / 2} ${Math.min(drag.startY, drag.y) - 90} ${drag.x} ${drag.y}`} fill="none" stroke="#fb7185" strokeWidth="7" strokeLinecap="round" markerEnd="url(#damage-arrow)" filter="url(#damage-glow)" strokeDasharray="12 8"><animate attributeName="stroke-dashoffset" from="40" to="0" dur=".7s" repeatCount="indefinite" /></path></svg>}
 
-      {damageDraft && <ModalOverlay><ModalCard><ModalTitle icon={Swords} title={copy({ it: 'Assegna danno', en: 'Assign damage' })} onClose={() => setDamageDraft(null)} /><div className="space-y-5 overflow-y-auto p-5"><div className="grid grid-cols-3 gap-2">{(['life', 'commander', 'infect'] as DamageMode[]).map((mode) => <button key={mode} onClick={() => setDamageDraft({ ...damageDraft, mode })} className={cn('rounded-xl border p-3 text-sm font-black capitalize', damageDraft.mode === mode ? 'border-violet-400 bg-violet-500/25' : 'border-border bg-background')}>{mode}</button>)}</div><div className="grid grid-cols-5 gap-2">{[1, 2, 3, 5, 10].map((amount) => <button key={amount} onClick={() => setDamageAmount(String(amount))} className={cn('h-11 rounded-xl border font-black', damageAmount === String(amount) ? 'border-rose-400 bg-rose-500/20' : 'border-border')}>{amount}</button>)}</div><input value={damageAmount} onChange={(event) => setDamageAmount(event.target.value.replace(/\D/g, ''))} inputMode="numeric" className="h-12 w-full rounded-xl border border-input bg-background px-4 text-center text-xl font-black outline-none focus:border-violet-400" /><Button onClick={applyDamageDraft} className="h-12 w-full bg-gradient-to-r from-rose-600 to-orange-600 font-black">{copy({ it: 'Applica danno', en: 'Apply damage' })}</Button></div></ModalCard></ModalOverlay>}
+      {randomizerOpen && <ModalOverlay><ModalCard><div className="space-y-5 p-5"><div className="flex items-center justify-between"><h2 className="text-xl font-black">{copy({ it: 'Dado o moneta', en: 'Die or coin' })}</h2><button onClick={() => setRandomizerOpen(false)} aria-label="Close"><X /></button></div><div className="grid grid-cols-4 gap-2">{([
+        ['coin', copy({ it: 'Moneta', en: 'Coin' })],
+        ['d4', 'd4'],
+        ['d6', 'd6'],
+        ['d20', 'd20'],
+      ] as Array<[TableRandomKind, string]>).map(([kind, label]) => <button key={kind} onClick={() => setRandomizerResult(rollTableRandom(kind))} className="rounded-2xl border border-violet-400/25 bg-violet-500/10 p-4 font-black transition active:scale-95">{label}</button>)}</div>{randomizerResult !== null ? <div className="rounded-3xl border border-violet-400/20 bg-black/30 p-8 text-center text-7xl font-black text-violet-200">{randomizerResult === 'heads' ? copy({ it: 'Testa', en: 'Heads' }) : randomizerResult === 'tails' ? copy({ it: 'Croce', en: 'Tails' }) : randomizerResult}</div> : null}</div></ModalCard></ModalOverlay>}
+
+      {damageDraft && (() => {
+        const source = record.state.players.find((player) => player.participantKey === damageDraft.sourceKey);
+        const target = record.state.players.find((player) => player.participantKey === damageDraft.targetKey);
+        const sourceAssignment = assignments.find(({ player }) => player.participantKey === damageDraft.sourceKey);
+        const sourceRotation = sourceAssignment
+          ? orientation === 'landscape'
+            ? getLandscapeSeatRotation(sourceAssignment.layout, tableSize.width)
+            : getSeatRotation(
+              sourceAssignment.layout.role,
+              record.state.players.length,
+              record.state.layoutVariant ?? 'classic',
+            )
+          : 0;
+        const amount = Math.max(0, Math.min(999, Number(damageAmount) || 0));
+        const targetCount = damageDraft.scope === 'all_players'
+          ? record.state.players.filter((player) => !player.isEliminated).length
+          : damageDraft.scope === 'opponents'
+            ? record.state.players.filter((player) => !player.isEliminated && player.participantKey !== damageDraft.sourceKey).length
+            : 1;
+        const scopeLabel = damageDraft.scope === 'opponents'
+          ? copy({ it: 'ogni avversario', en: 'each opponent' })
+          : damageDraft.scope === 'all_players'
+            ? copy({ it: 'tutti i giocatori', en: 'all players' })
+            : target?.displayName || '';
+        const modeLabel = damageDraft.mode === 'life'
+          ? copy({ it: 'danno', en: 'damage' })
+          : damageDraft.mode === 'commander' ? copy({ it: 'danno commander', en: 'commander damage' }) : 'infect';
+        return <ModalOverlay className="bg-black/90"><ModalCard size="lg" className="relative overflow-hidden border-rose-400/25 bg-zinc-950">
+          {target?.commanderImage ? <DeckImage src={target.commanderImage} alt={target.commander} className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-20" /> : null}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950/95 via-rose-950/65 to-zinc-950/95" />
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <ModalTitle icon={Swords} title={copy({ it: 'Assegna danno', en: 'Assign damage' })} onClose={() => setDamageDraft(null)} />
+          <div className="space-y-4 overflow-y-auto p-4 sm:p-5">
+          <p className="truncate text-center text-xs font-bold uppercase tracking-[0.18em] text-zinc-300">{source?.displayName} <span className="px-2 text-rose-300">→</span> {target?.displayName}</p>
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/35 p-1">{(['life', 'commander', 'infect'] as DamageMode[]).map((mode) => <button key={mode} onClick={() => setDamageDraft({ ...damageDraft, mode, scope: mode === 'life' ? damageDraft.scope : 'single' })} className={cn('min-h-11 rounded-xl px-2 text-xs font-black uppercase tracking-wide transition', damageDraft.mode === mode ? 'bg-violet-500 text-white shadow-lg' : 'text-zinc-400 hover:bg-white/5')}>{mode === 'life' ? copy({ it: 'Normale', en: 'Normal' }) : mode === 'commander' ? 'Commander' : 'Infect'}</button>)}</div>
+          {damageDraft.mode === 'life' ? <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/25 p-1">{([
+            ['single', copy({ it: 'Questo giocatore', en: 'This player' })],
+            ['opponents', copy({ it: 'Ogni avversario', en: 'Each opponent' })],
+            ['all_players', copy({ it: 'Tutti', en: 'Everyone' })],
+          ] as const).map(([scope, label]) => <button key={scope} onClick={() => setDamageDraft({ ...damageDraft, scope })} className={cn('min-h-11 rounded-xl px-2 py-2 text-[11px] font-bold transition', damageDraft.scope === scope ? 'bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/70' : 'text-zinc-400 hover:bg-white/5')}>{label}</button>)}</div> : null}
+          <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-3xl border border-rose-400/30 bg-black/35">
+            <div
+              className="absolute inset-0 flex items-center justify-between px-5 sm:px-8"
+              style={{ transform: `rotate(${sourceRotation}deg)` }}
+            >
+              <button type="button" onClick={() => setDamageAmount(String(Math.max(0, amount - 1)))} className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/25 bg-black/40 text-3xl font-light transition active:scale-90" aria-label={copy({ it: 'Riduci danno', en: 'Reduce damage' })}>−</button>
+              <div className="min-w-0 flex-1 text-center"><input aria-label={copy({ it: 'Quantità danno', en: 'Damage amount' })} value={damageAmount} onChange={(event) => setDamageAmount(event.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" className="h-24 w-full bg-transparent text-center text-7xl font-black leading-none tabular-nums text-white outline-none" /><p className="truncate text-sm font-black uppercase tracking-wide text-zinc-100">{modeLabel} · {scopeLabel}</p></div>
+              <button type="button" onClick={() => setDamageAmount(String(Math.min(999, amount + 1)))} className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/25 bg-black/40 text-3xl font-light transition active:scale-90" aria-label={copy({ it: 'Aumenta danno', en: 'Increase damage' })}>+</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-6 gap-2">{[1, 2, 3, 5, 10, 15].map((quickAmount) => <button key={quickAmount} onClick={() => setDamageAmount(String(quickAmount))} className={cn('h-10 rounded-xl border text-sm font-black transition', damageAmount === String(quickAmount) ? 'border-rose-400 bg-rose-500/25 text-white' : 'border-white/10 bg-black/25 text-zinc-400')}>+{quickAmount}</button>)}</div>
+          <div className="grid grid-cols-2 gap-3 pt-1"><Button variant="outline" onClick={() => setDamageDraft(null)} className="h-12 border-white/20 bg-black/20 font-black">{copy({ it: 'Annulla', en: 'Cancel' })}</Button><Button onClick={applyDamageDraft} disabled={amount === 0} className="h-12 bg-gradient-to-r from-rose-600 to-orange-600 font-black disabled:opacity-40">{damageDraft.scope === 'single' ? copy({ it: 'Risolvi', en: 'Resolve' }) : `${copy({ it: 'Risolvi', en: 'Resolve' })} ${amount} × ${targetCount}`}</Button></div>
+        </div></div></ModalCard></ModalOverlay>;
+      })()}
 
       {panelPlayer && (
         <ModalOverlay>
@@ -1040,6 +1493,27 @@ export function WebLiveGame({
               onClose={() => setDamagePanelKey(null)}
             />
             <div className="space-y-3 overflow-y-auto p-5">
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ['monarch', copy({ it: 'Monarca', en: 'Monarch' }), Crown],
+                  ['initiative', copy({ it: 'Iniziativa', en: 'Initiative' }), Swords],
+                ] as const).map(([emblem, label, Icon]) => <button
+                  key={emblem}
+                  onClick={() => {
+                    const holderKey = record.state.players.find((entry) => entry.counters[emblem])?.participantKey ?? null;
+                    enqueue(
+                      { type: 'set_emblem', targetKey: panelPlayer.participantKey, emblem, active: !panelPlayer.counters[emblem] },
+                      { type: 'restore_emblem', emblem, holderKey },
+                    );
+                  }}
+                  className={cn('rounded-2xl border p-4 text-left transition', panelPlayer.counters[emblem] ? 'border-amber-300/70 bg-amber-500/20 text-amber-100' : 'border-border bg-background/60')}
+                ><Icon className="mb-3 h-5 w-5" /><b>{label}</b></button>)}
+              </div>
+              {([
+                ['energy', copy({ it: 'Energia', en: 'Energy' }), Sparkles],
+                ['experience', copy({ it: 'Esperienza', en: 'Experience' }), Trophy],
+                ['commanderTax', 'Commander Tax', Shield],
+              ] as const).map(([counter, label, Icon]) => <div key={counter} className="flex items-center gap-3 rounded-2xl border border-border bg-background/60 p-3"><Icon className="h-5 w-5 text-violet-300" /><b className="flex-1">{label}</b><Button variant="outline" size="icon" onClick={() => enqueue({ type: 'adjust_counter', targetKey: panelPlayer.participantKey, counter, amount: -1 }, { type: 'adjust_counter', targetKey: panelPlayer.participantKey, counter, amount: 1 })}><Minus /></Button><strong className="w-8 text-center text-xl">{panelPlayer.counters[counter]}</strong><Button variant="outline" size="icon" onClick={() => enqueue({ type: 'adjust_counter', targetKey: panelPlayer.participantKey, counter, amount: 1 }, { type: 'adjust_counter', targetKey: panelPlayer.participantKey, counter, amount: -1 })}><Plus /></Button></div>)}
               <div className="flex items-center justify-between rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-3">
                 <div>
                   <p className="font-black text-emerald-100">Infect</p>

@@ -1,33 +1,43 @@
-import { describe, expect, it, vi } from 'vitest';
-import { getAvatarPublicUrl, resolveAvatarUrl, userHasAvatar } from '@/lib/avatar-storage';
+import { describe, expect, it } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  getAvatarObjectState,
+  getAvatarPublicUrl,
+  resolveAvatarUrl,
+} from '@/lib/avatar-storage';
 
-function clientWithFiles(files: Array<{ name: string }> | null, error: unknown = null) {
-  const list = vi.fn().mockResolvedValue({ data: files, error });
-  const getPublicUrl = vi.fn().mockReturnValue({ data: { publicUrl: 'https://cdn.example/avatar' } });
-  const from = vi.fn().mockReturnValue({ list, getPublicUrl });
-  return { client: { storage: { from } } as never, from, list, getPublicUrl };
+function fakeClient(files: Array<Record<string, string>> = []) {
+  return {
+    storage: {
+      from: () => ({
+        list: async () => ({ data: files, error: null }),
+        getPublicUrl: (path: string) => ({
+          data: { publicUrl: `https://storage.example/${path}` },
+        }),
+      }),
+    },
+  } as unknown as SupabaseClient;
 }
 
-describe('avatar storage', () => {
-  it('detects extensionless and extended avatar object names', async () => {
-    const exact = clientWithFiles([{ name: 'avatar' }]);
-    const extended = clientWithFiles([{ name: 'avatar.jpeg' }]);
-    expect(await userHasAvatar(exact.client, 'u1')).toBe(true);
-    expect(await userHasAvatar(extended.client, 'u1')).toBe(true);
-    expect(exact.list).toHaveBeenCalledWith('u1', { limit: 20 });
+describe('avatar storage cache identity', () => {
+  it('uses the durable object revision in the public URL', () => {
+    const client = fakeClient();
+    const url = getAvatarPublicUrl(client, 'user-1', 2, '2026-07-17T12:00:00Z');
+
+    expect(url).toBe(
+      'https://storage.example/user-1/avatar?v=2026-07-17T12%3A00%3A00Z-2',
+    );
+    expect(resolveAvatarUrl(client, 'user-1', false, 2, 'revision')).toBeNull();
   });
 
-  it('treats errors and unrelated objects as no avatar', async () => {
-    expect(await userHasAvatar(clientWithFiles([{ name: 'cover.jpg' }]).client, 'u')).toBe(false);
-    expect(await userHasAvatar(clientWithFiles(null, new Error('offline')).client, 'u')).toBe(false);
-  });
+  it('reads avatar existence and revision from Storage metadata', async () => {
+    const state = await getAvatarObjectState(fakeClient([
+      { name: 'avatar', updated_at: '2026-07-17T12:00:00Z' },
+    ]), 'user-1');
 
-  it('builds a versioned URL only for visible avatars', () => {
-    const { client, getPublicUrl } = clientWithFiles([]);
-    expect(getAvatarPublicUrl(client, 'u1', 7)).toBe('https://cdn.example/avatar?v=7');
-    expect(getPublicUrl).toHaveBeenCalledWith('u1/avatar');
-    expect(resolveAvatarUrl(client, 'u1', true, 8)).toBe('https://cdn.example/avatar?v=8');
-    expect(resolveAvatarUrl(client, undefined, true, 8)).toBeNull();
-    expect(resolveAvatarUrl(client, 'u1', false, 8)).toBeNull();
+    expect(state).toEqual({
+      exists: true,
+      revision: '2026-07-17T12:00:00Z',
+    });
   });
 });

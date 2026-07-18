@@ -37,3 +37,21 @@ export async function apiPost<T>(path: string, body: unknown): Promise<{ data?: 
     status: response.status,
   };
 }
+
+export async function apiPatch<T>(path: string, body: unknown): Promise<{ data?: T; error?: string; status: number }> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({})) as T & { error?: string };
+  return {
+    data: payload,
+    error: typeof payload?.error === 'string' ? payload.error : undefined,
+    status: response.status,
+  };
+}

@@ -18,6 +18,8 @@ type DeckCardProps = {
   openDeckLabel: string;
   viewOnEdhrecLabel: string;
   refreshing?: boolean;
+  detailsLabel: string;
+  onDetails: () => void;
   onEdit?: () => void;
   onRefresh?: () => void;
   onDelete: () => void;
@@ -37,6 +39,8 @@ export const DeckCard = memo(function DeckCard({
   openDeckLabel,
   viewOnEdhrecLabel,
   refreshing = false,
+  detailsLabel,
+  onDetails,
   onEdit,
   onRefresh,
   onDelete,
@@ -97,6 +101,10 @@ export const DeckCard = memo(function DeckCard({
       </View>
 
       <View style={styles.actions}>
+        <Pressable onPress={onDetails} style={[styles.actionButton, styles.detailsButton]} accessibilityRole="button">
+          <Ionicons name="stats-chart-outline" size={18} color={colors.primaryMuted} />
+          <Text style={styles.detailsLabel}>{detailsLabel}</Text>
+        </Pressable>
         {onEdit ? (
           <Pressable onPress={onEdit} style={styles.actionButton} accessibilityRole="button">
             <Ionicons name="create-outline" size={20} color={colors.primaryMuted} />
@@ -199,5 +207,15 @@ const styles = StyleSheet.create({
     minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  detailsButton: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  detailsLabel: {
+    color: colors.primaryMuted,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

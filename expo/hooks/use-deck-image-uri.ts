@@ -52,7 +52,7 @@ export function useDeckImageUri(
 
           try {
             const repairedUri = await resolveDeckImageUri(
-              validation === 'remote-invalid' ? null : effectiveRemoteUrl,
+              effectiveRemoteUrl,
               commanderName,
             );
             if (cancelled) return;

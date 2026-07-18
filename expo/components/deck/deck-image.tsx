@@ -49,7 +49,7 @@ export function DeckImage({
       style={style}
       contentFit={contentFit}
       contentPosition={contentPosition}
-      cachePolicy="memory-disk"
+      cachePolicy={resolvedUri.startsWith('file://') ? 'memory' : 'memory-disk'}
       transition={180}
       recyclingKey={`${alt}::${resolvedUri ?? ''}`}
       onError={handleError}

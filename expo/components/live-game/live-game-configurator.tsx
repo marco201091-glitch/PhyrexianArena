@@ -233,7 +233,7 @@ export function LiveGameConfigurator({
               <Text style={styles.seatNumber}>{index + 1}</Text>
               <Ionicons name={participant ? 'person' : 'add'} size={20} color={participant ? '#fff' : colors.primaryMuted} />
               <Text style={styles.seatName} numberOfLines={1}>{participant?.name ?? `${labels.seat} ${index + 1}`}</Text>
-              <Text style={styles.seatDeck} numberOfLines={1}>{deck?.name ?? labels.emptySeat}</Text>
+              <Text style={styles.seatDeck} numberOfLines={1}>{deck?.commander ?? labels.emptySeat}</Text>
             </Pressable>
           );
         })}
@@ -292,8 +292,10 @@ export function LiveGameConfigurator({
                 >
                   <DeckImage uri={deck.commander_image} alt={deck.commander} style={styles.deckImage} containerStyle={styles.deckImage} />
                   <View style={styles.deckCopy}>
-                    <Text style={styles.deckName} numberOfLines={1}>{deck.name}</Text>
-                    <Text style={styles.deckCommander} numberOfLines={1}>{deck.commander}</Text>
+                    <Text style={styles.deckName} numberOfLines={1}>{deck.commander}</Text>
+                    {deck.name !== deck.commander ? (
+                      <Text style={styles.deckCommander} numberOfLines={1}>{deck.name}</Text>
+                    ) : null}
                   </View>
                   <Ionicons
                     name={draftDeck === deck.id ? 'checkmark-circle' : 'ellipse-outline'}

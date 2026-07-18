@@ -47,7 +47,7 @@ describe('live game offline persistence', () => {
   it('round-trips sessions and fills optional legacy fields safely', async () => {
     await saveLiveGameOfflineSession('group-1', {
       record: record(), serverRecord: record(), needsCreate: true, mutations: [],
-      pendingFinalization: null, pendingCancel: false,
+      pendingFinalization: null, pendingCancel: false, history: { undo: [], redo: [] },
     });
     const loaded = await loadLiveGameOfflineSession('group-1');
     expect(loaded).toMatchObject({ needsCreate: true, pendingCancel: false });

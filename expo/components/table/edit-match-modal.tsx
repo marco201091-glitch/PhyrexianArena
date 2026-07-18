@@ -141,7 +141,12 @@ export function EditMatchModal({
     setMatchNotes(match.notes || '');
     setMatchPlayedAt(isoToMatchDateValue(match.played_at));
     setDeckSearch({});
-    setHiddenDeckLists({});
+    setHiddenDeckLists(Object.fromEntries(
+      match.match_participants
+        .map(getParticipantKey)
+        .filter((key): key is ParticipantKey => Boolean(key))
+        .map((key) => [key, true]),
+    ));
 
     const deckMap: Record<string, string> = {};
     match.match_participants.forEach((participant) => {

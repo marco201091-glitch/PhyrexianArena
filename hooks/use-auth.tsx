@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import { clearSupabaseAuthStorage, isInvalidRefreshTokenError } from '@/lib/supabase-auth-recovery';
+import { getSessionLossRedirect } from '@/lib/auth-route-policy';
 
 interface AuthContextType {
   user: User | null;
@@ -40,11 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       finishLoading();
       void supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
-      const returnPath = `${window.location.pathname}${window.location.search}`;
-      const loginPath = returnPath && returnPath !== '/auth/login'
-        ? `/auth/login?redirect=${encodeURIComponent(returnPath)}`
-        : '/auth/login';
-      router.replace(loginPath);
+      const loginPath = getSessionLossRedirect(window.location.pathname, window.location.search);
+      if (loginPath) router.replace(loginPath);
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -63,7 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'SIGNED_OUT') {
-        router.push('/auth/login');
+        const loginPath = getSessionLossRedirect(window.location.pathname, window.location.search);
+        if (loginPath) router.replace(loginPath);
       }
     });
 

@@ -1,0 +1,30 @@
+# Local dependencies and build products
+node_modules/
+.next/
+out/
+build/
+coverage/
+artifacts/
+
+# Native/Expo outputs are not part of the Next.js deployment
+mobile/
+expo/android/
+expo/node_modules/
+expo/.expo/
+expo/assets/
+expo/coverage/
+expo/dist/
+expo/web-build/
+
+# Local tooling and secrets
+.git/
+.agents/
+.codex-plugins/
+.vercel/
+terminals/
+supabase/.temp/
+.env
+.env.*
+*.pem
+*.keystore
+*.jks

@@ -95,4 +95,39 @@ describe('live-game', () => {
       winnerKey: 'user:a', isDraw: false, winCondition: 'last_standing',
     })).toBe(false);
   });
+
+  it('applies opponent-wide damage as one versioned mutation and compact summary', () => {
+    const next = applyLiveGameMutation(buildState(), {
+      type: 'adjust_many',
+      sourceKey: 'user:a',
+      amount: 4,
+      scope: 'opponents',
+      eventId: 'group-hit-1',
+      occurredAt: '2026-07-16T12:00:00.000Z',
+    });
+
+    expect(next.version).toBe(1);
+    expect(next.players.map((player) => player.life)).toEqual([40, 36, 36, 36]);
+    expect(next.events).toHaveLength(3);
+    expect(next.events.every((event) => event.actionId === 'group-hit-1')).toBe(true);
+    expect(next.summary?.byParticipant['user:a']?.groupDamageDealt).toBe(12);
+    expect(next.summary?.byParticipant['user:a']?.groupDamageEvents).toBe(3);
+  });
+
+  it('reverses compact group metrics when opponent-wide damage is undone', () => {
+    const damaged = applyLiveGameMutation(buildState(), {
+      type: 'adjust_many', sourceKey: 'user:a', amount: 4, scope: 'opponents',
+      eventId: 'group-hit', occurredAt: '2026-07-16T12:00:00.000Z',
+    });
+    const restored = applyLiveGameMutation(damaged, {
+      type: 'adjust_many', sourceKey: 'user:a', amount: -4, scope: 'opponents',
+      eventId: 'undo-group-hit', occurredAt: '2026-07-16T12:00:01.000Z', isCorrection: true,
+    });
+
+    expect(restored.players.map((player) => player.life)).toEqual([40, 40, 40, 40]);
+    expect(restored.summary?.byParticipant['user:a']?.lifeDamageDealt).toBe(0);
+    expect(restored.summary?.byParticipant['user:a']?.groupDamageDealt).toBe(0);
+    expect(restored.summary?.byParticipant['user:a']?.groupDamageEvents).toBe(0);
+    expect(restored.summary?.byParticipant['user:b']?.lifeLost).toBe(0);
+  });
 });

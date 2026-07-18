@@ -1,11 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildScryfallArtSearchUrl,
   buildScryfallCommanderSearchUrl,
   extractScryfallImageForName,
+  fetchCommanderArtOptionsDirect,
 } from '@/lib/scryfall-search';
 
 describe('scryfall-search', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('builds a commander search URL for partial names', () => {
     const url = buildScryfallCommanderSearchUrl('tymna');
     expect(url).toContain('api.scryfall.com/cards/search');
@@ -41,5 +46,26 @@ describe('scryfall-search', () => {
 
     expect(extractScryfallImageForName(card, 'Eirdu, Carrier of Dawn')).toBe('https://img/eirdu.jpg');
     expect(extractScryfallImageForName(card, 'Isilu, Carrier of Twilight')).toBe('https://img/isilu.jpg');
+  });
+
+  it('retries a rate-limited art request instead of returning an empty list', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', {
+        status: 429,
+        headers: { 'retry-after': '0.001' },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: [{
+          id: 'tymna-print',
+          name: 'Tymna the Weaver',
+          image_uris: { art_crop: 'https://img/tymna.jpg' },
+        }],
+      }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const arts = await fetchCommanderArtOptionsDirect('Tymna the Weaver');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(arts.map((art) => art.imageUrl)).toEqual(['https://img/tymna.jpg']);
   });
 });

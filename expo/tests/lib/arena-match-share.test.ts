@@ -5,6 +5,7 @@ import type { ArenaMatch } from '@/lib/types/arena';
 const labels = {
   matchTitle: 'Match', playersAndDecks: 'Players', noDeckSelected: 'No deck',
   winner: 'Winner', draw: 'Draw', comment: 'Comment', noComment: 'No comment',
+  duration: 'Duration', damageDealt: 'Damage', eliminations: 'Eliminations',
 };
 
 function makeMatch(overrides: Partial<ArenaMatch> = {}): ArenaMatch {

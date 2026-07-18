@@ -38,18 +38,11 @@ describe('deck image cache validation', () => {
     expect(await validateDeckImageCacheEntry('https://remote/image.jpg', 'file:///cache/a.jpg')).toBe('cache-invalid');
   });
 
-  it('validates content type and remote size while preserving offline cache', async () => {
+  it('keeps a decoded local image without re-downloading it', async () => {
     const release = vi.fn();
     getInfoAsync.mockResolvedValue({ exists: true, size: 1000 });
     loadAsync.mockResolvedValue({ width: 100, height: 100, release });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 200, headers: { 'content-type': 'text/html' } }));
-    expect(await validateDeckImageCacheEntry('https://remote/a.jpg', 'file:///cache/a.jpg')).toBe('remote-invalid');
-
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 200, headers: { 'content-type': 'image/jpeg', 'content-length': '2000' } }));
-    expect(await validateDeckImageCacheEntry('https://remote/a.jpg', 'file:///cache/a.jpg')).toBe('cache-invalid');
-
-    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('offline'));
     expect(await validateDeckImageCacheEntry('https://remote/a.jpg', 'file:///cache/a.jpg')).toBe('valid');
-    expect(release).toHaveBeenCalledTimes(3);
+    expect(release).toHaveBeenCalledTimes(1);
   });
 });

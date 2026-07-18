@@ -32,7 +32,7 @@ import { getDeckDisplayColors } from '@/lib/deck-metadata';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { prefetchProfileDeckImages } from '@/lib/deck-image-cache';
-import type { DeckWinRate, ProfileDeck } from '@/lib/types/profile';
+import type { DeckPerformance, DeckWinRate, ProfileDeck } from '@/lib/types/profile';
 
 function uniqueCommanderOptions(options: CommanderMetadataOption[]) {
   return options.filter((option, index, allOptions) =>
@@ -44,12 +44,14 @@ function uniqueCommanderOptions(options: CommanderMetadataOption[]) {
 export function useProfileDecks(userId: string | undefined) {
   const [decks, setDecks] = useState<ProfileDeck[]>([]);
   const [winRates, setWinRates] = useState<Record<string, DeckWinRate>>({});
+  const [performance, setPerformance] = useState<Record<string, DeckPerformance>>({});
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     if (!userId) {
       setDecks([]);
       setWinRates({});
+      setPerformance({});
       setLoading(false);
       return;
     }
@@ -77,12 +79,13 @@ export function useProfileDecks(userId: string | undefined) {
       const deckIds = loadedDecks.map((deck) => deck.id);
       if (deckIds.length === 0) {
         setWinRates({});
+        setPerformance({});
         return;
       }
 
       const { data: participantRows, error: participantsError } = await supabase
         .from('match_participants')
-        .select('is_winner, deck_id')
+        .select('is_winner, deck_id, placement, life_lost, life_gained, life_damage_dealt, commander_damage_dealt, infect_dealt, eliminations_caused, matches (duration_seconds, tracking_version)')
         .in('deck_id', deckIds);
 
       if (participantsError) throw participantsError;
@@ -115,10 +118,51 @@ export function useProfileDecks(userId: string | undefined) {
         };
       });
       setWinRates(nextWinRates);
+
+      const performanceMap: Record<string, DeckPerformance & { winningDurations?: number[] }> = {};
+      ((participantRows || []) as Array<Record<string, unknown>>).forEach((raw) => {
+        const deckId = raw.deck_id as string | null;
+        if (!deckId) return;
+        const relation = Array.isArray(raw.matches) ? raw.matches[0] : raw.matches;
+        const match = (relation || {}) as { duration_seconds?: number | null; tracking_version?: number | null };
+        const tracked = match.tracking_version != null || match.duration_seconds != null;
+        const current = performanceMap[deckId] || {
+          gamesPlayed: 0, wins: 0, winRate: 0, trackedGames: 0, trackingCoverage: 0,
+          secondPlaces: 0, damageDealt: 0, damageTaken: 0, lifeGained: 0,
+          commanderDamage: 0, infectDealt: 0, eliminations: 0,
+          medianWinningDurationSeconds: null, winningDurations: [],
+        };
+        current.gamesPlayed += 1;
+        if (raw.is_winner) current.wins += 1;
+        if (raw.placement === 2) current.secondPlaces += 1;
+        if (tracked) {
+          current.trackedGames += 1;
+          current.damageDealt += Number(raw.life_damage_dealt || 0);
+          current.damageTaken += Number(raw.life_lost || 0);
+          current.lifeGained += Number(raw.life_gained || 0);
+          current.commanderDamage += Number(raw.commander_damage_dealt || 0);
+          current.infectDealt += Number(raw.infect_dealt || 0);
+          current.eliminations += Number(raw.eliminations_caused || 0);
+          if (raw.is_winner && match.duration_seconds != null) current.winningDurations!.push(match.duration_seconds);
+        }
+        performanceMap[deckId] = current;
+      });
+      Object.values(performanceMap).forEach((entry) => {
+        entry.winRate = entry.gamesPlayed ? Math.round((entry.wins / entry.gamesPlayed) * 100) : 0;
+        entry.trackingCoverage = entry.gamesPlayed ? Math.round((entry.trackedGames / entry.gamesPlayed) * 100) : 0;
+        const values = [...(entry.winningDurations || [])].sort((a, b) => a - b);
+        if (values.length) {
+          const middle = Math.floor(values.length / 2);
+          entry.medianWinningDurationSeconds = values.length % 2 ? values[middle] : Math.round((values[middle - 1] + values[middle]) / 2);
+        }
+        delete entry.winningDurations;
+      });
+      setPerformance(performanceMap);
     } catch (error) {
       console.error('Error fetching decks:', getSupabaseErrorMessage(error, 'Failed to fetch decks'));
       setDecks([]);
       setWinRates({});
+      setPerformance({});
     } finally {
       setLoading(false);
     }
@@ -455,6 +499,7 @@ export function useProfileDecks(userId: string | undefined) {
   return {
     decks,
     winRates,
+    performance,
     loading,
     refresh,
     deleteDeck,

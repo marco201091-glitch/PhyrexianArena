@@ -14,13 +14,14 @@ import { DamageConfirmSheet } from '@/components/live-game/damage-confirm-sheet'
 import { DamageDragOverlay } from '@/components/live-game/damage-drag-overlay';
 import { TableSeat } from '@/components/live-game/table-seat';
 import { PlayerDamageSheet } from '@/components/live-game/player-damage-sheet';
+import { Modal } from '@/components/ui/modal';
+import { ModalHeader } from '@/components/ui/modal-header';
 import { colors, radii, spacing } from '@/constants/theme';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import {
   findPodAtPoint,
   getCenterToolbarBand,
   getLandscapeSeatRotation,
-  getSeatControlPlacement,
   getSeatRotation,
   getSquareTableLayouts,
   getViewportTableOrientation,
@@ -29,7 +30,8 @@ import {
   type PodBounds,
   type TableLayoutVariant,
 } from '@/lib/live-game-table-layout';
-import type { DamageMode, LiveGamePlayer, PlayDirection } from '@/lib/live-game';
+import type { DamageMode, GroupDamageScope, LiveGamePlayer, PlayDirection, PlayerCounter, PlayerEmblem } from '@/lib/live-game';
+import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import type { ParticipantKey } from '@/lib/participant-keys';
 
 type PendingTransfer = {
@@ -45,6 +47,7 @@ type TableArenaProps = {
   startingHighlight: ParticipantKey | null;
   startingDirection: PlayDirection | null;
   layoutVariant: TableLayoutVariant;
+  commanderMode?: boolean;
   damagePulse: Record<string, number>;
   activePlayers: LiveGamePlayer[];
   labels: {
@@ -74,10 +77,25 @@ type TableArenaProps = {
     counterclockwise: string;
     damageReceived: string;
     undo: string;
+    redo: string;
+    thisPlayer: string;
+    eachOpponent: string;
+    everyone: string;
+    dieOrCoin: string;
+    coin: string;
+    heads: string;
+    tails: string;
   };
   onBack: () => void;
   canUndo: boolean;
   onUndo: () => void;
+  canRedo: boolean;
+  onRedo: () => void;
+  syncStatus: 'offline' | 'pending' | 'syncing' | 'synced' | 'error';
+  syncLabel: string;
+  pendingSyncCount: number;
+  syncError: string | null;
+  onRetrySync: () => void;
   onEndGame: () => void;
   onAdjust: (key: ParticipantKey, delta: number) => void;
   onApplyDragDamage: (input: {
@@ -85,10 +103,13 @@ type TableArenaProps = {
     targetKey: ParticipantKey;
     amount: number;
     mode: DamageMode;
+    scope: 'single' | GroupDamageScope;
   }) => void;
   onEliminate: (key: ParticipantKey) => void;
   onRevive: (key: ParticipantKey) => void;
   onPickRandom: (pool?: ParticipantKey[]) => void;
+  onAdjustCounter: (key: ParticipantKey, counter: PlayerCounter, amount: number) => void;
+  onSetEmblem: (key: ParticipantKey, emblem: PlayerEmblem, active: boolean) => void;
 };
 
 const SYSTEM_GESTURE_GUARD = 10;
@@ -114,18 +135,28 @@ export function TableArena({
   startingHighlight,
   startingDirection,
   layoutVariant,
+  commanderMode = true,
   damagePulse,
   activePlayers,
   labels,
   onBack,
   canUndo,
   onUndo,
+  canRedo,
+  onRedo,
+  syncStatus,
+  syncLabel,
+  pendingSyncCount,
+  syncError,
+  onRetrySync,
   onEndGame,
   onAdjust,
   onApplyDragDamage,
   onEliminate,
   onRevive,
   onPickRandom,
+  onAdjustCounter,
+  onSetEmblem,
 }: TableArenaProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -137,6 +168,8 @@ export function TableArena({
   const [pendingTransfer, setPendingTransfer] = useState<PendingTransfer | null>(null);
   const [detailsPlayerKey, setDetailsPlayerKey] = useState<ParticipantKey | null>(null);
   const [damageFeedback, setDamageFeedback] = useState<string | null>(null);
+  const [randomizerOpen, setRandomizerOpen] = useState(false);
+  const [randomizerResult, setRandomizerResult] = useState<string | number | null>(null);
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
   const dragSourceX = useSharedValue(0);
@@ -184,7 +217,7 @@ export function TableArena({
     ? centerToolbarBand?.height ?? 0
     : centerToolbarBand?.width ?? 0;
   const toolbarButtonSize = centerToolbarBand
-    ? Math.max(34, Math.min(56, (centerToolbarMainSize - 98) / 5))
+    ? Math.max(30, Math.min(56, (centerToolbarMainSize - 98) / 8))
     : 44;
   const toolbarButtonStyle = {
     width: toolbarButtonSize,
@@ -195,6 +228,15 @@ export function TableArena({
   const seatAssignments = useMemo(
     () => mapPlayersToSeats(players, seatLayouts, null),
     [players, seatLayouts],
+  );
+  const seatRotations = useMemo(
+    () => new Map(seatAssignments.map(({ player, layout }) => [
+      player.participantKey,
+      tableOrientation === 'landscape'
+        ? getLandscapeSeatRotation(layout, arenaWidth)
+        : getSeatRotation(layout.role, playerCount, layoutVariant),
+    ])),
+    [arenaWidth, layoutVariant, playerCount, seatAssignments, tableOrientation],
   );
 
   const playersByKey = useMemo(
@@ -339,6 +381,21 @@ export function TableArena({
       </Pressable>
 
       <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle, !canRedo && styles.toolBtnDisabled]}
+        onPress={onRedo}
+        disabled={!canRedo}
+        accessibilityRole="button"
+        accessibilityLabel={labels.redo}
+        accessibilityState={{ disabled: !canRedo }}
+      >
+        <Ionicons
+          name="arrow-redo-outline"
+          size={23}
+          color={canRedo ? colors.foreground : 'rgba(244,244,245,0.28)'}
+        />
+      </Pressable>
+
+      <Pressable
         style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
         onPress={() => {
           setActivePickerKey(null);
@@ -348,6 +405,18 @@ export function TableArena({
         accessibilityLabel={labels.randomAll}
       >
         <Ionicons name="dice-outline" size={23} color={colors.foreground} />
+      </Pressable>
+
+      <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
+        onPress={() => {
+          setRandomizerResult(null);
+          setRandomizerOpen(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={labels.dieOrCoin}
+      >
+        <Ionicons name="cube-outline" size={22} color={colors.foreground} />
       </Pressable>
 
       <Pressable
@@ -380,6 +449,27 @@ export function TableArena({
 
   return (
     <View style={styles.root}>
+      <Pressable
+        onPress={onRetrySync}
+        accessibilityRole="button"
+        accessibilityLabel={syncLabel}
+        style={[
+          styles.syncBadge,
+          { top: Math.max(insets.top, SYSTEM_GESTURE_GUARD) + 6, right: Math.max(insets.right, SYSTEM_GESTURE_GUARD) + 6 },
+          syncStatus === 'error' && styles.syncBadgeError,
+          syncStatus === 'offline' && styles.syncBadgeOffline,
+        ]}
+      >
+        <Ionicons
+          name={syncStatus === 'syncing' ? 'sync' : syncStatus === 'offline' ? 'cloud-offline-outline' : syncStatus === 'error' ? 'warning-outline' : 'cloud-done-outline'}
+          size={13}
+          color={syncStatus === 'error' ? '#fecaca' : syncStatus === 'offline' ? '#fde68a' : '#bbf7d0'}
+        />
+        <Text style={styles.syncBadgeText} numberOfLines={1}>
+          {syncLabel}{pendingSyncCount > 0 ? ` · ${pendingSyncCount}` : ''}
+        </Text>
+        {syncError ? <Ionicons name="refresh" size={12} color="#fecaca" /> : null}
+      </Pressable>
       <View
         style={[
           styles.gridHost,
@@ -415,7 +505,6 @@ export function TableArena({
               seatRotation={tableOrientation === 'landscape'
                 ? getLandscapeSeatRotation(layout, arenaWidth)
                 : getSeatRotation(layout.role, playerCount, layoutVariant)}
-              controlPlacement={getSeatControlPlacement(layout.role)}
               damageMode="life"
               isSource={dragSource === player.participantKey}
               isDragHover={dragHoverKey === player.participantKey}
@@ -508,7 +597,9 @@ export function TableArena({
         visible={Boolean(pendingTransfer)}
         source={pendingSource}
         target={pendingTarget}
+        sourceRotation={pendingTransfer ? seatRotations.get(pendingTransfer.sourceKey) ?? 0 : 0}
         defaultMode="life"
+        commanderMode={commanderMode}
         labels={{
           title: labels.damageConfirmTitle,
           amount: labels.damageAmount,
@@ -517,9 +608,12 @@ export function TableArena({
           infectDamage: labels.infect,
           apply: labels.applyDamage,
           cancel: labels.cancel,
+          thisPlayer: labels.thisPlayer,
+          eachOpponent: labels.eachOpponent,
+          everyone: labels.everyone,
         }}
         onClose={() => setPendingTransfer(null)}
-        onConfirm={({ amount, mode }) => {
+        onConfirm={({ amount, mode, scope }) => {
           if (!pendingTransfer) return;
           const sourceName = playersByKey.get(pendingTransfer.sourceKey)?.displayName ?? '';
           const targetName = playersByKey.get(pendingTransfer.targetKey)?.displayName ?? '';
@@ -531,8 +625,12 @@ export function TableArena({
             targetKey: pendingTransfer.targetKey,
             amount,
             mode,
+            scope,
           });
-          setDamageFeedback(`${sourceName} → ${targetName} · ${amount} ${modeLabel}`);
+          const destination = scope === 'opponents'
+            ? labels.eachOpponent
+            : scope === 'all_players' ? labels.everyone : targetName;
+          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}`);
           setTimeout(() => setDamageFeedback(null), 3200);
           setPendingTransfer(null);
         }}
@@ -544,8 +642,45 @@ export function TableArena({
         title={labels.damageReceived}
         commanderLabel={labels.commanderDamageMeta}
         infectLabel={labels.infect}
+        commanderMode={commanderMode}
         onClose={() => setDetailsPlayerKey(null)}
+        onAdjustCounter={(counter, amount) => {
+          if (detailsPlayerKey) onAdjustCounter(detailsPlayerKey, counter, amount);
+        }}
+        onSetEmblem={(emblem, active) => {
+          if (detailsPlayerKey) onSetEmblem(detailsPlayerKey, emblem, active);
+        }}
       />
+
+      <Modal visible={randomizerOpen} onClose={() => setRandomizerOpen(false)} presentation="dialog" maxWidth={440}>
+        <ModalHeader title={labels.dieOrCoin} icon="cube-outline" onClose={() => setRandomizerOpen(false)} />
+        <View style={styles.randomizerChoices}>
+          {([
+            ['coin', labels.coin],
+            ['d4', 'd4'],
+            ['d6', 'd6'],
+            ['d20', 'd20'],
+          ] as Array<[TableRandomKind, string]>).map(([kind, label]) => (
+            <Pressable
+              key={kind}
+              style={styles.randomizerButton}
+              onPress={() => {
+                setRandomizerResult(rollTableRandom(kind));
+                void hapticSuccess();
+              }}
+            >
+              <Text style={styles.randomizerButtonText}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {randomizerResult !== null ? (
+          <View style={styles.randomizerResult}>
+            <Text style={styles.randomizerResultText}>
+              {randomizerResult === 'heads' ? labels.heads : randomizerResult === 'tails' ? labels.tails : randomizerResult}
+            </Text>
+          </View>
+        ) : null}
+      </Modal>
 
 
       {damageFeedback ? (
@@ -570,6 +705,32 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#050508',
+  },
+  syncBadge: {
+    position: 'absolute',
+    zIndex: 90,
+    maxWidth: 150,
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.3)',
+    borderRadius: 16,
+    backgroundColor: 'rgba(4,4,8,0.82)',
+    paddingHorizontal: 9,
+  },
+  syncBadgeError: {
+    borderColor: 'rgba(248,113,113,0.45)',
+  },
+  syncBadgeOffline: {
+    borderColor: 'rgba(251,191,36,0.4)',
+  },
+  syncBadgeText: {
+    flexShrink: 1,
+    color: colors.foreground,
+    fontSize: 10,
+    fontWeight: '800',
   },
   gridHost: {
     flex: 1,
@@ -760,5 +921,37 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
     fontSize: 12,
     fontWeight: '800',
+  },
+  randomizerChoices: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  randomizerButton: {
+    flex: 1,
+    minHeight: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.32)',
+    backgroundColor: 'rgba(124,58,237,0.13)',
+  },
+  randomizerButtonText: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  randomizerResult: {
+    minHeight: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.lg,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  randomizerResultText: {
+    color: '#ddd6fe',
+    fontSize: 64,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
   },
 });

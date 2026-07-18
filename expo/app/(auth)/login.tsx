@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AuthBranding } from '@/components/auth/auth-branding';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
-import { useLanguage } from '@/contexts/language-context';
+import { t } from '@/lib/i18n/translations';
 import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-persistence';
 import { showAppAlert } from '@/lib/app-alert';
 import { supabase } from '@/lib/supabase';
@@ -21,7 +21,7 @@ function resolveRedirectPath(redirect: string | string[] | undefined): Href {
 }
 
 export default function LoginScreen() {
-  const { copy } = useLanguage();
+  const copy = (key: Parameters<typeof t>[1]) => t('en', key);
   const router = useRouter();
   const { redirect } = useLocalSearchParams<{ redirect?: string }>();
   const redirectPath = resolveRedirectPath(redirect);
@@ -78,7 +78,7 @@ export default function LoginScreen() {
 
   return (
     <Screen background="solid">
-      <AuthBranding />
+      <AuthBranding forceEnglish />
 
       <PhyrexianPanel variant="strong" style={styles.formPanel}>
         <View style={styles.form}>
@@ -112,6 +112,12 @@ export default function LoginScreen() {
             label={loading ? copy('signingIn') : copy('enterArena')}
             onPress={handleLogin}
             disabled={loading}
+          />
+          <Button
+            label="Quick game"
+            icon="heart-outline"
+            variant="outline"
+            onPress={() => router.push('/counter' as Href)}
           />
         </View>
       </PhyrexianPanel>

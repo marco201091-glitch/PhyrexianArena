@@ -4,6 +4,7 @@ node_modules/
 .metro.pid
 dist/
 web-build/
+.qa-android-export/
 *.jks
 *.p8
 *.p12

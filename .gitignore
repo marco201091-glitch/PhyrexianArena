@@ -7,7 +7,7 @@
 
 # testing
 /coverage
-/expo/coverage
+expo/coverage/
 
 # next.js
 /.next/
@@ -39,6 +39,10 @@ yarn-error.log*
 
 # agent/debug scratch scripts
 scripts/_tmp-*.mjs
+
+# local Codex plugins and marketplace cache
+/.agents/plugins/
+/.codex-plugins/
 
 # local UI research recordings (large, not runtime assets)
 expo/assets/reference/

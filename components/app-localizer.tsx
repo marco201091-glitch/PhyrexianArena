@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/language-switcher';
 
 function handleImageError(event: Event) {
@@ -15,10 +16,14 @@ function handleImageError(event: Event) {
 }
 
 export function AppLocalizer() {
+  const pathname = usePathname();
+
   useEffect(() => {
     document.addEventListener('error', handleImageError, true);
     return () => document.removeEventListener('error', handleImageError, true);
   }, []);
+
+  if (pathname === '/auth/login') return null;
 
   return (
     <div

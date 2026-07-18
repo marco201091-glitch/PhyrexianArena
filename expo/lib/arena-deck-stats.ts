@@ -11,15 +11,12 @@ export interface CommanderStats {
   winRate: number;
 }
 
-export type DeckStatsSort = 'winRate' | 'gamesPlayed' | 'wins';
+export type DeckStatsSort = 'winRate' | 'gamesPlayed';
 
 function sortCommanderStats(stats: CommanderStats[], deckStatsSort: DeckStatsSort) {
   return [...stats].sort((a, b) => {
     if (deckStatsSort === 'gamesPlayed') {
       return b.gamesPlayed - a.gamesPlayed || b.wins - a.wins || b.winRate - a.winRate;
-    }
-    if (deckStatsSort === 'wins') {
-      return b.wins - a.wins || b.winRate - a.winRate || b.gamesPlayed - a.gamesPlayed;
     }
     return b.winRate - a.winRate || b.wins - a.wins || b.gamesPlayed - a.gamesPlayed;
   });
