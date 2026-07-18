@@ -70,7 +70,7 @@ import {
 } from '@/lib/live-game-table-layout';
 import { buildRouletteSequence } from '@/lib/live-game-roulette';
 import {
-  applyQueuedLiveGameMutation,
+  applyQueuedLiveGameMutations,
   cancelLiveGame,
   ensureLiveGameCreated,
   fetchActiveLiveGame,
@@ -99,6 +99,12 @@ import {
   type WebLiveGameSeatSetup,
 } from '@/lib/live-game-setup';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { RecentLifeDelta } from '@/components/ui/recent-life-delta';
+import { useScreenWakeLock } from '@/hooks/use-screen-wake-lock';
+import {
+  LIVE_GAME_SYNC_BATCH_SIZE,
+  getLiveGameSyncDelay,
+} from '@/lib/live-game-sync-policy';
 
 export type WebTrackerDeck = {
   id: string;
@@ -257,12 +263,14 @@ export function WebLiveGame({
   const [undoDepth, setUndoDepth] = useState(0);
   const [redoDepth, setRedoDepth] = useState(0);
   const syncingRef = useRef(false);
+  const syncTimerRef = useRef<number | null>(null);
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [syncError, setSyncError] = useState<string | null>(null);
   const telemetrySessionRef = useRef(globalThis.crypto.randomUUID());
   const [duration, setDuration] = useState('00:00');
+  useScreenWakeLock(Boolean(record));
 
   const initialSetup = useMemo(() => loadWebLiveGameSetup(groupId, userId), [groupId, userId]);
   const [playerCount, setPlayerCount] = useState(initialSetup.playerCount);
@@ -521,6 +529,10 @@ export function WebLiveGame({
   }, [setConfirmCancel, setOptimisticRecord]);
 
   const flush = useCallback(async () => {
+    if (syncTimerRef.current !== null) {
+      window.clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
     if (syncingRef.current || !recordRef.current || !serverRef.current || !navigator.onLine) return false;
     syncingRef.current = true;
     setSyncing(true);
@@ -541,10 +553,10 @@ export function WebLiveGame({
         }
       }
       while (queueRef.current.length > 0) {
-        const queued = queueRef.current[0]!;
-        server = await applyQueuedLiveGameMutation(supabase, server, queued);
+        const batch = queueRef.current.slice(0, LIVE_GAME_SYNC_BATCH_SIZE);
+        server = await applyQueuedLiveGameMutations(supabase, server, batch);
         serverRef.current = server;
-        queueRef.current = queueRef.current.slice(1);
+        queueRef.current = queueRef.current.slice(batch.length);
         setPendingSyncCount(queueRef.current.length);
         setOptimisticRecord(replay(server, queueRef.current));
         persist(recordRef.current);
@@ -586,6 +598,43 @@ export function WebLiveGame({
       }).catch(() => undefined);
     }
   }, [clearCancelledGame, groupId, persist, setOptimisticRecord, showCompletedGame, userId]);
+
+  const scheduleFlush = useCallback(() => {
+    if (syncTimerRef.current !== null) window.clearTimeout(syncTimerRef.current);
+    const delay = getLiveGameSyncDelay({
+      hasRemoteGuests: lobbyGuests.length > 0,
+      queueDepth: queueRef.current.length,
+    });
+    syncTimerRef.current = window.setTimeout(() => {
+      syncTimerRef.current = null;
+      void flush();
+    }, delay);
+  }, [flush, lobbyGuests.length]);
+
+  useEffect(() => {
+    if (queueRef.current.length > 0) scheduleFlush();
+    return () => {
+      if (syncTimerRef.current !== null) {
+        window.clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+    };
+  }, [scheduleFlush]);
+
+  useEffect(() => {
+    const flushBeforeBackground = () => {
+      if (document.visibilityState === 'hidden' && queueRef.current.length > 0) void flush();
+    };
+    const flushBeforeExit = () => {
+      if (queueRef.current.length > 0) void flush();
+    };
+    document.addEventListener('visibilitychange', flushBeforeBackground);
+    window.addEventListener('pagehide', flushBeforeExit);
+    return () => {
+      document.removeEventListener('visibilitychange', flushBeforeBackground);
+      window.removeEventListener('pagehide', flushBeforeExit);
+    };
+  }, [flush]);
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -663,28 +712,6 @@ export function WebLiveGame({
     const timer = window.setInterval(() => setDuration(formatDuration(record.started_at)), 1000);
     return () => window.clearInterval(timer);
   }, [record?.started_at]);
-
-  useEffect(() => {
-    if (!activeRecordId || !('wakeLock' in navigator)) return;
-    let lock: WakeLockSentinel | null = null;
-    let disposed = false;
-    const acquire = async () => {
-      if (disposed || document.visibilityState !== 'visible') return;
-      try {
-        lock = await navigator.wakeLock.request('screen');
-      } catch {
-        // Safari/embedded browsers may reject wake lock; gameplay still works.
-      }
-    };
-    const onVisibility = () => { if (document.visibilityState === 'visible') void acquire(); };
-    void acquire();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      disposed = true;
-      document.removeEventListener('visibilitychange', onVisibility);
-      void lock?.release();
-    };
-  }, [activeRecordId]);
 
   useEffect(() => {
     const element = tableRef.current;
@@ -826,8 +853,8 @@ export function WebLiveGame({
     const next = { ...current, state: applyLiveGameMutation(current.state, tracked) };
     setOptimisticRecord(next);
     persist(next);
-    void flush();
-  }, [flush, persist, setOptimisticRecord]);
+    scheduleFlush();
+  }, [persist, scheduleFlush, setOptimisticRecord]);
 
   const undoLastMutation = () => {
     const result = undoLiveGameHistory(historyRef.current);
@@ -1198,7 +1225,66 @@ export function WebLiveGame({
                 <div className="grid gap-3 md:grid-cols-2">
                   {seats.map((seat, index) => {
                     const participant = participants.find((entry) => entry.key === seat.participantKey);
-                    return <div key={index} className="rounded-2xl border border-border bg-background/55 p-3"><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground"><span className="grid h-6 w-6 place-items-center rounded-full bg-secondary">{index + 1}</span>{copy({ it: 'Posto', en: 'Seat' })} {index + 1}</div><select value={seat.participantKey ?? ''} onChange={(event) => updateSeatParticipant(index, (event.target.value || null) as ParticipantKey | null)} className="h-12 w-full rounded-xl border border-input bg-card px-3 font-semibold outline-none focus:border-violet-400"><option value="">{copy({ it: 'Scegli giocatore', en: 'Choose player' })}</option>{participants.map((entry) => <option key={entry.key} value={entry.key} disabled={usedKeys.includes(entry.key) && entry.key !== seat.participantKey}>{entry.displayName}</option>)}</select>{participant && <select value={seat.deckId ?? ''} onChange={(event) => setSeats((current) => current.map((item, seatIndex) => seatIndex === index ? { ...item, deckId: event.target.value || null } : item))} className="mt-2 h-12 w-full rounded-xl border border-input bg-card px-3 outline-none focus:border-violet-400"><option value="">{copy({ it: 'Scegli mazzo', en: 'Choose deck' })}</option>{participant.decks.map((deck) => <option key={deck.id} value={deck.id}>{deck.name} · {deck.commander}</option>)}</select>}</div>;
+                    return (
+                      <div key={index} className="min-w-0 rounded-2xl border border-border bg-background/55 p-3">
+                        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          <span className="grid h-6 w-6 place-items-center rounded-full bg-secondary">{index + 1}</span>
+                          {copy({ it: 'Posto', en: 'Seat' })} {index + 1}
+                        </div>
+                        <select
+                          value={seat.participantKey ?? ''}
+                          onChange={(event) => updateSeatParticipant(index, (event.target.value || null) as ParticipantKey | null)}
+                          className="h-12 w-full rounded-xl border border-input bg-card px-3 font-semibold outline-none focus:border-violet-400"
+                        >
+                          <option value="">{copy({ it: 'Scegli giocatore', en: 'Choose player' })}</option>
+                          {participants.map((entry) => (
+                            <option
+                              key={entry.key}
+                              value={entry.key}
+                              disabled={usedKeys.includes(entry.key) && entry.key !== seat.participantKey}
+                            >
+                              {entry.displayName}
+                            </option>
+                          ))}
+                        </select>
+                        {participant ? (
+                          <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+                            {participant.decks.map((deck) => {
+                              const selected = seat.deckId === deck.id;
+                              return (
+                                <button
+                                  key={deck.id}
+                                  type="button"
+                                  aria-pressed={selected}
+                                  onClick={() => setSeats((current) => current.map((item, seatIndex) => (
+                                    seatIndex === index ? { ...item, deckId: deck.id } : item
+                                  )))}
+                                  className={cn(
+                                    'w-28 shrink-0 overflow-hidden rounded-xl border bg-card text-left transition active:scale-[.98]',
+                                    selected
+                                      ? 'border-violet-400 ring-2 ring-violet-500/25'
+                                      : 'border-border hover:border-violet-500/60',
+                                  )}
+                                >
+                                  <DeckImage
+                                    src={deck.commanderImage}
+                                    alt={deck.commander}
+                                    className="h-28 w-full rounded-none object-cover object-top"
+                                    fallbackClassName="h-28 w-full rounded-none"
+                                  />
+                                  <span className="block p-2">
+                                    <b className="line-clamp-2 text-xs leading-tight">{deck.commander}</b>
+                                    {deck.name !== deck.commander ? (
+                                      <small className="mt-1 block truncate text-[10px] text-muted-foreground">{deck.name}</small>
+                                    ) : null}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
                   })}
                 </div>
               </section>
@@ -1270,7 +1356,10 @@ export function WebLiveGame({
                 <HoldActionButton variant="ghost" stopPropagation onShort={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} onLong={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' })} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ left: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Riduci punti vita di', en: 'Reduce life for' })} ${player.displayName}`}><Minus style={{ width: iconSize, height: iconSize }} /></HoldActionButton>
                 <HoldActionButton variant="ghost" stopPropagation onShort={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} onLong={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' })} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ right: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Aumenta punti vita di', en: 'Increase life for' })} ${player.displayName}`}><Plus style={{ width: iconSize, height: iconSize }} /></HoldActionButton>
                 <div className="pointer-events-none absolute left-1/2 top-[7%] z-10 max-w-[66%] -translate-x-1/2 truncate rounded-full border border-white/15 bg-gradient-to-r from-black/75 via-zinc-900/80 to-black/75 px-[clamp(10px,3%,20px)] py-[clamp(4px,1.5%,9px)] font-black tracking-wide text-white shadow-xl backdrop-blur-md" style={{ fontSize: `clamp(11px, ${shortestSide * 0.052}px, 22px)` }}>{player.displayName}</div>
-                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-black leading-none drop-shadow-[0_3px_4px_rgba(0,0,0,.9)]" style={{ fontSize: `clamp(54px, ${shortestSide * 0.28}px, 112px)` }}>{player.life}</div>
+                <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+                  <RecentLifeDelta life={player.life} className="mb-1 text-xl" />
+                  <div className="font-black leading-none drop-shadow-[0_3px_4px_rgba(0,0,0,.9)]" style={{ fontSize: `clamp(54px, ${shortestSide * 0.28}px, 112px)` }}>{player.life}</div>
+                </div>
                 <button
                   onClick={(event) => { event.stopPropagation(); setDamagePanelKey(player.participantKey); }}
                   className="absolute left-1/2 top-3/4 z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-violet-200/30 bg-black/65 text-violet-100 shadow-lg backdrop-blur transition active:scale-90"

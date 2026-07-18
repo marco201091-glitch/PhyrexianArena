@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -80,6 +80,24 @@ export function TableSeat({
   const shake = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
   const lifeScale = useSharedValue(1);
+  const previousLife = useRef(player.life);
+  const lifeDeltaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [recentLifeDelta, setRecentLifeDelta] = useState(0);
+
+  useEffect(() => {
+    const change = player.life - previousLife.current;
+    previousLife.current = player.life;
+    if (change === 0) return;
+    setRecentLifeDelta((current) => current + change);
+    if (lifeDeltaTimer.current) clearTimeout(lifeDeltaTimer.current);
+    lifeDeltaTimer.current = setTimeout(() => {
+      lifeDeltaTimer.current = null;
+      setRecentLifeDelta(0);
+    }, 2_600);
+    return () => {
+      if (lifeDeltaTimer.current) clearTimeout(lifeDeltaTimer.current);
+    };
+  }, [player.life]);
 
   useEffect(() => {
     if (damagePulse <= 0) return;
@@ -241,6 +259,14 @@ export function TableSeat({
                 <View style={styles.playerNamePill}>
                   <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
                 </View>
+                {recentLifeDelta !== 0 ? (
+                  <Text style={[
+                    styles.recentLifeDelta,
+                    recentLifeDelta < 0 ? styles.recentLifeLoss : styles.recentLifeGain,
+                  ]}>
+                    {recentLifeDelta > 0 ? '+' : '−'}{Math.abs(recentLifeDelta)}
+                  </Text>
+                ) : null}
                 <Text
                   style={[
                     styles.lifeValue,
@@ -473,6 +499,23 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 3 },
     textShadowRadius: 12,
     includeFontPadding: false,
+  },
+  recentLifeDelta: {
+    position: 'absolute',
+    top: 23,
+    zIndex: 2,
+    fontSize: 17,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(0,0,0,0.95)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  recentLifeLoss: {
+    color: '#f87171',
+  },
+  recentLifeGain: {
+    color: '#6ee7b7',
   },
   dangerLife: {
     color: '#fecaca',

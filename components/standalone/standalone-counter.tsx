@@ -33,6 +33,8 @@ import type { ParticipantKey } from '@/lib/participant-keys';
 import { subscribeGuestRealtime } from '@/lib/guest-realtime';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/components/language-provider';
+import { RecentLifeDelta } from '@/components/ui/recent-life-delta';
+import { useScreenWakeLock } from '@/hooks/use-screen-wake-lock';
 
 const STORAGE_KEY = 'phyrexian:standalone-counter:v1';
 const ONLINE_STORAGE_KEY = 'phyrexian:standalone-counter-online:v1';
@@ -134,6 +136,7 @@ export function StandaloneCounter() {
   const [updateReady, setUpdateReady] = useState<ServiceWorker | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [preferences, setPreferences] = useState<CounterPreferences>(DEFAULT_COUNTER_PREFERENCES);
+  useScreenWakeLock(Boolean(state));
 
   useEffect(() => {
     navigator.serviceWorker?.register('/counter-sw.js').then((registration) => {
@@ -391,7 +394,10 @@ export function StandaloneCounter() {
           <HoldActionButton variant="ghost" onShort={() => mutate({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} onLong={() => mutate({ type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' })} className="absolute left-[5%] top-1/2 z-10 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-3xl"><Minus /></HoldActionButton>
           <HoldActionButton variant="ghost" onShort={() => mutate({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} onLong={() => mutate({ type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' })} className="absolute right-[5%] top-1/2 z-10 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-3xl"><Plus /></HoldActionButton>
           <div className="pointer-events-none absolute left-1/2 top-[8%] max-w-[70%] -translate-x-1/2 truncate rounded-full border border-white/15 bg-black/65 px-4 py-1 font-black">{player.displayName}</div>
-          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-black leading-none drop-shadow-xl" style={{ fontSize: Math.max(52, Math.min(110, shortest * .3)) }}>{player.life}</div>
+          <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+            <RecentLifeDelta life={player.life} className="mb-1 text-xl" />
+            <div className="font-black leading-none drop-shadow-xl" style={{ fontSize: Math.max(52, Math.min(110, shortest * .3)) }}>{player.life}</div>
+          </div>
           <button onClick={() => setShieldKey(player.participantKey)} className="absolute left-1/2 top-[74%] grid h-12 w-12 -translate-x-1/2 place-items-center rounded-full border border-violet-200/30 bg-black/65"><Shield /></button>
         </div>
       </section>;

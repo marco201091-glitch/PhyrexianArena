@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -37,6 +38,7 @@ type OnlineSession = { hostToken: string; inviteToken: string; realtimeTopic: st
 const ONLINE_STORAGE_KEY = 'phyrexian:standalone-counter-online:v1';
 
 export default function CounterScreen() {
+  useKeepAwake();
   const router = useRouter();
   const { copy } = useLanguage();
   const [format, setFormat] = useState<Format>('commander');

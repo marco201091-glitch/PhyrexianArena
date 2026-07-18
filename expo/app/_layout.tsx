@@ -2,7 +2,7 @@ import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -38,6 +38,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       });
     }
   }, [user, loading, segments, pathname, router]);
+
+  const inAuthGroup = segments[0] === '(auth)';
+  const inJoinRoute = segments[0] === 'join';
+  const inArenaRoute = segments[0] === 'arena';
+  const inLegalRoute = segments[0] === 'legal';
+  const inCounterRoute = String(segments[0]) === 'counter';
+  const isPublicRoute = inAuthGroup || inJoinRoute || inArenaRoute || inLegalRoute || inCounterRoute;
+
+  if (loading || (!user && !isPublicRoute)) {
+    return <View style={styles.authLoadingSurface} />;
+  }
 
   return <>{children}</>;
 }
@@ -86,3 +97,10 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  authLoadingSurface: {
+    flex: 1,
+    backgroundColor: colors.black,
+  },
+});

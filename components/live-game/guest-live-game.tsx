@@ -17,6 +17,8 @@ import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import { subscribeGuestRealtime } from '@/lib/guest-realtime';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/components/language-provider';
+import { RecentLifeDelta } from '@/components/ui/recent-life-delta';
+import { useScreenWakeLock } from '@/hooks/use-screen-wake-lock';
 
 type GuestSessionPayload = {
   session: {
@@ -38,6 +40,7 @@ export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
   const [payload, setPayload] = useState<GuestSessionPayload | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [deckName, setDeckName] = useState('');
+  useScreenWakeLock(Boolean(payload?.game));
   const [commander, setCommander] = useState('');
   const [commanderImage, setCommanderImage] = useState<string | null>(null);
   const [commanderColors, setCommanderColors] = useState<string[]>([]);
@@ -165,7 +168,10 @@ export function GuestLiveGame({ inviteToken }: { inviteToken: string }) {
           <HoldActionButton variant="ghost" onShort={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} onLong={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' })} className="absolute left-[5%] top-1/2 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55"><Minus /></HoldActionButton>
           <HoldActionButton variant="ghost" onShort={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} onLong={() => void mutate({ type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' })} className="absolute right-[5%] top-1/2 grid h-14 w-16 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55"><Plus /></HoldActionButton>
           <div className="absolute left-1/2 top-[8%] max-w-[70%] -translate-x-1/2 truncate rounded-full bg-black/65 px-4 py-1 font-black">{player.displayName}</div>
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-7xl font-black">{player.life}</div>
+          <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+            <RecentLifeDelta life={player.life} className="mb-1 text-xl" />
+            <div className="text-7xl font-black">{player.life}</div>
+          </div>
           <button onClick={() => setShieldKey(player.participantKey)} className="absolute left-1/2 top-[74%] grid h-12 w-12 -translate-x-1/2 place-items-center rounded-full border border-violet-200/30 bg-black/65"><Shield /></button>
         </div>
       </section>;

@@ -2059,7 +2059,12 @@ export default function TablePage() {
     setEditMatchNotes(match.notes || '');
     setEditMatchPlayedAt(isoToMatchDateValue(match.played_at));
     setEditMatchDeckSearches({});
-    setHiddenEditMatchDeckLists({});
+    setHiddenEditMatchDeckLists(Object.fromEntries(
+      match.match_participants
+        .map(getParticipantKey)
+        .filter((key): key is ParticipantKey => Boolean(key))
+        .map((key) => [key, true]),
+    ));
     const deckMap: Record<string, string> = {};
     match.match_participants.forEach((p) => {
       const participantKey = getParticipantKey(p);

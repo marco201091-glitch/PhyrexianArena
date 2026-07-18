@@ -123,6 +123,47 @@ export async function applyQueuedLiveGameMutation(
   }
 }
 
+export async function applyQueuedLiveGameMutations(
+  client: SupabaseClient,
+  initialRecord: LiveGameRecord,
+  queuedMutations: QueuedLiveGameMutation[],
+): Promise<LiveGameRecord> {
+  if (queuedMutations.length === 0) return initialRecord;
+  const startedAt = Date.now();
+  let conflicts = 0;
+  let base = initialRecord;
+  try {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const nextState = queuedMutations.reduce(
+        (state, queued) => applyLiveGameMutation(state, queued.mutation),
+        base.state,
+      );
+      const { data, error } = await client.rpc('apply_live_game_mutation_batch', {
+        p_live_game_id: base.id,
+        p_mutation_ids: queuedMutations.map((queued) => queued.id),
+        p_expected_version: base.state.version,
+        p_next_state: nextState,
+      });
+      if (error) throw error;
+      const result = data as MutationRpcResult;
+      const record = {
+        ...result.record,
+        state: parseLiveGameState(result.record.state),
+      } as LiveGameRecord;
+      if (result.applied) {
+        recordLiveGameMutationSync({ durationMs: Date.now() - startedAt, conflicts });
+        return record;
+      }
+      conflicts += 1;
+      base = record;
+    }
+    throw new Error('Live game state stayed busy after multiple retries');
+  } catch (error) {
+    recordLiveGameSyncError(error);
+    throw error;
+  }
+}
+
 export async function fetchLiveGameByMatchId(
   client: SupabaseClient,
   matchId: string,
