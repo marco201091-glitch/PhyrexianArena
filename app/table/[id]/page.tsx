@@ -135,6 +135,8 @@ import {
   Crown,
   Clock3,
   QrCode,
+  Shield,
+  Flag,
 } from 'lucide-react';
 
 const ARENA_DECK_PICKER_COLUMNS = `
@@ -458,6 +460,7 @@ export default function TablePage() {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [editMatchWinnerKey, setEditMatchWinnerKey] = useState<ParticipantKey | ''>('');
   const [editMatchIsDraw, setEditMatchIsDraw] = useState(false);
+  const [editMatchWinCondition, setEditMatchWinCondition] = useState<NonNullable<Match['win_condition']>>('other');
   const [editMatchNotes, setEditMatchNotes] = useState('');
   const [editMatchPlayedAt, setEditMatchPlayedAt] = useState(() => toMatchDateValue());
   const [editMatchPlayerDecks, setEditMatchPlayerDecks] = useState<Record<string, string>>({});
@@ -2056,6 +2059,7 @@ export default function TablePage() {
     setEditingMatch(match);
     setEditMatchWinnerKey(resolveWinnerParticipantKey(match) || '');
     setEditMatchIsDraw(Boolean(match.is_draw));
+    setEditMatchWinCondition(match.win_condition || 'other');
     setEditMatchNotes(match.notes || '');
     setEditMatchPlayedAt(isoToMatchDateValue(match.played_at));
     setEditMatchDeckSearches({});
@@ -2106,6 +2110,7 @@ export default function TablePage() {
           winner_guest_id: !editMatchIsDraw && winnerParsed?.type === 'guest' ? winnerParsed.id : null,
           notes: editMatchNotes || null,
           played_at: playedAtIso,
+          win_condition: editMatchIsDraw ? null : editMatchWinCondition,
         })
         .eq('id', editingMatch.id);
       if (matchError) throw matchError;
@@ -2470,6 +2475,11 @@ export default function TablePage() {
                                               <div className="min-w-0 flex-1">
                                                 <div className="flex flex-wrap items-center gap-1.5">
                                                   {p.is_winner && <Trophy className="h-3.5 w-3.5 shrink-0" />}
+                                                  {p.is_winner && match.win_condition === 'last_standing' ? <Shield className="h-3.5 w-3.5 shrink-0" /> : null}
+                                                  {p.is_winner && match.win_condition === 'combo' ? <Flame className="h-3.5 w-3.5 shrink-0" /> : null}
+                                                  {p.is_winner && match.win_condition === 'concession' ? <Flag className="h-3.5 w-3.5 shrink-0" /> : null}
+                                                  {p.is_winner && match.win_condition === 'alternate_card' ? <Crown className="h-3.5 w-3.5 shrink-0" /> : null}
+                                                  {p.is_winner && match.win_condition === 'other' ? <Target className="h-3.5 w-3.5 shrink-0" /> : null}
                                                   <span className="font-semibold">{displayName}</span>
                                                   {deck?.bracket && (
                                                     <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-300">
@@ -3821,7 +3831,7 @@ export default function TablePage() {
                     {t({ it: 'Patta', en: 'Draw' })}
                   </label>
                   {!editMatchIsDraw ? (
-                    <div>
+                    <div className="space-y-4">
                       <label className="text-sm font-medium text-foreground mb-3 block">{t({ it: 'Vincitore', en: 'Winner' })}</label>
                       <Select value={editMatchWinnerKey} onValueChange={(value) => setEditMatchWinnerKey(value as ParticipantKey)}>
                         <SelectTrigger className="w-full bg-background border-border text-foreground">
@@ -3840,6 +3850,21 @@ export default function TablePage() {
                           })}
                         </SelectContent>
                       </Select>
+                      <div>
+                        <label className="mb-3 block text-sm font-medium text-foreground">{t({ it: 'Tipo di vittoria', en: 'Win condition' })}</label>
+                        <Select value={editMatchWinCondition} onValueChange={(value) => setEditMatchWinCondition(value as NonNullable<Match['win_condition']>)}>
+                          <SelectTrigger className="w-full bg-background border-border text-foreground">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="last_standing">{t({ it: 'Ultimo in piedi', en: 'Last standing' })}</SelectItem>
+                            <SelectItem value="combo">Combo</SelectItem>
+                            <SelectItem value="concession">{t({ it: 'Resa', en: 'Concession' })}</SelectItem>
+                            <SelectItem value="alternate_card">{t({ it: 'Vittoria alternativa', en: 'Alternate card' })}</SelectItem>
+                            <SelectItem value="other">{t({ it: 'Altro', en: 'Other' })}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   ) : null}
                 </div>

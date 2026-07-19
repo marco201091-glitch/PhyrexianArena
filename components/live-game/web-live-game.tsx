@@ -434,6 +434,7 @@ export function WebLiveGame({
   const [ending, setEnding] = useState(false);
   const [completedRecord, setCompletedRecord] = useState<LiveGameRecord | null>(null);
   const [completedDuration, setCompletedDuration] = useState('00:00');
+  const durationRef = useRef('00:00');
   const [confirmRematch, setConfirmRematch] = useState(false);
   const [confirmEliminate, setConfirmEliminate] = useState<ParticipantKey | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -710,12 +711,33 @@ export function WebLiveGame({
   useEffect(() => {
     if (!activeRecordId || needsCreateRef.current) return;
     return subscribeToLiveGame(supabase, activeRecordId, (remote) => {
-      if (syncingRef.current || remote.status !== 'active') return;
+      if (remote.status !== 'active') {
+        if (pendingFinalizationRef.current || pendingCancelRef.current) return;
+        serverRef.current = null;
+        queueRef.current = [];
+        pendingFinalizationRef.current = null;
+        pendingCancelRef.current = false;
+        clearWebLiveGameJournal(groupId);
+        setOptimisticRecord(null);
+        if (remote.status === 'ended') {
+          setCompletedRecord(remote);
+          setCompletedDuration(durationRef.current);
+          toast({ title: copy({ it: 'Partita conclusa su un altro dispositivo', en: 'Game ended on another device' }) });
+        } else {
+          router.replace(`/table/${groupId}`);
+        }
+        return;
+      }
+      if (syncingRef.current) return;
       serverRef.current = remote;
       setOptimisticRecord(replay(remote, queueRef.current));
       persist(recordRef.current);
     });
-  }, [activeRecordId, persist, setOptimisticRecord]);
+  }, [activeRecordId, copy, groupId, persist, router, setOptimisticRecord, toast]);
+
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
 
   useEffect(() => {
     if (!record?.started_at) return;

@@ -45,6 +45,8 @@ export function DamageConfirmSheet({
 }: DamageConfirmSheetProps) {
   const { width, height } = useWindowDimensions();
   const isIPad = isIPadViewport(Platform.OS, width, height);
+  const phoneCardSize = Math.max(260, Math.min(400, width - 96, height - 96));
+  const compactPhone = !isIPad && phoneCardSize < 300;
   const [amount, setAmount] = useState(0);
   const [mode, setMode] = useState<DamageMode>(defaultMode);
   const [scope, setScope] = useState<'single' | GroupDamageScope>('single');
@@ -69,17 +71,20 @@ export function DamageConfirmSheet({
       <View style={[
         styles.damageCard,
         isIPad && styles.damageCardIPad,
+        !isIPad && { width: phoneCardSize, height: phoneCardSize },
         { transform: [{ rotate: `${sourceRotation}deg` }] },
       ]}>
-        <DeckImage
-          uri={target.commanderImage}
-          alt={target.commander}
-          style={styles.stageImage}
-          containerStyle={styles.stageImageWrap}
-        />
+        {isIPad ? (
+          <DeckImage
+            uri={target.commanderImage}
+            alt={target.commander}
+            style={styles.stageImage}
+            containerStyle={styles.stageImageWrap}
+          />
+        ) : null}
         <View style={styles.stageShade} />
-        <View style={[styles.damageCardContent, isIPad && styles.damageCardContentIPad]}>
-          <View style={[styles.compactHeader, isIPad && styles.compactHeaderIPad]}>
+        <View style={[styles.damageCardContent, compactPhone && styles.damageCardContentCompact, isIPad && styles.damageCardContentIPad]}>
+          <View style={[styles.compactHeader, compactPhone && styles.compactHeaderPhone, isIPad && styles.compactHeaderIPad]}>
             <Ionicons name="flash-outline" size={isIPad ? 26 : 20} color={colors.primaryLight} />
             <View style={styles.headerCopy}>
               <Text style={[styles.headerTitle, isIPad && styles.headerTitleIPad]}>{labels.title}</Text>
@@ -97,10 +102,10 @@ export function DamageConfirmSheet({
             </Pressable>
           </View>
 
-          <View style={[styles.amountStage, isIPad && styles.amountStageIPad]}>
+          <View style={[styles.amountStage, compactPhone && styles.amountStageCompact, isIPad && styles.amountStageIPad]}>
           <View style={[styles.stepperRow, isIPad && styles.stepperRowIPad]}>
             <HoldPressable
-              style={[styles.stepButton, isIPad && styles.stepButtonIPad]}
+              style={[styles.stepButton, compactPhone && styles.stepButtonCompact, isIPad && styles.stepButtonIPad]}
               onShort={() => setAmount((value) => Math.max(0, value - 1))}
               onLong={() => setAmount((value) => Math.max(0, value - 10))}
               accessibilityRole="button"
@@ -109,7 +114,7 @@ export function DamageConfirmSheet({
               <Ionicons name="remove" size={isIPad ? 40 : 30} color={colors.foreground} />
             </HoldPressable>
             <View style={styles.amountCopy}>
-              <Text style={[styles.amountValue, isIPad && styles.amountValueIPad]}>{amount}</Text>
+              <Text style={[styles.amountValue, compactPhone && styles.amountValueCompact, isIPad && styles.amountValueIPad]}>{amount}</Text>
               <Text style={[styles.amountContext, isIPad && styles.amountContextIPad]} numberOfLines={2}>
                 {mode === 'life' ? labels.lifeDamage : mode === 'commander' ? labels.commanderDamage : labels.infectDamage}
                 {' · '}
@@ -117,7 +122,7 @@ export function DamageConfirmSheet({
               </Text>
             </View>
             <HoldPressable
-              style={[styles.stepButton, isIPad && styles.stepButtonIPad]}
+              style={[styles.stepButton, compactPhone && styles.stepButtonCompact, isIPad && styles.stepButtonIPad]}
               onShort={() => setAmount((value) => Math.min(99, value + 1))}
               onLong={() => setAmount((value) => Math.min(99, value + 10))}
               accessibilityRole="button"
@@ -138,7 +143,7 @@ export function DamageConfirmSheet({
               return (
                 <Pressable
                   key={option.value}
-                  style={[styles.typePill, isIPad && styles.typePillIPad, active && styles.typePillActive]}
+                  style={[styles.typePill, compactPhone && styles.typePillCompact, isIPad && styles.typePillIPad, active && styles.typePillActive]}
                   onPress={() => {
                     setMode(option.value);
                     if (option.value !== 'life') setScope('single');
@@ -164,7 +169,7 @@ export function DamageConfirmSheet({
                 return (
                   <Pressable
                     key={option.value}
-                    style={[styles.scopePill, isIPad && styles.scopePillIPad, active && styles.scopePillActive]}
+                    style={[styles.scopePill, compactPhone && styles.scopePillCompact, isIPad && styles.scopePillIPad, active && styles.scopePillActive]}
                     onPress={() => setScope(option.value)}
                   >
                     <Text style={[styles.scopeText, isIPad && styles.scopeTextIPad, active && styles.scopeTextActive]}>
@@ -176,7 +181,7 @@ export function DamageConfirmSheet({
             </View>
           ) : null}
 
-          <View style={[styles.footerRow, isIPad && styles.footerRowIPad]}>
+          <View style={[styles.footerRow, compactPhone && styles.footerRowCompact, isIPad && styles.footerRowIPad]}>
             <Button label={labels.cancel} variant="outline" onPress={onClose} style={styles.footerButton} />
             <Button
               label={labels.apply}
@@ -193,8 +198,6 @@ export function DamageConfirmSheet({
 
 const styles = StyleSheet.create({
   damageCard: {
-    width: '100%',
-    aspectRatio: 1,
     alignSelf: 'center',
     overflow: 'hidden',
     borderRadius: radii.lg,
@@ -208,13 +211,20 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     position: 'relative',
     zIndex: 2,
+    elevation: 2,
   },
   damageCardIPad: {
+    width: '100%',
+    aspectRatio: 1,
     maxWidth: 600,
   },
   damageCardContentIPad: {
     gap: 10,
     padding: spacing.md,
+  },
+  damageCardContentCompact: {
+    gap: 3,
+    padding: 6,
   },
   compactHeader: {
     minHeight: 38,
@@ -224,6 +234,9 @@ const styles = StyleSheet.create({
   },
   compactHeaderIPad: {
     minHeight: 52,
+  },
+  compactHeaderPhone: {
+    minHeight: 32,
   },
   headerCopy: {
     flex: 1,
@@ -262,6 +275,9 @@ const styles = StyleSheet.create({
   },
   amountStageIPad: {
     minHeight: 150,
+  },
+  amountStageCompact: {
+    minHeight: 76,
   },
   sourceTarget: {
     color: colors.muted,
@@ -305,6 +321,11 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
   },
+  stepButtonCompact: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+  },
   amountCopy: {
     flex: 1,
     alignItems: 'center',
@@ -321,6 +342,10 @@ const styles = StyleSheet.create({
   amountValueIPad: {
     fontSize: 88,
     lineHeight: 94,
+  },
+  amountValueCompact: {
+    fontSize: 48,
+    lineHeight: 50,
   },
   amountContext: {
     color: colors.foreground,
@@ -361,6 +386,10 @@ const styles = StyleSheet.create({
   typePillIPad: {
     minHeight: 52,
   },
+  typePillCompact: {
+    minHeight: 32,
+    paddingVertical: 4,
+  },
   typePillActive: {
     backgroundColor: colors.primary,
   },
@@ -386,6 +415,9 @@ const styles = StyleSheet.create({
   scopePillIPad: {
     minHeight: 48,
   },
+  scopePillCompact: {
+    minHeight: 30,
+  },
   scopePillActive: {
     backgroundColor: colors.selectionTintStrong,
   },
@@ -408,6 +440,9 @@ const styles = StyleSheet.create({
   },
   footerRowIPad: {
     minHeight: 54,
+  },
+  footerRowCompact: {
+    minHeight: 36,
   },
   footerButton: {
     flex: 1,

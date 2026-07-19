@@ -1036,6 +1036,14 @@ export default function TableScreen() {
           deckListHiddenEmpty: copy('deckListHiddenEmpty'),
           noDecksMatchSearch: copy('noDecksMatchSearch'),
           swipeDecksHint: copy('swipeDecksHint'),
+          winCondition: copy('liveGameWinCondition'),
+          winConditions: {
+            last_standing: copy('liveGameWinLastStanding'),
+            combo: copy('liveGameWinCombo'),
+            concession: copy('liveGameWinConcession'),
+            alternate_card: copy('liveGameWinAlternateCard'),
+            other: copy('liveGameWinOther'),
+          },
         }}
         onClose={() => setEditingMatch(null)}
         onError={(message) => showAppAlert(copy('error'), message)}

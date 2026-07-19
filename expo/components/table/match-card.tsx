@@ -20,6 +20,14 @@ type MatchCardProps = {
   onDetails?: () => void;
 };
 
+function getWinConditionIcon(condition: ArenaMatch['win_condition']): keyof typeof Ionicons.glyphMap {
+  if (condition === 'last_standing') return 'shield-checkmark-outline';
+  if (condition === 'combo') return 'git-merge-outline';
+  if (condition === 'concession') return 'flag-outline';
+  if (condition === 'alternate_card') return 'sparkles-outline';
+  return 'ellipsis-horizontal-circle-outline';
+}
+
 export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete, onDetails }: MatchCardProps) {
   return (
     <PhyrexianPanel variant="inset" padded={false}>
@@ -48,7 +56,10 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
               <View style={styles.participantMain}>
                 <View style={styles.nameRow}>
                   {isWinner ? (
-                    <Ionicons name="trophy" size={14} color={colors.primaryMuted} />
+                    <>
+                      <Ionicons name="trophy" size={14} color={colors.primaryMuted} />
+                      {match.win_condition ? <Ionicons name={getWinConditionIcon(match.win_condition)} size={15} color={colors.primaryMuted} /> : null}
+                    </>
                   ) : null}
                   <Text
                     style={[styles.participantName, isWinner && styles.participantNameWinner]}

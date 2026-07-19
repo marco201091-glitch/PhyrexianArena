@@ -257,7 +257,8 @@ export function TableSeat({
             ) : null}
           </View>
         ) : (
-          <>
+          <GestureDetector gesture={dragGesture}>
+          <AnimatedView style={styles.dragSurface}>
             <HoldPressable
               style={[styles.edgeButton, styles.minusButton]}
               onShort={() => onAdjust(-1)}
@@ -278,7 +279,6 @@ export function TableSeat({
               <Text style={styles.edgeButtonText}>+</Text>
             </HoldPressable>
 
-            <GestureDetector gesture={dragGesture}>
               <AnimatedView style={[styles.lifeReadout, lifeStyle]}>
                 <View style={styles.playerNamePill}>
                   <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
@@ -302,7 +302,6 @@ export function TableSeat({
                   {mainValue}
                 </Text>
               </AnimatedView>
-            </GestureDetector>
 
             <Pressable
               style={styles.damageDetailsButton}
@@ -322,7 +321,8 @@ export function TableSeat({
             >
               <Ionicons name="skull-outline" size={15} color="rgba(254,202,202,0.86)" />
             </Pressable>
-          </>
+          </AnimatedView>
+          </GestureDetector>
         )}
       </View>
     </AnimatedView>
@@ -535,6 +535,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.95)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
+  },
+  dragSurface: {
+    ...StyleSheet.absoluteFillObject,
   },
   recentLifeDeltaIPad: {
     top: 18,

@@ -262,6 +262,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
     participantDecks: Record<string, string>;
     matchPlayedAtIso: string;
     matchNotes: string;
+    winCondition: import('@/lib/types/arena').ArenaMatch['win_condition'];
     participants: Array<{
       id: string;
       participantKey: string | null;
@@ -279,6 +280,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
         winner_guest_id: !input.isDraw && winnerParsed?.type === 'guest' ? winnerParsed.id : null,
         notes: input.matchNotes || null,
         played_at: input.matchPlayedAtIso,
+        win_condition: input.isDraw ? null : input.winCondition,
       })
       .eq('id', input.matchId);
 

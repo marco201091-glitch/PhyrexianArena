@@ -567,7 +567,29 @@ export default function LiveGameScreen() {
   useEffect(() => {
     if (!liveGame?.id || needsCreateRef.current) return undefined;
     return subscribeToLiveGame(supabase, liveGame.id, (remote) => {
-      if (remote.status !== 'active') return;
+      if (remote.status !== 'active') {
+        if (pendingFinalizationRef.current || pendingCancelRef.current) return;
+        serverRecordRef.current = null;
+        mutationQueueRef.current = [];
+        pendingFinalizationRef.current = null;
+        pendingCancelRef.current = false;
+        setPendingSyncCount(0);
+        historyRef.current = createLiveGameHistory();
+        setUndoDepth(0);
+        setRedoDepth(0);
+        setOptimisticRecord(null);
+        void clearLiveGameOfflineSession(groupId);
+        if (remote.status === 'ended') {
+          setCompletedGame(remote);
+          setCompletedDurationSeconds(getGameDurationSeconds(remote.started_at, remote.ended_at ?? new Date().toISOString()));
+          setShowEndGame(false);
+          setShowRematch(true);
+          showToast(copy('liveGameSaved'));
+        } else {
+          router.replace(`/table/${groupId}`);
+        }
+        return;
+      }
       if (syncRunningRef.current) return;
       serverRecordRef.current = remote;
       setOptimisticRecord(replayQueuedMutations(remote, mutationQueueRef.current));
@@ -580,7 +602,7 @@ export default function LiveGameScreen() {
         setSyncStatus('offline');
       }
     });
-  }, [liveGame?.id, saveJournal, setOptimisticRecord, syncJournal]);
+  }, [copy, groupId, liveGame?.id, router, saveJournal, setOptimisticRecord, showToast, syncJournal]);
 
   useEffect(() => {
     if (!groupId || !user || loading || setupHydratedRef.current === `${user.id}:${groupId}`) return;

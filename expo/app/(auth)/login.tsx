@@ -1,6 +1,6 @@
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Screen } from '@/components/ui/screen';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-per
 import { showAppAlert } from '@/lib/app-alert';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/theme';
+import { signInWithGoogleOnAndroid } from '@/lib/google-auth';
 
 function resolveRedirectPath(redirect: string | string[] | undefined): Href {
   const value = Array.isArray(redirect) ? redirect[0] : redirect;
@@ -76,6 +77,18 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const result = await signInWithGoogleOnAndroid();
+      if (result === 'success') router.replace(redirectPath);
+    } catch {
+      showAppAlert(copy('error'), 'Failed to sign in with Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Screen background="solid">
       <AuthBranding forceEnglish />
@@ -113,6 +126,15 @@ export default function LoginScreen() {
             onPress={handleLogin}
             disabled={loading}
           />
+          {Platform.OS === 'android' ? (
+            <Button
+              label="Continue with Google"
+              icon="logo-google"
+              variant="outline"
+              onPress={handleGoogleLogin}
+              disabled={loading}
+            />
+          ) : null}
           <Button
             label="Quick game"
             icon="heart-outline"
