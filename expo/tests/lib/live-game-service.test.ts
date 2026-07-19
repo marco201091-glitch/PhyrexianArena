@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createLiveGamePlayer, type LiveGameRecord, type LiveGameState } from '@/lib/live-game';
 import {
   applyQueuedLiveGameMutation,
+  applyQueuedLiveGameMutations,
   createLiveGame,
   ensureLiveGameCreated,
   fetchActiveLiveGame,
@@ -99,6 +100,24 @@ describe('live game Supabase service', () => {
     });
     expect(updated.state.version).toBe(1);
     expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('persists a burst with one atomic batch RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { applied: true, duplicate: false, record: record({ state: state(2) }) },
+      error: null,
+    });
+    const updated = await applyQueuedLiveGameMutations({ rpc } as never, record(), [
+      { id: 'mutation-1', mutation: { type: 'adjust', targetKey: 'user:a', amount: 1, mode: 'life' } },
+      { id: 'mutation-2', mutation: { type: 'adjust', targetKey: 'user:a', amount: -1, mode: 'life' } },
+    ]);
+
+    expect(updated.state.version).toBe(2);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('apply_live_game_mutation_batch', expect.objectContaining({
+      p_mutation_ids: ['mutation-1', 'mutation-2'],
+      p_expected_version: 0,
+    }));
   });
 
   it('serializes final results and uses safe defaults for legacy pending games', async () => {

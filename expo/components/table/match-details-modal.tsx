@@ -7,6 +7,7 @@ import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
 import { getParticipantDeckSnapshot, getParticipantDisplayName } from '@/lib/arena-participants';
 import { formatGameDuration } from '@/lib/live-game-duration';
+import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
 import type { ArenaMatch } from '@/lib/types/arena';
 import type { LiveGameRecord } from '@/lib/live-game';
 
@@ -14,12 +15,15 @@ type Props = { visible: boolean; match: ArenaMatch | null; liveGame: LiveGameRec
 
 export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onClose, labels }: Props) {
   if (!match) return null;
+  const recapRecord = liveGame ?? (match.tracking_version != null
+    ? buildHistoricalLiveGameRecord(match)
+    : null);
   return <Modal visible={visible} onClose={onClose} presentation="dialog" maxWidth={620}>
     <ModalHeader title={labels.title} subtitle={match.duration_seconds != null ? `${labels.duration}: ${formatGameDuration(match.duration_seconds)}` : undefined} icon="stats-chart-outline" onClose={onClose} />
     <ScrollView contentContainerStyle={styles.list}>
       <PhyrexianPanel variant="inset" style={styles.summary}><Text style={styles.meta}>{labels.events}</Text><Text style={styles.summaryValue}>{match.match_participants.reduce((total, player) => total + (player.tracked_event_count || 0), 0)}</Text></PhyrexianPanel>
       {recapLoading ? <View style={styles.recapLoading}><ActivityIndicator color={colors.primaryMuted} /><Text style={styles.meta}>{labels.recap}</Text></View> : null}
-      {liveGame ? <LiveGameRecapView record={liveGame} labels={{ timeline: labels.timeline, highlights: labels.highlights, empty: labels.empty }} /> : null}
+      {recapRecord ? <LiveGameRecapView record={recapRecord} labels={{ timeline: labels.timeline, highlights: labels.highlights, empty: labels.empty }} /> : null}
       {match.match_participants.slice().sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99)).map((participant) => {
         const deck = getParticipantDeckSnapshot(participant);
         return <PhyrexianPanel key={participant.id} variant="inset" style={styles.player}>

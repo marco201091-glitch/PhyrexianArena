@@ -181,6 +181,7 @@ export function subscribeToLiveGame(
   client: SupabaseClient,
   liveGameId: string,
   onChange: (record: LiveGameRecord) => void,
+  onStatus?: (status: string) => void,
 ) {
   const channel = client.channel(`web-live-game:${liveGameId}`).on(
     'postgres_changes',
@@ -189,7 +190,7 @@ export function subscribeToLiveGame(
       const next = payload.new as LiveGameRecord;
       onChange({ ...next, state: parseLiveGameState(next.state) });
     },
-  ).subscribe();
+  ).subscribe((status) => onStatus?.(status));
   return () => { void client.removeChannel(channel); };
 }
 

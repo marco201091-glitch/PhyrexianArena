@@ -5,6 +5,7 @@ export const LIVE_GAME_MIN_PLAYERS = 2;
 export const LIVE_GAME_MAX_PLAYERS = 6;
 export const COMMANDER_DAMAGE_LIMIT = 21;
 export const INFECT_LOSS_THRESHOLD = 10;
+export const LIVE_GAME_HIGHLIGHT_LIMIT = 24;
 
 export type LiveGameStatus = 'setup' | 'active' | 'ended' | 'cancelled';
 export type DamageMode = 'life' | 'commander' | 'infect';
@@ -94,6 +95,7 @@ export interface LiveGameState {
   layoutVariant?: TableLayoutVariant;
   startingPlayerKey?: ParticipantKey | null;
   startingDirection?: PlayDirection | null;
+  /** Significant moments only. Routine counter changes live in `summary`. */
   events: LiveGameEvent[];
   /** Bounded cumulative counters used for per-match and future per-deck analytics. */
   summary?: LiveGameSummary;
@@ -113,6 +115,10 @@ export type LiveGameMutation = (
       amount: number;
       mode: DamageMode;
       sourceKey?: ParticipantKey;
+      /** Gain life equal to life damage actually dealt. */
+      drain?: boolean;
+      /** Fixed amount used when reversing a drain action. */
+      drainAmount?: number;
       /** Internal metadata set by adjust_many for compact analytics. */
       groupScope?: GroupDamageScope;
     }
@@ -121,6 +127,9 @@ export type LiveGameMutation = (
       sourceKey: ParticipantKey;
       amount: number;
       scope: GroupDamageScope;
+      mode?: 'life' | 'infect';
+      drain?: boolean;
+      drainAmount?: number;
     }
   | { type: 'eliminate'; targetKey: ParticipantKey; eliminatedAt: string }
   | { type: 'revive'; targetKey: ParticipantKey; startingLife: number }
@@ -275,6 +284,14 @@ export function aggregateLiveGameEvent(
 
 export function summarizeLiveGameEvents(events: LiveGameEvent[]): LiveGameSummary {
   return events.reduce<LiveGameSummary>(aggregateLiveGameEvent, createLiveGameSummary());
+}
+
+export function isLiveGameHighlight(event: Pick<LiveGameEvent, 'type'>): boolean {
+  return event.type === 'elimination' || event.type === 'revive';
+}
+
+function compactLiveGameHighlights(events: LiveGameEvent[]): LiveGameEvent[] {
+  return events.filter(isLiveGameHighlight).slice(-LIVE_GAME_HIGHLIGHT_LIMIT);
 }
 
 export function createLiveGamePlayer(input: {
@@ -452,7 +469,6 @@ export function applyLiveGameMutation(
   ): LiveGameState => {
     if (!eventId || !occurredAt) return next;
     const id = `${eventId}${suffix}`;
-    if (next.events.some((entry) => entry.id === id)) return next;
     const completeEvent = {
       id,
       occurredAt,
@@ -460,9 +476,12 @@ export function applyLiveGameMutation(
       isCorrection: mutation.isCorrection,
       ...event,
     };
+    if (isLiveGameHighlight(completeEvent) && next.events.some((entry) => entry.id === id)) return next;
     return {
       ...next,
-      events: [...next.events, completeEvent].slice(-500),
+      events: isLiveGameHighlight(completeEvent)
+        ? compactLiveGameHighlights([...next.events, completeEvent])
+        : next.events,
       summary: aggregateLiveGameEvent(next.summary, completeEvent),
     };
   };
@@ -476,12 +495,13 @@ export function applyLiveGameMutation(
     if (targets.length === 0) return state;
 
     const actionId = mutation.actionId ?? mutation.eventId;
+    const mode = mutation.mode ?? 'life';
     const next = targets.reduce((current, player, index) => applyLiveGameMutation(current, {
       type: 'adjust',
       targetKey: player.participantKey,
       sourceKey: mutation.sourceKey,
       amount: mutation.amount,
-      mode: 'life',
+      mode,
       eventId: mutation.eventId ? `${mutation.eventId}:${index}` : undefined,
       occurredAt: mutation.occurredAt,
       actionId,
@@ -489,9 +509,27 @@ export function applyLiveGameMutation(
       isCorrection: mutation.isCorrection,
     }), state);
 
+    const drainAmount = mode === 'life' && mutation.drain
+      ? mutation.drainAmount ?? Math.abs(mutation.amount) * targets.length
+      : 0;
+    const withDrain = drainAmount > 0
+      ? applyLiveGameMutation(next, {
+        type: 'adjust',
+        targetKey: mutation.sourceKey,
+        sourceKey: mutation.amount > 0 ? mutation.sourceKey : undefined,
+        amount: mutation.amount > 0 ? -drainAmount : drainAmount,
+        mode: 'life',
+        eventId: mutation.eventId ? `${mutation.eventId}:drain` : undefined,
+        occurredAt: mutation.occurredAt,
+        actionId,
+        groupScope: mutation.scope,
+        isCorrection: mutation.isCorrection,
+      })
+      : next;
+
     // A table-wide action is one optimistic/realtime mutation, regardless of
     // how many participant counters it updates.
-    return { ...next, version: state.version + 1 };
+    return { ...withDrain, version: state.version + 1 };
   }
 
   if (mutation.type === 'adjust') {
@@ -537,6 +575,24 @@ export function applyLiveGameMutation(
           amount: null,
         }, ':ko');
       }
+    }
+    const drainAmount = mutation.mode === 'life' && mutation.drain && mutation.sourceKey
+      && mutation.sourceKey !== mutation.targetKey
+      ? mutation.drainAmount ?? appliedAmount
+      : 0;
+    if (drainAmount > 0) {
+      const withDrain = applyLiveGameMutation(withAutoKo, {
+        type: 'adjust',
+        targetKey: mutation.sourceKey!,
+        sourceKey: mutation.amount > 0 ? mutation.sourceKey : undefined,
+        amount: mutation.amount > 0 ? -drainAmount : drainAmount,
+        mode: 'life',
+        eventId: mutation.eventId ? `${mutation.eventId}:drain` : undefined,
+        occurredAt: mutation.occurredAt,
+        actionId: mutation.actionId ?? mutation.eventId,
+        isCorrection: mutation.isCorrection,
+      });
+      return { ...withDrain, version: state.version + 1 };
     }
     return withAutoKo;
   }
@@ -676,7 +732,7 @@ export function parseLiveGameState(raw: unknown): LiveGameState {
     startingDirection: value.startingDirection === 'clockwise' || value.startingDirection === 'counterclockwise'
       ? value.startingDirection
       : null,
-    events: events.slice(-500),
+    events: compactLiveGameHighlights(events),
     summary,
   };
 }

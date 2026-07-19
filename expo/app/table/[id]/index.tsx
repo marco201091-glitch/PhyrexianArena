@@ -159,6 +159,11 @@ export default function TableScreen() {
       setDetailsRecapLoading(false);
       return;
     }
+    if (detailsMatch.tracking_version >= 3) {
+      setDetailsLiveGame(null);
+      setDetailsRecapLoading(false);
+      return;
+    }
     let active = true;
     setDetailsRecapLoading(true);
     void fetchLiveGameByMatchId(supabase, detailsMatch.id)

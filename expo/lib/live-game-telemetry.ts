@@ -1,4 +1,5 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+export const LIVE_GAME_TELEMETRY_RETENTION_DAYS = 14;
+export const LIVE_GAME_TELEMETRY_PERSIST_INTERVAL_MS = 60_000;
 
 export interface LiveGameTelemetrySnapshot {
   mutationSyncs: number;
@@ -18,6 +19,7 @@ const snapshot: LiveGameTelemetrySnapshot = {
   lastError: null,
 };
 let lastPersistedSignature = '';
+let lastPersistedAt = 0;
 
 export function recordLiveGameQueueDepth(depth: number) {
   snapshot.maxQueueDepth = Math.max(snapshot.maxQueueDepth, depth);
@@ -54,15 +56,43 @@ export function getLiveGameTelemetrySnapshot(): LiveGameTelemetrySnapshot {
   return { ...snapshot };
 }
 
-export async function persistLiveGameTelemetry(client: SupabaseClient, input: {
+type LiveGameTelemetryClient = {
+  from: (table: 'live_game_telemetry') => {
+    upsert: (
+      values: Record<string, unknown>,
+      options: { onConflict: string },
+    ) => PromiseLike<{ error: unknown }>;
+  };
+};
+
+export function shouldPersistLiveGameTelemetry(input: {
+  lastPersistedAt: number;
+  now: number;
+  force?: boolean;
+}) {
+  return Boolean(input.force)
+    || input.lastPersistedAt === 0
+    || input.now - input.lastPersistedAt >= LIVE_GAME_TELEMETRY_PERSIST_INTERVAL_MS;
+}
+
+export async function persistLiveGameTelemetry(client: LiveGameTelemetryClient, input: {
   userId: string;
   liveGameId: string | null;
   sessionId: string;
   platform: 'web' | 'expo';
+  force?: boolean;
+  now?: number;
 }) {
+  const now = input.now ?? Date.now();
+  if (!shouldPersistLiveGameTelemetry({
+    lastPersistedAt,
+    now,
+    force: input.force,
+  })) return false;
   const value = getLiveGameTelemetrySnapshot();
-  const signature = JSON.stringify({ ...input, value });
-  if (signature === lastPersistedSignature) return;
+  const { force: _force, now: _now, ...identity } = input;
+  const signature = JSON.stringify({ ...identity, value });
+  if (signature === lastPersistedSignature) return false;
   const { error } = await client.from('live_game_telemetry').upsert({
     user_id: input.userId,
     live_game_id: input.liveGameId,
@@ -74,8 +104,10 @@ export async function persistLiveGameTelemetry(client: SupabaseClient, input: {
     max_queue_depth: value.maxQueueDepth,
     slowest_sync_ms: value.slowestSyncMs,
     last_error: value.lastError,
-    updated_at: new Date().toISOString(),
+    updated_at: new Date(now).toISOString(),
   }, { onConflict: 'user_id,session_id' });
   if (error) throw error;
   lastPersistedSignature = signature;
+  lastPersistedAt = now;
+  return true;
 }

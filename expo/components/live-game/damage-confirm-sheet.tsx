@@ -27,9 +27,11 @@ type DamageConfirmSheetProps = {
     thisPlayer: string;
     eachOpponent: string;
     everyone: string;
+    drain: string;
+    drainHint: string;
   };
   onClose: () => void;
-  onConfirm: (input: { amount: number; mode: DamageMode; scope: 'single' | GroupDamageScope }) => void;
+  onConfirm: (input: { amount: number; mode: DamageMode; scope: 'single' | GroupDamageScope; drain: boolean }) => void;
 };
 
 export function DamageConfirmSheet({
@@ -50,12 +52,14 @@ export function DamageConfirmSheet({
   const [amount, setAmount] = useState(0);
   const [mode, setMode] = useState<DamageMode>(defaultMode);
   const [scope, setScope] = useState<'single' | GroupDamageScope>('single');
+  const [drain, setDrain] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setAmount(0);
     setMode(defaultMode);
     setScope('single');
+    setDrain(false);
   }, [visible, defaultMode, source?.participantKey, target?.participantKey]);
 
   if (!source || !target) return null;
@@ -146,7 +150,8 @@ export function DamageConfirmSheet({
                   style={[styles.typePill, compactPhone && styles.typePillCompact, isIPad && styles.typePillIPad, active && styles.typePillActive]}
                   onPress={() => {
                     setMode(option.value);
-                    if (option.value !== 'life') setScope('single');
+                    if (option.value === 'commander') setScope('single');
+                    if (option.value !== 'life') setDrain(false);
                   }}
                 >
                   <Ionicons name={option.icon} size={isIPad ? 19 : 14} color={active ? colors.primaryForeground : colors.muted} />
@@ -158,7 +163,7 @@ export function DamageConfirmSheet({
             })}
           </View>
 
-          {mode === 'life' ? (
+          {mode !== 'commander' ? (
             <View style={[styles.typeSegment, isIPad && styles.typeSegmentIPad]}>
               {([
                 { value: 'single' as const, label: labels.thisPlayer },
@@ -170,7 +175,10 @@ export function DamageConfirmSheet({
                   <Pressable
                     key={option.value}
                     style={[styles.scopePill, compactPhone && styles.scopePillCompact, isIPad && styles.scopePillIPad, active && styles.scopePillActive]}
-                    onPress={() => setScope(option.value)}
+                    onPress={() => {
+                      setScope(option.value);
+                      if (option.value === 'all_players') setDrain(false);
+                    }}
                   >
                     <Text style={[styles.scopeText, isIPad && styles.scopeTextIPad, active && styles.scopeTextActive]}>
                       {option.label}
@@ -181,11 +189,34 @@ export function DamageConfirmSheet({
             </View>
           ) : null}
 
+          {mode === 'life' ? (
+            <Pressable
+              style={[styles.drainToggle, compactPhone && styles.drainToggleCompact, drain && styles.drainToggleActive]}
+              onPress={() => {
+                setDrain((current) => {
+                  const next = !current;
+                  if (next && scope === 'all_players') setScope('opponents');
+                  return next;
+                });
+              }}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: drain }}
+              accessibilityLabel={labels.drain}
+            >
+              <Ionicons name="water-outline" size={17} color={drain ? '#f5d0fe' : colors.muted} />
+              <View style={styles.drainCopy}>
+                <Text style={[styles.drainLabel, drain && styles.drainLabelActive]}>{labels.drain}</Text>
+                {!compactPhone ? <Text style={styles.drainHint} numberOfLines={1}>{labels.drainHint}</Text> : null}
+              </View>
+              <Ionicons name={drain ? 'checkbox' : 'square-outline'} size={19} color={drain ? colors.primaryLight : colors.muted} />
+            </Pressable>
+          ) : null}
+
           <View style={[styles.footerRow, compactPhone && styles.footerRowCompact, isIPad && styles.footerRowIPad]}>
             <Button label={labels.cancel} variant="outline" onPress={onClose} style={styles.footerButton} />
             <Button
               label={labels.apply}
-              onPress={() => onConfirm({ amount, mode, scope })}
+              onPress={() => onConfirm({ amount, mode, scope, drain })}
               disabled={amount === 0}
               style={styles.footerButton}
             />
@@ -443,6 +474,42 @@ const styles = StyleSheet.create({
   },
   footerRowCompact: {
     minHeight: 36,
+  },
+  drainToggle: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardInset,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+  },
+  drainToggleCompact: {
+    minHeight: 32,
+    paddingVertical: 3,
+  },
+  drainToggleActive: {
+    borderColor: colors.selectionBorder,
+    backgroundColor: colors.selectionTintStrong,
+  },
+  drainCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  drainLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  drainLabelActive: {
+    color: colors.foreground,
+  },
+  drainHint: {
+    color: colors.muted,
+    fontSize: 9,
   },
   footerButton: {
     flex: 1,

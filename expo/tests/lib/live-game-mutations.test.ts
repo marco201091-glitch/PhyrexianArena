@@ -66,7 +66,7 @@ describe('live game mutations', () => {
     expect(undone.version).toBe(2);
   });
 
-  it('logs only the commander correction that was actually applied', () => {
+  it('aggregates only the commander correction that was actually applied', () => {
     const damaged = applyLiveGameMutation(makeState(), {
       type: 'adjust', targetKey: keys[1], sourceKey: keys[0], amount: 2, mode: 'commander',
       eventId: 'damage-two', occurredAt: '2026-07-14T11:00:00.000Z',
@@ -77,11 +77,11 @@ describe('live game mutations', () => {
     });
 
     expect(corrected.players[1]?.life).toBe(40);
-    expect(corrected.events[1]?.amount).toBe(2);
+    expect(corrected.events).toEqual([]);
     expect(corrected.summary?.byParticipant[keys[1]]?.lifeLost).toBe(0);
   });
 
-  it('records attributed damage, other damage, and lifegain in the event log', () => {
+  it('aggregates attributed damage, other damage, and lifegain without a raw log', () => {
     const commanderDamage = applyLiveGameMutation(makeState(), {
       type: 'adjust',
       targetKey: keys[1],
@@ -108,11 +108,13 @@ describe('live game mutations', () => {
       occurredAt: '2026-07-14T10:00:10.000Z',
     });
 
-    expect(lifegain.events.map((event) => [event.type, event.sourceKey, event.amount, event.direction])).toEqual([
-      ['commander_damage', keys[0], 5, 'increase'],
-      ['damage', null, 2, 'decrease'],
-      ['lifegain', null, 3, 'increase'],
-    ]);
+    expect(lifegain.events).toEqual([]);
+    expect(lifegain.summary?.byParticipant[keys[1]]).toMatchObject({
+      lifeLost: 7,
+      lifeGained: 3,
+      commanderDamageTaken: 5,
+    });
+    expect(lifegain.summary?.byParticipant[keys[0]]?.commanderDamageDealt).toBe(5);
   });
 
   it('distinguishes infect and commander damage from their manual corrections', () => {
@@ -134,12 +136,7 @@ describe('live game mutations', () => {
       eventId: 'infect-down', occurredAt: '2026-07-14T12:03:00.000Z',
     });
 
-    expect(infectCorrection.events.map((event) => [event.type, event.direction])).toEqual([
-      ['commander_damage', 'increase'],
-      ['commander_damage', 'decrease'],
-      ['infect', 'increase'],
-      ['infect', 'decrease'],
-    ]);
+    expect(infectCorrection.events).toEqual([]);
     expect(infectCorrection.summary?.byParticipant[keys[1]]).toMatchObject({
       lifeLost: 2,
       commanderDamageTaken: 2,
@@ -153,7 +150,7 @@ describe('live game mutations', () => {
     });
   });
 
-  it('keeps only 500 raw events while preserving exact bounded aggregates', () => {
+  it('keeps no routine raw events while preserving exact bounded aggregates', () => {
     let state = makeState();
     for (let index = 0; index < 505; index += 1) {
       state = applyLiveGameMutation(state, {
@@ -167,8 +164,7 @@ describe('live game mutations', () => {
       });
     }
 
-    expect(state.events).toHaveLength(500);
-    expect(state.events[0]?.id).toBe('overflow-5');
+    expect(state.events).toEqual([]);
     expect(state.summary?.totalEvents).toBe(505);
     expect(state.summary?.byParticipant[keys[1]]?.lifeGained).toBe(505);
   });
@@ -189,6 +185,7 @@ describe('live game mutations', () => {
     });
 
     expect(parsed.summary?.totalEvents).toBe(2);
+    expect(parsed.events).toEqual([]);
     expect(parsed.summary?.byParticipant[keys[1]]).toMatchObject({
       lifeLost: 4,
       lifeGained: 2,
@@ -240,6 +237,103 @@ describe('live game mutations', () => {
     expect(restored.version).toBe(2);
     expect(restored.players.map((player) => player.life)).toEqual([40, 40]);
     expect(restored.summary?.byParticipant[keys[0]]?.groupDamageDealt).toBe(0);
+  });
+
+  it('applies infect to every opponent as one atomic mutation', () => {
+    const infected = applyLiveGameMutation(makeState(), {
+      type: 'adjust_many',
+      sourceKey: keys[0],
+      amount: 3,
+      scope: 'opponents',
+      mode: 'infect',
+      eventId: 'group-infect',
+      occurredAt: '2026-07-19T12:00:00.000Z',
+    });
+
+    expect(infected.version).toBe(1);
+    expect(infected.players.map((player) => player.infect)).toEqual([0, 3]);
+    expect(infected.players.map((player) => player.life)).toEqual([40, 40]);
+    expect(infected.events).toEqual([]);
+    expect(infected.summary?.byParticipant[keys[0]]?.infectDealt).toBe(3);
+  });
+
+  it('drains the total life damage dealt to all opponents', () => {
+    const initial = makeState();
+    initial.players[0] = { ...initial.players[0]!, life: 30 };
+    const drained = applyLiveGameMutation(initial, {
+      type: 'adjust_many',
+      sourceKey: keys[0],
+      amount: 6,
+      scope: 'opponents',
+      mode: 'life',
+      drain: true,
+      eventId: 'group-drain',
+      occurredAt: '2026-07-19T12:00:00.000Z',
+    });
+    const reversed = applyLiveGameMutation(drained, {
+      type: 'adjust_many',
+      sourceKey: keys[0],
+      amount: -6,
+      scope: 'opponents',
+      mode: 'life',
+      drain: true,
+      drainAmount: 6,
+      eventId: 'undo-group-drain',
+      occurredAt: '2026-07-19T12:00:01.000Z',
+      isCorrection: true,
+    });
+
+    expect(drained.version).toBe(1);
+    expect(drained.players.map((player) => player.life)).toEqual([36, 34]);
+    expect(drained.events).toEqual([]);
+    expect(drained.summary?.byParticipant[keys[0]]).toMatchObject({
+      lifeDamageDealt: 6,
+      lifeGained: 6,
+    });
+    expect(reversed.players.map((player) => player.life)).toEqual([30, 40]);
+    expect(reversed.summary?.byParticipant[keys[0]]?.lifeDamageDealt).toBe(0);
+  });
+
+  it('drains life from a single target and reverses both totals', () => {
+    const initial = makeState();
+    initial.players[0] = { ...initial.players[0]!, life: 30 };
+    const drained = applyLiveGameMutation(initial, {
+      type: 'adjust',
+      sourceKey: keys[0],
+      targetKey: keys[1],
+      amount: 5,
+      mode: 'life',
+      drain: true,
+    });
+    const reversed = applyLiveGameMutation(drained, {
+      type: 'adjust',
+      sourceKey: keys[0],
+      targetKey: keys[1],
+      amount: -5,
+      mode: 'life',
+      drain: true,
+      drainAmount: 5,
+    });
+
+    expect(drained.players.map((player) => player.life)).toEqual([35, 35]);
+    expect(reversed.players.map((player) => player.life)).toEqual([30, 40]);
+  });
+
+  it('keeps routine damage only in compact participant summaries', () => {
+    const damaged = applyLiveGameMutation(makeState(), {
+      type: 'adjust',
+      sourceKey: keys[0],
+      targetKey: keys[1],
+      amount: 5,
+      mode: 'life',
+      eventId: 'damage',
+      occurredAt: '2026-07-19T12:00:00.000Z',
+    });
+
+    expect(damaged.events).toEqual([]);
+    expect(damaged.summary?.totalEvents).toBe(1);
+    expect(damaged.summary?.byParticipant[keys[0]]?.lifeDamageDealt).toBe(5);
+    expect(damaged.summary?.byParticipant[keys[1]]?.lifeLost).toBe(5);
   });
 
   it('requires an alternative win condition unless only one player remains', () => {

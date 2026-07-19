@@ -29,6 +29,7 @@ export interface ArenaMatch {
   played_at: string;
   created_by: string;
   notes: string | null;
+  starting_life?: number | null;
   duration_seconds?: number | null;
   live_game_log?: unknown[];
   win_condition?: 'last_standing' | 'combo' | 'concession' | 'alternate_card' | 'other' | null;

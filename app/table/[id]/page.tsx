@@ -66,17 +66,16 @@ import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import type { ArenaDaySummary } from '@/lib/arena-day-fetch';
 import {
-  buildColorAnalyticsFromRows,
-  buildCommanderStatsFromRows,
-  buildPlayerStatsFromRows,
-  extractDeckColorOverridesFromRows,
-  fetchArenaStatsParticipants,
-} from '@/lib/arena-stats-fetch';
+  buildArenaAnalyticsBundle,
+  fetchArenaAnalyticsPayload,
+  type ArenaAnalyticsBundlePayload,
+} from '@/lib/arena-analytics-bundle';
 import { fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '@/lib/arena-match-fetch';
 import { fetchActiveLiveGame, fetchLiveGameByMatchId } from '@/lib/live-game-service';
 import type { LiveGameRecord } from '@/lib/live-game';
 import { formatGameDuration } from '@/lib/live-game-duration';
-import { buildArenaAwards, buildDeckPerformanceStats } from '@/lib/deck-performance-analytics';
+import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
+import { buildArenaAwards } from '@/lib/deck-performance-analytics';
 
 import { groupMatchesByDay } from '@/lib/arena-session';
 import {
@@ -191,6 +190,14 @@ const MATCHES_SELECT = `
     was_starting_player,
     group_damage_dealt,
     group_damage_events,
+    participant_name_snapshot,
+    deck_name_snapshot,
+    commander_snapshot,
+    commander_image_snapshot,
+    deck_bracket_snapshot,
+    color_identity_snapshot,
+    final_life,
+    final_infect,
     profiles (id, username, display_name),
     arena_guests (id, display_name),
     decks (name, commander, commander_image, bracket, color_identity, source_type),
@@ -204,9 +211,17 @@ function extractMatchDeckIds(matches: Match[]) {
   )) as string[];
 }
 
-async function fetchArenaMemberDecks(memberIds: string[]) {
+async function fetchArenaMemberDecks(groupId: string, memberIds: string[]) {
   if (memberIds.length === 0) return [] as Deck[];
 
+  const { data, error } = await supabase.rpc('get_arena_member_decks', {
+    p_group_id: groupId,
+    p_user_ids: memberIds,
+    p_limit_per_user: ARENA_MEMBER_DECK_LIMIT,
+  });
+  if (!error) return (data || []) as Deck[];
+
+  // Compatibility fallback while a new deployment is waiting for migrations.
   const decks: Deck[] = [];
 
   for (let index = 0; index < memberIds.length; index += ARENA_MEMBER_FETCH_CONCURRENCY) {
@@ -264,6 +279,7 @@ interface Match {
   played_at: string;
   created_by: string;
   notes: string | null;
+  starting_life?: number | null;
   duration_seconds?: number | null;
   live_game_log?: unknown[];
   win_condition?: 'last_standing' | 'combo' | 'concession' | 'alternate_card' | 'other' | null;
@@ -402,9 +418,7 @@ export default function TablePage() {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
   const [guests, setGuests] = useState<ArenaGuest[]>([]);
-  const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
-  const [commanderStats, setCommanderStats] = useState<CommanderStats[]>([]);
-  const [statsParticipantRows, setStatsParticipantRows] = useState<Awaited<ReturnType<typeof fetchArenaStatsParticipants>>>([]);
+  const [analyticsPayload, setAnalyticsPayload] = useState<ArenaAnalyticsBundlePayload>({});
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
@@ -417,6 +431,12 @@ export default function TablePage() {
   const colorSyncInFlightRef = useRef(false);
   const imageRefreshInFlightRef = useRef(false);
   const arenaMetadataSyncInFlightRef = useRef(false);
+  const analyticsBundle = useMemo(
+    () => buildArenaAnalyticsBundle(analyticsPayload, bracketFilter, deckStatsSort),
+    [analyticsPayload, bracketFilter, deckStatsSort],
+  );
+  const playerStats = analyticsBundle.players as PlayerStats[];
+  const commanderStats = analyticsBundle.commanders as CommanderStats[];
 
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [detailsMatch, setDetailsMatch] = useState<Match | null>(null);
@@ -653,6 +673,11 @@ export default function TablePage() {
       setDetailsRecapLoading(false);
       return;
     }
+    if (detailsMatch.tracking_version >= 3) {
+      setDetailsLiveGame(null);
+      setDetailsRecapLoading(false);
+      return;
+    }
     let active = true;
     setDetailsRecapLoading(true);
     void fetchLiveGameByMatchId(supabase, detailsMatch.id)
@@ -696,7 +721,7 @@ export default function TablePage() {
 
     setDecksLoading(true);
     try {
-      const pickerDecks = await fetchArenaMemberDecks(memberIds);
+      const pickerDecks = await fetchArenaMemberDecks(groupId, memberIds);
       setDecks(pickerDecks);
       setDeckColorOverrides((current) => {
         const next = { ...current };
@@ -711,7 +736,7 @@ export default function TablePage() {
     } finally {
       setDecksLoading(false);
     }
-  }, [syncArenaDeckMetadata]);
+  }, [groupId, syncArenaDeckMetadata]);
 
   const ensureArenaMemberDecksLoaded = useCallback(() => {
     if (decksLoading || decks.length > 0 || members.length === 0) return;
@@ -749,14 +774,11 @@ export default function TablePage() {
     }
 
     try {
-      const rows = await fetchArenaStatsParticipants(supabase, groupId, getStatsSinceDate());
-      setStatsParticipantRows(rows);
-      setPlayerStats(buildPlayerStatsFromRows(rows));
-      setCommanderStats(buildCommanderStatsFromRows(rows, bracketFilter, deckStatsSort));
+      setAnalyticsPayload(await fetchArenaAnalyticsPayload(supabase, groupId, getStatsSinceDate()));
     } catch (error) {
       console.error('Error refreshing arena stats:', error);
     }
-  }, [bracketFilter, deckStatsSort, getStatsSinceDate, groupId, initializeMatchHistory]);
+  }, [getStatsSinceDate, groupId, initializeMatchHistory]);
 
   const loadFilteredMatchHistory = useCallback(async (since: Date) => {
     try {
@@ -972,27 +994,19 @@ export default function TablePage() {
   }, [editingMatch, editMatchPlayerDecks]);
 
   const bracketOptions = useMemo(() => {
-    const brackets = new Set<string>();
-    statsParticipantRows.forEach((row) => {
-      const bracket = row.deck_bracket || row.guest_deck_bracket;
-      if (bracket) brackets.add(bracket);
-    });
-    return Array.from(brackets).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [statsParticipantRows]);
+    return analyticsBundle.brackets;
+  }, [analyticsBundle.brackets]);
 
   useEffect(() => {
     if (!user || loading) return;
     void (async () => {
       try {
-        const rows = await fetchArenaStatsParticipants(supabase, groupId, getStatsSinceDate());
-        setStatsParticipantRows(rows);
-        setPlayerStats(buildPlayerStatsFromRows(rows));
-        setCommanderStats(buildCommanderStatsFromRows(rows, bracketFilter, deckStatsSort));
+        setAnalyticsPayload(await fetchArenaAnalyticsPayload(supabase, groupId, getStatsSinceDate()));
       } catch (error) {
         console.error('Error fetching arena stats:', error);
       }
     })();
-  }, [bracketFilter, deckStatsSort, getStatsSinceDate, groupId, loading, user]);
+  }, [getStatsSinceDate, groupId, loading, user]);
 
   const deckIdsInMatches = useMemo(() => Array.from(new Set(
     getFilteredMatches().flatMap((match) =>
@@ -1005,16 +1019,8 @@ export default function TablePage() {
     runWhenIdle(() => ensureArenaDeckColors(deckIdsInMatches), { timeoutMs: 2000 });
   }, [activeTab, deckIdsInMatches, ensureArenaDeckColors, loading]);
 
-  const colorAnalytics = useMemo(() => buildColorAnalyticsFromRows(
-    statsParticipantRows,
-    new Map(Object.entries(deckColorOverrides)),
-    bracketFilter,
-  ), [bracketFilter, deckColorOverrides, statsParticipantRows]);
-
-  const deckPerformance = useMemo(
-    () => buildDeckPerformanceStats(statsParticipantRows),
-    [statsParticipantRows],
-  );
+  const colorAnalytics = analyticsBundle.colors;
+  const deckPerformance = analyticsBundle.decks;
   const arenaAwards = useMemo(() => buildArenaAwards(deckPerformance), [deckPerformance]);
 
   const copyInviteLink = () => {
@@ -3597,7 +3603,7 @@ export default function TablePage() {
               </div>
 
               {detailsRecapLoading ? <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-6 text-center text-sm text-cyan-100">{t({ it: 'Caricamento riepilogo…', en: 'Loading recap…' })}</div> : null}
-              {detailsLiveGame ? <LiveGameRecapView record={detailsLiveGame} labels={{ timeline: t({ it: 'Andamento vite', en: 'Life timeline' }), highlights: t({ it: 'Momenti chiave', en: 'Highlights' }), empty: t({ it: 'Nessun momento chiave registrato.', en: 'No highlights recorded.' }) }} /> : null}
+              {(detailsLiveGame || (detailsMatch.tracking_version != null ? buildHistoricalLiveGameRecord(detailsMatch) : null)) ? <LiveGameRecapView record={detailsLiveGame ?? buildHistoricalLiveGameRecord(detailsMatch)} labels={{ timeline: t({ it: 'Andamento vite', en: 'Life timeline' }), highlights: t({ it: 'Momenti chiave', en: 'Highlights' }), empty: t({ it: 'Nessun momento chiave registrato.', en: 'No highlights recorded.' }) }} /> : null}
 
               <div className="space-y-3">
                 {detailsMatch.match_participants

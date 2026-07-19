@@ -1,0 +1,1 @@
+export const FINISHED_LIVE_GAME_RETENTION_DAYS = 14;

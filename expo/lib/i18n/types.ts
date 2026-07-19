@@ -262,6 +262,8 @@ export type TranslationKey =
   | 'liveGameThisPlayer'
   | 'liveGameEachOpponent'
   | 'liveGameEveryone'
+  | 'liveGameDrain'
+  | 'liveGameDrainHint'
   | 'liveGameCommanderDamage'
   | 'liveGameInfect'
   | 'liveGameEliminated'

@@ -59,7 +59,7 @@ import {
 } from '@/lib/live-game-setup';
 import { formatGameDuration, getGameDurationSeconds } from '@/lib/live-game-duration';
 import {
-  applyQueuedLiveGameMutation,
+  applyQueuedLiveGameMutations,
   cancelLiveGame,
   ensureLiveGameCreated,
   fetchActiveLiveGame,
@@ -67,6 +67,10 @@ import {
   finalizePendingLiveGame,
   subscribeToLiveGame,
 } from '@/lib/live-game-service';
+import {
+  LIVE_GAME_SYNC_BATCH_SIZE,
+  getLiveGameSyncDelay,
+} from '@/lib/live-game-sync-policy';
 import {
   archiveAndClearLiveGameSession,
   clearLiveGameOfflineSession,
@@ -192,6 +196,8 @@ export default function LiveGameScreen() {
   const pendingCancelRef = useRef(false);
   const syncRunningRef = useRef(false);
   const syncPromiseRef = useRef<Promise<void> | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncBatchStartedAtRef = useRef<number | null>(null);
   const journalWriteRef = useRef<Promise<void>>(Promise.resolve());
   const historyRef = useRef<LiveGameHistory>(createLiveGameHistory());
   const [undoDepth, setUndoDepth] = useState(0);
@@ -417,9 +423,10 @@ export default function LiveGameScreen() {
         await saveLiveGameOutbox(outbox);
       }
       while (item.mutations.length > 0) {
-        serverRecord = await applyQueuedLiveGameMutation(supabase, serverRecord, item.mutations[0]);
+        const batch = item.mutations.slice(0, LIVE_GAME_SYNC_BATCH_SIZE);
+        serverRecord = await applyQueuedLiveGameMutations(supabase, serverRecord, batch);
         item.serverRecord = serverRecord;
-        item.mutations = item.mutations.slice(1);
+        item.mutations = item.mutations.slice(batch.length);
         await saveLiveGameOutbox(outbox);
       }
       if (item.finalization) {
@@ -438,6 +445,10 @@ export default function LiveGameScreen() {
   }, []);
 
   const syncJournal = useCallback(() => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
     if (syncPromiseRef.current) return syncPromiseRef.current;
     syncRunningRef.current = true;
     setSyncStatus('syncing');
@@ -464,10 +475,11 @@ export default function LiveGameScreen() {
         }
 
         while (mutationQueueRef.current.length > 0) {
-          const queued = mutationQueueRef.current[0];
-          serverRecord = await applyQueuedLiveGameMutation(supabase, serverRecord, queued);
+          const batch = mutationQueueRef.current.slice(0, LIVE_GAME_SYNC_BATCH_SIZE);
+          serverRecord = await applyQueuedLiveGameMutations(supabase, serverRecord, batch);
           serverRecordRef.current = serverRecord;
-          mutationQueueRef.current = mutationQueueRef.current.slice(1);
+          mutationQueueRef.current = mutationQueueRef.current.slice(batch.length);
+          if (mutationQueueRef.current.length === 0) syncBatchStartedAtRef.current = null;
           setPendingSyncCount(mutationQueueRef.current.length);
           setOptimisticRecord(replayQueuedMutations(serverRecord, mutationQueueRef.current));
           await saveJournal();
@@ -494,6 +506,7 @@ export default function LiveGameScreen() {
             liveGameId: liveGameRef.current?.id ?? null,
             sessionId: telemetrySessionRef.current,
             platform: 'expo',
+            force: failed,
           }).catch(() => undefined);
         }
       }
@@ -503,6 +516,24 @@ export default function LiveGameScreen() {
     syncPromiseRef.current = tracked;
     return tracked;
   }, [flushOutbox, groupId, saveJournal, setOptimisticRecord, user]);
+
+  const scheduleSync = useCallback(() => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    if (mutationQueueRef.current.length === 0) {
+      syncTimerRef.current = null;
+      syncBatchStartedAtRef.current = null;
+      return;
+    }
+    if (syncBatchStartedAtRef.current === null) syncBatchStartedAtRef.current = Date.now();
+    const delay = getLiveGameSyncDelay({
+      queueDepth: mutationQueueRef.current.length,
+      batchStartedAt: syncBatchStartedAtRef.current,
+    });
+    syncTimerRef.current = setTimeout(() => {
+      syncTimerRef.current = null;
+      void syncJournal();
+    }, delay);
+  }, [syncJournal]);
 
   useEffect(() => {
     if (!groupId || !user) return;
@@ -520,6 +551,7 @@ export default function LiveGameScreen() {
       if (cached) {
         serverRecordRef.current = cached.serverRecord;
         mutationQueueRef.current = cached.mutations;
+        syncBatchStartedAtRef.current = cached.mutations.length ? Date.now() : null;
         needsCreateRef.current = cached.needsCreate;
         pendingFinalizationRef.current = cached.pendingFinalization;
         pendingCancelRef.current = cached.pendingCancel;
@@ -538,6 +570,7 @@ export default function LiveGameScreen() {
           serverRecordRef.current = remote;
           const queue = cached?.record.id === remote.id ? mutationQueueRef.current : [];
           mutationQueueRef.current = queue;
+          syncBatchStartedAtRef.current = queue.length ? Date.now() : null;
           setPendingSyncCount(queue.length);
           needsCreateRef.current = false;
           setOptimisticRecord(replayQueuedMutations(remote, queue));
@@ -546,6 +579,7 @@ export default function LiveGameScreen() {
           await clearLiveGameOfflineSession(groupId);
           serverRecordRef.current = null;
           mutationQueueRef.current = [];
+          syncBatchStartedAtRef.current = null;
           setPendingSyncCount(0);
           historyRef.current = createLiveGameHistory();
           setUndoDepth(0);
@@ -564,6 +598,16 @@ export default function LiveGameScreen() {
     return () => { mounted = false; };
   }, [groupId, saveJournal, setOptimisticRecord, syncJournal, user]);
 
+  const refreshAuthoritativeState = useCallback(async () => {
+    const current = liveGameRef.current;
+    if (!groupId || !user || !current || needsCreateRef.current || syncRunningRef.current) return;
+    const remote = await fetchActiveLiveGame(supabase, groupId, toUserParticipantKey(user.id));
+    if (!remote || remote.id !== current.id) return;
+    serverRecordRef.current = remote;
+    setOptimisticRecord(replayQueuedMutations(remote, mutationQueueRef.current));
+    await saveJournal();
+  }, [groupId, saveJournal, setOptimisticRecord, user]);
+
   useEffect(() => {
     if (!liveGame?.id || needsCreateRef.current) return undefined;
     return subscribeToLiveGame(supabase, liveGame.id, (remote) => {
@@ -571,6 +615,7 @@ export default function LiveGameScreen() {
         if (pendingFinalizationRef.current || pendingCancelRef.current) return;
         serverRecordRef.current = null;
         mutationQueueRef.current = [];
+        syncBatchStartedAtRef.current = null;
         pendingFinalizationRef.current = null;
         pendingCancelRef.current = false;
         setPendingSyncCount(0);
@@ -597,12 +642,12 @@ export default function LiveGameScreen() {
     }, (status) => {
       if (status === 'SUBSCRIBED') {
         setSyncStatus(mutationQueueRef.current.length ? 'pending' : 'synced');
-        void syncJournal();
+        void refreshAuthoritativeState().catch(() => undefined).finally(() => syncJournal());
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         setSyncStatus('offline');
       }
     });
-  }, [copy, groupId, liveGame?.id, router, saveJournal, setOptimisticRecord, showToast, syncJournal]);
+  }, [copy, groupId, liveGame?.id, refreshAuthoritativeState, router, saveJournal, setOptimisticRecord, showToast, syncJournal]);
 
   useEffect(() => {
     if (!groupId || !user || loading || setupHydratedRef.current === `${user.id}:${groupId}`) return;
@@ -634,15 +679,24 @@ export default function LiveGameScreen() {
     const interval = setInterval(() => void syncJournal(), 10_000);
     const appStateSubscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void syncJournal();
+        void refreshAuthoritativeState().catch(() => undefined).finally(() => syncJournal());
         if (liveGameRef.current) applyLiveGameImmersive();
+      } else if (user) {
+        void persistLiveGameTelemetry(supabase, {
+          userId: user.id,
+          liveGameId: liveGameRef.current?.id ?? null,
+          sessionId: telemetrySessionRef.current,
+          platform: 'expo',
+          force: true,
+        }).catch(() => undefined);
       }
     });
     return () => {
       clearInterval(interval);
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       appStateSubscription.remove();
     };
-  }, [syncJournal]);
+  }, [refreshAuthoritativeState, syncJournal, user]);
 
   const liveGameId = liveGame?.id ?? null;
   const liveGamePlayerCount = liveGame?.state.players.length ?? 0;
@@ -696,6 +750,7 @@ export default function LiveGameScreen() {
       occurredAt: mutation.occurredAt ?? new Date().toISOString(),
     };
     const queued = { id, mutation: trackedMutation };
+    if (mutationQueueRef.current.length === 0) syncBatchStartedAtRef.current = Date.now();
     mutationQueueRef.current = [...mutationQueueRef.current, queued];
     setPendingSyncCount(mutationQueueRef.current.length);
     setSyncStatus('pending');
@@ -706,8 +761,8 @@ export default function LiveGameScreen() {
       setRedoDepth(0);
     }
     setOptimisticRecord({ ...current, state: applyLiveGameMutation(current.state, trackedMutation) });
-    void saveJournal().then(() => syncJournal());
-  }, [saveJournal, setOptimisticRecord, syncJournal]);
+    void saveJournal().then(scheduleSync);
+  }, [saveJournal, scheduleSync, setOptimisticRecord]);
 
   const handleUndo = () => {
     const result = undoLiveGameHistory(historyRef.current);
@@ -874,6 +929,7 @@ export default function LiveGameScreen() {
       };
       serverRecordRef.current = created;
       mutationQueueRef.current = [];
+      syncBatchStartedAtRef.current = null;
       setPendingSyncCount(0);
       historyRef.current = createLiveGameHistory();
       setUndoDepth(0);
@@ -923,22 +979,31 @@ export default function LiveGameScreen() {
     amount: number;
     mode: DamageMode;
     scope: 'single' | import('@/lib/live-game').GroupDamageScope;
+    drain: boolean;
   }) => {
     if (input.sourceKey === input.targetKey || input.amount <= 0) return;
-    if (input.scope !== 'single' && input.mode === 'life') {
-      liveGameRef.current?.state.players
-        .filter((player) => !player.isEliminated && (input.scope === 'all_players' || player.participantKey !== input.sourceKey))
-        .forEach((player) => pulseDamage(player.participantKey));
+    const effectiveScope = input.drain && input.scope === 'all_players' ? 'opponents' : input.scope;
+    if (effectiveScope !== 'single' && input.mode !== 'commander') {
+      const targets = liveGameRef.current?.state.players
+        .filter((player) => !player.isEliminated && (effectiveScope === 'all_players' || player.participantKey !== input.sourceKey)) ?? [];
+      targets.forEach((player) => pulseDamage(player.participantKey));
+      const drainAmount = input.drain ? input.amount * targets.length : undefined;
       enqueueMutation({
         type: 'adjust_many',
         sourceKey: input.sourceKey,
         amount: input.amount,
-        scope: input.scope,
+        scope: effectiveScope,
+        mode: input.mode,
+        drain: input.drain,
+        drainAmount,
       }, {
         type: 'adjust_many',
         sourceKey: input.sourceKey,
         amount: -input.amount,
-        scope: input.scope,
+        scope: effectiveScope,
+        mode: input.mode,
+        drain: input.drain,
+        drainAmount,
       });
     } else {
       pulseDamage(input.targetKey);
@@ -948,11 +1013,23 @@ export default function LiveGameScreen() {
         amount: input.amount,
         mode: input.mode,
         sourceKey: input.sourceKey,
+        drain: input.drain,
+        drainAmount: input.drain ? input.amount : undefined,
       };
       const player = liveGameRef.current?.state.players.find(
         (entry) => entry.participantKey === input.targetKey,
       );
-      enqueueMutation(mutation, player ? { type: 'restore-player', player } : undefined);
+      enqueueMutation(mutation, input.drain
+        ? {
+          type: 'adjust',
+          targetKey: input.targetKey,
+          sourceKey: input.sourceKey,
+          amount: -input.amount,
+          mode: input.mode,
+          drain: true,
+          drainAmount: input.amount,
+        }
+        : player ? { type: 'restore-player', player } : undefined);
     }
     hapticSuccess();
   };
@@ -987,6 +1064,7 @@ export default function LiveGameScreen() {
       });
       serverRecordRef.current = null;
       mutationQueueRef.current = [];
+      syncBatchStartedAtRef.current = null;
       setPendingSyncCount(0);
       historyRef.current = createLiveGameHistory();
       setUndoDepth(0);
@@ -1063,6 +1141,7 @@ export default function LiveGameScreen() {
       });
       serverRecordRef.current = null;
       mutationQueueRef.current = [];
+      syncBatchStartedAtRef.current = null;
       setPendingSyncCount(0);
       historyRef.current = createLiveGameHistory();
       setUndoDepth(0);
@@ -1137,6 +1216,7 @@ export default function LiveGameScreen() {
     };
     serverRecordRef.current = record;
     mutationQueueRef.current = [];
+    syncBatchStartedAtRef.current = null;
     setPendingSyncCount(0);
     historyRef.current = createLiveGameHistory();
     setUndoDepth(0);
@@ -1210,6 +1290,8 @@ export default function LiveGameScreen() {
             thisPlayer: copy('liveGameThisPlayer'),
             eachOpponent: copy('liveGameEachOpponent'),
             everyone: copy('liveGameEveryone'),
+            drain: copy('liveGameDrain'),
+            drainHint: copy('liveGameDrainHint'),
             dieOrCoin: copy('dieOrCoin'),
             coin: copy('coin'),
             heads: copy('heads'),

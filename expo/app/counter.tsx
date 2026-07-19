@@ -290,6 +290,8 @@ export default function CounterScreen() {
         thisPlayer: copy('liveGameThisPlayer'),
         eachOpponent: copy('liveGameEachOpponent'),
         everyone: copy('liveGameEveryone'),
+        drain: copy('liveGameDrain'),
+        drainHint: copy('liveGameDrainHint'),
         dieOrCoin: copy('dieOrCoin'),
         coin: copy('coin'),
         heads: copy('heads'),
@@ -322,9 +324,12 @@ export default function CounterScreen() {
         setRecapEndedAt(Date.now());
       }}
       onAdjust={(key, delta) => mutate({ type: 'adjust', targetKey: key, amount: -delta, mode: 'life' })}
-      onApplyDragDamage={({ sourceKey, targetKey, amount, mode, scope }) => mutate(scope === 'single'
-        ? { type: 'adjust', sourceKey, targetKey, amount, mode }
-        : { type: 'adjust_many', sourceKey, amount, scope })}
+      onApplyDragDamage={({ sourceKey, targetKey, amount, mode, scope, drain }) => {
+        const effectiveScope = drain && scope === 'all_players' ? 'opponents' : scope;
+        mutate(effectiveScope === 'single'
+          ? { type: 'adjust', sourceKey, targetKey, amount, mode, drain }
+          : { type: 'adjust_many', sourceKey, amount, scope: effectiveScope, mode: mode === 'infect' ? 'infect' : 'life', drain });
+      }}
       onEliminate={(key) => mutate({ type: 'eliminate', targetKey: key, eliminatedAt: new Date().toISOString() })}
       onRevive={(key) => mutate({ type: 'revive', targetKey: key, startingLife: format === 'commander' ? 40 : 20 })}
       onPickRandom={(pool) => {

@@ -51,10 +51,11 @@ export function useArena(groupId: string | undefined, userId: string | undefined
   }, [groupId, userId]);
 
   const loadMemberDecks = useCallback(async (memberIds: string[]) => {
-    const loadedDecks = await fetchArenaMemberDecks(supabase, memberIds);
+    if (!groupId) return [] as MemberDeck[];
+    const loadedDecks = await fetchArenaMemberDecks(supabase, groupId, memberIds);
     setDecks(loadedDecks);
     return loadedDecks;
-  }, []);
+  }, [groupId]);
 
   const refresh = useCallback(async (showLoading = true) => {
     if (!groupId || !userId) {

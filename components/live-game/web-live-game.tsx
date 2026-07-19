@@ -158,6 +158,7 @@ type DamageDraft = {
   targetKey: ParticipantKey;
   mode: DamageMode;
   scope: 'single' | GroupDamageScope;
+  drain: boolean;
 };
 
 const WIN_CONDITIONS: Array<{
@@ -265,6 +266,7 @@ export function WebLiveGame({
   const [redoDepth, setRedoDepth] = useState(0);
   const syncingRef = useRef(false);
   const syncTimerRef = useRef<number | null>(null);
+  const syncBatchStartedAtRef = useRef<number | null>(null);
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
@@ -519,6 +521,7 @@ export function WebLiveGame({
     setCompletedRecord(completed);
     serverRef.current = null;
     queueRef.current = [];
+    syncBatchStartedAtRef.current = null;
     needsCreateRef.current = false;
     historyRef.current = createLiveGameHistory();
     setUndoDepth(0);
@@ -531,6 +534,7 @@ export function WebLiveGame({
   const clearCancelledGame = useCallback(() => {
     serverRef.current = null;
     queueRef.current = [];
+    syncBatchStartedAtRef.current = null;
     needsCreateRef.current = false;
     historyRef.current = createLiveGameHistory();
     setUndoDepth(0);
@@ -549,6 +553,7 @@ export function WebLiveGame({
     syncingRef.current = true;
     setSyncing(true);
     setSyncError(null);
+    let failed = false;
     try {
       let server = serverRef.current;
       if (needsCreateRef.current) {
@@ -569,6 +574,7 @@ export function WebLiveGame({
         server = await applyQueuedLiveGameMutations(supabase, server, batch);
         serverRef.current = server;
         queueRef.current = queueRef.current.slice(batch.length);
+        if (queueRef.current.length === 0) syncBatchStartedAtRef.current = null;
         setPendingSyncCount(queueRef.current.length);
         setOptimisticRecord(replay(server, queueRef.current));
         persist(recordRef.current);
@@ -595,6 +601,7 @@ export function WebLiveGame({
       persist(recordRef.current);
       return true;
     } catch (error) {
+      failed = true;
       persist(recordRef.current);
       setSyncError(error instanceof Error ? error.message : 'Sync failed');
       console.error('Web live-game sync failed', error);
@@ -607,21 +614,39 @@ export function WebLiveGame({
         liveGameId: recordRef.current?.id ?? null,
         sessionId: telemetrySessionRef.current,
         platform: 'web',
+        force: failed,
       }).catch(() => undefined);
     }
   }, [clearCancelledGame, groupId, persist, setOptimisticRecord, showCompletedGame, userId]);
 
   const scheduleFlush = useCallback(() => {
     if (syncTimerRef.current !== null) window.clearTimeout(syncTimerRef.current);
+    if (queueRef.current.length > 0 && syncBatchStartedAtRef.current === null) {
+      syncBatchStartedAtRef.current = Date.now();
+    }
     const delay = getLiveGameSyncDelay({
-      hasRemoteGuests: lobbyGuests.length > 0,
       queueDepth: queueRef.current.length,
+      batchStartedAt: syncBatchStartedAtRef.current,
     });
     syncTimerRef.current = window.setTimeout(() => {
       syncTimerRef.current = null;
       void flush();
     }, delay);
-  }, [flush, lobbyGuests.length]);
+  }, [flush]);
+
+  const refreshAuthoritativeState = useCallback(async () => {
+    const current = recordRef.current;
+    if (!current || needsCreateRef.current || syncingRef.current) return;
+    const remote = await fetchActiveLiveGame(
+      supabase,
+      groupId,
+      `user:${userId}` as ParticipantKey,
+    );
+    if (!remote || remote.id !== current.id) return;
+    serverRef.current = remote;
+    setOptimisticRecord(replay(remote, queueRef.current));
+    persist(recordRef.current);
+  }, [groupId, persist, setOptimisticRecord, userId]);
 
   useEffect(() => {
     if (queueRef.current.length > 0) scheduleFlush();
@@ -635,7 +660,18 @@ export function WebLiveGame({
 
   useEffect(() => {
     const flushBeforeBackground = () => {
-      if (document.visibilityState === 'hidden' && queueRef.current.length > 0) void flush();
+      if (document.visibilityState === 'hidden') {
+        if (queueRef.current.length > 0) void flush();
+        void persistLiveGameTelemetry(supabase, {
+          userId,
+          liveGameId: recordRef.current?.id ?? null,
+          sessionId: telemetrySessionRef.current,
+          platform: 'web',
+          force: true,
+        }).catch(() => undefined);
+      } else {
+        void refreshAuthoritativeState().catch(() => undefined).finally(() => flush());
+      }
     };
     const flushBeforeExit = () => {
       if (queueRef.current.length > 0) void flush();
@@ -646,13 +682,13 @@ export function WebLiveGame({
       document.removeEventListener('visibilitychange', flushBeforeBackground);
       window.removeEventListener('pagehide', flushBeforeExit);
     };
-  }, [flush]);
+  }, [flush, refreshAuthoritativeState, userId]);
 
   useEffect(() => {
     setOnline(navigator.onLine);
     const onOnline = () => {
       setOnline(true);
-      void flush();
+      void refreshAuthoritativeState().catch(() => undefined).finally(() => flush());
     };
     const onOffline = () => setOnline(false);
     window.addEventListener('online', onOnline);
@@ -661,7 +697,7 @@ export function WebLiveGame({
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };
-  }, [flush]);
+  }, [flush, refreshAuthoritativeState]);
 
   useEffect(() => {
     let mounted = true;
@@ -671,6 +707,7 @@ export function WebLiveGame({
       if (cached?.record.state.players.some((player) => player.participantKey === participantKey)) {
         serverRef.current = cached.serverRecord;
         queueRef.current = cached.mutations;
+        syncBatchStartedAtRef.current = cached.mutations.length ? Date.now() : null;
         needsCreateRef.current = cached.needsCreate;
         pendingFinalizationRef.current = cached.pendingFinalization;
         pendingCancelRef.current = cached.pendingCancel;
@@ -687,6 +724,7 @@ export function WebLiveGame({
           const queue = cached?.record.id === remote.id ? queueRef.current : [];
           serverRef.current = remote;
           queueRef.current = queue;
+          syncBatchStartedAtRef.current = queue.length ? Date.now() : null;
           setPendingSyncCount(queue.length);
           needsCreateRef.current = false;
           setOptimisticRecord(replay(remote, queue));
@@ -696,6 +734,7 @@ export function WebLiveGame({
           clearWebLiveGameJournal(groupId);
           serverRef.current = null;
           queueRef.current = [];
+          syncBatchStartedAtRef.current = null;
           setOptimisticRecord(null);
         }
       } catch {
@@ -715,6 +754,7 @@ export function WebLiveGame({
         if (pendingFinalizationRef.current || pendingCancelRef.current) return;
         serverRef.current = null;
         queueRef.current = [];
+        syncBatchStartedAtRef.current = null;
         pendingFinalizationRef.current = null;
         pendingCancelRef.current = false;
         clearWebLiveGameJournal(groupId);
@@ -732,8 +772,12 @@ export function WebLiveGame({
       serverRef.current = remote;
       setOptimisticRecord(replay(remote, queueRef.current));
       persist(recordRef.current);
+    }, (status) => {
+      if (status === 'SUBSCRIBED') {
+        void refreshAuthoritativeState().catch(() => undefined).finally(() => flush());
+      }
     });
-  }, [activeRecordId, copy, groupId, persist, router, setOptimisticRecord, toast]);
+  }, [activeRecordId, copy, flush, groupId, persist, refreshAuthoritativeState, router, setOptimisticRecord, toast]);
 
   useEffect(() => {
     durationRef.current = duration;
@@ -837,6 +881,7 @@ export function WebLiveGame({
       };
       serverRef.current = created;
       queueRef.current = [];
+      syncBatchStartedAtRef.current = null;
       setPendingSyncCount(0);
       historyRef.current = createLiveGameHistory();
       setUndoDepth(0);
@@ -875,6 +920,7 @@ export function WebLiveGame({
       eventId: mutation.eventId ?? id,
       occurredAt: mutation.occurredAt ?? new Date().toISOString(),
     };
+    if (queueRef.current.length === 0) syncBatchStartedAtRef.current = Date.now();
     queueRef.current = [...queueRef.current, { id, mutation: tracked }];
     setPendingSyncCount(queueRef.current.length);
     recordLiveGameQueueDepth(queueRef.current.length);
@@ -956,7 +1002,7 @@ export function WebLiveGame({
     const up = () => {
       setDrag((current) => {
         if (current?.targetKey) {
-          setDamageDraft({ sourceKey: current.sourceKey, targetKey: current.targetKey, mode: 'life', scope: 'single' });
+          setDamageDraft({ sourceKey: current.sourceKey, targetKey: current.targetKey, mode: 'life', scope: 'single', drain: false });
           setDamageAmount('0');
         }
         return null;
@@ -973,20 +1019,34 @@ export function WebLiveGame({
   }, [dragging]);
 
   const applyDamageDraft = () => {
-    if (!damageDraft) return;
+    const currentRecord = recordRef.current;
+    if (!damageDraft || !currentRecord) return;
     const amount = Math.max(0, Math.min(999, Number(damageAmount) || 0));
     if (amount === 0) return;
-    if (damageDraft.scope !== 'single' && damageDraft.mode === 'life') {
+    const effectiveScope = damageDraft.drain && damageDraft.scope === 'all_players'
+      ? 'opponents'
+      : damageDraft.scope;
+    if (effectiveScope !== 'single' && damageDraft.mode !== 'commander') {
+      const targetCount = effectiveScope === 'all_players'
+        ? currentRecord.state.players.filter((player) => !player.isEliminated).length
+        : currentRecord.state.players.filter((player) => !player.isEliminated && player.participantKey !== damageDraft.sourceKey).length;
+      const drainAmount = damageDraft.drain ? amount * targetCount : undefined;
       enqueue({
         type: 'adjust_many',
         sourceKey: damageDraft.sourceKey,
         amount,
-        scope: damageDraft.scope,
+        scope: effectiveScope,
+        mode: damageDraft.mode,
+        drain: damageDraft.drain,
+        drainAmount,
       }, {
         type: 'adjust_many',
         sourceKey: damageDraft.sourceKey,
         amount: -amount,
-        scope: damageDraft.scope,
+        scope: effectiveScope,
+        mode: damageDraft.mode,
+        drain: damageDraft.drain,
+        drainAmount,
       });
     } else {
       enqueue({
@@ -995,12 +1055,16 @@ export function WebLiveGame({
         sourceKey: damageDraft.sourceKey,
         amount,
         mode: damageDraft.mode,
+        drain: damageDraft.drain,
+        drainAmount: damageDraft.drain ? amount : undefined,
       }, {
         type: 'adjust',
         targetKey: damageDraft.targetKey,
         sourceKey: damageDraft.sourceKey,
         amount: -amount,
         mode: damageDraft.mode,
+        drain: damageDraft.drain,
+        drainAmount: damageDraft.drain ? amount : undefined,
       });
     }
     setDamageDraft(null);
@@ -1496,12 +1560,13 @@ export function WebLiveGame({
           <ModalTitle icon={Swords} title={copy({ it: 'Assegna danno', en: 'Assign damage' })} onClose={() => setDamageDraft(null)} />
           <div className="space-y-4 overflow-y-auto p-4 sm:p-5">
           <p className="truncate text-center text-xs font-bold uppercase tracking-[0.18em] text-zinc-300">{source?.displayName} <span className="px-2 text-rose-300">→</span> {target?.displayName}</p>
-          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/35 p-1">{(['life', 'commander', 'infect'] as DamageMode[]).map((mode) => <button key={mode} onClick={() => setDamageDraft({ ...damageDraft, mode, scope: mode === 'life' ? damageDraft.scope : 'single' })} className={cn('min-h-11 rounded-xl px-2 text-xs font-black uppercase tracking-wide transition', damageDraft.mode === mode ? 'bg-violet-500 text-white shadow-lg' : 'text-zinc-400 hover:bg-white/5')}>{mode === 'life' ? copy({ it: 'Normale', en: 'Normal' }) : mode === 'commander' ? 'Commander' : 'Infect'}</button>)}</div>
-          {damageDraft.mode === 'life' ? <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/25 p-1">{([
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/35 p-1">{(['life', 'commander', 'infect'] as DamageMode[]).map((mode) => <button key={mode} onClick={() => setDamageDraft({ ...damageDraft, mode, scope: mode === 'commander' ? 'single' : damageDraft.scope, drain: mode === 'life' ? damageDraft.drain : false })} className={cn('min-h-11 rounded-xl px-2 text-xs font-black uppercase tracking-wide transition', damageDraft.mode === mode ? 'bg-violet-500 text-white shadow-lg' : 'text-zinc-400 hover:bg-white/5')}>{mode === 'life' ? copy({ it: 'Normale', en: 'Normal' }) : mode === 'commander' ? 'Commander' : 'Infect'}</button>)}</div>
+          {damageDraft.mode !== 'commander' ? <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/25 p-1">{([
             ['single', copy({ it: 'Questo giocatore', en: 'This player' })],
             ['opponents', copy({ it: 'Ogni avversario', en: 'Each opponent' })],
             ['all_players', copy({ it: 'Tutti', en: 'Everyone' })],
-          ] as const).map(([scope, label]) => <button key={scope} onClick={() => setDamageDraft({ ...damageDraft, scope })} className={cn('min-h-11 rounded-xl px-2 py-2 text-[11px] font-bold transition', damageDraft.scope === scope ? 'bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/70' : 'text-zinc-400 hover:bg-white/5')}>{label}</button>)}</div> : null}
+          ] as const).map(([scope, label]) => <button key={scope} onClick={() => setDamageDraft({ ...damageDraft, scope, drain: scope === 'all_players' ? false : damageDraft.drain })} className={cn('min-h-11 rounded-xl px-2 py-2 text-[11px] font-bold transition', damageDraft.scope === scope ? 'bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/70' : 'text-zinc-400 hover:bg-white/5')}>{label}</button>)}</div> : null}
+          {damageDraft.mode === 'life' ? <button type="button" onClick={() => setDamageDraft({ ...damageDraft, drain: !damageDraft.drain, scope: !damageDraft.drain && damageDraft.scope === 'all_players' ? 'opponents' : damageDraft.scope })} className={cn('flex min-h-11 w-full items-center gap-3 rounded-2xl border px-4 text-left transition', damageDraft.drain ? 'border-fuchsia-400/60 bg-fuchsia-500/20 text-fuchsia-100' : 'border-white/10 bg-black/25 text-zinc-400')}><Heart className="h-5 w-5" /><span className="flex-1"><b className="block text-sm">{copy({ it: 'Drain', en: 'Drain' })}</b><small>{copy({ it: 'Guadagni vite pari al danno alle vite inflitto.', en: 'Gain life equal to the life damage dealt.' })}</small></span>{damageDraft.drain ? <Check className="h-5 w-5" /> : null}</button> : null}
           <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-3xl border border-rose-400/30 bg-black/35">
             <div
               className="absolute inset-0 flex items-center justify-between px-5 sm:px-8"

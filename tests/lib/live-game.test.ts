@@ -69,7 +69,7 @@ describe('live-game', () => {
     expect(picked?.participantKey).toMatch(/^user:/);
   });
 
-  it('uses the same event log and compact analytics engine as native', () => {
+  it('uses the same compact analytics engine as native', () => {
     const next = applyLiveGameMutation(buildState(), {
       type: 'adjust',
       targetKey: 'user:b',
@@ -81,7 +81,7 @@ describe('live-game', () => {
     });
 
     expect(next.players[1]?.life).toBe(33);
-    expect(next.events[0]).toMatchObject({ type: 'commander_damage', amount: 7 });
+    expect(next.events).toEqual([]);
     expect(next.summary?.byParticipant['user:b']?.lifeLost).toBe(7);
     expect(next.summary?.byParticipant['user:a']?.commanderDamageDealt).toBe(7);
   });
@@ -108,8 +108,7 @@ describe('live-game', () => {
 
     expect(next.version).toBe(1);
     expect(next.players.map((player) => player.life)).toEqual([40, 36, 36, 36]);
-    expect(next.events).toHaveLength(3);
-    expect(next.events.every((event) => event.actionId === 'group-hit-1')).toBe(true);
+    expect(next.events).toEqual([]);
     expect(next.summary?.byParticipant['user:a']?.groupDamageDealt).toBe(12);
     expect(next.summary?.byParticipant['user:a']?.groupDamageEvents).toBe(3);
   });
@@ -129,5 +128,65 @@ describe('live-game', () => {
     expect(restored.summary?.byParticipant['user:a']?.groupDamageDealt).toBe(0);
     expect(restored.summary?.byParticipant['user:a']?.groupDamageEvents).toBe(0);
     expect(restored.summary?.byParticipant['user:b']?.lifeLost).toBe(0);
+  });
+
+  it('supports opponent-wide infect and Exsanguinate-style drain', () => {
+    const infected = applyLiveGameMutation(buildState(), {
+      type: 'adjust_many',
+      sourceKey: 'user:a',
+      amount: 2,
+      scope: 'opponents',
+      mode: 'infect',
+    });
+    expect(infected.players.map((player) => player.infect)).toEqual([0, 2, 2, 2]);
+
+    const initial = buildState();
+    initial.players[0] = { ...initial.players[0]!, life: 20 };
+    const drained = applyLiveGameMutation(initial, {
+      type: 'adjust_many',
+      sourceKey: 'user:a',
+      amount: 4,
+      scope: 'opponents',
+      drain: true,
+    });
+    expect(drained.players.map((player) => player.life)).toEqual([32, 36, 36, 36]);
+    expect(drained.version).toBe(1);
+  });
+
+  it('aggregates routine actions without retaining their raw events', () => {
+    const next = applyLiveGameMutation(buildState(), {
+      type: 'adjust',
+      targetKey: 'user:b',
+      sourceKey: 'user:a',
+      amount: 7,
+      mode: 'commander',
+      eventId: 'commander-hit',
+      occurredAt: '2026-07-19T12:00:00.000Z',
+    });
+
+    expect(next.events).toEqual([]);
+    expect(next.summary?.totalEvents).toBe(1);
+    expect(next.summary?.byParticipant['user:b']?.lifeLost).toBe(7);
+    expect(next.summary?.byParticipant['user:a']?.commanderDamageDealt).toBe(7);
+  });
+
+  it('retains only significant elimination and revive events', () => {
+    const eliminated = applyLiveGameMutation(buildState(), {
+      type: 'eliminate',
+      targetKey: 'user:b',
+      eliminatedAt: '2026-07-19T12:00:00.000Z',
+      eventId: 'manual-ko',
+      occurredAt: '2026-07-19T12:00:00.000Z',
+    });
+    const revived = applyLiveGameMutation(eliminated, {
+      type: 'revive',
+      targetKey: 'user:b',
+      startingLife: 40,
+      eventId: 'revive',
+      occurredAt: '2026-07-19T12:01:00.000Z',
+    });
+
+    expect(revived.events.map((event) => event.type)).toEqual(['elimination', 'revive']);
+    expect(revived.summary?.totalEvents).toBe(2);
   });
 });

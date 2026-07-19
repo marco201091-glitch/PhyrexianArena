@@ -81,6 +81,8 @@ type TableArenaProps = {
     thisPlayer: string;
     eachOpponent: string;
     everyone: string;
+    drain: string;
+    drainHint: string;
     dieOrCoin: string;
     coin: string;
     heads: string;
@@ -104,6 +106,7 @@ type TableArenaProps = {
     amount: number;
     mode: DamageMode;
     scope: 'single' | GroupDamageScope;
+    drain: boolean;
   }) => void;
   onEliminate: (key: ParticipantKey) => void;
   onRevive: (key: ParticipantKey) => void;
@@ -611,9 +614,11 @@ export function TableArena({
           thisPlayer: labels.thisPlayer,
           eachOpponent: labels.eachOpponent,
           everyone: labels.everyone,
+          drain: labels.drain,
+          drainHint: labels.drainHint,
         }}
         onClose={() => setPendingTransfer(null)}
-        onConfirm={({ amount, mode, scope }) => {
+        onConfirm={({ amount, mode, scope, drain }) => {
           if (!pendingTransfer) return;
           const sourceName = playersByKey.get(pendingTransfer.sourceKey)?.displayName ?? '';
           const targetName = playersByKey.get(pendingTransfer.targetKey)?.displayName ?? '';
@@ -626,11 +631,12 @@ export function TableArena({
             amount,
             mode,
             scope,
+            drain,
           });
           const destination = scope === 'opponents'
             ? labels.eachOpponent
             : scope === 'all_players' ? labels.everyone : targetName;
-          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}`);
+          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}${drain ? ` · ${labels.drain}` : ''}`);
           setTimeout(() => setDamageFeedback(null), 3200);
           setPendingTransfer(null);
         }}

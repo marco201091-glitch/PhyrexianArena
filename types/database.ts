@@ -208,6 +208,7 @@ export interface Database {
           played_at: string;
           created_by: string;
           notes: string | null;
+          starting_life: number | null;
           duration_seconds: number | null;
           live_game_log: Json;
           win_condition: string | null;
@@ -222,6 +223,7 @@ export interface Database {
           played_at?: string;
           created_by: string;
           notes?: string | null;
+          starting_life?: number | null;
           duration_seconds?: number | null;
           live_game_log?: Json;
           win_condition?: string | null;
@@ -236,6 +238,7 @@ export interface Database {
           played_at?: string;
           created_by?: string;
           notes?: string | null;
+          starting_life?: number | null;
           duration_seconds?: number | null;
           live_game_log?: Json;
           win_condition?: string | null;
@@ -357,6 +360,14 @@ export interface Database {
           was_starting_player: boolean;
           group_damage_dealt: number;
           group_damage_events: number;
+          participant_name_snapshot: string | null;
+          deck_name_snapshot: string | null;
+          commander_snapshot: string | null;
+          commander_image_snapshot: string | null;
+          deck_bracket_snapshot: string | null;
+          color_identity_snapshot: string[] | null;
+          final_life: number | null;
+          final_infect: number | null;
         };
         Insert: {
           id?: string;
@@ -384,6 +395,14 @@ export interface Database {
           was_starting_player?: boolean;
           group_damage_dealt?: number;
           group_damage_events?: number;
+          participant_name_snapshot?: string | null;
+          deck_name_snapshot?: string | null;
+          commander_snapshot?: string | null;
+          commander_image_snapshot?: string | null;
+          deck_bracket_snapshot?: string | null;
+          color_identity_snapshot?: string[] | null;
+          final_life?: number | null;
+          final_infect?: number | null;
         };
         Update: {
           id?: string;
@@ -411,6 +430,14 @@ export interface Database {
           was_starting_player?: boolean;
           group_damage_dealt?: number;
           group_damage_events?: number;
+          participant_name_snapshot?: string | null;
+          deck_name_snapshot?: string | null;
+          commander_snapshot?: string | null;
+          commander_image_snapshot?: string | null;
+          deck_bracket_snapshot?: string | null;
+          color_identity_snapshot?: string[] | null;
+          final_life?: number | null;
+          final_infect?: number | null;
         };
       };
       access_logs: {
@@ -482,6 +509,74 @@ export interface Database {
           p_retention_days?: number;
         };
         Returns: number;
+      };
+      purge_finished_live_games: {
+        Args: {
+          p_retention_days?: number;
+        };
+        Returns: number;
+      };
+      get_arena_member_decks: {
+        Args: {
+          p_group_id: string;
+          p_user_ids: string[];
+          p_limit_per_user?: number;
+        };
+        Returns: Array<{
+          id: string;
+          user_id: string;
+          group_id: string | null;
+          name: string;
+          commander: string;
+          commander_image: string | null;
+          source_url: string | null;
+          source_type: string | null;
+          bracket: string | null;
+          color_identity: string[] | null;
+          created_at: string;
+        }>;
+      };
+      get_arena_analytics_bundle: {
+        Args: {
+          p_group_id: string;
+          p_since?: string | null;
+          p_until?: string | null;
+        };
+        Returns: Json;
+      };
+      get_personal_analytics_facts: {
+        Args: {
+          p_user_id?: string | null;
+        };
+        Returns: Array<{
+          is_winner: boolean;
+          deck_id: string;
+          played_at: string;
+          name: string;
+          commander: string;
+          commander_image: string | null;
+          color_identity: string[] | null;
+          bracket: string | null;
+          source_type: string | null;
+          source_url: string | null;
+          owner_username: string | null;
+        }>;
+      };
+      get_global_analytics_facts: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          is_winner: boolean;
+          deck_id: string;
+          played_at: string;
+          name: string;
+          commander: string;
+          commander_image: string | null;
+          color_identity: string[] | null;
+          bracket: string | null;
+          source_type: string | null;
+          source_url: string | null;
+          owner_username: string | null;
+        }>;
       };
       list_access_logs_for_admin: {
         Args: {
