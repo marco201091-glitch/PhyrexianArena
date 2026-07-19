@@ -105,6 +105,7 @@ import {
   LIVE_GAME_SYNC_BATCH_SIZE,
   getLiveGameSyncDelay,
 } from '@/lib/live-game-sync-policy';
+import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 
 export type WebTrackerDeck = {
   id: string;
@@ -308,6 +309,10 @@ export function WebLiveGame({
 
   useEffect(() => {
     setInviteOrigin(window.location.origin);
+    if (!REMOTE_GUESTS_ENABLED) {
+      localStorage.removeItem(`phyrexian:live-lobby:${groupId}`);
+      return;
+    }
     const raw = localStorage.getItem(`phyrexian:live-lobby:${groupId}`);
     if (!raw) return;
     try {
@@ -323,6 +328,7 @@ export function WebLiveGame({
   }, [groupId]);
 
   const refreshLobby = useCallback(async () => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!lobbyIdRef.current) return;
     const response = await fetch(`/api/live-game-lobby?id=${encodeURIComponent(lobbyIdRef.current)}`, { cache: 'no-store' });
     if (!response.ok) return;
@@ -331,6 +337,7 @@ export function WebLiveGame({
   }, []);
 
   useEffect(() => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!lobbyId || record) return;
     void refreshLobby();
     const timer = window.setInterval(() => void refreshLobby(), 1500);
@@ -338,6 +345,7 @@ export function WebLiveGame({
   }, [lobbyId, record, refreshLobby]);
 
   useEffect(() => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (record || lobbyGuests.length === 0) return;
     setSeats((current) => {
       const next = [...current];
@@ -360,6 +368,7 @@ export function WebLiveGame({
   }, [lobbyGuests, record]);
 
   const createInvite = async () => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     setCreatingInvite(true);
     try {
       const response = await fetch('/api/live-game-lobby', {
@@ -385,6 +394,7 @@ export function WebLiveGame({
   };
 
   const rotateInvite = async () => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!lobbyIdRef.current) return;
     const response = await fetch('/api/live-game-lobby', {
       method: 'PATCH',
@@ -398,6 +408,7 @@ export function WebLiveGame({
   };
 
   const removeLobbyGuest = async (guestSessionId: string) => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!lobbyIdRef.current) return;
     await fetch('/api/live-game-lobby', {
       method: 'PATCH',
@@ -543,7 +554,7 @@ export function WebLiveGame({
         server = await ensureLiveGameCreated(supabase, recordRef.current);
         serverRef.current = server;
         needsCreateRef.current = false;
-        if (lobbyIdRef.current) {
+        if (REMOTE_GUESTS_ENABLED && lobbyIdRef.current) {
           const response = await fetch('/api/live-game-lobby', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -1159,7 +1170,7 @@ export function WebLiveGame({
               <p className="mt-1 text-sm text-muted-foreground">{copy({ it: 'Scegli layout, posti e mazzi. L’ultima configurazione viene ricordata.', en: 'Choose layout, seats and decks. Your last setup is remembered.' })}</p>
             </div>
             <div className="flex flex-col gap-7 p-4 sm:p-7">
-              <section className="order-last overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-500/15 via-background/70 to-cyan-500/10">
+              {REMOTE_GUESTS_ENABLED ? <section className="order-last overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-500/15 via-background/70 to-cyan-500/10">
                 <div className="flex flex-wrap items-center gap-3 border-b border-white/10 p-4">
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-200"><QrCode className="h-5 w-5" /></span>
                   <div className="min-w-0 flex-1">
@@ -1204,7 +1215,7 @@ export function WebLiveGame({
                     </div>
                   </div>
                 </div> : null}
-              </section>
+              </section> : null}
 
               <section>
                 <div className="mb-3 flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-violet-600 text-xs font-black">1</span><h3 className="font-bold">{copy({ it: 'Numero giocatori', en: 'Number of players' })}</h3></div>

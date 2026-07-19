@@ -3,8 +3,10 @@ import { requireAuthOr401 } from '@/app/api/_lib/require-auth';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createGuestSecret, createLiveGameLobbySecrets, hashGuestSecret } from '@/lib/live-game-guest';
 import { enforceUserRateLimit } from '@/lib/api-rate-limit';
+import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 
 export async function POST(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const auth = await requireAuthOr401(request);
   if (auth.response) return auth.response;
   const limited = await enforceUserRateLimit(auth.user.id, 'guestLobbyCreate');
@@ -32,6 +34,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const auth = await requireAuthOr401(request);
   if (auth.response) return auth.response;
   const admin = getSupabaseAdminClient();
@@ -44,6 +47,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const auth = await requireAuthOr401(request);
   if (auth.response) return auth.response;
   const admin = getSupabaseAdminClient();

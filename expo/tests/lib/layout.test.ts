@@ -5,6 +5,7 @@ import {
   deckPickerCardWidth,
   layout,
   isCompactViewport,
+  isIPadViewport,
   isPhoneViewport,
   isTabletViewport,
   resolveSafeAreaEdges,
@@ -74,6 +75,13 @@ describe('responsive breakpoints', () => {
     expect(isPhoneViewport(600)).toBe(false);
     expect(isTabletViewport(699)).toBe(false);
     expect(isTabletViewport(700)).toBe(true);
+  });
+
+  it('enables expanded controls only on full-size iOS tablets', () => {
+    expect(isIPadViewport('ios', 1024, 768)).toBe(true);
+    expect(isIPadViewport('ios', 768, 1024)).toBe(true);
+    expect(isIPadViewport('ios', 932, 430)).toBe(false);
+    expect(isIPadViewport('android', 1024, 768)).toBe(false);
   });
 
   it('constrains forms and centers wide tab content', () => {

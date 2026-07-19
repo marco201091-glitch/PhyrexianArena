@@ -57,6 +57,10 @@ export function isTabletViewport(width: number): boolean {
   return width >= layout.tabletWidth;
 }
 
+export function isIPadViewport(platform: string, width: number, height: number): boolean {
+  return platform === 'ios' && Math.min(width, height) >= layout.tabletWidth;
+}
+
 export function responsiveGridColumns(
   viewportWidth: number,
   minimumColumnWidth: number,

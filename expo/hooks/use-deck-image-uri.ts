@@ -8,6 +8,11 @@ import {
   validateDeckImageCacheEntry,
 } from '@/lib/deck-image-cache';
 
+function withRetryToken(uri: string | null, retryVersion: number): string | null {
+  if (!uri || retryVersion === 0 || !/^https?:\/\//i.test(uri)) return uri;
+  return `${uri}${uri.includes('?') ? '&' : '?'}pa_retry=${retryVersion}`;
+}
+
 export function useDeckImageUri(
   remoteUrl: string | null | undefined,
   commanderName: string,
@@ -56,7 +61,7 @@ export function useDeckImageUri(
               commanderName,
             );
             if (cancelled) return;
-            setResolvedUri(repairedUri);
+            setResolvedUri(withRetryToken(repairedUri, retryVersion));
             setFailed(!repairedUri);
           } catch {
             if (!cancelled) setFailed(true);
@@ -74,7 +79,7 @@ export function useDeckImageUri(
         try {
           const uri = await resolveDeckImageUri(effectiveRemoteUrl, commanderName);
           if (cancelled) return;
-          setResolvedUri(uri);
+          setResolvedUri(withRetryToken(uri, retryVersion));
           setFailed(!uri);
         } catch {
           if (!cancelled) {

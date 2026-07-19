@@ -3,6 +3,7 @@ import { applyLiveGameMutation, parseLiveGameState } from '@/lib/live-game';
 import { createGuestSecret, hashGuestSecret, parseGuestMutation } from '@/lib/live-game-guest';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { enforceIpRateLimit } from '@/lib/api-rate-limit';
+import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 
 async function findSession(sessionToken: string) {
   const admin = getSupabaseAdminClient();
@@ -16,6 +17,7 @@ async function findSession(sessionToken: string) {
 }
 
 export async function GET(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'guestLobbySession');
   if (limited) return limited;
   const admin = getSupabaseAdminClient();
@@ -34,6 +36,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'guestLobbySession');
   if (limited) return limited;
   const admin = getSupabaseAdminClient();
@@ -45,6 +48,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'guestLobbySession');
   if (limited) return limited;
   const admin = getSupabaseAdminClient();
@@ -78,6 +82,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'guestLobbyRecovery');
   if (limited) return limited;
   const admin = getSupabaseAdminClient();

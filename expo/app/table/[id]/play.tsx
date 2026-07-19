@@ -29,6 +29,7 @@ import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import { apiGet, apiPatch, apiPost } from '@/lib/api';
 import { getSiteUrl } from '@/lib/env';
+import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 import { buildGameGuestInviteUrl } from '@/lib/invite-links';
 import { getLastDeckSelectionForParticipant } from '@/lib/arena-participants';
 import { getPreferredDeckId } from '@/lib/arena-deck-selection';
@@ -202,6 +203,7 @@ export default function LiveGameScreen() {
   const setupHydratedRef = useRef<string | null>(null);
 
   const createGameInvite = useCallback(async () => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!groupId) return;
     setCreatingInvite(true);
     const result = await apiPost<{ id: string; token: string }>('/api/live-game-lobby', { groupId });
@@ -216,6 +218,7 @@ export default function LiveGameScreen() {
   }, [groupId, showToast]);
 
   const rotateGameInvite = useCallback(async () => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!lobbyIdRef.current) return;
     const result = await apiPatch<{ token: string }>('/api/live-game-lobby', {
       lobbyId: lobbyIdRef.current,
@@ -225,6 +228,7 @@ export default function LiveGameScreen() {
   }, []);
 
   const removeLobbyGuest = useCallback(async (guestSessionId: string) => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!lobbyIdRef.current) return;
     await apiPatch('/api/live-game-lobby', {
       lobbyId: lobbyIdRef.current,
@@ -235,6 +239,7 @@ export default function LiveGameScreen() {
   }, []);
 
   useEffect(() => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!lobbyId || liveGame) return;
     const refresh = async () => {
       const result = await apiGet<{ guests: LobbyGuestStatus[] }>(`/api/live-game-lobby?id=${encodeURIComponent(lobbyId)}`);
@@ -448,7 +453,7 @@ export default function LiveGameScreen() {
           serverRecord = await ensureLiveGameCreated(supabase, serverRecord);
           serverRecordRef.current = serverRecord;
           needsCreateRef.current = false;
-          if (lobbyIdRef.current) {
+          if (REMOTE_GUESTS_ENABLED && lobbyIdRef.current) {
             const linked = await apiPatch('/api/live-game-lobby', {
               lobbyId: lobbyIdRef.current,
               liveGameId: serverRecord.id,
@@ -1594,7 +1599,7 @@ export default function LiveGameScreen() {
               icon="play"
             />
 
-            <View style={styles.invitePanel}>
+            {REMOTE_GUESTS_ENABLED ? <View style={styles.invitePanel}>
               <View style={styles.inviteHeader}>
                 <Ionicons name="people-outline" size={24} color={colors.primaryLight} />
                 <View style={styles.inviteCopy}>
@@ -1632,13 +1637,12 @@ export default function LiveGameScreen() {
                   }) : <Text style={styles.inviteHint}>{copy('noRemoteGuests')}</Text>}
                 </View>
               </View> : null}
-            </View>
+            </View> : null}
           </PhyrexianPanel>
       </ScrollView>
       <Modal
         visible={showRematch}
         onClose={() => setShowRematch(false)}
-        scroll={false}
         presentation="dialog"
         maxWidth={500}
         footer={(

@@ -8,6 +8,7 @@ vi.mock('expo-file-system', () => ({
   makeDirectoryAsync: vi.fn(), readAsStringAsync: vi.fn(), writeAsStringAsync: vi.fn(),
   deleteAsync: vi.fn(), moveAsync: vi.fn(), downloadAsync: vi.fn(),
 }));
+vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 vi.mock('expo-image', () => ({ Image: { loadAsync } }));
 vi.mock('@/lib/commander-arts', () => ({ fetchCommanderArtOptions: vi.fn() }));
 

@@ -9,6 +9,7 @@ import {
 } from '@/lib/live-game-guest';
 import { enforceIpRateLimit } from '@/lib/api-rate-limit';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 
 const TOKEN_RE = /^[a-f0-9]{48}$/;
 
@@ -56,6 +57,7 @@ async function sessionPayload(access: NonNullable<Awaited<ReturnType<typeof find
 }
 
 export async function GET(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'publicCounterSession');
   if (limited) return limited;
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
@@ -67,6 +69,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const body = await request.json().catch(() => ({}));
   const action = typeof body.action === 'string' ? body.action : '';
   const rateScope = action === 'create'
@@ -181,6 +184,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'publicCounterSession');
   if (limited) return limited;
   const admin = getSupabaseAdminClient();
@@ -211,6 +215,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'guestLobbyRecovery');
   if (limited) return limited;
   const admin = getSupabaseAdminClient();
@@ -239,6 +244,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'publicCounterSession');
   if (limited) return limited;
   const admin = getSupabaseAdminClient();

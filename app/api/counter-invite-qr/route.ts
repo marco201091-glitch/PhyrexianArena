@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import QRCode from 'qrcode';
 import { applyIpRateLimit } from '@/app/api/_lib/with-rate-limit';
+import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 
 export async function GET(request: NextRequest) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await applyIpRateLimit(request, 'inviteQr');
   if (limited) return limited;
   const token = request.nextUrl.searchParams.get('token') ?? '';

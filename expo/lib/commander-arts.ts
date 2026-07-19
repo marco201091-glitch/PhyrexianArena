@@ -33,6 +33,7 @@ export async function fetchCommanderArtOptions(
   const params = new URLSearchParams({ name: trimmed });
   const { data, status } = await apiGet<{ data?: CommanderArtOption[]; error?: string }>(
     `/api/scryfall-card-arts?${params.toString()}`,
+    { signal, timeoutMs: 10_000 },
   );
 
   if (status !== 200) return [];

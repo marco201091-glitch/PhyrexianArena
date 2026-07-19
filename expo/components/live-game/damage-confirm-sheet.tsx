@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { HoldPressable } from '@/components/ui/hold-pressable';
 import { colors, radii, spacing } from '@/constants/theme';
+import { isIPadViewport } from '@/lib/layout';
 import type { DamageMode, GroupDamageScope, LiveGamePlayer } from '@/lib/live-game';
 
 type DamageConfirmSheetProps = {
@@ -42,6 +43,8 @@ export function DamageConfirmSheet({
   onClose,
   onConfirm,
 }: DamageConfirmSheetProps) {
+  const { width, height } = useWindowDimensions();
+  const isIPad = isIPadViewport(Platform.OS, width, height);
   const [amount, setAmount] = useState(0);
   const [mode, setMode] = useState<DamageMode>(defaultMode);
   const [scope, setScope] = useState<'single' | GroupDamageScope>('single');
@@ -61,9 +64,13 @@ export function DamageConfirmSheet({
       onClose={onClose}
       scroll={false}
       presentation="dialog"
-      maxWidth={440}
+      maxWidth={isIPad ? 600 : 440}
     >
-      <View style={[styles.damageCard, { transform: [{ rotate: `${sourceRotation}deg` }] }]}>
+      <View style={[
+        styles.damageCard,
+        isIPad && styles.damageCardIPad,
+        { transform: [{ rotate: `${sourceRotation}deg` }] },
+      ]}>
         <DeckImage
           uri={target.commanderImage}
           alt={target.commander}
@@ -71,50 +78,57 @@ export function DamageConfirmSheet({
           containerStyle={styles.stageImageWrap}
         />
         <View style={styles.stageShade} />
-        <View style={styles.damageCardContent}>
-          <View style={styles.compactHeader}>
-            <Ionicons name="flash-outline" size={20} color={colors.primaryLight} />
+        <View style={[styles.damageCardContent, isIPad && styles.damageCardContentIPad]}>
+          <View style={[styles.compactHeader, isIPad && styles.compactHeaderIPad]}>
+            <Ionicons name="flash-outline" size={isIPad ? 26 : 20} color={colors.primaryLight} />
             <View style={styles.headerCopy}>
-              <Text style={styles.headerTitle}>{labels.title}</Text>
-              <Text style={styles.sourceTarget} numberOfLines={1}>{source.displayName} → {target.displayName}</Text>
+              <Text style={[styles.headerTitle, isIPad && styles.headerTitleIPad]}>{labels.title}</Text>
+              <Text style={[styles.sourceTarget, isIPad && styles.sourceTargetIPad]} numberOfLines={1}>
+                {source.displayName} → {target.displayName}
+              </Text>
             </View>
-            <Pressable onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={labels.cancel}>
-              <Ionicons name="close" size={20} color={colors.muted} />
+            <Pressable
+              onPress={onClose}
+              style={[styles.closeButton, isIPad && styles.closeButtonIPad]}
+              accessibilityRole="button"
+              accessibilityLabel={labels.cancel}
+            >
+              <Ionicons name="close" size={isIPad ? 26 : 20} color={colors.muted} />
             </Pressable>
           </View>
 
-          <View style={styles.amountStage}>
-          <View style={styles.stepperRow}>
+          <View style={[styles.amountStage, isIPad && styles.amountStageIPad]}>
+          <View style={[styles.stepperRow, isIPad && styles.stepperRowIPad]}>
             <HoldPressable
-              style={styles.stepButton}
+              style={[styles.stepButton, isIPad && styles.stepButtonIPad]}
               onShort={() => setAmount((value) => Math.max(0, value - 1))}
               onLong={() => setAmount((value) => Math.max(0, value - 10))}
               accessibilityRole="button"
               accessibilityLabel={`${labels.amount} -`}
             >
-              <Ionicons name="remove" size={30} color={colors.foreground} />
+              <Ionicons name="remove" size={isIPad ? 40 : 30} color={colors.foreground} />
             </HoldPressable>
             <View style={styles.amountCopy}>
-              <Text style={styles.amountValue}>{amount}</Text>
-              <Text style={styles.amountContext} numberOfLines={2}>
+              <Text style={[styles.amountValue, isIPad && styles.amountValueIPad]}>{amount}</Text>
+              <Text style={[styles.amountContext, isIPad && styles.amountContextIPad]} numberOfLines={2}>
                 {mode === 'life' ? labels.lifeDamage : mode === 'commander' ? labels.commanderDamage : labels.infectDamage}
                 {' · '}
                 {scope === 'opponents' ? labels.eachOpponent : scope === 'all_players' ? labels.everyone : target.displayName}
               </Text>
             </View>
             <HoldPressable
-              style={styles.stepButton}
+              style={[styles.stepButton, isIPad && styles.stepButtonIPad]}
               onShort={() => setAmount((value) => Math.min(99, value + 1))}
               onLong={() => setAmount((value) => Math.min(99, value + 10))}
               accessibilityRole="button"
               accessibilityLabel={`${labels.amount} +`}
             >
-              <Ionicons name="add" size={30} color={colors.foreground} />
+              <Ionicons name="add" size={isIPad ? 40 : 30} color={colors.foreground} />
             </HoldPressable>
           </View>
           </View>
 
-          <View style={styles.typeSegment}>
+          <View style={[styles.typeSegment, isIPad && styles.typeSegmentIPad]}>
             {([
               { value: 'life' as const, label: labels.lifeDamage, icon: 'heart-dislike-outline' as const },
               { value: 'commander' as const, label: labels.commanderDamage, icon: 'shield-outline' as const },
@@ -124,21 +138,23 @@ export function DamageConfirmSheet({
               return (
                 <Pressable
                   key={option.value}
-                  style={[styles.typePill, active && styles.typePillActive]}
+                  style={[styles.typePill, isIPad && styles.typePillIPad, active && styles.typePillActive]}
                   onPress={() => {
                     setMode(option.value);
                     if (option.value !== 'life') setScope('single');
                   }}
                 >
-                  <Ionicons name={option.icon} size={14} color={active ? colors.primaryForeground : colors.muted} />
-                  <Text style={[styles.typePillText, active && styles.typePillTextActive]}>{option.label}</Text>
+                  <Ionicons name={option.icon} size={isIPad ? 19 : 14} color={active ? colors.primaryForeground : colors.muted} />
+                  <Text style={[styles.typePillText, isIPad && styles.typePillTextIPad, active && styles.typePillTextActive]}>
+                    {option.label}
+                  </Text>
                 </Pressable>
               );
             })}
           </View>
 
           {mode === 'life' ? (
-            <View style={styles.typeSegment}>
+            <View style={[styles.typeSegment, isIPad && styles.typeSegmentIPad]}>
               {([
                 { value: 'single' as const, label: labels.thisPlayer },
                 { value: 'opponents' as const, label: labels.eachOpponent },
@@ -148,17 +164,19 @@ export function DamageConfirmSheet({
                 return (
                   <Pressable
                     key={option.value}
-                    style={[styles.scopePill, active && styles.scopePillActive]}
+                    style={[styles.scopePill, isIPad && styles.scopePillIPad, active && styles.scopePillActive]}
                     onPress={() => setScope(option.value)}
                   >
-                    <Text style={[styles.scopeText, active && styles.scopeTextActive]}>{option.label}</Text>
+                    <Text style={[styles.scopeText, isIPad && styles.scopeTextIPad, active && styles.scopeTextActive]}>
+                      {option.label}
+                    </Text>
                   </Pressable>
                 );
               })}
             </View>
           ) : null}
 
-          <View style={styles.footerRow}>
+          <View style={[styles.footerRow, isIPad && styles.footerRowIPad]}>
             <Button label={labels.cancel} variant="outline" onPress={onClose} style={styles.footerButton} />
             <Button
               label={labels.apply}
@@ -188,12 +206,24 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
     padding: spacing.sm,
+    position: 'relative',
+    zIndex: 2,
+  },
+  damageCardIPad: {
+    maxWidth: 600,
+  },
+  damageCardContentIPad: {
+    gap: 10,
+    padding: spacing.md,
   },
   compactHeader: {
     minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  compactHeaderIPad: {
+    minHeight: 52,
   },
   headerCopy: {
     flex: 1,
@@ -204,6 +234,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
   },
+  headerTitleIPad: {
+    fontSize: 21,
+  },
   closeButton: {
     width: 36,
     height: 36,
@@ -211,6 +244,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 18,
     backgroundColor: 'rgba(0,0,0,0.32)',
+  },
+  closeButtonIPad: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
   amountStage: {
     width: '100%',
@@ -222,6 +260,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
+  amountStageIPad: {
+    minHeight: 150,
+  },
   sourceTarget: {
     color: colors.muted,
     fontSize: 10,
@@ -229,15 +270,25 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
-  stageImageWrap: { ...StyleSheet.absoluteFillObject },
+  sourceTargetIPad: {
+    fontSize: 13,
+  },
+  stageImageWrap: { ...StyleSheet.absoluteFillObject, zIndex: 0 },
   stageImage: { width: '100%', height: '100%' },
-  stageShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(24,4,12,0.76)' },
+  stageShade: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+    backgroundColor: 'rgba(24,4,12,0.76)',
+  },
   stepperRow: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
+  },
+  stepperRowIPad: {
+    paddingHorizontal: spacing.lg,
   },
   stepButton: {
     width: 52,
@@ -248,6 +299,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.42)',
+  },
+  stepButtonIPad: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
   },
   amountCopy: {
     flex: 1,
@@ -262,6 +318,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
   },
+  amountValueIPad: {
+    fontSize: 88,
+    lineHeight: 94,
+  },
   amountContext: {
     color: colors.foreground,
     fontSize: 10,
@@ -269,6 +329,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  amountContextIPad: {
+    fontSize: 13,
+    lineHeight: 17,
   },
   typeSegment: {
     flexDirection: 'row',
@@ -278,6 +342,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 4,
+  },
+  typeSegmentIPad: {
+    gap: 6,
+    padding: 6,
   },
   typePill: {
     flex: 1,
@@ -290,6 +358,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: spacing.xs,
   },
+  typePillIPad: {
+    minHeight: 52,
+  },
   typePillActive: {
     backgroundColor: colors.primary,
   },
@@ -297,6 +368,9 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 10,
     fontWeight: '700',
+  },
+  typePillTextIPad: {
+    fontSize: 13,
   },
   typePillTextActive: {
     color: colors.primaryForeground,
@@ -309,6 +383,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: spacing.xs,
   },
+  scopePillIPad: {
+    minHeight: 48,
+  },
   scopePillActive: {
     backgroundColor: colors.selectionTintStrong,
   },
@@ -318,6 +395,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  scopeTextIPad: {
+    fontSize: 13,
+  },
   scopeTextActive: {
     color: colors.foreground,
   },
@@ -325,6 +405,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     minHeight: 42,
+  },
+  footerRowIPad: {
+    minHeight: 54,
   },
   footerButton: {
     flex: 1,

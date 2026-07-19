@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createGuestSecret, createRecoveryCode, hashGuestSecret, normalizeGuestDisplayName } from '@/lib/live-game-guest';
 import { enforceIpRateLimit } from '@/lib/api-rate-limit';
+import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 
 export async function POST(request: Request) {
+  if (!REMOTE_GUESTS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const limited = await enforceIpRateLimit(request, 'guestLobbyJoin');
   if (limited) return limited;
   const admin = getSupabaseAdminClient();

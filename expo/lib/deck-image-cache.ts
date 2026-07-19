@@ -1,7 +1,9 @@
 import * as FileSystem from 'expo-file-system';
 import { Image } from 'expo-image';
+import { Platform } from 'react-native';
 import { fetchCommanderArtOptions } from '@/lib/commander-arts';
 import { collectDeckCommanderNames, collectDeckImageUrls } from '@/lib/deck-image-urls';
+import { getRemoteImageHeaders } from '@/lib/remote-image';
 import type { ProfileDeck } from '@/lib/types/profile';
 
 export { collectDeckCommanderNames, collectDeckImageUrls } from '@/lib/deck-image-urls';
@@ -12,6 +14,7 @@ const ON_DEMAND_CONCURRENCY = 6;
 const BACKGROUND_CONCURRENCY = 12;
 const MIN_CACHED_FILE_BYTES = 512;
 const ARTS_PER_COMMANDER_PREFETCH = 8;
+const usesNativeImageDiskCache = Platform.OS === 'ios';
 
 type CacheManifest = {
   urls: Record<string, string>;
@@ -217,6 +220,10 @@ async function loadManifest(): Promise<void> {
 }
 
 export async function initDeckImageCache(): Promise<void> {
+  if (usesNativeImageDiskCache) {
+    manifestReady = true;
+    return;
+  }
   if (manifestReady) return;
   if (!initPromise) {
     initPromise = loadManifest();
@@ -228,6 +235,7 @@ export function peekDeckImageUri(
   remoteUrl?: string | null,
   commanderName?: string,
 ): string | null {
+  if (usesNativeImageDiskCache) return null;
   if (remoteUrl?.trim()) {
     const normalized = normalizeRemoteUrl(remoteUrl);
     const cached = memoryUriByRemote.get(normalized) || manifest.urls[normalized];
@@ -309,7 +317,9 @@ async function downloadToCache(
   return runQueued(priority, async () => {
     const temporaryPath = `${cachePath}.download-${Date.now()}`;
     try {
-      const downloaded = await FileSystem.downloadAsync(remoteUrl, temporaryPath);
+      const downloaded = await FileSystem.downloadAsync(remoteUrl, temporaryPath, {
+        headers: getRemoteImageHeaders(remoteUrl),
+      });
       if (
         downloaded.status >= 200 &&
         downloaded.status < 300 &&
@@ -334,6 +344,15 @@ export async function cacheRemoteDeckImage(
   const normalized = normalizeRemoteUrl(remoteUrl);
   if (!normalized) return normalized;
   if (isLocalUri(normalized)) return normalized;
+  if (usesNativeImageDiskCache) {
+    if (options?.background) {
+      void Image.prefetch(normalized, {
+        cachePolicy: 'disk',
+        headers: getRemoteImageHeaders(normalized),
+      }).catch(() => false);
+    }
+    return normalized;
+  }
 
   const peeked = peekDeckImageUri(normalized);
   if (peeked) return peeked;
@@ -373,6 +392,7 @@ export async function resolveCachedRemoteImageUri(
 ): Promise<string | null> {
   const normalized = remoteUrl?.trim();
   if (!normalized) return null;
+  if (usesNativeImageDiskCache) return normalized;
 
   await initDeckImageCache();
   const cached = peekDeckImageUri(normalized);
@@ -417,6 +437,16 @@ export async function prefetchCommanderArtsByName(
     const priority = options?.background ? 'background' : 'on-demand';
 
     if (limitedArts.length > 0) {
+      if (usesNativeImageDiskCache) {
+        limitedArts.forEach((url) => {
+          void Image.prefetch(url, {
+            cachePolicy: 'disk',
+            headers: getRemoteImageHeaders(url),
+          }).catch(() => false);
+        });
+        return limitedArts;
+      }
+
       const nameCachePath = `${CACHE_DIR}cmd-${hashKey(normalizedName.toLowerCase())}.img`;
       const primaryUrl = limitedArts[0];
       const localPrimary = await downloadToCache(primaryUrl, nameCachePath, priority);

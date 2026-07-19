@@ -1,6 +1,6 @@
-import { PublicCounterGuest } from '@/components/standalone/public-counter-guest';
+import { notFound } from 'next/navigation';
 
-export default async function PublicCounterJoinPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
-  return <PublicCounterGuest inviteToken={token} />;
+export default function PublicCounterJoinPage() {
+  // Remote guest join is intentionally disabled while the feature is redesigned.
+  notFound();
 }

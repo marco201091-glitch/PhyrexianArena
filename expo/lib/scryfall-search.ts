@@ -37,6 +37,7 @@ const SCRYFALL_HEADERS = {
 
 const SCRYFALL_MIN_REQUEST_INTERVAL_MS = 90;
 const SCRYFALL_MAX_RETRIES = 2;
+const SCRYFALL_REQUEST_TIMEOUT_MS = 10_000;
 const SCRYFALL_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 let scryfallRequestQueue: Promise<void> = Promise.resolve();
@@ -72,7 +73,24 @@ async function enqueueScryfallRequest(url: string, signal?: AbortSignal): Promis
     }
     if (signal?.aborted) throw abortError();
     lastScryfallRequestAt = Date.now();
-    return fetch(url, { headers: SCRYFALL_HEADERS, signal });
+    const controller = new AbortController();
+    let timedOut = false;
+    const handleAbort = () => controller.abort();
+    signal?.addEventListener('abort', handleAbort, { once: true });
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, SCRYFALL_REQUEST_TIMEOUT_MS);
+
+    try {
+      return await fetch(url, { headers: SCRYFALL_HEADERS, signal: controller.signal });
+    } catch (error) {
+      if (timedOut) throw new Error('Scryfall request timed out');
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', handleAbort);
+    }
   };
 
   const response = scryfallRequestQueue.then(run, run);

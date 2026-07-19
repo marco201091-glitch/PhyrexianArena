@@ -6,6 +6,11 @@ import {
   resolveCachedRemoteImageUri,
 } from '@/lib/deck-image-cache';
 
+function withRetryToken(uri: string | null, retryVersion: number): string | null {
+  if (!uri || retryVersion === 0 || !/^https?:\/\//i.test(uri)) return uri;
+  return `${uri}${uri.includes('?') ? '&' : '?'}pa_retry=${retryVersion}`;
+}
+
 export function useCachedRemoteImage(remoteUrl: string | null | undefined) {
   const [resolvedUri, setResolvedUri] = useState<string | null>(() =>
     peekCachedRemoteImageUri(remoteUrl),
@@ -35,7 +40,7 @@ export function useCachedRemoteImage(remoteUrl: string | null | undefined) {
     void resolveCachedRemoteImageUri(remoteUrl)
       .then((uri) => {
         if (cancelled) return;
-        setResolvedUri(uri);
+        setResolvedUri(withRetryToken(uri, retryVersion));
         setFailed(!uri);
       })
       .catch(() => {

@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  LayoutChangeEvent,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -19,6 +27,7 @@ import {
   type PlayDirection,
 } from '@/lib/live-game';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { isIPadViewport } from '@/lib/layout';
 import { useReducedMotion } from '@/lib/reduced-motion';
 
 type TableSeatProps = {
@@ -76,6 +85,8 @@ export function TableSeat({
   onDamageDragCancel,
   labels,
 }: TableSeatProps) {
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const isIPad = isIPadViewport(Platform.OS, viewportWidth, viewportHeight);
   const mainValue = player.life;
   const isLow = mainValue <= 5;
   const shake = useSharedValue(0);
@@ -275,6 +286,7 @@ export function TableSeat({
                 {recentLifeDelta !== 0 ? (
                   <Text style={[
                     styles.recentLifeDelta,
+                    isIPad && styles.recentLifeDeltaIPad,
                     recentLifeDelta < 0 ? styles.recentLifeLoss : styles.recentLifeGain,
                   ]}>
                     {recentLifeDelta > 0 ? '+' : '−'}{Math.abs(recentLifeDelta)}
@@ -523,6 +535,21 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.95)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
+  },
+  recentLifeDeltaIPad: {
+    top: 18,
+    right: -18,
+    minWidth: 50,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    overflow: 'hidden',
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(4,5,10,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    fontSize: 28,
+    lineHeight: 32,
+    textAlign: 'center',
   },
   recentLifeLoss: {
     color: '#f87171',

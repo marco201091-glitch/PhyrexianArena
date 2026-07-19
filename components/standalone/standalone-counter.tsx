@@ -35,6 +35,7 @@ import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/components/language-provider';
 import { RecentLifeDelta } from '@/components/ui/recent-life-delta';
 import { useScreenWakeLock } from '@/hooks/use-screen-wake-lock';
+import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 
 const STORAGE_KEY = 'phyrexian:standalone-counter:v1';
 const ONLINE_STORAGE_KEY = 'phyrexian:standalone-counter-online:v1';
@@ -163,7 +164,10 @@ export function StandaloneCounter() {
         }
       } catch { /* Ignore damaged local session. */ }
     }
-    try {
+    if (!REMOTE_GUESTS_ENABLED) {
+      // Remove obsolete recovery data; quick games now stay local-only.
+      localStorage.removeItem(ONLINE_STORAGE_KEY);
+    } else try {
       const savedOnline = JSON.parse(localStorage.getItem(ONLINE_STORAGE_KEY) ?? 'null') as OnlineSession | null;
       if (savedOnline?.hostToken) {
         setOnline(savedOnline);
@@ -206,10 +210,12 @@ export function StandaloneCounter() {
   }, []);
 
   useEffect(() => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (online) localStorage.setItem(ONLINE_STORAGE_KEY, JSON.stringify(online));
   }, [online]);
 
   useEffect(() => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     const hostToken = online?.hostToken;
     if (!hostToken) return;
     void refreshOnline(hostToken);
@@ -218,6 +224,7 @@ export function StandaloneCounter() {
   }, [online?.hostToken, refreshOnline, state]);
 
   useEffect(() => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (!online?.realtimeTopic) return;
     return subscribeGuestRealtime(supabase, {
       scope: 'counter',
@@ -251,7 +258,7 @@ export function StandaloneCounter() {
       occurredAt: new Date().toISOString(),
     });
     setState(next);
-    if (online) {
+    if (REMOTE_GUESTS_ENABLED && online) {
       void fetch('/api/public-counter-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,7 +269,9 @@ export function StandaloneCounter() {
 
   const start = async () => {
     const startingLife = format === 'commander' ? 40 : 20;
-    const onlineGuests = online?.guests.slice(0, Math.max(0, 6 - playerCount)) ?? [];
+    const onlineGuests = REMOTE_GUESTS_ENABLED
+      ? online?.guests.slice(0, Math.max(0, 6 - playerCount)) ?? []
+      : [];
     const keys = [
       ...Array.from({ length: playerCount }, (_, index) => `guest:local-${index + 1}` as ParticipantKey),
       ...onlineGuests.map((guest) => `guest:public-${guest.id}` as ParticipantKey),
@@ -280,7 +289,7 @@ export function StandaloneCounter() {
     }));
     const nextState = { version: 0, players, events: [], summary: createLiveGameSummary(), layoutVariant: 'classic' } satisfies LiveGameState;
     const nextStartedAt = new Date().toISOString();
-    if (online) {
+    if (REMOTE_GUESTS_ENABLED && online) {
       const response = await fetch('/api/public-counter-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -295,6 +304,7 @@ export function StandaloneCounter() {
   };
 
   const toggleGuests = async () => {
+    if (!REMOTE_GUESTS_ENABLED) return;
     if (guestsEnabled) {
       if (online) await fetch('/api/public-counter-session', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken: online.hostToken }) });
       localStorage.removeItem(ONLINE_STORAGE_KEY);
@@ -350,7 +360,7 @@ export function StandaloneCounter() {
               <div className="mt-3 flex gap-2">{COLORS.map((color) => <button key={color} aria-label={color} onClick={() => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color, image: null } : item))} className={`h-7 flex-1 rounded-full border ${player.color === color && !player.image ? 'border-white ring-2 ring-violet-400' : 'border-white/10'}`} style={{ backgroundColor: color }} />)}</div>
             </div>)}
           </div>
-          <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+          {REMOTE_GUESTS_ENABLED ? <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
             <div className="flex items-center gap-3 p-4">
               <Users className="h-5 w-5 text-violet-300" />
               <div className="min-w-0 flex-1"><b className="block">{copy({ it: 'Ci sono guest da remoto?', en: 'Are there remote guests?' })}</b><p className="text-xs text-zinc-400">{guestsEnabled ? copy({ it: 'Lobby online temporanea · nessuna statistica.', en: 'Temporary online lobby · no statistics.' }) : copy({ it: 'No: tutto offline su questo dispositivo.', en: 'No: fully offline on this device.' })}</p></div>
@@ -365,7 +375,7 @@ export function StandaloneCounter() {
                 {playerCount + online.guests.length > 6 ? <p className="text-sm font-bold text-amber-300">Massimo 6: riduci giocatori locali.</p> : null}
               </div> : null}
             </div> : null}
-          </div>
+          </div> : null}
           <Button onClick={() => void start()} disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} className="mt-6 h-13 w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-lg font-black">{copy({ it: 'Avvia partita', en: 'Start game' })}</Button>
         </section>
         {settingsOpen ? <ModalOverlay><ModalCard><div className="space-y-4 p-5"><h2 className="text-xl font-black">{copy({ it: 'Accessibilità', en: 'Accessibility' })}</h2>{([['reducedMotion', copy({ it: 'Riduci animazioni', en: 'Reduce motion' })], ['highContrast', copy({ it: 'Contrasto alto', en: 'High contrast' })], ['largeText', copy({ it: 'Testo grande', en: 'Large text' })]] as const).map(([key, label]) => <div key={key} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3"><div className="flex-1"><b className="block">{label}</b><small className="text-zinc-400">{copy({ it: 'Disattivato di default', en: 'Off by default' })}</small></div><button onClick={() => setPreferences((current) => ({ ...current, [key]: !current[key] }))} className={`h-8 w-14 rounded-full p-1 ${preferences[key] ? 'bg-violet-600' : 'bg-zinc-700'}`}><span className={`block h-6 w-6 rounded-full bg-white transition ${preferences[key] ? 'translate-x-6' : ''}`} /></button></div>)}<Button className="w-full" onClick={() => setSettingsOpen(false)}>{copy({ it: 'Chiudi', en: 'Close' })}</Button></div></ModalCard></ModalOverlay> : null}
