@@ -509,7 +509,7 @@ export function applyLiveGameMutation(
       isCorrection: mutation.isCorrection,
     }), state);
 
-    const drainAmount = mode !== 'commander' && mutation.drain
+    const drainAmount = mutation.drain
       ? mutation.drainAmount ?? Math.abs(mutation.amount) * targets.length
       : 0;
     const withDrain = drainAmount > 0
