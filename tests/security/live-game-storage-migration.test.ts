@@ -12,6 +12,7 @@ describe('live-game storage optimization migration', () => {
     expect(migration).toContain('participant_name_snapshot');
     expect(migration).toContain('commander_image_snapshot');
     expect(migration).toContain('final_life');
+    expect(migration).toMatch(/was_starting_player\s*=\s*COALESCE\(/);
     expect(migration).toMatch(/jsonb_typeof\(v_metrics\) = 'object' THEN 3/);
     expect(migration).toMatch(/UPDATE public\.live_games\s+SET match_id = match_id/);
     expect(migration).toContain('CREATE OR REPLACE FUNCTION public.purge_finished_live_games');

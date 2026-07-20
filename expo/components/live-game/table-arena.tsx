@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   LayoutChangeEvent,
   Pressable,
   StyleSheet,
@@ -33,6 +35,7 @@ import {
 import type { DamageMode, GroupDamageScope, LiveGamePlayer, PlayDirection, PlayerCounter, PlayerEmblem } from '@/lib/live-game';
 import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { useReducedMotion } from '@/lib/reduced-motion';
 
 type PendingTransfer = {
   sourceKey: ParticipantKey;
@@ -173,6 +176,12 @@ export function TableArena({
   const [damageFeedback, setDamageFeedback] = useState<string | null>(null);
   const [randomizerOpen, setRandomizerOpen] = useState(false);
   const [randomizerResult, setRandomizerResult] = useState<string | number | null>(null);
+  const [randomizerKind, setRandomizerKind] = useState<TableRandomKind | null>(null);
+  const [randomizerRolling, setRandomizerRolling] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const randomizerProgress = useRef(new Animated.Value(0)).current;
+  const randomizerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const randomizerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
   const dragSourceX = useSharedValue(0);
@@ -188,6 +197,64 @@ export function TableArena({
     const timer = setInterval(() => setClockNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const clearRandomizerTimers = useCallback(() => {
+    if (randomizerIntervalRef.current) {
+      clearInterval(randomizerIntervalRef.current);
+      randomizerIntervalRef.current = null;
+    }
+    if (randomizerTimeoutRef.current) {
+      clearTimeout(randomizerTimeoutRef.current);
+      randomizerTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearRandomizerTimers(), [clearRandomizerTimers]);
+
+  const closeRandomizer = useCallback(() => {
+    clearRandomizerTimers();
+    randomizerProgress.stopAnimation();
+    setRandomizerRolling(false);
+    setRandomizerOpen(false);
+  }, [clearRandomizerTimers, randomizerProgress]);
+
+  const runRandomizer = useCallback((kind: TableRandomKind) => {
+    clearRandomizerTimers();
+    randomizerProgress.stopAnimation();
+
+    const finalResult = rollTableRandom(kind);
+    setRandomizerKind(kind);
+
+    if (reducedMotion) {
+      randomizerProgress.setValue(1);
+      setRandomizerResult(finalResult);
+      setRandomizerRolling(false);
+      void hapticSuccess();
+      return;
+    }
+
+    const duration = kind === 'coin' ? 920 : 720;
+    setRandomizerRolling(true);
+    setRandomizerResult(rollTableRandom(kind));
+    randomizerProgress.setValue(0);
+    Animated.timing(randomizerProgress, {
+      toValue: 1,
+      duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    randomizerIntervalRef.current = setInterval(() => {
+      setRandomizerResult(rollTableRandom(kind));
+    }, kind === 'coin' ? 105 : 75);
+
+    randomizerTimeoutRef.current = setTimeout(() => {
+      clearRandomizerTimers();
+      setRandomizerResult(finalResult);
+      setRandomizerRolling(false);
+      void hapticSuccess();
+    }, duration);
+  }, [clearRandomizerTimers, randomizerProgress, reducedMotion]);
 
   const playerCount = players.length;
   const arenaWidth = arenaSize.width || screenWidth;
@@ -399,7 +466,25 @@ export function TableArena({
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
+        style={[styles.toolBtn, styles.toolBtnSurface, styles.toolBtnUtility, toolbarButtonStyle]}
+        onPress={() => {
+          clearRandomizerTimers();
+          setRandomizerKind(null);
+          setRandomizerResult(null);
+          setRandomizerRolling(false);
+          setRandomizerOpen(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={labels.dieOrCoin}
+      >
+        <View style={styles.randomizerToolIcon}>
+          <Ionicons name="dice-outline" size={22} color={colors.foreground} />
+          <View style={styles.coinToolBadge} />
+        </View>
+      </Pressable>
+
+      <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface, styles.toolBtnUtility, toolbarButtonStyle]}
         onPress={() => {
           setActivePickerKey(null);
           onPickRandom();
@@ -407,23 +492,14 @@ export function TableArena({
         accessibilityRole="button"
         accessibilityLabel={labels.randomAll}
       >
-        <Ionicons name="dice-outline" size={23} color={colors.foreground} />
+        <View style={styles.groupRandomIcon}>
+          <Ionicons name="people-outline" size={22} color={colors.foreground} />
+          <Ionicons name="shuffle" size={11} color={colors.primaryLight} style={styles.iconBadge} />
+        </View>
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
-        onPress={() => {
-          setRandomizerResult(null);
-          setRandomizerOpen(true);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={labels.dieOrCoin}
-      >
-        <Ionicons name="cube-outline" size={22} color={colors.foreground} />
-      </Pressable>
-
-      <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle, activePlayers.length < 2 && styles.toolBtnDisabled]}
+        style={[styles.toolBtn, styles.toolBtnSurface, styles.toolBtnUtility, toolbarButtonStyle, activePlayers.length < 2 && styles.toolBtnDisabled]}
         disabled={activePlayers.length < 2}
         onPress={() => {
           setActivePickerKey(null);
@@ -434,18 +510,18 @@ export function TableArena({
         accessibilityLabel={labels.randomOpponents}
       >
         <View style={styles.opponentRandomIcon}>
-          <Ionicons name="person-outline" size={21} color={colors.foreground} />
-          <Ionicons name="dice" size={11} color={colors.primaryLight} style={styles.opponentRandomDie} />
+          <Ionicons name="finger-print-outline" size={22} color={colors.foreground} />
+          <Ionicons name="shuffle" size={11} color={colors.primaryLight} style={styles.iconBadge} />
         </View>
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
+        style={[styles.toolBtn, styles.toolBtnSurface, styles.toolBtnDanger, toolbarButtonStyle]}
         onPress={onEndGame}
         accessibilityRole="button"
         accessibilityLabel={labels.endGame}
       >
-        <Ionicons name="flag-outline" size={22} color={colors.foreground} />
+        <Ionicons name="flag-outline" size={22} color="#fca5a5" />
       </Pressable>
     </>
   );
@@ -658,8 +734,8 @@ export function TableArena({
         }}
       />
 
-      <Modal visible={randomizerOpen} onClose={() => setRandomizerOpen(false)} presentation="dialog" maxWidth={440}>
-        <ModalHeader title={labels.dieOrCoin} icon="cube-outline" onClose={() => setRandomizerOpen(false)} />
+      <Modal visible={randomizerOpen} onClose={closeRandomizer} presentation="dialog" maxWidth={440}>
+        <ModalHeader title={labels.dieOrCoin} icon="dice-outline" onClose={closeRandomizer} />
         <View style={styles.randomizerChoices}>
           {([
             ['coin', labels.coin],
@@ -669,21 +745,90 @@ export function TableArena({
           ] as Array<[TableRandomKind, string]>).map(([kind, label]) => (
             <Pressable
               key={kind}
-              style={styles.randomizerButton}
-              onPress={() => {
-                setRandomizerResult(rollTableRandom(kind));
-                void hapticSuccess();
-              }}
+              style={[
+                styles.randomizerButton,
+                randomizerKind === kind && styles.randomizerButtonActive,
+              ]}
+              disabled={randomizerRolling}
+              onPress={() => runRandomizer(kind)}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              accessibilityState={{ selected: randomizerKind === kind, disabled: randomizerRolling }}
             >
+              {kind === 'coin' ? (
+                <Ionicons name="ellipse-outline" size={23} color={randomizerKind === kind ? '#ddd6fe' : colors.muted} />
+              ) : (
+                <Ionicons name="dice-outline" size={23} color={randomizerKind === kind ? '#ddd6fe' : colors.muted} />
+              )}
               <Text style={styles.randomizerButtonText}>{label}</Text>
             </Pressable>
           ))}
         </View>
         {randomizerResult !== null ? (
           <View style={styles.randomizerResult}>
-            <Text style={styles.randomizerResultText}>
-              {randomizerResult === 'heads' ? labels.heads : randomizerResult === 'tails' ? labels.tails : randomizerResult}
-            </Text>
+            <Animated.View
+              style={[
+                randomizerKind === 'coin' ? styles.coinResult : styles.dieResult,
+                {
+                  transform: randomizerKind === 'coin'
+                    ? [
+                      { perspective: 700 },
+                      {
+                        rotateY: randomizerProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '1080deg'],
+                        }),
+                      },
+                      {
+                        translateY: randomizerProgress.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [0, -20, 0],
+                        }),
+                      },
+                      {
+                        scale: randomizerProgress.interpolate({
+                          inputRange: [0, 0.55, 1],
+                          outputRange: [0.84, 1.08, 1],
+                        }),
+                      },
+                    ]
+                    : [
+                      {
+                        rotate: randomizerProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '720deg'],
+                        }),
+                      },
+                      {
+                        translateY: randomizerProgress.interpolate({
+                          inputRange: [0, 0.45, 1],
+                          outputRange: [0, -15, 0],
+                        }),
+                      },
+                      {
+                        scale: randomizerProgress.interpolate({
+                          inputRange: [0, 0.65, 1],
+                          outputRange: [0.78, 1.12, 1],
+                        }),
+                      },
+                    ],
+                },
+              ]}
+            >
+              {randomizerKind !== 'coin' ? (
+                <Text style={styles.randomizerDieKind}>{randomizerKind}</Text>
+              ) : null}
+              <Text
+                style={[
+                  styles.randomizerResultText,
+                  randomizerKind === 'coin' && styles.randomizerCoinText,
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {randomizerResult === 'heads' ? labels.heads : randomizerResult === 'tails' ? labels.tails : randomizerResult}
+              </Text>
+            </Animated.View>
           </View>
         ) : null}
       </Modal>
@@ -804,6 +949,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(124,58,237,0.28)',
     borderColor: 'rgba(167,139,250,0.45)',
   },
+  toolBtnUtility: {
+    backgroundColor: 'rgba(91,33,182,0.16)',
+    borderColor: 'rgba(167,139,250,0.24)',
+  },
+  toolBtnDanger: {
+    backgroundColor: 'rgba(127,29,29,0.2)',
+    borderColor: 'rgba(248,113,113,0.28)',
+  },
   toolBtnDisabled: {
     opacity: 0.55,
   },
@@ -839,10 +992,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  opponentRandomDie: {
+  groupRandomIcon: {
+    width: 25,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  randomizerToolIcon: {
+    width: 25,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBadge: {
     position: 'absolute',
     right: -1,
     bottom: -1,
+  },
+  coinToolBadge: {
+    position: 'absolute',
+    right: -1,
+    bottom: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
+    backgroundColor: '#111119',
   },
   toolsSheet: {
     position: 'absolute',
@@ -937,10 +1113,15 @@ const styles = StyleSheet.create({
     minHeight: 68,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 5,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(167,139,250,0.32)',
     backgroundColor: 'rgba(124,58,237,0.13)',
+  },
+  randomizerButtonActive: {
+    borderColor: 'rgba(196,181,253,0.78)',
+    backgroundColor: 'rgba(124,58,237,0.34)',
   },
   randomizerButtonText: {
     color: colors.foreground,
@@ -948,16 +1129,60 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   randomizerResult: {
-    minHeight: 150,
+    minHeight: 176,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radii.lg,
     backgroundColor: 'rgba(0,0,0,0.28)',
+    overflow: 'hidden',
+  },
+  dieResult: {
+    width: 118,
+    height: 118,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'rgba(196,181,253,0.72)',
+    backgroundColor: '#25134a',
+    shadowColor: '#8b5cf6',
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  coinResult: {
+    width: 126,
+    height: 126,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 63,
+    borderWidth: 5,
+    borderColor: '#f6d365',
+    backgroundColor: '#9a641e',
+    shadowColor: '#fbbf24',
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  randomizerDieKind: {
+    position: 'absolute',
+    top: 9,
+    color: 'rgba(221,214,254,0.7)',
+    fontSize: 12,
+    fontWeight: '900',
   },
   randomizerResultText: {
     color: '#ddd6fe',
-    fontSize: 64,
+    fontSize: 58,
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
+  },
+  randomizerCoinText: {
+    maxWidth: 104,
+    color: '#fff3c4',
+    fontSize: 22,
+    textTransform: 'uppercase',
   },
 });

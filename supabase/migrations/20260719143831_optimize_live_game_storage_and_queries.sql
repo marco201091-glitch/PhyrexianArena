@@ -127,7 +127,10 @@ BEGIN
     color_identity_snapshot = snapshot.color_identity,
     final_life = snapshot.final_life,
     final_infect = snapshot.final_infect,
-    was_starting_player = snapshot.participant_key = (NEW.state ->> 'startingPlayerKey'),
+    was_starting_player = COALESCE(
+      snapshot.participant_key = (NEW.state ->> 'startingPlayerKey'),
+      false
+    ),
     eliminated_at = snapshot.eliminated_at,
     placement = CASE
       WHEN participant.is_winner THEN 1

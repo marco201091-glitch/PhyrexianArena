@@ -63,8 +63,8 @@ export default function SettingsScreen() {
     void loadAccessibilityPreferences().then(setAccessibility);
   }, []);
 
-  const updateAccessibility = (key: keyof AccessibilityPreferences, value: boolean) => {
-    const next = { ...accessibility, [key]: value };
+  const updateReducedMotion = (value: boolean) => {
+    const next = { ...accessibility, reducedMotion: value };
     setAccessibility(next);
     void saveAccessibilityPreferences(next);
   };
@@ -231,14 +231,17 @@ export default function SettingsScreen() {
 
       <PhyrexianPanel style={styles.card}>
         <SectionHeader title={copy('accessibility')} />
-        {([
-          ['reducedMotion', copy('reducedMotion')],
-          ['highContrast', copy('highContrast')],
-          ['largeText', copy('largeText')],
-        ] as const).map(([key, label]) => <View key={key} style={styles.preferenceRow}>
-          <View style={styles.preferenceCopy}><Text style={styles.preferenceLabel}>{label}</Text><Text style={styles.preferenceHint}>{copy('disabledByDefault')}</Text></View>
-          <Switch value={accessibility[key]} onValueChange={(value) => updateAccessibility(key, value)} trackColor={{ true: colors.primary }} />
-        </View>)}
+        <View style={styles.preferenceRow}>
+          <View style={styles.preferenceCopy}>
+            <Text style={styles.preferenceLabel}>{copy('reducedMotion')}</Text>
+            <Text style={styles.preferenceHint}>{copy('disabledByDefault')}</Text>
+          </View>
+          <Switch
+            value={accessibility.reducedMotion}
+            onValueChange={updateReducedMotion}
+            trackColor={{ true: colors.primary }}
+          />
+        </View>
       </PhyrexianPanel>
 
       <PhyrexianPanel style={styles.card}>

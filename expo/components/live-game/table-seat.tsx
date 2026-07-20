@@ -280,18 +280,20 @@ export function TableSeat({
             </HoldPressable>
 
               <AnimatedView style={[styles.lifeReadout, lifeStyle]}>
-                <View style={styles.playerNamePill}>
-                  <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
+                <View style={styles.playerMetaRow}>
+                  <View style={styles.playerNamePill}>
+                    <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
+                  </View>
+                  {recentLifeDelta !== 0 ? (
+                    <Text style={[
+                      styles.recentLifeDelta,
+                      isIPad && styles.recentLifeDeltaIPad,
+                      recentLifeDelta < 0 ? styles.recentLifeLoss : styles.recentLifeGain,
+                    ]}>
+                      {recentLifeDelta > 0 ? '+' : '−'}{Math.abs(recentLifeDelta)}
+                    </Text>
+                  ) : null}
                 </View>
-                {recentLifeDelta !== 0 ? (
-                  <Text style={[
-                    styles.recentLifeDelta,
-                    isIPad && styles.recentLifeDeltaIPad,
-                    recentLifeDelta < 0 ? styles.recentLifeLoss : styles.recentLifeGain,
-                  ]}>
-                    {recentLifeDelta > 0 ? '+' : '−'}{Math.abs(recentLifeDelta)}
-                  </Text>
-                ) : null}
                 <Text
                   style={[
                     styles.lifeValue,
@@ -483,6 +485,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 7,
   },
   playerNamePill: {
+    flexShrink: 1,
     maxWidth: 116,
     minHeight: 24,
     borderRadius: radii.sm,
@@ -503,14 +506,22 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  playerMetaRow: {
+    minHeight: 28,
+    maxWidth: 176,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
   lifeReadout: {
     position: 'absolute',
     top: '50%',
     left: '50%',
     zIndex: 7,
-    width: 132,
+    width: 180,
     minHeight: 118,
-    marginLeft: -66,
+    marginLeft: -90,
     marginTop: -64,
     alignItems: 'center',
     justifyContent: 'center',
@@ -526,11 +537,18 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   recentLifeDelta: {
-    position: 'absolute',
-    top: 23,
-    zIndex: 2,
+    minWidth: 38,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    overflow: 'hidden',
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(4,5,10,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
     fontSize: 17,
+    lineHeight: 20,
     fontWeight: '900',
+    textAlign: 'center',
     fontVariant: ['tabular-nums'],
     textShadowColor: 'rgba(0,0,0,0.95)',
     textShadowOffset: { width: 0, height: 2 },
@@ -540,16 +558,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   recentLifeDeltaIPad: {
-    top: 18,
-    right: -18,
     minWidth: 50,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    overflow: 'hidden',
-    borderRadius: radii.pill,
-    backgroundColor: 'rgba(4,5,10,0.88)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
     fontSize: 28,
     lineHeight: 32,
     textAlign: 'center',

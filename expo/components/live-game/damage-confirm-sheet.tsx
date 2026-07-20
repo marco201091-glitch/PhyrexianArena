@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Modal as RNModal, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
-import { Modal } from '@/components/ui/modal';
 import { HoldPressable } from '@/components/ui/hold-pressable';
 import { colors, radii, spacing } from '@/constants/theme';
 import { isIPadViewport } from '@/lib/layout';
@@ -47,8 +46,18 @@ export function DamageConfirmSheet({
 }: DamageConfirmSheetProps) {
   const { width, height } = useWindowDimensions();
   const isIPad = isIPadViewport(Platform.OS, width, height);
-  const phoneCardSize = Math.max(260, Math.min(400, width - 96, height - 96));
-  const compactPhone = !isIPad && phoneCardSize < 300;
+  const quarterTurn = Math.abs(sourceRotation) % 180 === 90;
+  const phoneCardWidth = Math.max(
+    300,
+    Math.min(620, (quarterTurn ? height : width) - 64),
+  );
+  const phoneCardHeight = Math.max(
+    250,
+    Math.min(quarterTurn ? 340 : 560, (quarterTurn ? width : height) - 64),
+  );
+  const widePhone = !isIPad && phoneCardWidth >= 440;
+  const straightPhone = !isIPad && !quarterTurn;
+  const compactPhone = !isIPad && phoneCardHeight < 310;
   const [amount, setAmount] = useState(0);
   const [mode, setMode] = useState<DamageMode>(defaultMode);
   const [scope, setScope] = useState<'single' | GroupDamageScope>('single');
@@ -65,17 +74,20 @@ export function DamageConfirmSheet({
   if (!source || !target) return null;
 
   return (
-    <Modal
+    <RNModal
       visible={visible}
-      onClose={onClose}
-      scroll={false}
-      presentation="dialog"
-      maxWidth={isIPad ? 600 : 440}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
     >
+      <View style={styles.overlayRoot}>
+      <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={[
         styles.damageCard,
         isIPad && styles.damageCardIPad,
-        !isIPad && { width: phoneCardSize, height: phoneCardSize },
+        !isIPad && { width: phoneCardWidth, height: phoneCardHeight },
         { transform: [{ rotate: `${sourceRotation}deg` }] },
       ]}>
         {isIPad ? (
@@ -98,7 +110,7 @@ export function DamageConfirmSheet({
             </View>
             <Pressable
               onPress={onClose}
-              style={[styles.closeButton, isIPad && styles.closeButtonIPad]}
+              style={[styles.closeButton, compactPhone && styles.closeButtonCompact, isIPad && styles.closeButtonIPad]}
               accessibilityRole="button"
               accessibilityLabel={labels.cancel}
             >
@@ -106,8 +118,14 @@ export function DamageConfirmSheet({
             </Pressable>
           </View>
 
-          <View style={[styles.amountStage, compactPhone && styles.amountStageCompact, isIPad && styles.amountStageIPad]}>
-          <View style={[styles.stepperRow, isIPad && styles.stepperRowIPad]}>
+          <View style={[styles.editorBody, widePhone && styles.editorBodyWide]}>
+          <View style={[
+            styles.amountStage,
+            compactPhone && styles.amountStageCompact,
+            widePhone && styles.amountStageWide,
+            isIPad && styles.amountStageIPad,
+          ]}>
+          <View style={[styles.stepperRow, widePhone && styles.stepperRowWide, isIPad && styles.stepperRowIPad]}>
             <HoldPressable
               style={[styles.stepButton, compactPhone && styles.stepButtonCompact, isIPad && styles.stepButtonIPad]}
               onShort={() => setAmount((value) => Math.max(0, value - 1))}
@@ -137,7 +155,14 @@ export function DamageConfirmSheet({
           </View>
           </View>
 
-          <View style={[styles.typeSegment, isIPad && styles.typeSegmentIPad]}>
+          <View style={[styles.optionsColumn, widePhone && styles.optionsColumnWide]}>
+          <View style={[
+            styles.typeSegment,
+            compactPhone && styles.typeSegmentCompact,
+            widePhone && styles.typeSegmentWide,
+            straightPhone && styles.typeSegmentStraight,
+            isIPad && styles.typeSegmentIPad,
+          ]}>
             {([
               { value: 'life' as const, label: labels.lifeDamage, icon: 'heart-dislike-outline' as const },
               { value: 'commander' as const, label: labels.commanderDamage, icon: 'shield-outline' as const },
@@ -147,15 +172,33 @@ export function DamageConfirmSheet({
               return (
                 <Pressable
                   key={option.value}
-                  style={[styles.typePill, compactPhone && styles.typePillCompact, isIPad && styles.typePillIPad, active && styles.typePillActive]}
+                  style={[
+                    styles.typePill,
+                    compactPhone && styles.typePillCompact,
+                    widePhone && styles.typePillWide,
+                    straightPhone && styles.typePillStraight,
+                    isIPad && styles.typePillIPad,
+                    active && styles.typePillActive,
+                  ]}
                   onPress={() => {
                     setMode(option.value);
                     if (option.value === 'commander') setScope('single');
-                    if (option.value !== 'life') setDrain(false);
+                    if (option.value === 'commander') setDrain(false);
                   }}
                 >
-                  <Ionicons name={option.icon} size={isIPad ? 19 : 14} color={active ? colors.primaryForeground : colors.muted} />
-                  <Text style={[styles.typePillText, isIPad && styles.typePillTextIPad, active && styles.typePillTextActive]}>
+                  <Ionicons name={option.icon} size={isIPad ? 19 : (widePhone || straightPhone) ? 20 : 14} color={active ? colors.primaryForeground : colors.muted} />
+                  <Text
+                    style={[
+                      styles.typePillText,
+                      widePhone && styles.typePillTextWide,
+                      straightPhone && styles.typePillTextStraight,
+                      isIPad && styles.typePillTextIPad,
+                      active && styles.typePillTextActive,
+                    ]}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.78}
+                  >
                     {option.label}
                   </Text>
                 </Pressable>
@@ -164,7 +207,7 @@ export function DamageConfirmSheet({
           </View>
 
           {mode !== 'commander' ? (
-            <View style={[styles.typeSegment, isIPad && styles.typeSegmentIPad]}>
+            <View style={[styles.typeSegment, compactPhone && styles.typeSegmentCompact, isIPad && styles.typeSegmentIPad]}>
               {([
                 { value: 'single' as const, label: labels.thisPlayer },
                 { value: 'opponents' as const, label: labels.eachOpponent },
@@ -189,7 +232,7 @@ export function DamageConfirmSheet({
             </View>
           ) : null}
 
-          {mode === 'life' ? (
+          {mode !== 'commander' ? (
             <Pressable
               style={[styles.drainToggle, compactPhone && styles.drainToggleCompact, drain && styles.drainToggleActive]}
               onPress={() => {
@@ -211,11 +254,14 @@ export function DamageConfirmSheet({
               <Ionicons name={drain ? 'checkbox' : 'square-outline'} size={19} color={drain ? colors.primaryLight : colors.muted} />
             </Pressable>
           ) : null}
+          </View>
+          </View>
 
           <View style={[styles.footerRow, compactPhone && styles.footerRowCompact, isIPad && styles.footerRowIPad]}>
-            <Button label={labels.cancel} variant="outline" onPress={onClose} style={styles.footerButton} />
+            <Button label={labels.cancel} variant="outline" size={compactPhone ? 'sm' : 'default'} onPress={onClose} style={styles.footerButton} />
             <Button
               label={labels.apply}
+              size={compactPhone ? 'sm' : 'default'}
               onPress={() => onConfirm({ amount, mode, scope, drain })}
               disabled={amount === 0}
               style={styles.footerButton}
@@ -223,11 +269,22 @@ export function DamageConfirmSheet({
           </View>
         </View>
       </View>
-    </Modal>
+      </View>
+    </RNModal>
   );
 }
 
 const styles = StyleSheet.create({
+  overlayRoot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.modalOverlay,
+  },
   damageCard: {
     alignSelf: 'center',
     overflow: 'hidden',
@@ -254,8 +311,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   damageCardContentCompact: {
-    gap: 3,
-    padding: 6,
+    gap: 2,
+    padding: 4,
   },
   compactHeader: {
     minHeight: 38,
@@ -267,7 +324,16 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   compactHeaderPhone: {
-    minHeight: 32,
+    minHeight: 28,
+  },
+  editorBody: {
+    flex: 1,
+    gap: 6,
+    minHeight: 0,
+  },
+  editorBodyWide: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
   headerCopy: {
     flex: 1,
@@ -294,6 +360,11 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 23,
   },
+  closeButtonCompact: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
   amountStage: {
     width: '100%',
     flex: 1,
@@ -308,7 +379,15 @@ const styles = StyleSheet.create({
     minHeight: 150,
   },
   amountStageCompact: {
-    minHeight: 76,
+    flex: 0,
+    height: 64,
+    minHeight: 64,
+  },
+  amountStageWide: {
+    flex: 1,
+    width: '46%',
+    height: '100%',
+    minHeight: 0,
   },
   sourceTarget: {
     color: colors.muted,
@@ -336,6 +415,9 @@ const styles = StyleSheet.create({
   },
   stepperRowIPad: {
     paddingHorizontal: spacing.lg,
+  },
+  stepperRowWide: {
+    paddingHorizontal: spacing.md,
   },
   stepButton: {
     width: 52,
@@ -375,8 +457,8 @@ const styles = StyleSheet.create({
     lineHeight: 94,
   },
   amountValueCompact: {
-    fontSize: 48,
-    lineHeight: 50,
+    fontSize: 40,
+    lineHeight: 42,
   },
   amountContext: {
     color: colors.foreground,
@@ -398,10 +480,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 4,
+    overflow: 'hidden',
   },
   typeSegmentIPad: {
     gap: 6,
     padding: 6,
+  },
+  typeSegmentCompact: {
+    gap: 2,
+    padding: 2,
+  },
+  typeSegmentWide: {
+    minHeight: 68,
+  },
+  typeSegmentStraight: {
+    minHeight: 174,
+    flexDirection: 'column',
+    gap: 4,
+    padding: 4,
+  },
+  optionsColumn: {
+    gap: 4,
+  },
+  optionsColumnWide: {
+    flex: 1.2,
+    justifyContent: 'center',
+    gap: 5,
   },
   typePill: {
     flex: 1,
@@ -413,13 +517,29 @@ const styles = StyleSheet.create({
     minHeight: 38,
     paddingVertical: 7,
     paddingHorizontal: spacing.xs,
+    overflow: 'hidden',
   },
   typePillIPad: {
     minHeight: 52,
   },
   typePillCompact: {
-    minHeight: 32,
-    paddingVertical: 4,
+    minHeight: 28,
+    paddingVertical: 2,
+  },
+  typePillWide: {
+    minHeight: 64,
+    flexDirection: 'column',
+    gap: 3,
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+  },
+  typePillStraight: {
+    width: '100%',
+    minHeight: 52,
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 7,
+    paddingHorizontal: spacing.md,
   },
   typePillActive: {
     backgroundColor: colors.primary,
@@ -428,6 +548,17 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 10,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  typePillTextWide: {
+    width: '100%',
+    fontSize: 11,
+    lineHeight: 13,
+  },
+  typePillTextStraight: {
+    width: 'auto',
+    fontSize: 12,
+    lineHeight: 15,
   },
   typePillTextIPad: {
     fontSize: 13,
@@ -447,7 +578,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   scopePillCompact: {
-    minHeight: 30,
+    minHeight: 26,
   },
   scopePillActive: {
     backgroundColor: colors.selectionTintStrong,
@@ -488,8 +619,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   drainToggleCompact: {
-    minHeight: 32,
-    paddingVertical: 3,
+    minHeight: 28,
+    paddingVertical: 2,
   },
   drainToggleActive: {
     borderColor: colors.selectionBorder,

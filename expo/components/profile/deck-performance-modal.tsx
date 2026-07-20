@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { CommanderArt } from '@/components/deck/commander-art';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
@@ -33,7 +33,9 @@ type Props = {
 };
 
 export function DeckPerformanceModal({ visible, deck, performance, labels, onClose }: Props) {
+  const { width } = useWindowDimensions();
   if (!deck) return null;
+  const phoneLayout = width < 600;
 
   const metrics = [
     [labels.games, performance?.gamesPlayed || 0],
@@ -59,7 +61,7 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
   return (
     <Modal visible={visible} onClose={onClose} presentation="dialog" maxWidth={620}>
       <ModalHeader title={deck.name} subtitle={deck.commander} icon="stats-chart-outline" onClose={onClose} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <View style={styles.content}>
         <View style={styles.hero}>
           <CommanderArt uri={deck.commander_image} alt={deck.commander} size="hero" />
           <View style={styles.heroCopy}>
@@ -69,9 +71,17 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
         </View>
 
         <View style={styles.metrics}>
-          {metrics.map(([label, value]) => (
-            <PhyrexianPanel key={label} variant="inset" style={styles.metric}>
-              <Text style={styles.metricLabel}>{label}</Text>
+          {metrics.map(([label, value], index) => (
+            <PhyrexianPanel
+              key={label}
+              variant="inset"
+              style={[
+                styles.metric,
+                phoneLayout && styles.metricPhone,
+                phoneLayout && index === metrics.length - 1 && styles.metricWidePhone,
+              ]}
+            >
+              <Text style={styles.metricLabel} numberOfLines={2}>{label}</Text>
               <Text style={styles.metricValue}>{value}</Text>
             </PhyrexianPanel>
           ))}
@@ -86,7 +96,7 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
             <View style={[styles.fill, { width: `${coverage}%` }]} />
           </View>
         </View>
-      </ScrollView>
+      </View>
     </Modal>
   );
 }
@@ -98,8 +108,10 @@ const styles = StyleSheet.create({
   title: { color: colors.foreground, fontSize: 17, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 12 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  metric: { width: '31%', minWidth: 96, flexGrow: 1 },
-  metricLabel: { color: colors.muted, fontSize: 10, textTransform: 'uppercase' },
+  metric: { width: '31%', minWidth: 96, minHeight: 80, flexGrow: 1, justifyContent: 'space-between' },
+  metricPhone: { width: '48%', minWidth: 0 },
+  metricWidePhone: { width: '100%' },
+  metricLabel: { color: colors.muted, fontSize: 10, lineHeight: 13, textTransform: 'uppercase' },
   metricValue: { color: colors.foreground, fontSize: 19, fontWeight: '800', marginTop: 3 },
   coverageBlock: { gap: spacing.xs, marginTop: spacing.xs },
   coverageHeader: { flexDirection: 'row', justifyContent: 'space-between' },

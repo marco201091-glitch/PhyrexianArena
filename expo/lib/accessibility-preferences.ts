@@ -15,6 +15,7 @@ export const DEFAULT_ACCESSIBILITY_PREFERENCES: AccessibilityPreferences = {
 };
 
 const ACCESSIBILITY_SCHEMA_VERSION = 2;
+const accessibilityListeners = new Set<(value: AccessibilityPreferences) => void>();
 
 export function normalizeAccessibilityPreferences(value: unknown): AccessibilityPreferences {
   if (!value || typeof value !== 'object') return DEFAULT_ACCESSIBILITY_PREFERENCES;
@@ -52,4 +53,12 @@ export async function saveAccessibilityPreferences(value: AccessibilityPreferenc
     schemaVersion: ACCESSIBILITY_SCHEMA_VERSION,
     ...value,
   }));
+  accessibilityListeners.forEach((listener) => listener(value));
+}
+
+export function subscribeAccessibilityPreferences(
+  listener: (value: AccessibilityPreferences) => void,
+) {
+  accessibilityListeners.add(listener);
+  return () => accessibilityListeners.delete(listener);
 }
