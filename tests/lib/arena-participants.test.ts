@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getLastDeckSelectionForParticipant,
   getParticipantDeckId,
+  getParticipantDeckSnapshot,
   getParticipantDisplayName,
   getParticipantKey,
   resolveWinnerParticipantKey,
@@ -26,6 +27,33 @@ describe('arena-participants', () => {
     expect(getParticipantKey(userParticipant())).toBe('user:user-1');
     expect(getParticipantDisplayName(userParticipant())).toBe('Marco');
     expect(getParticipantDeckId(userParticipant())).toBe('deck-1');
+  });
+
+  it('prefers immutable match snapshots over later profile and deck edits', () => {
+    const participant = userParticipant({
+      participant_name_snapshot: 'Name at match time',
+      deck_name_snapshot: 'Original deck',
+      commander_snapshot: 'Original commander',
+      commander_image_snapshot: 'https://cards.test/original.jpg',
+      deck_bracket_snapshot: '3',
+      color_identity_snapshot: ['U', 'B'],
+      profiles: { id: 'user-1', username: 'new-name', display_name: 'New name' },
+      decks: {
+        name: 'Renamed deck',
+        commander: 'New commander',
+        commander_image: null,
+        bracket: '5',
+      },
+    });
+
+    expect(getParticipantDisplayName(participant)).toBe('Name at match time');
+    expect(getParticipantDeckSnapshot(participant)).toMatchObject({
+      name: 'Original deck',
+      commander: 'Original commander',
+      commander_image: 'https://cards.test/original.jpg',
+      bracket: '3',
+      color_identity: ['U', 'B'],
+    });
   });
 
   it('resolves winner participant keys', () => {

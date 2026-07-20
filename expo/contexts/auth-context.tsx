@@ -1,5 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { AppState, Platform } from 'react-native';
+import { registerAuthAppStateRefresh } from '@/lib/auth-app-state';
 import { supabase } from '@/lib/supabase';
 
 type AuthContextValue = {
@@ -26,8 +28,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
+    const unregisterAppStateRefresh = Platform.OS === 'web'
+      ? null
+      : registerAuthAppStateRefresh(supabase.auth, AppState);
+
     return () => {
       subscription.subscription.unsubscribe();
+      unregisterAppStateRefresh?.();
     };
   }, []);
 

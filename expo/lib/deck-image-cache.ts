@@ -1,7 +1,9 @@
 import * as FileSystem from 'expo-file-system';
 import { Image } from 'expo-image';
+import { Platform } from 'react-native';
 import { fetchCommanderArtOptions } from '@/lib/commander-arts';
 import { collectDeckCommanderNames, collectDeckImageUrls } from '@/lib/deck-image-urls';
+import { getRemoteImageHeaders } from '@/lib/remote-image';
 import type { ProfileDeck } from '@/lib/types/profile';
 
 export { collectDeckCommanderNames, collectDeckImageUrls } from '@/lib/deck-image-urls';
@@ -12,7 +14,7 @@ const ON_DEMAND_CONCURRENCY = 6;
 const BACKGROUND_CONCURRENCY = 12;
 const MIN_CACHED_FILE_BYTES = 512;
 const ARTS_PER_COMMANDER_PREFETCH = 8;
-const REMOTE_VALIDATION_TIMEOUT_MS = 8_000;
+const usesNativeImageDiskCache = Platform.OS === 'ios';
 
 type CacheManifest = {
   urls: Record<string, string>;
@@ -30,6 +32,7 @@ let initPromise: Promise<void> | null = null;
 
 const memoryUriByRemote = new Map<string, string>();
 const memoryUriByCommander = new Map<string, string>();
+const validatedLocalUris = new Set<string>();
 
 let onDemandActive = 0;
 const onDemandWaiters: Array<() => void> = [];
@@ -66,6 +69,7 @@ function isLocalUri(uri: string): boolean {
 
 async function isUsableLocalCacheFile(uri: string): Promise<boolean> {
   if (!isLocalUri(uri)) return true;
+  if (validatedLocalUris.has(uri)) return true;
   try {
     const info = await FileSystem.getInfoAsync(uri);
     const hasUsableSize = Boolean(
@@ -75,7 +79,9 @@ async function isUsableLocalCacheFile(uri: string): Promise<boolean> {
     if (!hasUsableSize) return false;
     const imageRef = await Image.loadAsync(uri);
     try {
-      return imageRef.width > 8 && imageRef.height > 8;
+      const valid = imageRef.width > 8 && imageRef.height > 8;
+      if (valid) validatedLocalUris.add(uri);
+      return valid;
     } finally {
       imageRef.release();
     }
@@ -84,52 +90,18 @@ async function isUsableLocalCacheFile(uri: string): Promise<boolean> {
   }
 }
 
-export type DeckImageCacheValidation = 'valid' | 'cache-invalid' | 'remote-invalid';
+export type DeckImageCacheValidation = 'valid' | 'cache-invalid';
 
 /**
- * Validate a cached image without making offline startup depend on the network.
- * A remote size mismatch catches interrupted downloads that can still be large
- * enough to look valid to the filesystem but render as a blank/black image.
+ * Validate the local file only. Cached images never trigger a network request:
+ * missing, truncated, or undecodable files are invalidated and downloaded again.
  */
 export async function validateDeckImageCacheEntry(
-  remoteUrl: string | null | undefined,
+  _remoteUrl: string | null | undefined,
   cachedUri: string,
 ): Promise<DeckImageCacheValidation> {
   if (!isLocalUri(cachedUri)) return 'valid';
-  if (!(await isUsableLocalCacheFile(cachedUri))) return 'cache-invalid';
-
-  const normalizedRemote = remoteUrl?.trim();
-  if (!normalizedRemote || isLocalUri(normalizedRemote)) return 'valid';
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REMOTE_VALIDATION_TIMEOUT_MS);
-  try {
-    const response = await fetch(normalizedRemote, {
-      method: 'HEAD',
-      signal: controller.signal,
-    });
-    if (!response.ok) return 'remote-invalid';
-
-    const contentType = response.headers.get('content-type');
-    if (contentType && !contentType.toLowerCase().startsWith('image/')) {
-      return 'remote-invalid';
-    }
-
-    const expectedBytes = Number(response.headers.get('content-length'));
-    if (Number.isFinite(expectedBytes) && expectedBytes > 0) {
-      const info = await FileSystem.getInfoAsync(cachedUri);
-      if (!info.exists || (typeof info.size === 'number' && info.size !== expectedBytes)) {
-        return 'cache-invalid';
-      }
-    }
-
-    return 'valid';
-  } catch {
-    // Preserve a decodable cached image when offline or when the CDN is slow.
-    return 'valid';
-  } finally {
-    clearTimeout(timeout);
-  }
+  return await isUsableLocalCacheFile(cachedUri) ? 'valid' : 'cache-invalid';
 }
 
 export async function invalidateDeckImageCacheEntry(
@@ -161,6 +133,7 @@ export async function invalidateDeckImageCacheEntry(
 
   for (const localUri of localCandidates) {
     if (!isLocalUri(localUri)) continue;
+    validatedLocalUris.delete(localUri);
     try {
       const info = await FileSystem.getInfoAsync(localUri);
       if (info.exists) await FileSystem.deleteAsync(localUri, { idempotent: true });
@@ -247,6 +220,10 @@ async function loadManifest(): Promise<void> {
 }
 
 export async function initDeckImageCache(): Promise<void> {
+  if (usesNativeImageDiskCache) {
+    manifestReady = true;
+    return;
+  }
   if (manifestReady) return;
   if (!initPromise) {
     initPromise = loadManifest();
@@ -258,6 +235,7 @@ export function peekDeckImageUri(
   remoteUrl?: string | null,
   commanderName?: string,
 ): string | null {
+  if (usesNativeImageDiskCache) return null;
   if (remoteUrl?.trim()) {
     const normalized = normalizeRemoteUrl(remoteUrl);
     const cached = memoryUriByRemote.get(normalized) || manifest.urls[normalized];
@@ -339,7 +317,9 @@ async function downloadToCache(
   return runQueued(priority, async () => {
     const temporaryPath = `${cachePath}.download-${Date.now()}`;
     try {
-      const downloaded = await FileSystem.downloadAsync(remoteUrl, temporaryPath);
+      const downloaded = await FileSystem.downloadAsync(remoteUrl, temporaryPath, {
+        headers: getRemoteImageHeaders(remoteUrl),
+      });
       if (
         downloaded.status >= 200 &&
         downloaded.status < 300 &&
@@ -364,6 +344,15 @@ export async function cacheRemoteDeckImage(
   const normalized = normalizeRemoteUrl(remoteUrl);
   if (!normalized) return normalized;
   if (isLocalUri(normalized)) return normalized;
+  if (usesNativeImageDiskCache) {
+    if (options?.background) {
+      void Image.prefetch(normalized, {
+        cachePolicy: 'disk',
+        headers: getRemoteImageHeaders(normalized),
+      }).catch(() => false);
+    }
+    return normalized;
+  }
 
   const peeked = peekDeckImageUri(normalized);
   if (peeked) return peeked;
@@ -394,6 +383,35 @@ export async function cacheRemoteDeckImage(
   }
 }
 
+export function peekCachedRemoteImageUri(remoteUrl?: string | null): string | null {
+  return peekDeckImageUri(remoteUrl);
+}
+
+export async function resolveCachedRemoteImageUri(
+  remoteUrl: string | null | undefined,
+): Promise<string | null> {
+  const normalized = remoteUrl?.trim();
+  if (!normalized) return null;
+  if (usesNativeImageDiskCache) return normalized;
+
+  await initDeckImageCache();
+  const cached = peekDeckImageUri(normalized);
+  if (cached) {
+    if (await isUsableLocalCacheFile(cached)) return cached;
+    await invalidateDeckImageCacheEntry(normalized, undefined, cached);
+  }
+
+  const resolved = await cacheRemoteDeckImage(normalized);
+  return resolved || null;
+}
+
+export async function invalidateCachedRemoteImage(
+  remoteUrl: string | null | undefined,
+  failedUri?: string | null,
+): Promise<void> {
+  await invalidateDeckImageCacheEntry(remoteUrl, undefined, failedUri);
+}
+
 async function fetchCommanderArtsFromApi(commanderName: string): Promise<string[]> {
   const arts = await fetchCommanderArtOptions(commanderName);
   return arts
@@ -419,6 +437,16 @@ export async function prefetchCommanderArtsByName(
     const priority = options?.background ? 'background' : 'on-demand';
 
     if (limitedArts.length > 0) {
+      if (usesNativeImageDiskCache) {
+        limitedArts.forEach((url) => {
+          void Image.prefetch(url, {
+            cachePolicy: 'disk',
+            headers: getRemoteImageHeaders(url),
+          }).catch(() => false);
+        });
+        return limitedArts;
+      }
+
       const nameCachePath = `${CACHE_DIR}cmd-${hashKey(normalizedName.toLowerCase())}.img`;
       const primaryUrl = limitedArts[0];
       const localPrimary = await downloadToCache(primaryUrl, nameCachePath, priority);

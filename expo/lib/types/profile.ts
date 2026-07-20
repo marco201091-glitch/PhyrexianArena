@@ -29,3 +29,16 @@ export interface DeckWinRate {
   wins: number;
   winRate: number;
 }
+
+export interface DeckPerformance extends DeckWinRate {
+  trackedGames: number;
+  trackingCoverage: number;
+  secondPlaces: number;
+  damageDealt: number;
+  damageTaken: number;
+  lifeGained: number;
+  commanderDamage: number;
+  infectDealt: number;
+  eliminations: number;
+  medianWinningDurationSeconds: number | null;
+}

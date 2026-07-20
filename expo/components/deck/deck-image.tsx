@@ -2,6 +2,7 @@ import { Image, type ImageContentFit, type ImageContentPosition } from 'expo-ima
 import { ActivityIndicator, StyleSheet, Text, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
 import { colors } from '@/constants/theme';
 import { useDeckImageUri } from '@/hooks/use-deck-image-uri';
+import { getRemoteImageHeaders } from '@/lib/remote-image';
 
 type DeckImageProps = {
   uri: string | null | undefined;
@@ -44,12 +45,12 @@ export function DeckImage({
 
   return (
     <Image
-      source={{ uri: resolvedUri }}
+      source={{ uri: resolvedUri, headers: getRemoteImageHeaders(resolvedUri) }}
       alt={alt}
       style={style}
       contentFit={contentFit}
       contentPosition={contentPosition}
-      cachePolicy="memory-disk"
+      cachePolicy={resolvedUri.startsWith('file://') ? 'memory' : 'memory-disk'}
       transition={180}
       recyclingKey={`${alt}::${resolvedUri ?? ''}`}
       onError={handleError}

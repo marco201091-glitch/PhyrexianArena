@@ -12,10 +12,12 @@ import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { showAppAlert } from '@/lib/app-alert';
 import { AddDeckModal } from '@/components/profile/add-deck-modal';
 import { DeckCard } from '@/components/profile/deck-card';
+import { DeckPerformanceModal } from '@/components/profile/deck-performance-modal';
 import { DeckCollectionInsights } from '@/components/profile/deck-collection-insights';
 import { EditDeckModal } from '@/components/profile/edit-deck-modal';
 import { Button } from '@/components/ui/button';
 import { FilterPanel } from '@/components/ui/filter-panel';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { Input } from '@/components/ui/input';
 import { ManaColorFilterChip } from '@/components/ui/mana-color-filter-chip';
 import { ProfileSkeleton } from '@/components/ui/screen-skeletons';
@@ -37,7 +39,7 @@ import { MANA_COLOR_ORDER } from '@/lib/mana-colors';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import type { ProfileDeck } from '@/lib/types/profile';
-import { isTabletViewport } from '@/lib/layout';
+import { responsiveGridColumns } from '@/lib/layout';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -48,6 +50,7 @@ export default function ProfileScreen() {
   const {
     decks,
     winRates,
+    performance,
     loading: decksLoading,
     refresh,
     deleteDeck,
@@ -63,9 +66,11 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
   const { width } = useWindowDimensions();
-  const deckColumns = isTabletViewport(width) ? 2 : 1;
+  const deckColumns = responsiveGridColumns(width, 290, 3, spacing.md);
   const [searchQuery, setSearchQuery] = useState('');
   const [deckColorFilter, setDeckColorFilter] = useState('all');
+  const [deckSort, setDeckSort] = useState<'recent' | 'wr' | 'games' | 'damage' | 'eliminations' | 'fastest'>('recent');
+  const [detailsDeck, setDetailsDeck] = useState<ProfileDeck | null>(null);
   const [refreshingAllDecks, setRefreshingAllDecks] = useState(false);
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [savingDeck, setSavingDeck] = useState(false);
@@ -81,7 +86,7 @@ export default function ProfileScreen() {
 
   const filteredDecks = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return decks.filter((deck) => {
+    const filtered = decks.filter((deck) => {
       if (query) {
         const matchesQuery =
           deck.name.toLowerCase().includes(query) ||
@@ -96,7 +101,19 @@ export default function ProfileScreen() {
 
       return true;
     });
-  }, [deckColorFilter, decks, searchQuery]);
+    return filtered.sort((a, b) => {
+      if (deckSort === 'recent') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      const left = performance[a.id];
+      const right = performance[b.id];
+      if (deckSort === 'wr') return (right?.winRate || 0) - (left?.winRate || 0);
+      if (deckSort === 'games') return (right?.gamesPlayed || 0) - (left?.gamesPlayed || 0);
+      if (deckSort === 'damage') return (right?.damageDealt || 0) - (left?.damageDealt || 0);
+      if (deckSort === 'eliminations') return (right?.eliminations || 0) - (left?.eliminations || 0);
+      const leftDuration = left?.medianWinningDurationSeconds ?? Number.POSITIVE_INFINITY;
+      const rightDuration = right?.medianWinningDurationSeconds ?? Number.POSITIVE_INFINITY;
+      return leftDuration - rightDuration;
+    });
+  }, [deckColorFilter, deckSort, decks, performance, searchQuery]);
 
   const avatarUrl = getAvatarUrl(avatarVersion);
 
@@ -182,6 +199,8 @@ export default function ProfileScreen() {
         openDeckLabel={copy('openDeck')}
         viewOnEdhrecLabel={copy('viewOnEdhrec')}
         refreshing={refreshingDeckIds.includes(deck.id)}
+        detailsLabel={copy('details')}
+        onDetails={() => setDetailsDeck(deck)}
         onEdit={() => openEditDeck(deck)}
         onRefresh={() => handleRefreshDeck(deck)}
         onDelete={() => handleDeleteDeck(deck.id)}
@@ -270,6 +289,24 @@ export default function ProfileScreen() {
                 ),
               },
               {
+                key: 'sort',
+                title: copy('sortBy'),
+                content: (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+                    {([
+                      ['recent', copy('recent')],
+                      ['wr', copy('winRate')],
+                      ['games', copy('games')],
+                      ['damage', copy('damageDealt')],
+                      ['eliminations', copy('eliminations')],
+                      ['fastest', copy('fastestWin')],
+                    ] as const).map(([value, label]) => (
+                      <FilterChip key={value} label={label} active={deckSort === value} onPress={() => setDeckSort(value)} />
+                    ))}
+                  </ScrollView>
+                ),
+              },
+              {
                 key: 'color',
                 title: copy('filterByColor'),
                 content: (
@@ -317,6 +354,10 @@ export default function ProfileScreen() {
         columnWrapperStyle={deckColumns > 1 ? styles.deckGridRow : undefined}
         keyExtractor={(deck) => deck.id}
         renderItem={renderDeckItem}
+        initialNumToRender={deckColumns * 2}
+        maxToRenderPerBatch={deckColumns * 2}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
         ListHeaderComponent={listHeader}
         ItemSeparatorComponent={() => <View style={styles.deckSeparator} />}
         contentContainerStyle={scrollContentStyle}
@@ -476,6 +517,28 @@ export default function ProfileScreen() {
           } finally {
             setSavingDeckEdit(false);
           }
+        }}
+      />
+
+      <DeckPerformanceModal
+        visible={Boolean(detailsDeck)}
+        deck={detailsDeck}
+        performance={detailsDeck ? performance[detailsDeck.id] : undefined}
+        onClose={() => setDetailsDeck(null)}
+        labels={{
+          title: copy('deckPerformance'),
+          games: copy('games'),
+          wins: copy('wins'),
+          winRate: copy('winRate'),
+          secondPlaces: copy('secondPlaces'),
+          damageDealt: copy('damageDealt'),
+          lifeLost: copy('lifeLost'),
+          lifeGained: copy('lifeGained'),
+          commanderDamage: copy('commanderDamage'),
+          infectDealt: copy('infectDealt'),
+          eliminations: copy('eliminations'),
+          fastestWin: copy('fastestWin'),
+          trackingCoverage: copy('trackingCoverage'),
         }}
       />
 

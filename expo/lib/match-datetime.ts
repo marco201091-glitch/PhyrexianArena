@@ -12,8 +12,14 @@ export function parseMatchDateValue(value: string): Date | null {
   const trimmed = value.trim();
   if (!DATE_PATTERN.test(trimmed)) return null;
 
+  const [year, month, day] = trimmed.split('-').map(Number);
   const parsed = new Date(`${trimmed}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
+  if (
+    Number.isNaN(parsed.getTime())
+    || parsed.getFullYear() !== year
+    || parsed.getMonth() + 1 !== month
+    || parsed.getDate() !== day
+  ) return null;
 
   return parsed;
 }

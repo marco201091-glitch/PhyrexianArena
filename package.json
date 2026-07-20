@@ -1,6 +1,6 @@
 {
   "name": "nextjs",
-  "version": "0.1.0",
+  "version": "4.5.0",
   "private": true,
   "scripts": {
     "dev": "node scripts/stop-dev.mjs && next dev --webpack",
@@ -31,11 +31,16 @@
     "mobile:install:debug": "adb install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk",
     "expo:start": "npm --prefix expo run start",
     "expo:android": "npm --prefix expo run android",
+    "expo:ios": "npm --prefix expo run ios",
+    "expo:ios:config": "npm --prefix expo run ios:config",
     "expo:typecheck": "npm --prefix expo run typecheck",
     "expo:eas:init": "npm --prefix expo run eas:init",
     "expo:eas:preview": "npm --prefix expo run eas:build:preview",
     "eas:init": "npm --prefix expo run eas:init",
     "eas:build:preview": "npm --prefix expo run eas:build:preview",
+    "eas:build:ios:preview": "npm --prefix expo run eas:build:ios:preview",
+    "eas:build:ios:unsigned": "npm --prefix expo run eas:build:ios:unsigned",
+    "eas:build:ios:production": "npm --prefix expo run eas:build:ios:production",
     "eas:env:push": "npm --prefix expo run eas:env:push",
     "eas:build:preview:nowait": "npm --prefix expo run eas:build:preview:nowait"
   },
@@ -92,6 +97,7 @@
     "next": "16.2.10",
     "next-themes": "^0.3.0",
     "postcss": "8.5.10",
+    "qrcode": "1.5.4",
     "react": "18.2.0",
     "react-day-picker": "^8.10.1",
     "react-dom": "18.2.0",
@@ -108,6 +114,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.2.0",
+    "@types/qrcode": "1.5.6",
     "@typescript-eslint/parser": "^8.62.1",
     "eslint": "^9.39.4",
     "vitest": "^3.2.7"

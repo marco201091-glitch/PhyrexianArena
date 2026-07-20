@@ -1,6 +1,22 @@
 # Monorepo: EAS builds the expo app; skip unrelated trees.
 mobile/
+artifacts/
 .git/
+
+# EAS environments provide build-time values; never upload local env files.
+**/.env*
+
+# Dependencies and generated output are restored by EAS.
+node_modules/
+expo/node_modules/
+.next/
+coverage/
+expo/dist/
+expo/web-build/
+expo/assets/reference/
+expo/.expo/
+expo/.metro.log
+expo/.metro.pid
 
 # Native folders are regenerated on EAS.
 expo/android/
@@ -9,3 +25,5 @@ expo/ios/
 # Local Gradle / Metro caches.
 **/.gradle/
 **/build/
+!expo/.eas/build/
+!expo/.eas/build/*.yml

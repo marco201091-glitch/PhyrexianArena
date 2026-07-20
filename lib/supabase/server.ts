@@ -5,13 +5,11 @@ import { getAuthCookieOptions } from '@/lib/auth-persistence';
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
-  const requestCookies = cookieStore.getAll();
-
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookieOptions: getAuthCookieOptions(requestCookies),
+      cookieOptions: getAuthCookieOptions(),
       auth: {
         detectSessionInUrl: false,
       },

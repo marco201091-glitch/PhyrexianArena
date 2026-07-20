@@ -1,6 +1,6 @@
 import { getCommanderOptions, getDeckDisplayColors, type DeckColorRecord } from '@/lib/deck-metadata';
 import { buildAverageStoredCommanderCmc } from '@/lib/deck-commander-cmc';
-import { getPlayableManaColors, MANA_COLOR_ORDER } from '@/lib/mana-colors';
+import { getPlayableManaColors, MANA_COLOR_ORDER } from '@/lib/mana-colors-core';
 
 export interface DeckCollectionSnapshot extends DeckColorRecord {
   id: string;

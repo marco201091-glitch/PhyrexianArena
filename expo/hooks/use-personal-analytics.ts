@@ -4,9 +4,8 @@ import {
   buildPersonalAnalytics,
   emptyPersonalAnalytics,
   type PersonalAnalytics,
-  type PersonalDeckSnapshot,
-  type PersonalMatchParticipantRow,
 } from '@/lib/personal-analytics';
+import { fetchPersonalAnalyticsInputs } from '@/lib/personal-analytics-query';
 import { prefetchCommanderNames, prefetchDeckImageUrls } from '@/lib/deck-image-cache';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
@@ -24,40 +23,11 @@ export function usePersonalAnalytics(userId: string | undefined) {
 
     setLoading(true);
     try {
-      const { data: participantRows, error: participantsError } = await supabase
-        .from('match_participants')
-        .select('is_winner, deck_id, matches(played_at)')
-        .eq('user_id', userId)
-        .not('deck_id', 'is', null);
-
-      if (participantsError) throw participantsError;
-
-      const participants = ((participantRows as Array<PersonalMatchParticipantRow & {
-        matches?: { played_at: string } | Array<{ played_at: string }> | null;
-      }>) || []).map((row) => ({
-        is_winner: row.is_winner,
-        deck_id: row.deck_id,
-        played_at: Array.isArray(row.matches)
-          ? row.matches[0]?.played_at ?? null
-          : row.matches?.played_at ?? null,
-      }));
-      const deckIds = Array.from(new Set(participants.map((row) => row.deck_id).filter(Boolean)));
-
-      if (deckIds.length === 0) {
+      const { participants, decksById } = await fetchPersonalAnalyticsInputs(supabase, userId);
+      if (decksById.size === 0) {
         setAnalytics(emptyPersonalAnalytics());
         return;
       }
-
-      const { data: deckRows, error: decksError } = await supabase
-        .from('decks')
-        .select('id, name, commander, commander_image, color_identity, bracket, source_type, source_url')
-        .in('id', deckIds);
-
-      if (decksError) throw decksError;
-
-      const decksById = new Map<string, PersonalDeckSnapshot>(
-        ((deckRows as PersonalDeckSnapshot[]) || []).map((deck) => [deck.id, deck]),
-      );
 
       const colorOverrides = new Map<string, string[]>();
       decksById.forEach((deck, deckId) => {

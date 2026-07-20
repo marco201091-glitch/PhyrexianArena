@@ -69,7 +69,7 @@ async function testRoutes() {
 async function testProtectedApis() {
   const protectedGetPaths = [
     '/api/scryfall-commanders?q=test',
-    '/api/scryfall-card-arts?commander=test',
+    '/api/scryfall-card-arts?name=test',
     '/api/edhrec-commander?commander=Atraxa',
   ];
 

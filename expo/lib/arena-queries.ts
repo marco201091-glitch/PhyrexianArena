@@ -15,6 +15,32 @@ export const MATCHES_SELECT = `
     deck_id,
     guest_deck_id,
     is_winner,
+    tracked_event_count,
+    life_lost,
+    life_gained,
+    life_damage_dealt,
+    unattributed_life_lost,
+    commander_damage_taken,
+    commander_damage_dealt,
+    infect_received,
+    infect_dealt,
+    eliminations,
+    eliminations_caused,
+    revives,
+    corrections,
+    placement,
+    eliminated_at,
+    was_starting_player,
+    group_damage_dealt,
+    group_damage_events,
+    participant_name_snapshot,
+    deck_name_snapshot,
+    commander_snapshot,
+    commander_image_snapshot,
+    deck_bracket_snapshot,
+    color_identity_snapshot,
+    final_life,
+    final_infect,
     profiles (id, username, display_name),
     arena_guests (id, display_name),
     decks (name, commander, commander_image, bracket, color_identity, source_type),
@@ -107,9 +133,21 @@ export async function fetchArenaGuests(supabase: SupabaseClient, groupId: string
   return (data as ArenaGuest[]) || [];
 }
 
-export async function fetchArenaMemberDecks(supabase: SupabaseClient, memberIds: string[]) {
+export async function fetchArenaMemberDecks(
+  supabase: SupabaseClient,
+  groupId: string,
+  memberIds: string[],
+) {
   if (memberIds.length === 0) return [] as MemberDeck[];
 
+  const { data, error } = await supabase.rpc('get_arena_member_decks', {
+    p_group_id: groupId,
+    p_user_ids: memberIds,
+    p_limit_per_user: MEMBER_DECK_LIMIT,
+  });
+  if (!error) return (data || []) as MemberDeck[];
+
+  // Compatibility fallback while a new deployment is waiting for migrations.
   const decks: MemberDeck[] = [];
 
   for (let index = 0; index < memberIds.length; index += MEMBER_FETCH_CONCURRENCY) {

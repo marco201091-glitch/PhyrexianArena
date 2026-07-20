@@ -51,6 +51,19 @@ export interface MatchParticipantRecord {
   eliminations_caused?: number;
   revives?: number;
   corrections?: number;
+  placement?: number | null;
+  eliminated_at?: string | null;
+  was_starting_player?: boolean;
+  group_damage_dealt?: number;
+  group_damage_events?: number;
+  participant_name_snapshot?: string | null;
+  deck_name_snapshot?: string | null;
+  commander_snapshot?: string | null;
+  commander_image_snapshot?: string | null;
+  deck_bracket_snapshot?: string | null;
+  color_identity_snapshot?: string[] | null;
+  final_life?: number | null;
+  final_infect?: number | null;
   profiles?: {
     id: string;
     username: string;
@@ -71,11 +84,24 @@ export function getParticipantKey(participant: Pick<MatchParticipantRecord, 'use
 }
 
 export function getParticipantDisplayName(participant: MatchParticipantRecord) {
+  if (participant.participant_name_snapshot?.trim()) return participant.participant_name_snapshot;
   if (participant.arena_guests?.display_name) return participant.arena_guests.display_name;
   return participant.profiles?.display_name?.trim() || participant.profiles?.username || '';
 }
 
 export function getParticipantDeckSnapshot(participant: MatchParticipantRecord): ParticipantDeckSnapshot | null {
+  if (participant.commander_snapshot || participant.deck_name_snapshot) {
+    return {
+      id: participant.deck_id || participant.guest_deck_id || undefined,
+      name: participant.deck_name_snapshot || participant.commander_snapshot || 'Deck',
+      commander: participant.commander_snapshot || 'Unknown commander',
+      commander_image: participant.commander_image_snapshot ?? null,
+      bracket: participant.deck_bracket_snapshot ?? null,
+      color_identity: participant.color_identity_snapshot ?? null,
+      source_type: participant.guest_deck_id ? 'guest' : participant.decks?.source_type ?? null,
+    };
+  }
+
   if (participant.decks) {
     return {
       id: participant.deck_id || undefined,

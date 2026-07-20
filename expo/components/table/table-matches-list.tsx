@@ -23,6 +23,7 @@ type TableMatchesListProps = {
   onEditMatch: (match: ArenaMatch) => void;
   onShareMatch: (match: ArenaMatch) => void;
   onDeleteMatch: (matchId: string) => void;
+  onDetailsMatch: (match: ArenaMatch) => void;
   onRecordBattle: () => void;
   exportDayLabel: string;
   drawLabel: string;
@@ -40,6 +41,7 @@ export function TableMatchesList({
   onEditMatch,
   onShareMatch,
   onDeleteMatch,
+  onDetailsMatch,
   onRecordBattle,
   exportDayLabel,
   drawLabel,
@@ -81,6 +83,7 @@ export function TableMatchesList({
               onEdit={() => onEditMatch(match)}
               onShare={() => onShareMatch(match)}
               onDelete={() => onDeleteMatch(match.id)}
+              onDetails={(match.tracking_version || match.duration_seconds != null) ? () => onDetailsMatch(match) : undefined}
             />
           ))}
         </MatchDayGroup>

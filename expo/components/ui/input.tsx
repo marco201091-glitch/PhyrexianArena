@@ -10,7 +10,7 @@ type InputProps = TextInputProps & {
   icon?: keyof typeof Ionicons.glyphMap;
 };
 
-export function Input({ label, error, hint, icon, style, ...props }: InputProps) {
+export function Input({ label, error, hint, icon, style, accessibilityLabel, accessibilityHint, ...props }: InputProps) {
   return (
     <View style={styles.wrapper}>
       {label ? (
@@ -27,6 +27,9 @@ export function Input({ label, error, hint, icon, style, ...props }: InputProps)
         <TextInput
           placeholderTextColor={colors.muted}
           selectionColor={colors.primaryLight}
+          accessibilityLabel={accessibilityLabel ?? label}
+          accessibilityHint={accessibilityHint ?? error ?? hint}
+          accessibilityState={{ disabled: props.editable === false }}
           style={[styles.input, props.multiline && styles.inputMultiline, style]}
           maxFontSizeMultiplier={layout.maxFontSizeMultiplier}
           {...props}

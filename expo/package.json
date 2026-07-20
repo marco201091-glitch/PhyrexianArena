@@ -1,6 +1,6 @@
 {
   "name": "phyrexian-arena-app",
-  "version": "1.0.0",
+  "version": "4.5.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -16,10 +16,10 @@
     "android:clean": "npm run android:stop-gradle && cd android && gradlew.bat clean --no-build-cache && cd ..",
     "android:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
     "android:open": "adb shell am start -n com.phyrexianarena.app/.MainActivity",
-    "ios": "expo run:ios",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && npm run verify:logos",
+    "test:coverage": "vitest run --coverage --coverage.include=lib/**/*.ts --coverage.exclude=lib/types/** --coverage.reporter=text --coverage.reporter=json-summary",
     "assets:mana": "node scripts/fetch-mana-symbols.mjs",
     "assets:logo": "node scripts/flatten-logo.mjs",
     "assets:android-icon": "node scripts/generate-android-icon.mjs",
@@ -28,8 +28,14 @@
     "eas:init": "npx eas-cli init",
     "eas:build:preview": "npx eas-cli build --platform android --profile preview",
     "eas:build:production": "npx eas-cli build --platform android --profile production",
+    "eas:build:ios:simulator": "npx eas-cli build --platform ios --profile ios-simulator",
+    "eas:build:ios:unsigned": "npx eas-cli build --platform ios --profile ios-unsigned",
+    "eas:build:ios:preview": "npx eas-cli build --platform ios --profile preview",
+    "eas:build:ios:production": "npx eas-cli build --platform ios --profile production",
+    "eas:submit:ios": "npx eas-cli submit --platform ios --profile production",
     "eas:env:push": "npx eas-cli env:push --environment preview --path .env --non-interactive",
-    "eas:build:preview:nowait": "npx eas-cli build --platform android --profile preview --non-interactive --no-wait"
+    "eas:build:preview:nowait": "npx eas-cli build --platform android --profile preview --non-interactive --no-wait",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -46,6 +52,7 @@
     "expo-haptics": "~14.1.4",
     "expo-image": "~2.4.1",
     "expo-image-picker": "~16.1.4",
+    "expo-keep-awake": "~14.1.4",
     "expo-linking": "~7.1.5",
     "expo-router": "~5.1.0",
     "expo-screen-orientation": "~8.1.7",
@@ -59,9 +66,11 @@
     "react-native": "0.79.6",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-get-random-values": "~1.11.0",
+    "react-native-qrcode-svg": "6.3.21",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
+    "react-native-svg": "15.11.2",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5"
@@ -69,6 +78,7 @@
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@types/react": "~19.0.10",
+    "@vitest/coverage-v8": "3.2.7",
     "typescript": "~5.8.3",
     "vitest": "^3.2.7"
   }

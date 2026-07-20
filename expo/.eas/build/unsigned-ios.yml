@@ -1,0 +1,69 @@
+build:
+  name: Build unsigned iPad-ready IPA
+  steps:
+    - eas/checkout
+
+    - eas/install_node_modules
+
+    - eas/prebuild:
+        inputs:
+          clean: true
+
+    - run:
+        name: Install CocoaPods dependencies
+        working_directory: ./ios
+        command: pod install
+
+    - run:
+        name: Compile unsigned device archive
+        command: |
+          set -euo pipefail
+
+          PROJECT_PATH="$(find ios -maxdepth 1 -name '*.xcodeproj' -print -quit)"
+          if [ -z "$PROJECT_PATH" ]; then
+            echo "No generated Xcode project found"
+            exit 1
+          fi
+
+          SCHEME="$(basename "$PROJECT_PATH" .xcodeproj)"
+          ARCHIVE_PATH="$PWD/ios/build/${SCHEME}Unsigned.xcarchive"
+
+          xcodebuild \
+            -workspace "ios/${SCHEME}.xcworkspace" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE_PATH" \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            DEVELOPMENT_TEAM=''
+
+    - run:
+        name: Package unsigned IPA for later signing
+        command: |
+          set -euo pipefail
+
+          APP_PATH="$(find ios/build -path '*.xcarchive/Products/Applications/*.app' -print -quit)"
+          if [ -z "$APP_PATH" ]; then
+            echo "Unsigned .app was not produced"
+            exit 1
+          fi
+
+          rm -rf ios/build/unsigned-payload
+          mkdir -p ios/build/unsigned-payload/Payload
+          cp -R "$APP_PATH" ios/build/unsigned-payload/Payload/
+
+          mkdir -p artifacts/ios
+          rm -f artifacts/ios/PhyrexianArena-unsigned.ipa
+          (
+            cd ios/build/unsigned-payload
+            ditto -c -k --sequesterRsrc --keepParent Payload ../../../artifacts/ios/PhyrexianArena-unsigned.ipa
+          )
+
+    - eas/upload_artifact:
+        name: Upload unsigned IPA
+        inputs:
+          type: application-archive
+          path: expo/artifacts/ios/PhyrexianArena-unsigned.ipa

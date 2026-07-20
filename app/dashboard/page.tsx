@@ -21,9 +21,8 @@ import {
   buildPersonalAnalytics,
   emptyPersonalAnalytics,
   type PersonalAnalytics,
-  type PersonalDeckSnapshot,
-  type PersonalMatchParticipantRow,
 } from '@/lib/personal-analytics';
+import { fetchPersonalAnalyticsInputs } from '@/lib/personal-analytics-query';
 import { DeckImage } from '@/components/deck-image';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { isDemoUser } from '@/lib/demo';
@@ -151,55 +150,11 @@ export default function DashboardPage() {
         return;
       }
 
-      const { data: participantRows, error: participantsError } = await supabase
-        .from('match_participants')
-        .select('match_id, is_winner, deck_id')
-        .eq('user_id', user.id)
-        .not('deck_id', 'is', null);
-
-      if (participantsError) {
-        throw participantsError;
-      }
-
-      const rawParticipants = (participantRows || []) as Array<PersonalMatchParticipantRow & {
-        match_id: string;
-      }>;
-      const matchIds = Array.from(new Set(rawParticipants.map((row) => row.match_id)));
-      const { data: matchRows, error: matchesError } = matchIds.length > 0
-        ? await supabase.from('matches').select('id, played_at').in('id', matchIds)
-        : { data: [], error: null };
-
-      if (matchesError) {
-        throw matchesError;
-      }
-
-      const playedAtByMatchId = new Map(
-        (matchRows || []).map((match) => [match.id as string, match.played_at as string]),
-      );
-      const participants = rawParticipants.map((row) => ({
-        is_winner: row.is_winner,
-        deck_id: row.deck_id,
-        played_at: playedAtByMatchId.get(row.match_id) ?? null,
-      }));
-      const deckIds = Array.from(new Set(participants.map((row) => row.deck_id).filter(Boolean)));
-
-      if (deckIds.length === 0) {
+      const { participants, decksById } = await fetchPersonalAnalyticsInputs(supabase, user.id);
+      if (decksById.size === 0) {
         setPersonalAnalytics(emptyPersonalAnalytics());
         return;
       }
-
-      const { data: deckRows, error: decksError } = await supabase
-        .from('decks')
-        .select('id, name, commander, commander_image, color_identity, bracket, source_type, source_url')
-        .in('id', deckIds);
-
-      if (decksError) {
-        throw decksError;
-      }
-
-      const decksById = new Map<string, PersonalDeckSnapshot>(
-        ((deckRows as PersonalDeckSnapshot[]) || []).map((deck) => [deck.id, deck]),
-      );
 
       const colorOverrides = new Map<string, string[]>();
       decksById.forEach((deck, deckId) => {

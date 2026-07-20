@@ -17,9 +17,18 @@ type MatchCardProps = {
   onEdit: () => void;
   onShare: () => void;
   onDelete: () => void;
+  onDetails?: () => void;
 };
 
-export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete }: MatchCardProps) {
+function getWinConditionIcon(condition: ArenaMatch['win_condition']): keyof typeof Ionicons.glyphMap {
+  if (condition === 'last_standing') return 'shield-checkmark-outline';
+  if (condition === 'combo') return 'git-merge-outline';
+  if (condition === 'concession') return 'flag-outline';
+  if (condition === 'alternate_card') return 'sparkles-outline';
+  return 'ellipsis-horizontal-circle-outline';
+}
+
+export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete, onDetails }: MatchCardProps) {
   return (
     <PhyrexianPanel variant="inset" padded={false}>
       {match.is_draw ? (
@@ -47,7 +56,10 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
               <View style={styles.participantMain}>
                 <View style={styles.nameRow}>
                   {isWinner ? (
-                    <Ionicons name="trophy" size={14} color={colors.primaryMuted} />
+                    <>
+                      <Ionicons name="trophy" size={14} color={colors.primaryMuted} />
+                      {match.win_condition ? <Ionicons name={getWinConditionIcon(match.win_condition)} size={15} color={colors.primaryMuted} /> : null}
+                    </>
                   ) : null}
                   <Text
                     style={[styles.participantName, isWinner && styles.participantNameWinner]}
@@ -86,6 +98,7 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
       ) : null}
 
       <View style={styles.actions}>
+        {onDetails ? <Pressable onPress={onDetails} hitSlop={8} style={styles.detailsButton} accessibilityRole="button"><Ionicons name="stats-chart-outline" size={16} color={colors.primaryMuted} /><Text style={styles.detailsText}>Details</Text></Pressable> : null}
         <Pressable onPress={onShare} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
           <Ionicons name="share-outline" size={18} color={colors.muted} />
         </Pressable>
@@ -207,4 +220,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  detailsButton: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.sm, marginRight: 'auto' },
+  detailsText: { color: colors.primaryMuted, fontSize: 12, fontWeight: '700' },
 });

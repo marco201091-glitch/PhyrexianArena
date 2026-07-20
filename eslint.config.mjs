@@ -4,6 +4,7 @@ const eslintConfig = [
   {
     ignores: [
       '.next/**',
+      'artifacts/**',
       'expo/.expo/**',
       'expo/dist/**',
       'expo/web-build/**',

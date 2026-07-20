@@ -97,7 +97,7 @@ console.log(`Wrote public/logo-transparent.png (${inAppSize}x${inAppSize}, trans
 const appIconSize = 1024;
 const appIconScale = 0.78;
 await (await flattenEmblem(appIconSize, appIconScale)).toFile(path.join(assetsDir, 'icon.png'));
-console.log(`Wrote assets/icon.png (${appIconSize}x${appIconSize}, iOS + legacy)`);
+console.log(`Wrote assets/icon.png (${appIconSize}x${appIconSize}, app icon)`);
 console.log('Skipped assets/adaptive-icon.png — run npm run assets:android-icon for the Android launcher mark');
 
 await (await transparentEmblem(512, 0.82)).toFile(path.join(assetsDir, 'splash-icon.png'));

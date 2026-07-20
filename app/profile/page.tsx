@@ -59,17 +59,20 @@ import { BracketBadge } from '@/components/deck/bracket-badge';
 import { EdhrecDeckInsights, hasFreshEdhrecBadge, prefetchEdhrecStats } from '@/components/deck/edhrec-badge';
 import { delay, runTasksWithConcurrency } from '@/lib/async-utils';
 import { runWhenIdle } from '@/lib/idle-work';
-import {
-  buildDeckWinRateMap,
-  type DeckWinRateSnapshot,
-  type PersonalMatchParticipantRow,
-} from '@/lib/personal-analytics';
+import { type DeckWinRateSnapshot } from '@/lib/personal-analytics';
 import { MANA_COLOR_LABELS, MANA_COLOR_ORDER } from '@/lib/mana-colors';
 import { getAvatarPublicUrl, userHasAvatar } from '@/lib/avatar-storage';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { ManaColorPills } from '@/components/ui/mana-color-pills';
 import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  buildDeckPerformanceStats,
+  type DeckPerformanceInputRow,
+  type DeckPerformanceStats,
+} from '@/lib/deck-performance-analytics';
+import { formatGameDuration } from '@/lib/live-game-duration';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PasswordRequirements, isPasswordPolicyValid } from '@/components/auth/password-requirements';
 import { isGoogleAuthUser } from '@/lib/oauth-profile';
@@ -92,6 +95,12 @@ import {
   Image as ImageIcon,
   Upload,
   Lock,
+  BarChart3,
+  Crosshair,
+  HeartPulse,
+  Shield,
+  ChevronRight,
+  Skull,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -609,6 +618,9 @@ export default function ProfilePage() {
   const [deckColorFilter, setDeckColorFilter] = useState('all');
   const [deckPlayerFilter, setDeckPlayerFilter] = useState('all');
   const [deckWinRates, setDeckWinRates] = useState<Map<string, DeckWinRateSnapshot>>(new Map());
+  const [deckPerformance, setDeckPerformance] = useState<Map<string, DeckPerformanceStats>>(new Map());
+  const [deckSort, setDeckSort] = useState<'recent' | 'winRate' | 'gamesPlayed' | 'damage' | 'eliminations' | 'fastest'>('recent');
+  const [detailsDeck, setDetailsDeck] = useState<Deck | null>(null);
   const currentProfile = user ? profiles.find((profile) => profile.id === user.id) || null : null;
   const targetProfiles = profiles.filter((profile) => !RESERVED_USERNAMES.has(profile.username.toLowerCase()));
   const currentAvatarUrl = user && hasAvatar
@@ -826,21 +838,82 @@ export default function ProfilePage() {
     const deckIds = loadedDecks.map((deck) => deck.id).filter(Boolean);
     if (deckIds.length === 0) {
       setDeckWinRates(new Map());
+      setDeckPerformance(new Map());
       return;
     }
 
     try {
       const { data, error } = await supabase
         .from('match_participants')
-        .select('is_winner, deck_id')
+        .select(`
+          is_winner,
+          deck_id,
+          placement,
+          life_lost,
+          life_gained,
+          life_damage_dealt,
+          commander_damage_dealt,
+          infect_dealt,
+          eliminations_caused,
+          group_damage_dealt,
+          group_damage_events,
+          matches (duration_seconds, tracking_version)
+        `)
         .in('deck_id', deckIds);
 
       if (error) throw error;
 
-      setDeckWinRates(buildDeckWinRateMap((data as PersonalMatchParticipantRow[]) || []));
+      const decksById = new Map(loadedDecks.map((deck) => [deck.id, deck]));
+      const performanceRows = ((data || []) as Array<{
+        is_winner: boolean;
+        deck_id: string;
+        placement?: number | null;
+        life_lost?: number;
+        life_gained?: number;
+        life_damage_dealt?: number;
+        commander_damage_dealt?: number;
+        infect_dealt?: number;
+        eliminations_caused?: number;
+        group_damage_dealt?: number;
+        group_damage_events?: number;
+        matches?: { duration_seconds?: number | null; tracking_version?: number | null } | Array<{ duration_seconds?: number | null; tracking_version?: number | null }> | null;
+      }>).map((row): DeckPerformanceInputRow => {
+        const deck = decksById.get(row.deck_id);
+        const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
+        return {
+          deck_id: row.deck_id,
+          guest_deck_id: null,
+          deck_name: deck?.name || null,
+          guest_deck_name: null,
+          deck_commander: deck?.commander || null,
+          guest_deck_commander: null,
+          deck_commander_image: deck?.commander_image || null,
+          guest_deck_commander_image: null,
+          is_winner: row.is_winner,
+          placement: row.placement ?? null,
+          duration_seconds: match?.duration_seconds ?? null,
+          tracking_version: match?.tracking_version ?? null,
+          life_lost: row.life_lost || 0,
+          life_gained: row.life_gained || 0,
+          life_damage_dealt: row.life_damage_dealt || 0,
+          commander_damage_dealt: row.commander_damage_dealt || 0,
+          infect_dealt: row.infect_dealt || 0,
+          eliminations_caused: row.eliminations_caused || 0,
+          group_damage_dealt: row.group_damage_dealt || 0,
+          group_damage_events: row.group_damage_events || 0,
+        };
+      });
+      const performance = buildDeckPerformanceStats(performanceRows);
+      setDeckPerformance(new Map(performance.map((entry) => [entry.deckId, entry])));
+      setDeckWinRates(new Map(performance.map((entry) => [entry.deckId, {
+        gamesPlayed: entry.gamesPlayed,
+        wins: entry.wins,
+        winRate: entry.winRate,
+      }])));
     } catch (error) {
       console.error('Error fetching deck win rates:', error);
       setDeckWinRates(new Map());
+      setDeckPerformance(new Map());
     }
   }, []);
 
@@ -890,7 +963,7 @@ export default function ProfilePage() {
   const filteredDecks = useMemo(() => {
     const normalizedQuery = deckSearchQuery.trim().toLowerCase();
 
-    return visibleDecks.filter((deck) => {
+    const matching = visibleDecks.filter((deck) => {
       if (deckColorFilter !== 'all') {
         const colors = getDeckDisplayColors(deck);
         if (!colors.includes(deckColorFilter)) {
@@ -905,7 +978,21 @@ export default function ProfilePage() {
       const haystack = `${deck.name} ${deck.commander}`.toLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [deckColorFilter, deckSearchQuery, visibleDecks]);
+
+    return matching.sort((left, right) => {
+      const a = deckPerformance.get(left.id);
+      const b = deckPerformance.get(right.id);
+      if (deckSort === 'winRate') return (b?.winRate || 0) - (a?.winRate || 0) || (b?.gamesPlayed || 0) - (a?.gamesPlayed || 0);
+      if (deckSort === 'gamesPlayed') return (b?.gamesPlayed || 0) - (a?.gamesPlayed || 0);
+      if (deckSort === 'damage') return (b?.totalDamageDealt || 0) - (a?.totalDamageDealt || 0);
+      if (deckSort === 'eliminations') return (b?.eliminations || 0) - (a?.eliminations || 0);
+      if (deckSort === 'fastest') {
+        return (a?.medianWinningDurationSeconds ?? Number.MAX_SAFE_INTEGER)
+          - (b?.medianWinningDurationSeconds ?? Number.MAX_SAFE_INTEGER);
+      }
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    });
+  }, [deckColorFilter, deckPerformance, deckSearchQuery, deckSort, visibleDecks]);
 
   const fetchProfiles = useCallback(async () => {
     try {
@@ -2405,7 +2492,7 @@ export default function ProfilePage() {
         </div>
 
         {visibleDecks.length > 0 && (
-          <div className="mb-6 grid gap-3 rounded-lg border border-border/70 bg-black/20 p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_180px]">
+          <div className="mb-6 grid gap-3 rounded-lg border border-border/70 bg-black/20 p-3 md:grid-cols-2 xl:grid-cols-4">
             {adminMode && (
               <Select
                 value={deckPlayerFilter}
@@ -2447,6 +2534,19 @@ export default function ProfilePage() {
                     {t(MANA_COLOR_LABELS[color])}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={deckSort} onValueChange={(value) => setDeckSort(value as typeof deckSort)}>
+              <SelectTrigger className="border-border bg-background/50 text-foreground">
+                <SelectValue placeholder={t({ it: 'Ordina per', en: 'Sort by' })} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">{t({ it: 'Aggiunti di recente', en: 'Recently added' })}</SelectItem>
+                <SelectItem value="winRate">Win rate</SelectItem>
+                <SelectItem value="gamesPlayed">{t({ it: 'Partite giocate', en: 'Games played' })}</SelectItem>
+                <SelectItem value="damage">{t({ it: 'Danni inflitti', en: 'Damage dealt' })}</SelectItem>
+                <SelectItem value="eliminations">KO</SelectItem>
+                <SelectItem value="fastest">{t({ it: 'Vittoria più veloce', en: 'Fastest win' })}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -2506,7 +2606,15 @@ export default function ProfilePage() {
           <MotionList className="grid gap-3 sm:gap-4 lg:grid-cols-2">
             {filteredDecks.map((deck) => (
               <MotionItem key={deck.id}>
-                <Card className="phyrexian-panel group relative h-full overflow-hidden transition-colors hover:border-violet-500/45">
+                <Card
+                  className="phyrexian-panel group relative h-full cursor-pointer overflow-hidden transition-colors hover:border-violet-500/45"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDetailsDeck(deck)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') setDetailsDeck(deck);
+                  }}
+                >
                   <div className="pointer-events-none absolute -right-24 -top-24 h-52 w-52 rounded-full bg-violet-500/10 blur-3xl opacity-70 transition-opacity group-hover:opacity-100" />
                   <div className="relative flex min-w-0 flex-col sm:flex-row">
                     <DeckImage
@@ -2541,7 +2649,7 @@ export default function ProfilePage() {
                         </p>
                       </div>
 
-                      <div className="rounded-lg border border-border/60 bg-background/25 p-2.5">
+                      <div className="rounded-lg border border-border/60 bg-background/25 p-2.5" onClick={(event) => event.stopPropagation()}>
                         <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                           {t({ it: 'Collegamenti', en: 'Links' })}
                         </p>
@@ -2566,15 +2674,20 @@ export default function ProfilePage() {
                         </div>
                       </div>
 
-                      <EdhrecDeckInsights
-                        commander={deck.commander}
-                        localBracket={deck.bracket}
-                        showLink={false}
-                        showBracketComparison
-                        className="min-h-[1.375rem] flex-wrap gap-1.5"
-                      />
+                      <div onClick={(event) => event.stopPropagation()}>
+                        <EdhrecDeckInsights
+                          commander={deck.commander}
+                          localBracket={deck.bracket}
+                          showLink={false}
+                          showBracketComparison
+                          className="min-h-[1.375rem] flex-wrap gap-1.5"
+                        />
+                      </div>
 
-                      <div className="mt-auto flex items-center justify-end gap-1 border-t border-border/50 pt-2 sm:border-0 sm:pt-1">
+                      <div className="mt-auto flex items-center justify-end gap-1 border-t border-border/50 pt-2 sm:border-0 sm:pt-1" onClick={(event) => event.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="mr-auto gap-1 text-violet-300" onClick={() => setDetailsDeck(deck)}>
+                          Details <ChevronRight className="h-4 w-4" />
+                        </Button>
                         {isImportedDeckSource(deck.source_type) && deck.source_url && (
                           <Button
                             variant="ghost"
@@ -2614,6 +2727,90 @@ export default function ProfilePage() {
           </MotionList>
         )}
       </main>
+
+      <Sheet open={Boolean(detailsDeck)} onOpenChange={(open) => { if (!open) setDetailsDeck(null); }}>
+        <SheetContent side="right" className="w-full overflow-y-auto border-border bg-card p-0 sm:max-w-xl">
+          {detailsDeck ? (() => {
+            const performance = deckPerformance.get(detailsDeck.id);
+            return (
+              <>
+                <div className="relative overflow-hidden border-b border-border">
+                  <DeckImage src={detailsDeck.commander_image} alt={detailsDeck.commander} className="h-52 w-full object-cover object-top opacity-45" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/65 to-transparent" />
+                  <SheetHeader className="absolute inset-x-0 bottom-0 p-5 text-left">
+                    <SheetTitle className="pr-8 text-2xl">{detailsDeck.name}</SheetTitle>
+                    <SheetDescription className="text-violet-200">{detailsDeck.commander}</SheetDescription>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <BracketBadge bracket={detailsDeck.bracket} />
+                      <ManaColorPills colors={getDeckDisplayColors(detailsDeck)} size="xs" gap="tight" />
+                    </div>
+                  </SheetHeader>
+                </div>
+                <div className="space-y-6 p-5">
+                  <section>
+                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground"><BarChart3 className="h-4 w-4 text-violet-300" />Overview</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        [t({ it: 'Partite', en: 'Games' }), performance?.gamesPlayed ?? 0],
+                        [t({ it: 'Vittorie', en: 'Wins' }), performance?.wins ?? 0],
+                        ['Win rate', `${performance?.winRate ?? 0}%`],
+                        [t({ it: 'Secondi posti', en: 'Runner-up' }), performance?.secondPlaces ?? 0],
+                        [t({ it: 'Danno medio', en: 'Avg damage' }), performance?.averageDamageDealt ?? 0],
+                        [t({ it: 'Vittoria mediana', en: 'Median win' }), performance?.medianWinningDurationSeconds != null ? formatGameDuration(performance.medianWinningDurationSeconds) : '—'],
+                      ].map(([label, value]) => (
+                        <div key={String(label)} className="rounded-xl border border-border/70 bg-background/35 p-3">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+                          <p className="mt-1 text-lg font-bold text-foreground">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground"><Crosshair className="h-4 w-4 text-rose-300" />{t({ it: 'Performance realtime', en: 'Realtime performance' })}</h3>
+                    {performance?.trackedGames ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          [t({ it: 'Danni inflitti', en: 'Damage dealt' }), performance.totalDamageDealt, Swords],
+                          [t({ it: 'Danni subiti', en: 'Damage taken' }), performance.totalDamageTaken, Shield],
+                          [t({ it: 'Vita guadagnata', en: 'Life gained' }), performance.totalLifeGained, HeartPulse],
+                          ['KO', performance.eliminations, Crosshair],
+                          [t({ it: 'Danno commander', en: 'Commander damage' }), performance.commanderDamageDealt, Shield],
+                          [t({ it: 'Infect inflitto', en: 'Infect dealt' }), performance.infectDealt, Skull],
+                        ].map(([label, value, MetricIcon]) => {
+                          const Icon = MetricIcon as typeof Swords;
+                          return (
+                            <div key={String(label)} className="flex items-center gap-3 rounded-xl border border-border/70 bg-background/25 p-3">
+                              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <div><p className="text-xs text-muted-foreground">{label as string}</p><p className="font-bold text-foreground">{value as number}</p></div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="rounded-xl border border-border/70 bg-background/25 p-4 text-sm text-muted-foreground">
+                        {t({ it: 'Nessuna partita realtime tracciata con questo mazzo.', en: 'No realtime-tracked games with this deck yet.' })}
+                      </p>
+                    )}
+                  </section>
+
+                  {performance?.gamesPlayed ? (
+                    <div className="rounded-xl border border-border/60 bg-background/20 p-3">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{t({ it: 'Copertura tracking', en: 'Tracking coverage' })}</span>
+                        <span>{performance.trackedGames}/{performance.gamesPlayed} · {performance.trackingCoverage}%</span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+                        <div className="h-full rounded-full bg-violet-500" style={{ width: `${performance.trackingCoverage}%` }} />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            );
+          })() : null}
+        </SheetContent>
+      </Sheet>
 
       {/* Add Deck Modal */}
       {showAddModal && (

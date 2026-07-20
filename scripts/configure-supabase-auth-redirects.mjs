@@ -17,6 +17,8 @@ const CANONICAL_REDIRECT_URLS = [
   // Expo native app (preview APK / standalone) — route is /callback, not /auth/callback
   'phyrexianarena://callback',
   'phyrexianarena://**',
+  'phyrexianarena-dev://callback',
+  'phyrexianarena-dev://**',
   // Expo Go / Metro dev (LAN IP varies per machine)
   'exp://127.0.0.1:8081/--/callback',
   'exp://localhost:8081/--/callback',

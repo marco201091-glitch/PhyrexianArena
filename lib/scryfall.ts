@@ -59,6 +59,9 @@ const SCRYFALL_HEADERS = {
   'User-Agent': 'Phyrexian Arena (https://phyrexianarena.app)',
 };
 
+const SCRYFALL_MAX_RETRIES = 2;
+const SCRYFALL_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+
 function normalizeColorIdentity(value: unknown): string[] {
   const colors = Array.isArray(value) ? value : [];
   return Array.from(new Set(colors
@@ -95,9 +98,23 @@ function sanitizeCommanderQuery(query: string): string {
 }
 
 async function fetchScryfallJson<T>(url: string): Promise<T | null> {
-  const response = await fetch(url, { headers: SCRYFALL_HEADERS });
-  if (!response.ok) return null;
-  return response.json() as Promise<T>;
+  for (let attempt = 0; attempt <= SCRYFALL_MAX_RETRIES; attempt += 1) {
+    const response = await fetch(url, { headers: SCRYFALL_HEADERS });
+    if (response.status === 404) return null;
+    if (response.ok) return response.json() as Promise<T>;
+
+    if (!SCRYFALL_RETRYABLE_STATUSES.has(response.status) || attempt === SCRYFALL_MAX_RETRIES) {
+      throw new Error(`Scryfall request failed (${response.status})`);
+    }
+
+    const retryAfterSeconds = Number(response.headers.get('retry-after'));
+    const retryDelay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? retryAfterSeconds * 1_000
+      : 250 * (2 ** attempt);
+    await new Promise((resolve) => setTimeout(resolve, retryDelay));
+  }
+
+  throw new Error('Scryfall request retry loop exhausted');
 }
 
 function isResolvedScryfallCard(card: ScryfallCard | null): card is ScryfallCard {

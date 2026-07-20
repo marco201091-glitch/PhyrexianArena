@@ -1,9 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import { Swords } from 'lucide-react';
-import { isOptimizableDeckImageUrl } from '@/lib/deck-image-url';
 import { cn } from '@/lib/utils';
 
 interface DeckImageProps {
@@ -15,6 +13,12 @@ interface DeckImageProps {
 
 export function DeckImage({ src, alt, className, fallbackClassName }: DeckImageProps) {
   const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+    setRetry(false);
+  }, [src]);
 
   if (!src || failed) {
     return (
@@ -25,16 +29,24 @@ export function DeckImage({ src, alt, className, fallbackClassName }: DeckImageP
   }
 
   return (
-    <Image
-      src={src}
+    // Direct remote loading keeps artwork in the device HTTP cache instead of
+    // routing every view through the Next image optimizer.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={retry ? `${src}${src.includes('?') ? '&' : '?'}pa_retry=1` : src}
       alt={alt}
-      width={160}
-      height={160}
       className={className}
       data-deck-image="true"
-      unoptimized={!isOptimizableDeckImageUrl(src)}
       loading="lazy"
-      onError={() => setFailed(true)}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => {
+        if (!retry) {
+          setRetry(true);
+          return;
+        }
+        setFailed(true);
+      }}
     />
   );
 }

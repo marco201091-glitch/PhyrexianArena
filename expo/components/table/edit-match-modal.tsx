@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextInput } from '@/components/ui/rich-text-input';
@@ -53,6 +54,8 @@ type EditMatchModalProps = {
     deckListHiddenEmpty: string;
     noDecksMatchSearch: string;
     swipeDecksHint: string;
+    winCondition: string;
+    winConditions: Record<Exclude<NonNullable<ArenaMatch['win_condition']>, 'last_standing'> | 'last_standing', string>;
   };
   onClose: () => void;
   onError: (message: string) => void;
@@ -63,6 +66,7 @@ type EditMatchModalProps = {
     participantDecks: Record<string, string>;
     matchPlayedAtIso: string;
     matchNotes: string;
+    winCondition: ArenaMatch['win_condition'];
     participants: Array<{
       id: string;
       participantKey: string | null;
@@ -113,6 +117,7 @@ export function EditMatchModal({
   const [participantDecks, setParticipantDecks] = useState<Record<string, string>>({});
   const [matchPlayedAt, setMatchPlayedAt] = useState('');
   const [matchNotes, setMatchNotes] = useState('');
+  const [winCondition, setWinCondition] = useState<ArenaMatch['win_condition']>(null);
   const [deckSearch, setDeckSearch] = useState<Record<string, string>>({});
   const [hiddenDeckLists, setHiddenDeckLists] = useState<Record<string, boolean>>({});
 
@@ -139,9 +144,15 @@ export function EditMatchModal({
     setIsDraw(Boolean(match.is_draw));
     setWinnerKey(match.is_draw ? '' : (resolveWinnerParticipantKey(match) || ''));
     setMatchNotes(match.notes || '');
+    setWinCondition(match.is_draw ? null : (match.win_condition || 'other'));
     setMatchPlayedAt(isoToMatchDateValue(match.played_at));
     setDeckSearch({});
-    setHiddenDeckLists({});
+    setHiddenDeckLists(Object.fromEntries(
+      match.match_participants
+        .map(getParticipantKey)
+        .filter((key): key is ParticipantKey => Boolean(key))
+        .map((key) => [key, true]),
+    ));
 
     const deckMap: Record<string, string> = {};
     match.match_participants.forEach((participant) => {
@@ -174,6 +185,7 @@ export function EditMatchModal({
       participantDecks,
       matchPlayedAtIso: playedAtIso,
       matchNotes,
+      winCondition: isDraw ? null : (winCondition || 'other'),
       participants: match.match_participants.map((participant) => ({
         id: participant.id,
         participantKey: getParticipantKey(participant),
@@ -311,6 +323,28 @@ export function EditMatchModal({
               );
             })}
           </View>
+          <Text style={styles.sectionLabel}>{labels.winCondition}</Text>
+          <View style={styles.winConditionGrid}>
+            {([
+              ['last_standing', 'shield-checkmark-outline'],
+              ['combo', 'git-merge-outline'],
+              ['concession', 'flag-outline'],
+              ['alternate_card', 'sparkles-outline'],
+              ['other', 'ellipsis-horizontal-circle-outline'],
+            ] as const).map(([value, icon]) => {
+              const selected = winCondition === value;
+              return (
+                <Pressable
+                  key={value}
+                  style={[styles.winConditionChip, selected && styles.winConditionChipSelected]}
+                  onPress={() => setWinCondition(value)}
+                >
+                  <Ionicons name={icon} size={17} color={selected ? colors.foreground : colors.muted} />
+                  <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{labels.winConditions[value]}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
           </>
           ) : null}
 
@@ -384,6 +418,28 @@ const styles = StyleSheet.create({
   winnerChip: {
     borderColor: colors.amber,
     backgroundColor: colors.warningSurface,
+  },
+  winConditionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  winConditionChip: {
+    minWidth: '46%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.inputBg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  winConditionChipSelected: {
+    borderColor: colors.selectionBorder,
+    backgroundColor: colors.selectionTint,
   },
   chipLabel: {
     color: colors.muted,

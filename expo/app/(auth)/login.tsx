@@ -1,18 +1,17 @@
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Screen } from '@/components/ui/screen';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AuthBranding } from '@/components/auth/auth-branding';
-import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
-import { useLanguage } from '@/contexts/language-context';
+import { t } from '@/lib/i18n/translations';
 import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-persistence';
 import { showAppAlert } from '@/lib/app-alert';
-import { signInWithGoogle } from '@/lib/google-auth';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/theme';
+import { signInWithGoogleOnAndroid } from '@/lib/google-auth';
 
 function resolveRedirectPath(redirect: string | string[] | undefined): Href {
   const value = Array.isArray(redirect) ? redirect[0] : redirect;
@@ -23,16 +22,14 @@ function resolveRedirectPath(redirect: string | string[] | undefined): Href {
 }
 
 export default function LoginScreen() {
-  const { copy } = useLanguage();
+  const copy = (key: Parameters<typeof t>[1]) => t('en', key);
   const router = useRouter();
   const { redirect } = useLocalSearchParams<{ redirect?: string }>();
   const redirectPath = resolveRedirectPath(redirect);
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const authBusy = loading || googleLoading;
 
   useEffect(() => {
     void getRememberMePreference().then(setRememberMe);
@@ -80,28 +77,21 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
+  const handleGoogleLogin = async () => {
+    setLoading(true);
     try {
-      const next = Array.isArray(redirect) ? redirect[0] : redirect;
-      const redirectPath = await signInWithGoogle(next);
-      router.replace(redirectPath as Href);
-    } catch (error) {
-      if (error instanceof Error && error.message === 'cancelled') {
-        return;
-      }
-      if (__DEV__) {
-        console.error('[google-auth] sign-in failed:', error);
-      }
-      showAppAlert(copy('error'), copy('googleSignInFailed'));
+      const result = await signInWithGoogleOnAndroid();
+      if (result === 'success') router.replace(redirectPath);
+    } catch {
+      showAppAlert(copy('error'), 'Failed to sign in with Google');
     } finally {
-      setGoogleLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <Screen background="solid">
-      <AuthBranding />
+      <AuthBranding forceEnglish />
 
       <PhyrexianPanel variant="strong" style={styles.formPanel}>
         <View style={styles.form}>
@@ -134,17 +124,22 @@ export default function LoginScreen() {
           <Button
             label={loading ? copy('signingIn') : copy('enterArena')}
             onPress={handleLogin}
-            disabled={authBusy}
+            disabled={loading}
           />
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerLabel}>{copy('orDivider')}</Text>
-            <View style={styles.dividerLine} />
-          </View>
-          <GoogleSignInButton
-            label={googleLoading ? copy('signingInWithGoogle') : copy('continueWithGoogle')}
-            disabled={authBusy}
-            onPress={handleGoogleSignIn}
+          {Platform.OS === 'android' ? (
+            <Button
+              label="Continue with Google"
+              icon="logo-google"
+              variant="outline"
+              onPress={handleGoogleLogin}
+              disabled={loading}
+            />
+          ) : null}
+          <Button
+            label="Quick game"
+            icon="heart-outline"
+            variant="outline"
+            onPress={() => router.push('/counter' as Href)}
           />
         </View>
       </PhyrexianPanel>
@@ -171,22 +166,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
   },
   rememberRow: {
     flexDirection: 'row',

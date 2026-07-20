@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { resolveAvatarUrl, userHasAvatar } from '@/lib/avatar-storage';
+import { getAvatarObjectState, resolveAvatarUrl } from '@/lib/avatar-storage';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import type { ProfileRow } from '@/lib/types/profile';
@@ -7,12 +7,14 @@ import type { ProfileRow } from '@/lib/types/profile';
 export function useProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [hasAvatar, setHasAvatar] = useState(false);
+  const [avatarRevision, setAvatarRevision] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     if (!userId) {
       setProfile(null);
       setHasAvatar(false);
+      setAvatarRevision(null);
       setLoading(false);
       return;
     }
@@ -25,15 +27,18 @@ export function useProfile(userId: string | undefined) {
           .select('id, username, display_name, created_at')
           .eq('id', userId)
           .single(),
-        userHasAvatar(supabase, userId),
+        getAvatarObjectState(supabase, userId),
       ]);
 
       if (error) throw error;
       setProfile(data as ProfileRow);
-      setHasAvatar(avatarExists);
+      setHasAvatar(avatarExists.exists);
+      setAvatarRevision(avatarExists.revision);
     } catch (error) {
       console.error('Error fetching profile:', getSupabaseErrorMessage(error, 'Failed to fetch profile'));
       setProfile(null);
+      setHasAvatar(false);
+      setAvatarRevision(null);
     } finally {
       setLoading(false);
     }
@@ -74,18 +79,19 @@ export function useProfile(userId: string | undefined) {
     const { error } = await supabase.storage
       .from('avatars')
       .upload(filePath, blob, {
-        cacheControl: '3600',
+        cacheControl: '31536000',
         contentType: mimeType,
         upsert: true,
       });
 
     if (error) throw error;
     setHasAvatar(true);
+    setAvatarRevision(String(Date.now()));
   }, [userId]);
 
   const getAvatarUrl = useCallback((version: number) => {
-    return resolveAvatarUrl(supabase, userId, hasAvatar, version);
-  }, [hasAvatar, userId]);
+    return resolveAvatarUrl(supabase, userId, hasAvatar, version, avatarRevision);
+  }, [avatarRevision, hasAvatar, userId]);
 
   return { profile, loading, hasAvatar, refresh, updateDisplayName, uploadAvatar, getAvatarUrl };
 }

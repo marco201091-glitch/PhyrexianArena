@@ -13,7 +13,7 @@
 
 ## What is Phyrexian Arena?
 
-Phyrexian Arena is a web and Android app for Commander playgroups. Create a private space for your pod, invite friends, import decks, play with the live tracker, and keep a complete history without spreadsheets.
+Phyrexian Arena is a web, Android, and iOS app for Commander playgroups. Create a private space for your pod, invite friends, import decks, play with the live tracker, and keep a complete history without spreadsheets.
 
 An **Arena** works for a weekly table, a single evening with friends, or a short league over a few weeks. Everyone joins with their profile and decks; stats stay scoped to that group.
 
@@ -59,11 +59,11 @@ An **Arena** works for a weekly table, a single evening with friends, or a short
 
 ### Profiles
 
-- Register and sign in with email, username, or Google
+- Register and sign in with email or username; Google sign-in is web-only
 - Keep your session active across visits
 - Profile with display name, username, and avatar
 - Use the interface in **Italian** or **English**
-- Play in full screen on the web or in the Android app
+- Play in full screen on the web or in the Android/iOS app
 
 ---
 
@@ -80,11 +80,12 @@ An **Arena** works for a weekly table, a single evening with friends, or a short
 
 ## Built with
 
-The app is available on the web and Android. It is built with:
+The app is available on the web, Android, and iOS. It is built with:
 
 | Layer | Technology |
 |---|---|
 | Frontend | [Next.js](https://nextjs.org/), [React](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/) |
+| Native app | [Expo](https://expo.dev/), [React Native](https://reactnative.dev/) |
 | UI components | [Radix UI](https://www.radix-ui.com/) |
 | Backend & database | [Supabase](https://supabase.com/) (Auth, PostgreSQL, file storage) |
 | Card & deck data | [Scryfall](https://scryfall.com/), [Archidekt](https://archidekt.com/), [Moxfield](https://moxfield.com/), [EDHREC](https://edhrec.com/) |

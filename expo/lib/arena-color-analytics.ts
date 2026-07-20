@@ -1,4 +1,4 @@
-import { getColorIdentityGroupKey, getColorIdentityLabel, getPlayableManaColors, MANA_COLOR_ORDER } from '@/lib/mana-colors';
+import { getColorIdentityGroupKey, getColorIdentityLabel, getPlayableManaColors, MANA_COLOR_ORDER } from '@/lib/mana-colors-core';
 
 export interface ArenaColorParticipant {
   deck_id: string | null;

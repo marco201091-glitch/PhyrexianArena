@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
 
-export type ArenaTab = 'matches' | 'players' | 'decks' | 'meta';
+export type ArenaTab = 'matches' | 'players' | 'decks' | 'awards' | 'meta';
 
 type ArenaTabBarProps = {
   activeTab: ArenaTab;
@@ -10,7 +10,7 @@ type ArenaTabBarProps = {
   onChange: (tab: ArenaTab) => void;
 };
 
-const TABS: ArenaTab[] = ['matches', 'players', 'decks', 'meta'];
+const TABS: ArenaTab[] = ['matches', 'players', 'decks', 'awards', 'meta'];
 
 export function ArenaTabBar({ activeTab, labels, onChange }: ArenaTabBarProps) {
   return (

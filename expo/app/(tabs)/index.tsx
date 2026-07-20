@@ -29,7 +29,7 @@ import { getSiteUrl } from '@/lib/env';
 import { fetchGroupByInviteCode } from '@/lib/join-arena';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
-import { isTabletViewport } from '@/lib/layout';
+import { responsiveGridColumns } from '@/lib/layout';
 
 export default function DashboardScreen() {
   const { user } = useAuth();
@@ -49,7 +49,7 @@ export default function DashboardScreen() {
   const [joining, setJoining] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
   const { width } = useWindowDimensions();
-  const useArenaGrid = isTabletViewport(width);
+  const useArenaGrid = responsiveGridColumns(width, 340, 2, 14) > 1;
 
   const formatArenaDate = useCallback((date: string) => {
     try {

@@ -14,6 +14,10 @@ const REDIRECT_URLS = [
   `${TESTDEV_SITE_URL}/auth/reset-password`,
   'http://localhost:3000/auth/callback',
   'http://localhost:3000/auth/reset-password',
+  'phyrexianarena://callback',
+  'phyrexianarena://**',
+  'phyrexianarena-dev://callback',
+  'phyrexianarena-dev://**',
 ];
 
 function loadEnv(path) {

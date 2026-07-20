@@ -2,7 +2,8 @@
   "expo": {
     "name": "Phyrexian Arena",
     "slug": "phyrexian-arena",
-    "version": "3.0.0",
+    "version": "4.5.0",
+    "platforms": ["android", "ios", "web"],
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "phyrexianarena",
@@ -15,12 +16,38 @@
     },
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": false,
       "bundleIdentifier": "com.phyrexianarena.app",
-      "icon": "./assets/icon.png"
+      "buildNumber": "40500",
+      "icon": "./assets/icon.png",
+      "backgroundColor": "#0a0a0f",
+      "associatedDomains": [
+        "applinks:phyrexian-arena.vercel.app"
+      ],
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["C617.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": ["35F9.1"]
+          }
+        ]
+      }
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 30000,
+      "versionCode": 40500,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -83,7 +110,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Phyrexian Arena to access your photos to set your profile avatar."
+          "photosPermission": "Allow Phyrexian Arena to access your photos to set your profile avatar.",
+          "microphonePermission": false
         }
       ]
     ],

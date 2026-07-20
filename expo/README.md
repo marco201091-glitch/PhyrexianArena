@@ -1,10 +1,10 @@
 # Phyrexian Arena — Expo (native)
 
-React Native app with **feature parity target** vs the Next.js web app.
+React Native app for Android and iOS with **feature parity target** vs the Next.js web app.
 
 ## v1 scope decisions
 
-- Email/password + Google OAuth (no demo login)
+- Email/password only (no OAuth and no demo login in the native distribution)
 - **Life tracker** (Play Game) — app only, not on web
 - No admin panel in app
 - Default language: **English**, switchable in Settings
@@ -37,6 +37,42 @@ npm run android
 ```
 
 Local env file: `expo/.env` (gitignored, already created from web `.env.local`).
+
+## iOS / IPA
+
+The iOS target uses the same React Native screens and Supabase backend as Android. OAuth callbacks, provider SDKs, advertising, tracking and unused sensitive permissions are intentionally excluded.
+
+Validate the generated iOS configuration from any platform:
+
+```bash
+npm run ios:config
+npm run typecheck
+npm test
+```
+
+Run locally on macOS with Xcode:
+
+```bash
+npm run ios:prebuild
+npm run ios
+```
+
+Build in the EAS macOS cloud from Windows, Linux or macOS:
+
+```bash
+# iOS Simulator artifact (does not require device provisioning)
+npm run eas:build:ios:simulator
+
+# Internal device build (ad hoc provisioning)
+npm run eas:build:ios:preview
+
+# App Store Connect IPA
+npm run eas:build:ios:production
+```
+
+The first device/App Store build requires an Apple Developer account and lets EAS create or reuse the distribution certificate and provisioning profile. `com.phyrexianarena.app` is used as the bundle identifier. Set the App Store privacy answers consistently with `lib/legal-documents.ts`; the app declares no tracking and requests Photos access only when the user changes their avatar.
+
+Universal Links are enabled for `phyrexian-arena.vercel.app`. Before distributing a signed build, deploy `/.well-known/apple-app-site-association` with the final Apple Team ID and bundle ID; without that website-side association, HTTPS links safely continue to open in Safari.
 
 ## Token Expo (access token admin)
 
@@ -134,6 +170,11 @@ Web deploy and native build stay **separate pipelines**.
 |---|---|
 | `npm run start` | Expo dev server |
 | `npm run android` | Run on emulator/device |
+| `npm run ios` | Run on iOS Simulator/device from macOS |
+| `npm run ios:config` | Resolve and print the Expo iOS configuration |
+| `npm run eas:build:ios:simulator` | Build an iOS Simulator artifact in EAS |
+| `npm run eas:build:ios:preview` | Build an internal iOS device IPA in EAS |
+| `npm run eas:build:ios:production` | Build the App Store IPA in EAS |
 | `npm run typecheck` | TypeScript |
 | `npm test` | Unit tests (Vitest) |
 | `npm run lint` | ESLint |
@@ -154,6 +195,6 @@ Core screens are implemented. Highest-value gaps vs web:
 1. Profile depth — avatar upload UI, EDHREC badges, deck collection insights, bulk refresh, external deck links, mana color filter
 2. Table polish — EDHREC on deck stats
 3. Public arena — full color meta charts (pairs, win-rate breakdowns)
-4. Auth extras — remember me, Google OAuth (excluded from v1 by design)
+4. Auth extras — OAuth remains intentionally excluded from native distributions
 5. Deep links — `/table/[id]` intent filter for opening an arena from a shared link
 6. Admin / demo — intentionally web-only for v1

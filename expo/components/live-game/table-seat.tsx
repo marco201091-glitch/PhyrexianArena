@@ -1,5 +1,13 @@
-import { useEffect, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  LayoutChangeEvent,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,20 +19,21 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { DeckImage } from '@/components/deck/deck-image';
+import { HoldPressable } from '@/components/ui/hold-pressable';
 import { colors, radii } from '@/constants/theme';
 import {
   type DamageMode,
   type LiveGamePlayer,
   type PlayDirection,
 } from '@/lib/live-game';
-import type { SeatControlPlacement } from '@/lib/live-game-table-layout';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { isIPadViewport } from '@/lib/layout';
+import { useReducedMotion } from '@/lib/reduced-motion';
 
 type TableSeatProps = {
   player: LiveGamePlayer;
   allPlayers: LiveGamePlayer[];
   seatRotation: number;
-  controlPlacement: SeatControlPlacement;
   damageMode: DamageMode;
   isSource: boolean;
   isDragHover: boolean;
@@ -76,14 +85,41 @@ export function TableSeat({
   onDamageDragCancel,
   labels,
 }: TableSeatProps) {
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const isIPad = isIPadViewport(Platform.OS, viewportWidth, viewportHeight);
   const mainValue = player.life;
   const isLow = mainValue <= 5;
   const shake = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
   const lifeScale = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
+  const previousLife = useRef(player.life);
+  const lifeDeltaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [recentLifeDelta, setRecentLifeDelta] = useState(0);
+
+  useEffect(() => {
+    const change = player.life - previousLife.current;
+    previousLife.current = player.life;
+    if (change === 0) return;
+    setRecentLifeDelta((current) => current + change);
+    if (lifeDeltaTimer.current) clearTimeout(lifeDeltaTimer.current);
+    lifeDeltaTimer.current = setTimeout(() => {
+      lifeDeltaTimer.current = null;
+      setRecentLifeDelta(0);
+    }, 2_600);
+    return () => {
+      if (lifeDeltaTimer.current) clearTimeout(lifeDeltaTimer.current);
+    };
+  }, [player.life]);
 
   useEffect(() => {
     if (damagePulse <= 0) return;
+    if (reducedMotion) {
+      flashOpacity.value = 0;
+      shake.value = 0;
+      lifeScale.value = 1;
+      return;
+    }
     flashOpacity.value = withSequence(
       withTiming(0.58, { duration: 70 }),
       withTiming(0, { duration: 280 }),
@@ -97,7 +133,7 @@ export function TableSeat({
       withSpring(1.1, { damping: 9, stiffness: 300 }),
       withSpring(1, { damping: 12, stiffness: 220 }),
     );
-  }, [damagePulse, flashOpacity, lifeScale, shake]);
+  }, [damagePulse, flashOpacity, lifeScale, reducedMotion, shake]);
 
   const cardStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shake.value }, { translateY: shake.value * 0.3 }],
@@ -157,7 +193,7 @@ export function TableSeat({
       ]}
     >
       <View style={[styles.playerCanvas, canvasStyle]}>
-        <View style={styles.backgroundWrap} pointerEvents="none">
+        <View style={[styles.backgroundWrap, player.backgroundColor ? { backgroundColor: player.backgroundColor } : null]} pointerEvents="none">
           <DeckImage
             uri={player.commanderImage}
             alt={player.commander}
@@ -210,35 +246,53 @@ export function TableSeat({
             <Ionicons name="skull-outline" size={28} color="#fecaca" />
             <Text style={styles.eliminatedLabel}>{labels.eliminated}</Text>
             {onRevive ? (
-              <Pressable style={styles.reviveBtn} onPress={onRevive}>
+              <Pressable
+                style={styles.reviveBtn}
+                onPress={onRevive}
+                accessibilityRole="button"
+                accessibilityLabel={`${labels.revive}: ${player.displayName}`}
+              >
                 <Text style={styles.reviveText}>{labels.revive}</Text>
               </Pressable>
             ) : null}
           </View>
         ) : (
-          <>
-            <Pressable
+          <GestureDetector gesture={dragGesture}>
+          <AnimatedView style={styles.dragSurface}>
+            <HoldPressable
               style={[styles.edgeButton, styles.minusButton]}
-              onPress={() => onAdjust(-1)}
+              onShort={() => onAdjust(-1)}
+              onLong={() => onAdjust(-10)}
               accessibilityRole="button"
               accessibilityLabel={`${player.displayName} -1`}
             >
               <Text style={styles.edgeButtonText}>−</Text>
-            </Pressable>
+            </HoldPressable>
 
-            <Pressable
+            <HoldPressable
               style={[styles.edgeButton, styles.plusButton]}
-              onPress={() => onAdjust(1)}
+              onShort={() => onAdjust(1)}
+              onLong={() => onAdjust(10)}
               accessibilityRole="button"
               accessibilityLabel={`${player.displayName} +1`}
             >
               <Text style={styles.edgeButtonText}>+</Text>
-            </Pressable>
+            </HoldPressable>
 
-            <GestureDetector gesture={dragGesture}>
               <AnimatedView style={[styles.lifeReadout, lifeStyle]}>
-                <View style={styles.playerNamePill}>
-                  <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
+                <View style={styles.playerMetaRow}>
+                  <View style={styles.playerNamePill}>
+                    <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
+                  </View>
+                  {recentLifeDelta !== 0 ? (
+                    <Text style={[
+                      styles.recentLifeDelta,
+                      isIPad && styles.recentLifeDeltaIPad,
+                      recentLifeDelta < 0 ? styles.recentLifeLoss : styles.recentLifeGain,
+                    ]}>
+                      {recentLifeDelta > 0 ? '+' : '−'}{Math.abs(recentLifeDelta)}
+                    </Text>
+                  ) : null}
                 </View>
                 <Text
                   style={[
@@ -250,7 +304,6 @@ export function TableSeat({
                   {mainValue}
                 </Text>
               </AnimatedView>
-            </GestureDetector>
 
             <Pressable
               style={styles.damageDetailsButton}
@@ -270,7 +323,8 @@ export function TableSeat({
             >
               <Ionicons name="skull-outline" size={15} color="rgba(254,202,202,0.86)" />
             </Pressable>
-          </>
+          </AnimatedView>
+          </GestureDetector>
         )}
       </View>
     </AnimatedView>
@@ -431,6 +485,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 7,
   },
   playerNamePill: {
+    flexShrink: 1,
     maxWidth: 116,
     minHeight: 24,
     borderRadius: radii.sm,
@@ -451,14 +506,22 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  playerMetaRow: {
+    minHeight: 28,
+    maxWidth: 176,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
   lifeReadout: {
     position: 'absolute',
     top: '50%',
     left: '50%',
     zIndex: 7,
-    width: 132,
+    width: 180,
     minHeight: 118,
-    marginLeft: -66,
+    marginLeft: -90,
     marginTop: -64,
     alignItems: 'center',
     justifyContent: 'center',
@@ -472,6 +535,41 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 3 },
     textShadowRadius: 12,
     includeFontPadding: false,
+  },
+  recentLifeDelta: {
+    minWidth: 38,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    overflow: 'hidden',
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(4,5,10,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    fontSize: 17,
+    lineHeight: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(0,0,0,0.95)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  dragSurface: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  recentLifeDeltaIPad: {
+    minWidth: 50,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    fontSize: 28,
+    lineHeight: 32,
+    textAlign: 'center',
+  },
+  recentLifeLoss: {
+    color: '#f87171',
+  },
+  recentLifeGain: {
+    color: '#6ee7b7',
   },
   dangerLife: {
     color: '#fecaca',

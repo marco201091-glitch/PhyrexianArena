@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { colors } from '@/constants/theme';
+import { useCachedRemoteImage } from '@/hooks/use-cached-remote-image';
 
 const SIZES = {
   sm: 40,
@@ -21,12 +21,8 @@ export function ProfileAvatar({ uri, size = 'sm', style }: ProfileAvatarProps) {
   const dimension = SIZES[size];
   const radius = dimension / 2;
   const iconSize = size === 'sm' ? 22 : 36;
-  const [imageFailed, setImageFailed] = useState(false);
-  const showImage = Boolean(uri) && !imageFailed;
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [uri]);
+  const { resolvedUri, loading, failed, handleError } = useCachedRemoteImage(uri);
+  const showImage = Boolean(resolvedUri) && !failed;
 
   return (
     <View
@@ -42,12 +38,17 @@ export function ProfileAvatar({ uri, size = 'sm', style }: ProfileAvatarProps) {
     >
       {showImage ? (
         <Image
-          source={{ uri: uri as string }}
+          source={{ uri: resolvedUri as string }}
           style={{ width: dimension, height: dimension, borderRadius: radius }}
           contentFit="cover"
+          cachePolicy={resolvedUri?.startsWith('file://') ? 'memory' : 'memory-disk'}
           alt=""
-          onError={() => setImageFailed(true)}
+          onError={handleError}
         />
+      ) : loading ? (
+        <View style={[styles.placeholder, { width: dimension, height: dimension, borderRadius: radius }]}>
+          <ActivityIndicator size="small" color={colors.primaryMuted} />
+        </View>
       ) : (
         <View style={[styles.placeholder, { width: dimension, height: dimension, borderRadius: radius }]}>
           <Ionicons name="person" size={iconSize} color={colors.muted} />

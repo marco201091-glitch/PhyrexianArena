@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CENTER_TOOLBAR_HEIGHT,
   CENTER_TOOLBAR_WIDTH,
+  SEAT_UI_DOGMA,
   findPodAtPoint,
   fitCommanderArtFrame,
   getBottomToolbarHeight,
@@ -17,6 +18,18 @@ import {
 } from '@/lib/live-game-table-layout';
 
 describe('live-game-table-layout', () => {
+  it('DOGMA: card faces player; minus left, plus right, name above, shield below', () => {
+    expect(SEAT_UI_DOGMA).toEqual({
+      orientation: 'landscape',
+      longEdge: 'toward-player',
+      minus: 'left',
+      plus: 'right',
+      name: 'above-life',
+      shield: 'below-life',
+    });
+    expect(Object.isFrozen(SEAT_UI_DOGMA)).toBe(true);
+  });
+
   it('uses portrait grids for all player counts', () => {
     expect(getTableOrientation(2)).toBe('portrait');
     expect(getTableOrientation(4)).toBe('portrait');

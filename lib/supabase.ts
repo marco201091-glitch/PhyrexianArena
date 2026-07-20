@@ -6,16 +6,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 let browserClient: SupabaseClient | null = null;
-let activeCookieSignature = '';
-
-function getCookieSignature() {
-  return JSON.stringify(getAuthCookieOptions());
-}
 
 export function createBrowserSupabaseClient() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
     cookieOptions: getAuthCookieOptions(),
-    isSingleton: false,
     auth: {
       // Callback exchange is handled explicitly in /auth/callback route.
       detectSessionInUrl: false,
@@ -24,18 +18,15 @@ export function createBrowserSupabaseClient() {
 }
 
 function getClient() {
-  const signature = getCookieSignature();
-  if (!browserClient || activeCookieSignature !== signature) {
+  if (!browserClient) {
     browserClient = createBrowserSupabaseClient();
-    activeCookieSignature = signature;
   }
   return browserClient;
 }
 
 export function resetSupabaseClient() {
-  browserClient = null;
-  activeCookieSignature = '';
-  return getClient();
+  browserClient = createBrowserSupabaseClient();
+  return browserClient;
 }
 
 export const supabase = new Proxy({} as SupabaseClient, {

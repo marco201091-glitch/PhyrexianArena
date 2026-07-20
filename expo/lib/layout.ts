@@ -57,6 +57,22 @@ export function isTabletViewport(width: number): boolean {
   return width >= layout.tabletWidth;
 }
 
+export function isIPadViewport(platform: string, width: number, height: number): boolean {
+  return platform === 'ios' && Math.min(width, height) >= layout.tabletWidth;
+}
+
+export function responsiveGridColumns(
+  viewportWidth: number,
+  minimumColumnWidth: number,
+  maximumColumns: number,
+  gap = 12,
+): number {
+  if (maximumColumns <= 1 || minimumColumnWidth <= 0) return 1;
+  const availableWidth = contentWidth(viewportWidth);
+  const columns = Math.floor((availableWidth + gap) / (minimumColumnWidth + gap));
+  return Math.max(1, Math.min(maximumColumns, columns));
+}
+
 export function screenContentMaxWidth(background: 'artwork' | 'solid'): number {
   return background === 'solid' ? layout.formMaxWidth : layout.contentMaxWidth;
 }

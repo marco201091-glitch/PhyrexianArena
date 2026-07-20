@@ -1,6 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image } from 'expo-image';
 import {
   RefreshControl,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { ManaColorPairs, ManaColorReport } from '@/components/arena/mana-color-report';
+import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/loader';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
@@ -220,14 +220,12 @@ export default function PublicArenaScreen() {
               <PhyrexianPanel style={styles.highlightCard}>
                 <Text style={styles.highlightLabel}>{copy('topDeckHighlight')}</Text>
                 <View style={styles.deckRow}>
-                  {data.topDecks[0].commanderImage ? (
-                    <Image
-                      source={{ uri: data.topDecks[0].commanderImage }}
-                      style={styles.deckImage}
-                      contentFit="cover"
-                      alt={data.topDecks[0].commander}
-                    />
-                  ) : null}
+                  <DeckImage
+                    uri={data.topDecks[0].commanderImage}
+                    alt={data.topDecks[0].commander}
+                    style={styles.deckImage}
+                    containerStyle={styles.deckImage}
+                  />
                   <View style={styles.deckInfo}>
                     <Text style={styles.highlightValue}>{data.topDecks[0].commander}</Text>
                     <Text style={styles.highlightHint}>
@@ -269,14 +267,12 @@ export default function PublicArenaScreen() {
           <Text style={styles.sectionTitle}>{copy('topDecks')}</Text>
           {data.topDecks.map((deck, index) => (
             <View key={`${deck.commander}-${index}`} style={styles.deckListRow}>
-              {deck.commanderImage ? (
-                <Image
-                  source={{ uri: deck.commanderImage }}
-                  style={styles.deckThumb}
-                  contentFit="cover"
-                  alt={deck.commander}
-                />
-              ) : null}
+              <DeckImage
+                uri={deck.commanderImage}
+                alt={deck.commander}
+                style={styles.deckThumb}
+                containerStyle={styles.deckThumb}
+              />
               <View style={styles.deckInfo}>
                 <Text style={styles.listPrimary}>{deck.commander}</Text>
                 <Text style={styles.listSecondary}>

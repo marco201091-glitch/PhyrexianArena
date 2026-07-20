@@ -5,10 +5,12 @@ import {
   deckPickerCardWidth,
   layout,
   isCompactViewport,
+  isIPadViewport,
   isPhoneViewport,
   isTabletViewport,
   resolveSafeAreaEdges,
   resolveTabBarHeight,
+  responsiveGridColumns,
   scaleForWidth,
   screenContentMaxWidth,
   tabBarHorizontalInset,
@@ -75,11 +77,36 @@ describe('responsive breakpoints', () => {
     expect(isTabletViewport(700)).toBe(true);
   });
 
+  it('enables expanded controls only on full-size iOS tablets', () => {
+    expect(isIPadViewport('ios', 1024, 768)).toBe(true);
+    expect(isIPadViewport('ios', 768, 1024)).toBe(true);
+    expect(isIPadViewport('ios', 932, 430)).toBe(false);
+    expect(isIPadViewport('android', 1024, 768)).toBe(false);
+  });
+
   it('constrains forms and centers wide tab content', () => {
     expect(screenContentMaxWidth('solid')).toBe(layout.formMaxWidth);
     expect(screenContentMaxWidth('artwork')).toBe(layout.contentMaxWidth);
     expect(tabBarHorizontalInset(720)).toBe(0);
     expect(tabBarHorizontalInset(1024)).toBe(152);
+  });
+});
+
+describe('responsiveGridColumns', () => {
+  it('uses native tablet density on full-size iPads', () => {
+    expect(responsiveGridColumns(768, 340, 2, 14)).toBe(2);
+    expect(responsiveGridColumns(1024, 290, 3, 12)).toBe(3);
+    expect(responsiveGridColumns(1366, 290, 3, 12)).toBe(3);
+  });
+
+  it('collapses cleanly in iPad Split View instead of scaling the UI', () => {
+    expect(responsiveGridColumns(507, 340, 2, 14)).toBe(1);
+    expect(responsiveGridColumns(375, 290, 3, 12)).toBe(1);
+  });
+
+  it('always returns a safe column count for invalid limits', () => {
+    expect(responsiveGridColumns(1024, 290, 1)).toBe(1);
+    expect(responsiveGridColumns(1024, 0, 3)).toBe(1);
   });
 });
 

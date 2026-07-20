@@ -7,6 +7,7 @@ import {
   type QueuedLiveGameMutation,
   type WinCondition,
 } from '@/lib/live-game';
+import { recordLiveGameMutationSync, recordLiveGameSyncError } from '@/lib/live-game-telemetry';
 
 export async function fetchActiveLiveGame(
   client: SupabaseClient,
@@ -93,28 +94,94 @@ export async function applyQueuedLiveGameMutation(
   initialRecord: LiveGameRecord,
   queued: QueuedLiveGameMutation,
 ): Promise<LiveGameRecord> {
+  const startedAt = Date.now();
+  let conflicts = 0;
   let base = initialRecord;
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const nextState = applyLiveGameMutation(base.state, queued.mutation);
-    const { data, error } = await client.rpc('apply_live_game_mutation', {
-      p_live_game_id: base.id,
-      p_mutation_id: queued.id,
-      p_expected_version: base.state.version,
-      p_next_state: nextState,
-    });
-    if (error) throw error;
-    const result = data as MutationRpcResult;
-    const record = { ...result.record, state: parseLiveGameState(result.record.state) } as LiveGameRecord;
-    if (result.applied) return record;
-    base = record;
+  try {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const nextState = applyLiveGameMutation(base.state, queued.mutation);
+      const { data, error } = await client.rpc('apply_live_game_mutation', {
+        p_live_game_id: base.id,
+        p_mutation_id: queued.id,
+        p_expected_version: base.state.version,
+        p_next_state: nextState,
+      });
+      if (error) throw error;
+      const result = data as MutationRpcResult;
+      const record = { ...result.record, state: parseLiveGameState(result.record.state) } as LiveGameRecord;
+      if (result.applied) {
+        recordLiveGameMutationSync({ durationMs: Date.now() - startedAt, conflicts });
+        return record;
+      }
+      conflicts += 1;
+      base = record;
+    }
+    throw new Error('Live game state stayed busy after multiple retries');
+  } catch (error) {
+    recordLiveGameSyncError(error);
+    throw error;
   }
-  throw new Error('Live game state stayed busy after multiple retries');
+}
+
+export async function applyQueuedLiveGameMutations(
+  client: SupabaseClient,
+  initialRecord: LiveGameRecord,
+  queuedMutations: QueuedLiveGameMutation[],
+): Promise<LiveGameRecord> {
+  if (queuedMutations.length === 0) return initialRecord;
+  const startedAt = Date.now();
+  let conflicts = 0;
+  let base = initialRecord;
+  try {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const nextState = queuedMutations.reduce(
+        (state, queued) => applyLiveGameMutation(state, queued.mutation),
+        base.state,
+      );
+      const { data, error } = await client.rpc('apply_live_game_mutation_batch', {
+        p_live_game_id: base.id,
+        p_mutation_ids: queuedMutations.map((queued) => queued.id),
+        p_expected_version: base.state.version,
+        p_next_state: nextState,
+      });
+      if (error) throw error;
+      const result = data as MutationRpcResult;
+      const record = {
+        ...result.record,
+        state: parseLiveGameState(result.record.state),
+      } as LiveGameRecord;
+      if (result.applied) {
+        recordLiveGameMutationSync({ durationMs: Date.now() - startedAt, conflicts });
+        return record;
+      }
+      conflicts += 1;
+      base = record;
+    }
+    throw new Error('Live game state stayed busy after multiple retries');
+  } catch (error) {
+    recordLiveGameSyncError(error);
+    throw error;
+  }
+}
+
+export async function fetchLiveGameByMatchId(
+  client: SupabaseClient,
+  matchId: string,
+): Promise<LiveGameRecord | null> {
+  const { data, error } = await client
+    .from('live_games')
+    .select('*')
+    .eq('match_id', matchId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { ...data, state: parseLiveGameState(data.state) } as LiveGameRecord : null;
 }
 
 export function subscribeToLiveGame(
   client: SupabaseClient,
   liveGameId: string,
   onChange: (record: LiveGameRecord) => void,
+  onStatus?: (status: string) => void,
 ) {
   const channel = client.channel(`web-live-game:${liveGameId}`).on(
     'postgres_changes',
@@ -123,7 +190,7 @@ export function subscribeToLiveGame(
       const next = payload.new as LiveGameRecord;
       onChange({ ...next, state: parseLiveGameState(next.state) });
     },
-  ).subscribe();
+  ).subscribe((status) => onStatus?.(status));
   return () => { void client.removeChannel(channel); };
 }
 

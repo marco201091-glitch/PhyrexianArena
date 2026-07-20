@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   LayoutChangeEvent,
   Pressable,
   StyleSheet,
@@ -14,13 +16,14 @@ import { DamageConfirmSheet } from '@/components/live-game/damage-confirm-sheet'
 import { DamageDragOverlay } from '@/components/live-game/damage-drag-overlay';
 import { TableSeat } from '@/components/live-game/table-seat';
 import { PlayerDamageSheet } from '@/components/live-game/player-damage-sheet';
+import { Modal } from '@/components/ui/modal';
+import { ModalHeader } from '@/components/ui/modal-header';
 import { colors, radii, spacing } from '@/constants/theme';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import {
   findPodAtPoint,
   getCenterToolbarBand,
   getLandscapeSeatRotation,
-  getSeatControlPlacement,
   getSeatRotation,
   getSquareTableLayouts,
   getViewportTableOrientation,
@@ -29,8 +32,10 @@ import {
   type PodBounds,
   type TableLayoutVariant,
 } from '@/lib/live-game-table-layout';
-import type { DamageMode, LiveGamePlayer, PlayDirection } from '@/lib/live-game';
+import type { DamageMode, GroupDamageScope, LiveGamePlayer, PlayDirection, PlayerCounter, PlayerEmblem } from '@/lib/live-game';
+import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { useReducedMotion } from '@/lib/reduced-motion';
 
 type PendingTransfer = {
   sourceKey: ParticipantKey;
@@ -45,6 +50,7 @@ type TableArenaProps = {
   startingHighlight: ParticipantKey | null;
   startingDirection: PlayDirection | null;
   layoutVariant: TableLayoutVariant;
+  commanderMode?: boolean;
   damagePulse: Record<string, number>;
   activePlayers: LiveGamePlayer[];
   labels: {
@@ -74,10 +80,27 @@ type TableArenaProps = {
     counterclockwise: string;
     damageReceived: string;
     undo: string;
+    redo: string;
+    thisPlayer: string;
+    eachOpponent: string;
+    everyone: string;
+    drain: string;
+    drainHint: string;
+    dieOrCoin: string;
+    coin: string;
+    heads: string;
+    tails: string;
   };
   onBack: () => void;
   canUndo: boolean;
   onUndo: () => void;
+  canRedo: boolean;
+  onRedo: () => void;
+  syncStatus: 'offline' | 'pending' | 'syncing' | 'synced' | 'error';
+  syncLabel: string;
+  pendingSyncCount: number;
+  syncError: string | null;
+  onRetrySync: () => void;
   onEndGame: () => void;
   onAdjust: (key: ParticipantKey, delta: number) => void;
   onApplyDragDamage: (input: {
@@ -85,10 +108,14 @@ type TableArenaProps = {
     targetKey: ParticipantKey;
     amount: number;
     mode: DamageMode;
+    scope: 'single' | GroupDamageScope;
+    drain: boolean;
   }) => void;
   onEliminate: (key: ParticipantKey) => void;
   onRevive: (key: ParticipantKey) => void;
   onPickRandom: (pool?: ParticipantKey[]) => void;
+  onAdjustCounter: (key: ParticipantKey, counter: PlayerCounter, amount: number) => void;
+  onSetEmblem: (key: ParticipantKey, emblem: PlayerEmblem, active: boolean) => void;
 };
 
 const SYSTEM_GESTURE_GUARD = 10;
@@ -114,18 +141,28 @@ export function TableArena({
   startingHighlight,
   startingDirection,
   layoutVariant,
+  commanderMode = true,
   damagePulse,
   activePlayers,
   labels,
   onBack,
   canUndo,
   onUndo,
+  canRedo,
+  onRedo,
+  syncStatus,
+  syncLabel,
+  pendingSyncCount,
+  syncError,
+  onRetrySync,
   onEndGame,
   onAdjust,
   onApplyDragDamage,
   onEliminate,
   onRevive,
   onPickRandom,
+  onAdjustCounter,
+  onSetEmblem,
 }: TableArenaProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -137,6 +174,14 @@ export function TableArena({
   const [pendingTransfer, setPendingTransfer] = useState<PendingTransfer | null>(null);
   const [detailsPlayerKey, setDetailsPlayerKey] = useState<ParticipantKey | null>(null);
   const [damageFeedback, setDamageFeedback] = useState<string | null>(null);
+  const [randomizerOpen, setRandomizerOpen] = useState(false);
+  const [randomizerResult, setRandomizerResult] = useState<string | number | null>(null);
+  const [randomizerKind, setRandomizerKind] = useState<TableRandomKind | null>(null);
+  const [randomizerRolling, setRandomizerRolling] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const randomizerProgress = useRef(new Animated.Value(0)).current;
+  const randomizerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const randomizerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
   const dragSourceX = useSharedValue(0);
@@ -152,6 +197,64 @@ export function TableArena({
     const timer = setInterval(() => setClockNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const clearRandomizerTimers = useCallback(() => {
+    if (randomizerIntervalRef.current) {
+      clearInterval(randomizerIntervalRef.current);
+      randomizerIntervalRef.current = null;
+    }
+    if (randomizerTimeoutRef.current) {
+      clearTimeout(randomizerTimeoutRef.current);
+      randomizerTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearRandomizerTimers(), [clearRandomizerTimers]);
+
+  const closeRandomizer = useCallback(() => {
+    clearRandomizerTimers();
+    randomizerProgress.stopAnimation();
+    setRandomizerRolling(false);
+    setRandomizerOpen(false);
+  }, [clearRandomizerTimers, randomizerProgress]);
+
+  const runRandomizer = useCallback((kind: TableRandomKind) => {
+    clearRandomizerTimers();
+    randomizerProgress.stopAnimation();
+
+    const finalResult = rollTableRandom(kind);
+    setRandomizerKind(kind);
+
+    if (reducedMotion) {
+      randomizerProgress.setValue(1);
+      setRandomizerResult(finalResult);
+      setRandomizerRolling(false);
+      void hapticSuccess();
+      return;
+    }
+
+    const duration = kind === 'coin' ? 920 : 720;
+    setRandomizerRolling(true);
+    setRandomizerResult(rollTableRandom(kind));
+    randomizerProgress.setValue(0);
+    Animated.timing(randomizerProgress, {
+      toValue: 1,
+      duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    randomizerIntervalRef.current = setInterval(() => {
+      setRandomizerResult(rollTableRandom(kind));
+    }, kind === 'coin' ? 105 : 75);
+
+    randomizerTimeoutRef.current = setTimeout(() => {
+      clearRandomizerTimers();
+      setRandomizerResult(finalResult);
+      setRandomizerRolling(false);
+      void hapticSuccess();
+    }, duration);
+  }, [clearRandomizerTimers, randomizerProgress, reducedMotion]);
 
   const playerCount = players.length;
   const arenaWidth = arenaSize.width || screenWidth;
@@ -184,7 +287,7 @@ export function TableArena({
     ? centerToolbarBand?.height ?? 0
     : centerToolbarBand?.width ?? 0;
   const toolbarButtonSize = centerToolbarBand
-    ? Math.max(34, Math.min(56, (centerToolbarMainSize - 98) / 5))
+    ? Math.max(30, Math.min(56, (centerToolbarMainSize - 98) / 8))
     : 44;
   const toolbarButtonStyle = {
     width: toolbarButtonSize,
@@ -195,6 +298,15 @@ export function TableArena({
   const seatAssignments = useMemo(
     () => mapPlayersToSeats(players, seatLayouts, null),
     [players, seatLayouts],
+  );
+  const seatRotations = useMemo(
+    () => new Map(seatAssignments.map(({ player, layout }) => [
+      player.participantKey,
+      tableOrientation === 'landscape'
+        ? getLandscapeSeatRotation(layout, arenaWidth)
+        : getSeatRotation(layout.role, playerCount, layoutVariant),
+    ])),
+    [arenaWidth, layoutVariant, playerCount, seatAssignments, tableOrientation],
   );
 
   const playersByKey = useMemo(
@@ -339,7 +451,40 @@ export function TableArena({
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
+        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle, !canRedo && styles.toolBtnDisabled]}
+        onPress={onRedo}
+        disabled={!canRedo}
+        accessibilityRole="button"
+        accessibilityLabel={labels.redo}
+        accessibilityState={{ disabled: !canRedo }}
+      >
+        <Ionicons
+          name="arrow-redo-outline"
+          size={23}
+          color={canRedo ? colors.foreground : 'rgba(244,244,245,0.28)'}
+        />
+      </Pressable>
+
+      <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface, styles.toolBtnUtility, toolbarButtonStyle]}
+        onPress={() => {
+          clearRandomizerTimers();
+          setRandomizerKind(null);
+          setRandomizerResult(null);
+          setRandomizerRolling(false);
+          setRandomizerOpen(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={labels.dieOrCoin}
+      >
+        <View style={styles.randomizerToolIcon}>
+          <Ionicons name="dice-outline" size={22} color={colors.foreground} />
+          <View style={styles.coinToolBadge} />
+        </View>
+      </Pressable>
+
+      <Pressable
+        style={[styles.toolBtn, styles.toolBtnSurface, styles.toolBtnUtility, toolbarButtonStyle]}
         onPress={() => {
           setActivePickerKey(null);
           onPickRandom();
@@ -347,11 +492,14 @@ export function TableArena({
         accessibilityRole="button"
         accessibilityLabel={labels.randomAll}
       >
-        <Ionicons name="dice-outline" size={23} color={colors.foreground} />
+        <View style={styles.groupRandomIcon}>
+          <Ionicons name="people-outline" size={22} color={colors.foreground} />
+          <Ionicons name="shuffle" size={11} color={colors.primaryLight} style={styles.iconBadge} />
+        </View>
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle, activePlayers.length < 2 && styles.toolBtnDisabled]}
+        style={[styles.toolBtn, styles.toolBtnSurface, styles.toolBtnUtility, toolbarButtonStyle, activePlayers.length < 2 && styles.toolBtnDisabled]}
         disabled={activePlayers.length < 2}
         onPress={() => {
           setActivePickerKey(null);
@@ -362,24 +510,45 @@ export function TableArena({
         accessibilityLabel={labels.randomOpponents}
       >
         <View style={styles.opponentRandomIcon}>
-          <Ionicons name="person-outline" size={21} color={colors.foreground} />
-          <Ionicons name="dice" size={11} color={colors.primaryLight} style={styles.opponentRandomDie} />
+          <Ionicons name="finger-print-outline" size={22} color={colors.foreground} />
+          <Ionicons name="shuffle" size={11} color={colors.primaryLight} style={styles.iconBadge} />
         </View>
       </Pressable>
 
       <Pressable
-        style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
+        style={[styles.toolBtn, styles.toolBtnSurface, styles.toolBtnDanger, toolbarButtonStyle]}
         onPress={onEndGame}
         accessibilityRole="button"
         accessibilityLabel={labels.endGame}
       >
-        <Ionicons name="flag-outline" size={22} color={colors.foreground} />
+        <Ionicons name="flag-outline" size={22} color="#fca5a5" />
       </Pressable>
     </>
   );
 
   return (
     <View style={styles.root}>
+      <Pressable
+        onPress={onRetrySync}
+        accessibilityRole="button"
+        accessibilityLabel={syncLabel}
+        style={[
+          styles.syncBadge,
+          { top: Math.max(insets.top, SYSTEM_GESTURE_GUARD) + 6, right: Math.max(insets.right, SYSTEM_GESTURE_GUARD) + 6 },
+          syncStatus === 'error' && styles.syncBadgeError,
+          syncStatus === 'offline' && styles.syncBadgeOffline,
+        ]}
+      >
+        <Ionicons
+          name={syncStatus === 'syncing' ? 'sync' : syncStatus === 'offline' ? 'cloud-offline-outline' : syncStatus === 'error' ? 'warning-outline' : 'cloud-done-outline'}
+          size={13}
+          color={syncStatus === 'error' ? '#fecaca' : syncStatus === 'offline' ? '#fde68a' : '#bbf7d0'}
+        />
+        <Text style={styles.syncBadgeText} numberOfLines={1}>
+          {syncLabel}{pendingSyncCount > 0 ? ` · ${pendingSyncCount}` : ''}
+        </Text>
+        {syncError ? <Ionicons name="refresh" size={12} color="#fecaca" /> : null}
+      </Pressable>
       <View
         style={[
           styles.gridHost,
@@ -415,7 +584,6 @@ export function TableArena({
               seatRotation={tableOrientation === 'landscape'
                 ? getLandscapeSeatRotation(layout, arenaWidth)
                 : getSeatRotation(layout.role, playerCount, layoutVariant)}
-              controlPlacement={getSeatControlPlacement(layout.role)}
               damageMode="life"
               isSource={dragSource === player.participantKey}
               isDragHover={dragHoverKey === player.participantKey}
@@ -508,7 +676,9 @@ export function TableArena({
         visible={Boolean(pendingTransfer)}
         source={pendingSource}
         target={pendingTarget}
+        sourceRotation={pendingTransfer ? seatRotations.get(pendingTransfer.sourceKey) ?? 0 : 0}
         defaultMode="life"
+        commanderMode={commanderMode}
         labels={{
           title: labels.damageConfirmTitle,
           amount: labels.damageAmount,
@@ -517,9 +687,14 @@ export function TableArena({
           infectDamage: labels.infect,
           apply: labels.applyDamage,
           cancel: labels.cancel,
+          thisPlayer: labels.thisPlayer,
+          eachOpponent: labels.eachOpponent,
+          everyone: labels.everyone,
+          drain: labels.drain,
+          drainHint: labels.drainHint,
         }}
         onClose={() => setPendingTransfer(null)}
-        onConfirm={({ amount, mode }) => {
+        onConfirm={({ amount, mode, scope, drain }) => {
           if (!pendingTransfer) return;
           const sourceName = playersByKey.get(pendingTransfer.sourceKey)?.displayName ?? '';
           const targetName = playersByKey.get(pendingTransfer.targetKey)?.displayName ?? '';
@@ -531,8 +706,13 @@ export function TableArena({
             targetKey: pendingTransfer.targetKey,
             amount,
             mode,
+            scope,
+            drain,
           });
-          setDamageFeedback(`${sourceName} → ${targetName} · ${amount} ${modeLabel}`);
+          const destination = scope === 'opponents'
+            ? labels.eachOpponent
+            : scope === 'all_players' ? labels.everyone : targetName;
+          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}${drain ? ` · ${labels.drain}` : ''}`);
           setTimeout(() => setDamageFeedback(null), 3200);
           setPendingTransfer(null);
         }}
@@ -544,8 +724,114 @@ export function TableArena({
         title={labels.damageReceived}
         commanderLabel={labels.commanderDamageMeta}
         infectLabel={labels.infect}
+        commanderMode={commanderMode}
         onClose={() => setDetailsPlayerKey(null)}
+        onAdjustCounter={(counter, amount) => {
+          if (detailsPlayerKey) onAdjustCounter(detailsPlayerKey, counter, amount);
+        }}
+        onSetEmblem={(emblem, active) => {
+          if (detailsPlayerKey) onSetEmblem(detailsPlayerKey, emblem, active);
+        }}
       />
+
+      <Modal visible={randomizerOpen} onClose={closeRandomizer} presentation="dialog" maxWidth={440}>
+        <ModalHeader title={labels.dieOrCoin} icon="dice-outline" onClose={closeRandomizer} />
+        <View style={styles.randomizerChoices}>
+          {([
+            ['coin', labels.coin],
+            ['d4', 'd4'],
+            ['d6', 'd6'],
+            ['d20', 'd20'],
+          ] as Array<[TableRandomKind, string]>).map(([kind, label]) => (
+            <Pressable
+              key={kind}
+              style={[
+                styles.randomizerButton,
+                randomizerKind === kind && styles.randomizerButtonActive,
+              ]}
+              disabled={randomizerRolling}
+              onPress={() => runRandomizer(kind)}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              accessibilityState={{ selected: randomizerKind === kind, disabled: randomizerRolling }}
+            >
+              {kind === 'coin' ? (
+                <Ionicons name="ellipse-outline" size={23} color={randomizerKind === kind ? '#ddd6fe' : colors.muted} />
+              ) : (
+                <Ionicons name="dice-outline" size={23} color={randomizerKind === kind ? '#ddd6fe' : colors.muted} />
+              )}
+              <Text style={styles.randomizerButtonText}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {randomizerResult !== null ? (
+          <View style={styles.randomizerResult}>
+            <Animated.View
+              style={[
+                randomizerKind === 'coin' ? styles.coinResult : styles.dieResult,
+                {
+                  transform: randomizerKind === 'coin'
+                    ? [
+                      { perspective: 700 },
+                      {
+                        rotateY: randomizerProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '1080deg'],
+                        }),
+                      },
+                      {
+                        translateY: randomizerProgress.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [0, -20, 0],
+                        }),
+                      },
+                      {
+                        scale: randomizerProgress.interpolate({
+                          inputRange: [0, 0.55, 1],
+                          outputRange: [0.84, 1.08, 1],
+                        }),
+                      },
+                    ]
+                    : [
+                      {
+                        rotate: randomizerProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '720deg'],
+                        }),
+                      },
+                      {
+                        translateY: randomizerProgress.interpolate({
+                          inputRange: [0, 0.45, 1],
+                          outputRange: [0, -15, 0],
+                        }),
+                      },
+                      {
+                        scale: randomizerProgress.interpolate({
+                          inputRange: [0, 0.65, 1],
+                          outputRange: [0.78, 1.12, 1],
+                        }),
+                      },
+                    ],
+                },
+              ]}
+            >
+              {randomizerKind !== 'coin' ? (
+                <Text style={styles.randomizerDieKind}>{randomizerKind}</Text>
+              ) : null}
+              <Text
+                style={[
+                  styles.randomizerResultText,
+                  randomizerKind === 'coin' && styles.randomizerCoinText,
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {randomizerResult === 'heads' ? labels.heads : randomizerResult === 'tails' ? labels.tails : randomizerResult}
+              </Text>
+            </Animated.View>
+          </View>
+        ) : null}
+      </Modal>
 
 
       {damageFeedback ? (
@@ -570,6 +856,32 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#050508',
+  },
+  syncBadge: {
+    position: 'absolute',
+    zIndex: 90,
+    maxWidth: 150,
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.3)',
+    borderRadius: 16,
+    backgroundColor: 'rgba(4,4,8,0.82)',
+    paddingHorizontal: 9,
+  },
+  syncBadgeError: {
+    borderColor: 'rgba(248,113,113,0.45)',
+  },
+  syncBadgeOffline: {
+    borderColor: 'rgba(251,191,36,0.4)',
+  },
+  syncBadgeText: {
+    flexShrink: 1,
+    color: colors.foreground,
+    fontSize: 10,
+    fontWeight: '800',
   },
   gridHost: {
     flex: 1,
@@ -637,6 +949,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(124,58,237,0.28)',
     borderColor: 'rgba(167,139,250,0.45)',
   },
+  toolBtnUtility: {
+    backgroundColor: 'rgba(91,33,182,0.16)',
+    borderColor: 'rgba(167,139,250,0.24)',
+  },
+  toolBtnDanger: {
+    backgroundColor: 'rgba(127,29,29,0.2)',
+    borderColor: 'rgba(248,113,113,0.28)',
+  },
   toolBtnDisabled: {
     opacity: 0.55,
   },
@@ -672,10 +992,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  opponentRandomDie: {
+  groupRandomIcon: {
+    width: 25,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  randomizerToolIcon: {
+    width: 25,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBadge: {
     position: 'absolute',
     right: -1,
     bottom: -1,
+  },
+  coinToolBadge: {
+    position: 'absolute',
+    right: -1,
+    bottom: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
+    backgroundColor: '#111119',
   },
   toolsSheet: {
     position: 'absolute',
@@ -760,5 +1103,86 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
     fontSize: 12,
     fontWeight: '800',
+  },
+  randomizerChoices: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  randomizerButton: {
+    flex: 1,
+    minHeight: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.32)',
+    backgroundColor: 'rgba(124,58,237,0.13)',
+  },
+  randomizerButtonActive: {
+    borderColor: 'rgba(196,181,253,0.78)',
+    backgroundColor: 'rgba(124,58,237,0.34)',
+  },
+  randomizerButtonText: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  randomizerResult: {
+    minHeight: 176,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.lg,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    overflow: 'hidden',
+  },
+  dieResult: {
+    width: 118,
+    height: 118,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'rgba(196,181,253,0.72)',
+    backgroundColor: '#25134a',
+    shadowColor: '#8b5cf6',
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  coinResult: {
+    width: 126,
+    height: 126,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 63,
+    borderWidth: 5,
+    borderColor: '#f6d365',
+    backgroundColor: '#9a641e',
+    shadowColor: '#fbbf24',
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  randomizerDieKind: {
+    position: 'absolute',
+    top: 9,
+    color: 'rgba(221,214,254,0.7)',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  randomizerResultText: {
+    color: '#ddd6fe',
+    fontSize: 58,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  randomizerCoinText: {
+    maxWidth: 104,
+    color: '#fff3c4',
+    fontSize: 22,
+    textTransform: 'uppercase',
   },
 });

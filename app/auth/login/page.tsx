@@ -1,25 +1,229 @@
-import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+'use client';
+
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-persistence';
+import { clearSupabaseAuthStorage } from '@/lib/supabase-auth-recovery';
+import { resetSupabaseClient, supabase } from '@/lib/supabase';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
+import { ManaLogo } from '@/components/ui/mana-logo';
 import { getSafeRedirectPath } from '@/lib/safe-redirect';
-import { LoginForm } from './login-form';
+import { signInWithGoogle } from '@/lib/google-auth';
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
+import { DemoLoginButton } from '@/components/auth/demo-login-button';
+import { AuthPageShell } from '@/components/legal/auth-page-shell';
+import { useIsNativeApp } from '@/hooks/use-is-native-app';
 
-type LoginPageProps = {
-  searchParams: Promise<{
-    redirect?: string;
-    error?: string;
-  }>;
-};
+function LoginForm() {
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const router = useRouter();
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const params = await searchParams;
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  useEffect(() => {
+    setRememberMe(getRememberMePreference());
+  }, []);
 
-  if (user) {
-    redirect(getSafeRedirectPath(params.redirect));
-  }
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const t = useCallback((value: string | { en: string }) => typeof value === 'string' ? value : value.en, []);
+  const isNative = useIsNativeApp();
 
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (!oauthError) return;
+
+    toast({
+      title: t({ en: 'Error' }),
+      description: oauthError,
+      variant: 'destructive',
+    });
+  }, [searchParams, t, toast]);
+  const redirectPath = getSafeRedirectPath(searchParams.get('redirect'));
+  const invalidCredentialsMessage = t({ en: 'Invalid credentials.' });
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const trimmedIdentifier = loginIdentifier.trim();
+      const isEmail = trimmedIdentifier.includes('@');
+      let authEmail = trimmedIdentifier;
+
+      if (!isEmail) {
+        const { data, error } = await supabase.rpc('resolve_login_email', {
+          identifier: trimmedIdentifier,
+        });
+
+        if (error) throw error;
+        if (!data) {
+          throw new Error(invalidCredentialsMessage);
+        }
+
+        authEmail = data;
+      }
+
+      setRememberMePreference(rememberMe);
+      clearSupabaseAuthStorage();
+      resetSupabaseClient();
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password,
+      });
+
+      if (error) {
+        if (error.message.toLowerCase().includes('email not confirmed')) {
+          router.push(`/auth/resend-confirmation?email=${encodeURIComponent(authEmail)}`);
+          return;
+        }
+        throw error;
+      }
+
+      router.refresh();
+      router.push(redirectPath);
+    } catch {
+      toast({
+        title: t({ en: 'Error' }),
+        description: invalidCredentialsMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await signInWithGoogle(redirectPath);
+    } catch (error: unknown) {
+      toast({
+        title: t({ en: 'Error' }),
+        description: error instanceof Error
+          ? error.message
+          : t({ en: 'Failed to sign in with Google' }),
+        variant: 'destructive',
+      });
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthPageShell>
+      <Card className="w-full max-w-xl bg-card/80 border-border/50 backdrop-blur">
+        <CardHeader className="pb-5 text-center">
+          <div className="flex justify-center">
+            <ManaLogo size="xl" showText layout="stacked" subtitle="EDH Tracker" className="w-full" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="loginIdentifier" className="text-sm font-medium text-foreground">
+                {t({ en: 'Email or username' })}
+              </label>
+              <Input
+                id="loginIdentifier"
+                type="text"
+                autoComplete="username"
+                placeholder={t({ en: 'User ID or email' })}
+                value={loginIdentifier}
+                onChange={(e) => setLoginIdentifier(e.target.value)}
+                required
+                className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  {t({ en: 'Password' })}
+                </label>
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-xs font-medium text-violet-400 hover:text-violet-300"
+                >
+                  {t({ en: 'Forgot password?' })}
+                </Link>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+            <label
+              htmlFor="rememberMe"
+              className="flex cursor-pointer items-center gap-2.5 rounded-md border border-border/60 bg-background/35 px-3 py-2.5 text-sm text-foreground"
+            >
+              <Checkbox
+                id="rememberMe"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
+                className="border-violet-400/70 data-[state=checked]:border-violet-400 data-[state=checked]:bg-violet-600"
+              />
+              <span>{t({ en: 'Remember me on this device' })}</span>
+            </label>
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800 text-white font-semibold"
+              disabled={loading}
+            >
+              {loading
+                ? t({ en: 'Signing in...' })
+                : t({ en: 'Enter Arena' })}
+            </Button>
+          </form>
+
+          {!isNative && (
+            <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">{t({ en: 'Or continue with' })}</span>
+                </div>
+              </div>
+
+              <GoogleSignInButton
+                disabled={loading}
+                onClick={handleGoogleLogin}
+                label={{ it: 'Continue with Google', en: 'Continue with Google' }}
+              />
+
+              <DemoLoginButton disabled={loading} redirectPath={redirectPath} forceEnglish />
+              <Button asChild variant="outline" className="mt-3 w-full border-cyan-400/30 text-cyan-100">
+                <Link href="/counter">{t({ en: 'Quick game' })}</Link>
+              </Button>
+            </>
+          )}
+
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            {t({ en: 'Not registered yet?' })}{' '}
+            <Link href={`/auth/register?redirect=${encodeURIComponent(redirectPath)}`} className="text-violet-400 hover:text-violet-300 font-medium">
+              {t({ en: 'Create one' })}
+            </Link>
+          </div>
+
+        </CardContent>
+      </Card>
+    </AuthPageShell>
+  );
+}
+
+export default function LoginPage() {
   return (
     <Suspense fallback={null}>
       <LoginForm />
