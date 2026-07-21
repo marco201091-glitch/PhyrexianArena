@@ -73,3 +73,5 @@ mobile/android/keystore.properties
 expo/.expo/
 expo/node_modules/
 artifacts/
+claude.md
+.supabase-staging/
