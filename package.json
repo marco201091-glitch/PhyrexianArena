@@ -1,6 +1,6 @@
 {
   "name": "nextjs",
-  "version": "4.5.1",
+  "version": "5.0.0",
   "private": true,
   "scripts": {
     "dev": "node scripts/stop-dev.mjs && next dev --webpack",
