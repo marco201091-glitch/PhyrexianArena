@@ -7,6 +7,7 @@ const PREVIEW_SITE_URLS = {
   Dev: 'https://phyrexian-arena-git-dev-marco201091-9595s-projects.vercel.app',
   Test: 'https://phyrexian-arena-git-test-marco201091-9595s-projects.vercel.app',
 };
+const PREVIEW_BRANCHES = Object.keys(PREVIEW_SITE_URLS);
 const SUPPORT_EMAIL = 'support@phyrexianarena.dpdns.org';
 
 const REDIRECT_URLS = [
@@ -83,8 +84,14 @@ function upsertVercelEnv(name, value, target, gitBranch) {
 const env = loadEnv('.env.local');
 
 const vercelTargets = [
-  { name: 'NEXT_PUBLIC_SUPABASE_URL', value: env.NEXT_PUBLIC_SUPABASE_URL, targets: ['production', 'preview'] },
-  { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: env.NEXT_PUBLIC_SUPABASE_ANON_KEY, targets: ['production', 'preview'] },
+  { name: 'NEXT_PUBLIC_SUPABASE_URL', value: env.NEXT_PUBLIC_SUPABASE_URL, targets: ['production'] },
+  ...PREVIEW_BRANCHES.map((gitBranch) => ({
+    name: 'NEXT_PUBLIC_SUPABASE_URL', value: env.NEXT_PUBLIC_SUPABASE_URL, targets: ['preview'], gitBranch,
+  })),
+  { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: env.NEXT_PUBLIC_SUPABASE_ANON_KEY, targets: ['production'] },
+  ...PREVIEW_BRANCHES.map((gitBranch) => ({
+    name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: env.NEXT_PUBLIC_SUPABASE_ANON_KEY, targets: ['preview'], gitBranch,
+  })),
   { name: 'RESEND_API_KEY', value: env.RESEND_API_KEY, targets: ['production', 'preview'] },
   { name: 'RESEND_FROM_EMAIL', value: env.RESEND_FROM_EMAIL, targets: ['production', 'preview'] },
   { name: 'NEXT_PUBLIC_SITE_URL', value: PRODUCTION_SITE_URL, targets: ['production'] },
@@ -96,7 +103,10 @@ const vercelTargets = [
   })),
   { name: 'NEXT_PUBLIC_HCAPTCHA_SITE_KEY', value: env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY, targets: ['preview'] },
   { name: 'HCAPTCHA_SECRET_KEY', value: env.HCAPTCHA_SECRET_KEY, targets: ['preview'] },
-  { name: 'SUPABASE_SERVICE_ROLE_KEY', value: env.SUPABASE_SERVICE_ROLE_KEY, targets: ['production', 'preview'] },
+  { name: 'SUPABASE_SERVICE_ROLE_KEY', value: env.SUPABASE_SERVICE_ROLE_KEY, targets: ['production'] },
+  ...PREVIEW_BRANCHES.map((gitBranch) => ({
+    name: 'SUPABASE_SERVICE_ROLE_KEY', value: env.SUPABASE_SERVICE_ROLE_KEY, targets: ['preview'], gitBranch,
+  })),
   { name: 'PLATFORM_ADMIN_EMAILS', value: env.PLATFORM_ADMIN_EMAILS, targets: ['production', 'preview'] },
   { name: 'NEXT_PUBLIC_PLATFORM_ADMIN_EMAILS', value: env.NEXT_PUBLIC_PLATFORM_ADMIN_EMAILS, targets: ['production', 'preview'] },
   { name: 'NEXT_PUBLIC_SUPPORT_EMAIL', value: env.NEXT_PUBLIC_SUPPORT_EMAIL || SUPPORT_EMAIL, targets: ['production', 'preview'] },
