@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { isValidEmail, normalizeAppLocale } from '@/lib/auth-validation';
 import { createPasswordRecoveryLink, findAuthUserByEmail } from '@/lib/auth-email-links';
 import { buildPasswordResetEmail } from '@/lib/auth-email-templates';
-import { getRequestRemoteIp, verifyHCaptcha } from '@/lib/hcaptcha-server';
+import { getRequestRemoteIp, verifyTurnstile } from '@/lib/turnstile-server';
 import { sendAuthEmail } from '@/lib/resend-email';
 import { getAuthSiteUrl } from '@/lib/auth-site-url';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Captcha verification is required.' }, { status: 400 });
     }
 
-    const captchaValid = await verifyHCaptcha(captchaToken, getRequestRemoteIp(request));
+    const captchaValid = await verifyTurnstile(captchaToken, getRequestRemoteIp(request));
     if (!captchaValid) {
       return NextResponse.json({ error: 'Captcha verification failed.' }, { status: 400 });
     }

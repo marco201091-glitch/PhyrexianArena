@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ManaLogo } from '@/components/ui/mana-logo';
 import { useLanguage } from '@/components/language-provider';
-import { HCaptchaWidget } from '@/components/hcaptcha-widget';
+import { TurnstileWidget } from '@/components/turnstile-widget';
 import { getSafeRedirectPath } from '@/lib/safe-redirect';
 import { signInWithGoogle } from '@/lib/google-auth';
 import { supabase } from '@/lib/supabase';
@@ -37,8 +37,8 @@ function RegisterForm() {
   const isPasswordValid = isPasswordPolicyValid(password);
   const isEmailValid = isValidEmail(email);
   const isUsernameValid = isValidUsername(username);
-  const hcaptchaSiteKey = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY;
-  const isCaptchaReady = Boolean(hcaptchaSiteKey && captchaToken && captchaAvailable);
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const isCaptchaReady = Boolean(turnstileSiteKey && captchaToken && captchaAvailable);
 
   const resetCaptcha = () => {
     setCaptchaToken('');
@@ -52,7 +52,6 @@ function RegisterForm() {
       toast({
         title: t({ it: 'Email non valida', en: 'Invalid email' }),
         description: t({ it: 'Inserisci un indirizzo email valido.', en: 'Enter a valid email address.' }),
-        variant: 'destructive',
       });
       return;
     }
@@ -88,7 +87,6 @@ function RegisterForm() {
           it: 'Completa il captcha prima di creare l\'account.',
           en: 'Complete the captcha before creating your account.',
         }),
-        variant: 'destructive',
       });
       return;
     }
@@ -236,8 +234,8 @@ function RegisterForm() {
               />
               <PasswordRequirements password={password} />
             </div>
-            <HCaptchaWidget
-              siteKey={hcaptchaSiteKey}
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
               onVerify={(token) => {
                 setCaptchaAvailable(true);
                 setCaptchaToken(token);
@@ -249,14 +247,14 @@ function RegisterForm() {
               }}
               resetSignal={captchaResetSignal}
               unavailableLabel={t({
-                it: 'Captcha non configurato o non disponibile.',
-                en: 'Captcha is not configured or unavailable.',
+                it: 'Verifica anti-bot non disponibile. Riprova tra poco.',
+                en: 'Bot check unavailable. Please try again shortly.',
               })}
             />
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800 text-white font-semibold"
-              disabled={loading || !isUsernameValid || !isEmailValid || !isPasswordValid || !isCaptchaReady}
+              disabled={loading || !isUsernameValid || !isEmailValid || !isPasswordValid}
             >
               {loading ? 'Compleating...' : t({ it: 'Inizia la Compleation', en: 'Begin Compleation' })}
             </Button>

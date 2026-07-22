@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ManaLogo } from '@/components/ui/mana-logo';
-import { HCaptchaWidget } from '@/components/hcaptcha-widget';
+import { TurnstileWidget } from '@/components/turnstile-widget';
 import { useLanguage } from '@/components/language-provider';
 import { useToast } from '@/hooks/use-toast';
 import { isValidEmail } from '@/lib/auth-validation';
@@ -23,8 +23,8 @@ function ForgotPasswordForm() {
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [captchaAvailable, setCaptchaAvailable] = useState(true);
   const [loading, setLoading] = useState(false);
-  const hcaptchaSiteKey = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY;
-  const isCaptchaReady = Boolean(hcaptchaSiteKey && captchaToken && captchaAvailable);
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const isCaptchaReady = Boolean(turnstileSiteKey && captchaToken && captchaAvailable);
   const isEmailValid = isValidEmail(email);
 
   const resetCaptcha = () => {
@@ -35,7 +35,11 @@ function ForgotPasswordForm() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!isEmailValid || !isCaptchaReady) {
+    if (!isEmailValid) {
+      return;
+    }
+    if (!isCaptchaReady) {
+      toast({ title: t({ it: 'Verifica richiesta', en: 'Verification required' }), description: t({ it: 'Completa la verifica anti-bot per continuare.', en: 'Complete the bot check to continue.' }) });
       return;
     }
 
@@ -105,8 +109,8 @@ function ForgotPasswordForm() {
                 className="border-border bg-background/50 text-foreground placeholder:text-muted-foreground"
               />
             </div>
-            <HCaptchaWidget
-              siteKey={hcaptchaSiteKey}
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
               onVerify={(token) => {
                 setCaptchaAvailable(true);
                 setCaptchaToken(token);
@@ -125,7 +129,7 @@ function ForgotPasswordForm() {
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
-              disabled={loading || !isEmailValid || !isCaptchaReady}
+              disabled={loading || !isEmailValid}
             >
               {loading
                 ? t({ it: 'Invio in corso...', en: 'Sending...' })
