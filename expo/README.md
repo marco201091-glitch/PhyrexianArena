@@ -8,7 +8,7 @@ React Native app for Android and iOS with **feature parity target** vs the Next.
 - **Life tracker** (Play Game) — app only, not on web
 - No admin panel in app
 - Default language: **English**, switchable in Settings
-- hCaptcha: same site key as web (`EXPO_PUBLIC_HCAPTCHA_SITE_KEY`)
+- Cloudflare Turnstile: same site key as web (`EXPO_PUBLIC_TURNSTILE_SITE_KEY`)
 
 ## Setup
 
@@ -133,7 +133,7 @@ npx eas env:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://..." --envir
 npx eas env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "..." --environment preview --visibility sensitive
 npx eas env:create --name EXPO_PUBLIC_API_BASE_URL --value "https://app.phyrexianarena.dpdns.org" --environment preview --visibility plaintext
 npx eas env:create --name EXPO_PUBLIC_SITE_URL --value "https://app.phyrexianarena.dpdns.org" --environment preview --visibility plaintext
-npx eas env:create --name EXPO_PUBLIC_HCAPTCHA_SITE_KEY --value "..." --environment preview --visibility plaintext
+npx eas env:create --name EXPO_PUBLIC_TURNSTILE_SITE_KEY --value "..." --environment preview --visibility plaintext
 ```
 
 Ripeti per `production` quando vai sullo store.

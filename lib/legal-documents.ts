@@ -133,8 +133,8 @@ export const privacyPolicyDocument: LegalDocument = {
       title: { it: 'Fornitori e responsabili del trattamento', en: 'Processors and third parties' },
       paragraphs: [
         {
-          it: 'Il servizio si appoggia a fornitori che trattano dati per nostro conto o come autonomi titolari, tra cui: Supabase (database e autenticazione), Vercel (hosting), Resend (email transazionali), Google (OAuth, se usato), hCaptcha (protezione anti-bot).',
-          en: 'The service relies on providers that process data on our behalf or as independent controllers, including: Supabase (database and auth), Vercel (hosting), Resend (transactional email), Google (OAuth, if used), and hCaptcha (bot protection).',
+          it: 'Il servizio si appoggia a fornitori che trattano dati per nostro conto o come autonomi titolari, tra cui: Supabase (database e autenticazione), Dokploy (hosting), Resend (email transazionali), Google (OAuth, se usato), Cloudflare Turnstile (protezione anti-bot).',
+          en: 'The service relies on providers that process data on our behalf or as independent controllers, including: Supabase (database and auth), Dokploy (hosting), Resend (transactional email), Google (OAuth, if used), and Cloudflare Turnstile (bot protection).',
         },
         {
           it: 'Import deck e metadati carte possono interrogare servizi esterni (es. Scryfall, Archidekt, Moxfield, EDHREC) senza trasferire dati personali identificativi oltre a quanto necessario alla richiesta.',
@@ -415,8 +415,8 @@ export const cookiePolicyDocument: LegalDocument = {
       title: { it: 'Servizi di terze parti', en: 'Third-party services' },
       paragraphs: [
         {
-          it: 'hCaptcha (sicurezza): nelle pagine di registrazione, recupero password e reinvio conferma può impostare cookie o tecnologie simili per verificare che la richiesta non sia automatizzata. Si attiva solo quando usi quelle funzioni.',
-          en: 'hCaptcha (security): on registration, password recovery, and resend-confirmation pages it may set cookies or similar technologies to verify the request is not automated. It is activated only when you use those features.',
+          it: 'Cloudflare Turnstile (sicurezza): nelle pagine di registrazione, recupero password e reinvio conferma può usare tecnologie simili per verificare che la richiesta non sia automatizzata. Si attiva solo quando usi quelle funzioni.',
+          en: 'Cloudflare Turnstile (security): on registration, password recovery, and resend-confirmation pages it may use similar technologies to verify the request is not automated. It is activated only when you use those features.',
         },
         {
           it: 'Google OAuth (autenticazione): se scegli "Accedi con Google", vieni reindirizzato a Google che può usare cookie secondo la propria policy. L’uso è opzionale e avviene solo su tua iniziativa.',
@@ -451,8 +451,8 @@ export const cookiePolicyDocument: LegalDocument = {
           en: 'You can disable "Remember me" at login, change language in the UI, sign out, or clear cookies/storage from your browser. Disabling essential cookies will prevent sign-in.',
         },
         {
-          it: 'Per le policy dei fornitori terzi: hCaptcha (hcaptcha.com), Google (policies.google.com), Supabase (supabase.com).',
-          en: 'For third-party policies: hCaptcha (hcaptcha.com), Google (policies.google.com), Supabase (supabase.com).',
+          it: 'Per le policy dei fornitori terzi: Cloudflare (cloudflare.com), Google (policies.google.com), Supabase (supabase.com).',
+          en: 'For third-party policies: Cloudflare (cloudflare.com), Google (policies.google.com), Supabase (supabase.com).',
         },
       ],
     },

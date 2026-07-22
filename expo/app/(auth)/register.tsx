@@ -1,7 +1,7 @@
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { HCaptchaField } from '@/components/auth/hcaptcha-field';
+import { TurnstileField } from '@/components/auth/turnstile-field';
 import { isPasswordPolicyValid, PasswordRequirements } from '@/components/auth/password-requirements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +54,7 @@ export default function RegisterScreen() {
       return;
     }
     if (!captchaToken) {
-      showAppAlert(copy('error'), copy('captchaRequired'));
+      showAppAlert(language === 'it' ? 'Attenzione' : 'Notice', copy('captchaRequired'));
       return;
     }
 
@@ -102,7 +102,7 @@ export default function RegisterScreen() {
           <Input label={copy('email')} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
           <Input label={copy('password')} secureTextEntry value={password} onChangeText={setPassword} />
           <PasswordRequirements password={password} />
-          <HCaptchaField
+          <TurnstileField
             resetSignal={captchaResetSignal}
             languageCode={language}
             onVerify={setCaptchaToken}

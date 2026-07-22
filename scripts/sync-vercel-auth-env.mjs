@@ -71,7 +71,7 @@ const targets = [
   ['RESEND_FROM_EMAIL', env.RESEND_FROM_EMAIL || RESEND_FROM_EMAIL, 'preview'],
   ['NEXT_PUBLIC_SITE_URL', PRODUCTION_SITE_URL, 'production'],
   ['NEXT_PUBLIC_SITE_URL', TESTDEV_SITE_URL, 'preview', 'TestDev'],
-  ['NEXT_PUBLIC_HCAPTCHA_SITE_KEY', env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY, 'preview'],
+  ['NEXT_PUBLIC_TURNSTILE_SITE_KEY', env.NEXT_PUBLIC_TURNSTILE_SITE_KEY, 'preview'],
 ];
 
 for (const [name, value, target, gitBranch] of targets) {

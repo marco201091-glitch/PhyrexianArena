@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestRemoteIp } from '@/lib/hcaptcha-server';
+import { getRequestRemoteIp } from '@/lib/turnstile-server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 export interface RateLimitConfig {

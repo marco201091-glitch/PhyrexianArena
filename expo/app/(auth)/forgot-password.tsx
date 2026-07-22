@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { HCaptchaField } from '@/components/auth/hcaptcha-field';
+import { TurnstileField } from '@/components/auth/turnstile-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AuthBranding } from '@/components/auth/auth-branding';
@@ -26,7 +26,7 @@ export default function ForgotPasswordScreen() {
       return;
     }
     if (!captchaToken) {
-      showAppAlert(copy('error'), copy('captchaRequired'));
+      showAppAlert(language === 'it' ? 'Attenzione' : 'Notice', copy('captchaRequired'));
       return;
     }
 
@@ -56,7 +56,7 @@ export default function ForgotPasswordScreen() {
       <Text style={styles.title}>{copy('forgotPassword')}</Text>
       <View style={styles.form}>
         <Input label={copy('email')} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-        <HCaptchaField
+        <TurnstileField
           resetSignal={captchaResetSignal}
           languageCode={language}
           onVerify={setCaptchaToken}

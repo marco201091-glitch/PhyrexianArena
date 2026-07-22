@@ -101,8 +101,8 @@ const vercelTargets = [
     targets: ['preview'],
     gitBranch,
   })),
-  { name: 'NEXT_PUBLIC_HCAPTCHA_SITE_KEY', value: env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY, targets: ['preview'] },
-  { name: 'HCAPTCHA_SECRET_KEY', value: env.HCAPTCHA_SECRET_KEY, targets: ['preview'] },
+  { name: 'NEXT_PUBLIC_TURNSTILE_SITE_KEY', value: env.NEXT_PUBLIC_TURNSTILE_SITE_KEY, targets: ['preview'] },
+  { name: 'TURNSTILE_SECRET_KEY', value: env.TURNSTILE_SECRET_KEY, targets: ['preview'] },
   { name: 'SUPABASE_SERVICE_ROLE_KEY', value: env.SUPABASE_SERVICE_ROLE_KEY, targets: ['production'] },
   ...PREVIEW_BRANCHES.map((gitBranch) => ({
     name: 'SUPABASE_SERVICE_ROLE_KEY', value: env.SUPABASE_SERVICE_ROLE_KEY, targets: ['preview'], gitBranch,

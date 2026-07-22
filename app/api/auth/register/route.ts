@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isValidEmail, isValidUsername, isStrongPassword } from '@/lib/auth-validation';
-import { getRequestRemoteIp, verifyHCaptcha } from '@/lib/hcaptcha-server';
+import { getRequestRemoteIp, verifyTurnstile } from '@/lib/turnstile-server';
 import { registerUserWithoutEmailConfirmation } from '@/lib/register-user';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { isReservedUsername } from '@/lib/reserved-usernames';
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Captcha verification is required.' }, { status: 400 });
     }
 
-    const captchaValid = await verifyHCaptcha(captchaToken, getRequestRemoteIp(request));
+    const captchaValid = await verifyTurnstile(captchaToken, getRequestRemoteIp(request));
     if (!captchaValid) {
       return NextResponse.json({ error: 'Captcha verification failed.' }, { status: 400 });
     }

@@ -14,8 +14,8 @@ export function getSiteUrl() {
   return (process.env.EXPO_PUBLIC_SITE_URL ?? getApiBaseUrl()).replace(/\/$/, '');
 }
 
-export function getHcaptchaSiteKey() {
-  return process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY ?? '';
+export function getTurnstileSiteKey() {
+  return process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 }
 
 export function getSupportEmail() {
