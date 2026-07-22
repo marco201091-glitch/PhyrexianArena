@@ -72,7 +72,7 @@ npm run eas:build:ios:production
 
 The first device/App Store build requires an Apple Developer account and lets EAS create or reuse the distribution certificate and provisioning profile. `com.phyrexianarena.app` is used as the bundle identifier. Set the App Store privacy answers consistently with `lib/legal-documents.ts`; the app declares no tracking and requests Photos access only when the user changes their avatar.
 
-Universal Links are enabled for `phyrexian-arena.vercel.app`. Before distributing a signed build, deploy `/.well-known/apple-app-site-association` with the final Apple Team ID and bundle ID; without that website-side association, HTTPS links safely continue to open in Safari.
+Universal Links are enabled for `app.phyrexianarena.dpdns.org`. Before distributing a signed build, deploy `/.well-known/apple-app-site-association` with the final Apple Team ID and bundle ID; without that website-side association, HTTPS links safely continue to open in Safari.
 
 ## Token Expo (access token admin)
 
@@ -131,8 +131,8 @@ Il file `.env` locale **non** viene usato automaticamente su EAS. Per build in c
 ```bash
 npx eas env:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://..." --environment preview --visibility plaintext
 npx eas env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "..." --environment preview --visibility sensitive
-npx eas env:create --name EXPO_PUBLIC_API_BASE_URL --value "https://phyrexian-arena.vercel.app" --environment preview --visibility plaintext
-npx eas env:create --name EXPO_PUBLIC_SITE_URL --value "https://phyrexian-arena.vercel.app" --environment preview --visibility plaintext
+npx eas env:create --name EXPO_PUBLIC_API_BASE_URL --value "https://app.phyrexianarena.dpdns.org" --environment preview --visibility plaintext
+npx eas env:create --name EXPO_PUBLIC_SITE_URL --value "https://app.phyrexianarena.dpdns.org" --environment preview --visibility plaintext
 npx eas env:create --name EXPO_PUBLIC_HCAPTCHA_SITE_KEY --value "..." --environment preview --visibility plaintext
 ```
 

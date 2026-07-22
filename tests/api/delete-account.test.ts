@@ -48,7 +48,7 @@ vi.mock('@/lib/supabase-admin', () => ({
 import { POST } from '@/app/api/auth/delete-account/route';
 
 function deletionRequest(password = 'ValidPassword1') {
-  return new Request('https://phyrexian-arena.vercel.app/api/auth/delete-account', {
+  return new Request('https://app.phyrexianarena.dpdns.org/api/auth/delete-account', {
     method: 'POST',
     headers: {
       Authorization: 'Bearer active-token',

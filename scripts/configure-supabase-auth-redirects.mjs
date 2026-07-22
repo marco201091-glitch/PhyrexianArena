@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 
-const PRODUCTION_SITE_URL = 'https://phyrexian-arena.vercel.app';
-const TESTDEV_SITE_URL = 'https://phyrexian-arena-git-testdev-marco201091-9595s-projects.vercel.app';
+const PRODUCTION_SITE_URL = 'https://app.phyrexianarena.dpdns.org';
+const TEST_SITE_URL = 'https://test.phyrexianarena.dpdns.org';
+const DEV_SITE_URL = 'https://dev.phyrexianarena.dpdns.org';
 const SUPABASE_PROJECT_REF = 'zljvnpjfartozqbrejwp';
 
 // Never use the Vercel team deployment URL as Site URL: it is SSO-protected and breaks OAuth.
@@ -9,8 +10,12 @@ const CANONICAL_REDIRECT_URLS = [
   `${PRODUCTION_SITE_URL}/auth/callback`,
   `${PRODUCTION_SITE_URL}/auth/reset-password`,
   `${PRODUCTION_SITE_URL}/**`,
-  `${TESTDEV_SITE_URL}/auth/callback`,
-  `${TESTDEV_SITE_URL}/auth/reset-password`,
+  `${TEST_SITE_URL}/auth/callback`,
+  `${TEST_SITE_URL}/auth/reset-password`,
+  `${TEST_SITE_URL}/**`,
+  `${DEV_SITE_URL}/auth/callback`,
+  `${DEV_SITE_URL}/auth/reset-password`,
+  `${DEV_SITE_URL}/**`,
   'http://localhost:3000/auth/callback',
   'http://localhost:3000/auth/reset-password',
   'http://localhost:3000/**',

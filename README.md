@@ -1,13 +1,13 @@
 # Phyrexian Arena – EDH Playgroup Tracker
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://phyrexian-arena.vercel.app)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://app.phyrexianarena.dpdns.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 
 > Play Commander, track life and damage in real time, save every match, and discover how your playgroup evolves.
 
-**Live app:** [phyrexian-arena.vercel.app](https://phyrexian-arena.vercel.app)
+**Live app:** [app.phyrexianarena.dpdns.org](https://app.phyrexianarena.dpdns.org)
 
 ---
 
@@ -69,7 +69,7 @@ An **Arena** works for a weekly table, a single evening with friends, or a short
 
 ## Getting started
 
-1. Open [phyrexian-arena.vercel.app](https://phyrexian-arena.vercel.app)
+1. Open [app.phyrexianarena.dpdns.org](https://app.phyrexianarena.dpdns.org)
 2. Create an account
 3. Create an Arena or join one with an invite code
 4. Add your decks from Archidekt, Moxfield, or by searching for a commander

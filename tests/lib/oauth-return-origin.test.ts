@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TESTDEV_PREVIEW_ORIGIN } from '@/lib/canonical-host';
+import { TEST_SITE_ORIGIN } from '@/lib/canonical-host';
 import {
   buildOAuthOriginBounceUrl,
   clearOAuthReturnOrigin,
@@ -13,7 +13,7 @@ import {
 
 const storage = new Map<string, string>();
 
-const testdevOrigin = TESTDEV_PREVIEW_ORIGIN;
+const testOrigin = TEST_SITE_ORIGIN;
 const productionOrigin = PRODUCTION_SITE_ORIGIN;
 const teamDeploymentOrigin = 'https://phyrexian-arena-marco201091-9595s-projects.vercel.app';
 
@@ -53,23 +53,23 @@ describe('oauth-return-origin', () => {
   it('does not bounce from preview deployments', () => {
     const deploymentPreviewOrigin = 'https://phyrexian-arena-6w08k61au-marco201091-9595s-projects.vercel.app';
 
-    for (const origin of [testdevOrigin, deploymentPreviewOrigin]) {
+    for (const origin of [testOrigin, deploymentPreviewOrigin]) {
       const currentUrl = new URL(`${origin}/auth/callback?code=abc&next=%2Fdashboard`);
 
       expect(shouldOAuthOriginBounce(origin, null)).toBe(false);
       expect(buildOAuthOriginBounceUrl(currentUrl, null)).toBeNull();
     }
 
-    expect(readOAuthReturnOrigin(new URLSearchParams(`return_origin=${encodeURIComponent(testdevOrigin)}`))).toBe(testdevOrigin);
+    expect(readOAuthReturnOrigin(new URLSearchParams(`return_origin=${encodeURIComponent(testOrigin)}`))).toBe(testOrigin);
   });
 
   it('does not bounce from production to preview deployments', () => {
     const currentUrl = new URL(
-      `${productionOrigin}/auth/callback?code=abc&next=%2F&return_origin=${encodeURIComponent(testdevOrigin)}`,
+      `${productionOrigin}/auth/callback?code=abc&next=%2F&return_origin=${encodeURIComponent(testOrigin)}`,
     );
 
-    expect(shouldOAuthOriginBounce(productionOrigin, testdevOrigin)).toBe(false);
-    expect(buildOAuthOriginBounceUrl(currentUrl, testdevOrigin)).toBeNull();
+    expect(shouldOAuthOriginBounce(productionOrigin, testOrigin)).toBe(false);
+    expect(buildOAuthOriginBounceUrl(currentUrl, testOrigin)).toBeNull();
   });
 
   it('does not bounce to protected team deployment URLs', () => {
