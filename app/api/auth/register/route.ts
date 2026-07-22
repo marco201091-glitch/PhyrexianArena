@@ -90,6 +90,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Registration failed. Try a different email or username.' }, { status: 400 });
     }
 
-    return NextResponse.json({ error: 'Registration failed.' }, { status: 500 });
+    console.error('Registration API failed:', error);
+    return NextResponse.json({ error: `Registration failed: ${message}` }, { status: 500 });
   }
 }
