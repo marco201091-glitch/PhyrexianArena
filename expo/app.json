@@ -2,7 +2,7 @@
   "expo": {
     "name": "Phyrexian Arena",
     "slug": "phyrexian-arena",
-    "version": "4.5.0",
+    "version": "4.5.1",
     "platforms": ["android", "ios", "web"],
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -18,11 +18,11 @@
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "com.phyrexianarena.app",
-      "buildNumber": "40500",
+      "buildNumber": "40501",
       "icon": "./assets/icon.png",
       "backgroundColor": "#0a0a0f",
       "associatedDomains": [
-        "applinks:phyrexian-arena.vercel.app"
+        "applinks:app.phyrexianarena.dpdns.org"
       ],
       "config": {
         "usesNonExemptEncryption": false
@@ -47,7 +47,7 @@
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 40500,
+      "versionCode": 40501,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -71,22 +71,22 @@
           "data": [
             {
               "scheme": "https",
-              "host": "phyrexian-arena.vercel.app",
+              "host": "app.phyrexianarena.dpdns.org",
               "pathPrefix": "/join"
             },
             {
               "scheme": "https",
-              "host": "phyrexian-arena.vercel.app",
+              "host": "app.phyrexianarena.dpdns.org",
               "pathPrefix": "/auth/reset-password"
             },
             {
               "scheme": "https",
-              "host": "phyrexian-arena.vercel.app",
+              "host": "app.phyrexianarena.dpdns.org",
               "pathPrefix": "/arena"
             },
             {
               "scheme": "https",
-              "host": "phyrexian-arena.vercel.app",
+              "host": "app.phyrexianarena.dpdns.org",
               "pathPrefix": "/table"
             }
           ],

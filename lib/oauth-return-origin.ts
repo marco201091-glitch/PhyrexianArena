@@ -2,16 +2,17 @@ export const OAUTH_RETURN_ORIGIN_KEY = 'phyrexian_oauth_return_origin';
 
 import {
   CANONICAL_SITE_ORIGIN,
+  DEV_SITE_ORIGIN,
   isProtectedTeamDeploymentHost,
-  TESTDEV_PREVIEW_ORIGIN,
+  TEST_SITE_ORIGIN,
 } from '@/lib/canonical-host';
 
 export const PRODUCTION_SITE_ORIGIN = CANONICAL_SITE_ORIGIN;
 
 export const ALLOWED_OAUTH_RETURN_ORIGINS = [
   PRODUCTION_SITE_ORIGIN,
-  'https://phyrexianarena.dpdns.org',
-  TESTDEV_PREVIEW_ORIGIN,
+  TEST_SITE_ORIGIN,
+  DEV_SITE_ORIGIN,
   'http://localhost:3000',
 ] as const;
 

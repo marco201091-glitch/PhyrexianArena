@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
     appendUserAgent: 'PhyrexianArenaNative/1.0',
   },
   server: {
-    url: 'https://phyrexian-arena.vercel.app',
+    url: 'https://app.phyrexianarena.dpdns.org',
     cleartext: false,
     androidScheme: 'https',
   },

@@ -7,7 +7,7 @@ export function getSupabaseAnonKey() {
 }
 
 export function getApiBaseUrl() {
-  return (process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://phyrexian-arena.vercel.app').replace(/\/$/, '');
+  return (process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://app.phyrexianarena.dpdns.org').replace(/\/$/, '');
 }
 
 export function getSiteUrl() {

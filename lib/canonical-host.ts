@@ -1,7 +1,7 @@
-export const CANONICAL_SITE_ORIGIN = 'https://phyrexian-arena.vercel.app';
+export const CANONICAL_SITE_ORIGIN = 'https://app.phyrexianarena.dpdns.org';
 
-export const TESTDEV_PREVIEW_ORIGIN =
-  'https://phyrexian-arena-git-testdev-marco201091-9595s-projects.vercel.app';
+export const TEST_SITE_ORIGIN = 'https://test.phyrexianarena.dpdns.org';
+export const DEV_SITE_ORIGIN = 'https://dev.phyrexianarena.dpdns.org';
 
 const VERCEL_TEAM_DEPLOYMENT_HOST_SUFFIX = '-marco201091-9595s-projects.vercel.app';
 

@@ -6,7 +6,7 @@ import {
 } from '@/lib/deck-importers';
 
 const ARCHIDEKT_USER_AGENT = process.env.ARCHIDEKT_USER_AGENT
-  || 'Phyrexian Arena (https://phyrexian-arena.vercel.app)';
+  || 'Phyrexian Arena (https://app.phyrexianarena.dpdns.org)';
 import {
   buildMoxfieldApiUrls,
   buildMoxfieldHeaders,
