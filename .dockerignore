@@ -4,7 +4,9 @@
 node_modules
 .env*
 !.env.example
-expo
+expo/*
+!expo/lib
+!expo/lib/**
 mobile
 .supabase-staging
 coverage
