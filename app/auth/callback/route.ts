@@ -6,18 +6,30 @@ import { ensureOAuthUserProfile } from '@/lib/oauth-profile';
 import { CANONICAL_SITE_ORIGIN } from '@/lib/canonical-host';
 import {
   buildOAuthOriginBounceUrl,
+  getSafeOAuthReturnOrigin,
   isVercelTeamDeploymentOrigin,
   readOAuthReturnOrigin,
 } from '@/lib/oauth-return-origin';
 
-function getAuthOrigin(requestUrl: URL) {
-  return isVercelTeamDeploymentOrigin(requestUrl.origin)
-    ? CANONICAL_SITE_ORIGIN
-    : requestUrl.origin;
+function getAuthOrigin(request: NextRequest, requestUrl: URL) {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
+  const forwardedOrigin = forwardedHost
+    ? getSafeOAuthReturnOrigin(`${forwardedProto}://${forwardedHost}`)
+    : null;
+
+  if (forwardedOrigin) {
+    return forwardedOrigin;
+  }
+
+  const requestOrigin = getSafeOAuthReturnOrigin(requestUrl.origin);
+  return requestOrigin && !isVercelTeamDeploymentOrigin(requestOrigin)
+    ? requestOrigin
+    : CANONICAL_SITE_ORIGIN;
 }
 
-function redirectToLogin(requestUrl: URL, message: string) {
-  const loginUrl = new URL('/auth/login', getAuthOrigin(requestUrl));
+function redirectToLogin(request: NextRequest, requestUrl: URL, message: string) {
+  const loginUrl = new URL('/auth/login', getAuthOrigin(request, requestUrl));
   loginUrl.searchParams.set('error', message);
   return NextResponse.redirect(loginUrl);
 }
@@ -34,18 +46,19 @@ export async function GET(request: NextRequest) {
   const authError = requestUrl.searchParams.get('error_description')
     || requestUrl.searchParams.get('error');
   if (authError) {
-    return redirectToLogin(requestUrl, authError);
+    return redirectToLogin(request, requestUrl, authError);
   }
 
   const code = requestUrl.searchParams.get('code');
   if (!code) {
     return redirectToLogin(
+      request,
       requestUrl,
       'Invalid OAuth callback. Try signing in with Google again.',
     );
   }
 
-  const authOrigin = getAuthOrigin(requestUrl);
+  const authOrigin = getAuthOrigin(request, requestUrl);
   const nextPath = getSafeRedirectPath(requestUrl.searchParams.get('next'), '/');
   const redirectUrl = new URL(nextPath, authOrigin).toString();
   let response = NextResponse.redirect(redirectUrl);
@@ -79,12 +92,12 @@ export async function GET(request: NextRequest) {
 
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) {
-    return redirectToLogin(requestUrl, exchangeError.message);
+    return redirectToLogin(request, requestUrl, exchangeError.message);
   }
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return redirectToLogin(requestUrl, 'Invalid session. Try signing in again.');
+    return redirectToLogin(request, requestUrl, 'Invalid session. Try signing in again.');
   }
 
   try {
@@ -93,7 +106,7 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error
       ? error.message
       : 'Unable to complete sign-in.';
-    return redirectToLogin(requestUrl, message);
+    return redirectToLogin(request, requestUrl, message);
   }
 
   return response;
