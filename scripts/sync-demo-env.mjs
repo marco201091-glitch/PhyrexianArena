@@ -55,7 +55,7 @@ function upsertVercelEnv(name, value, target, gitBranch, sensitive = true) {
 }
 
 const env = loadEnv('.env.local');
-const previewBranch = 'TestDev';
+const previewBranches = ['Test', 'Dev'];
 
 const items = [
   { name: 'DEMO_MODE_ENABLED', value: env.DEMO_MODE_ENABLED },
@@ -67,7 +67,11 @@ const items = [
 ];
 
 const targets = [
-  { target: 'preview', gitBranch: previewBranch, label: `Preview (${previewBranch})` },
+  ...previewBranches.map((gitBranch) => ({
+    target: 'preview',
+    gitBranch,
+    label: `Preview (${gitBranch})`,
+  })),
   { target: 'production', gitBranch: null, label: 'Production' },
 ];
 

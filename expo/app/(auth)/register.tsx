@@ -76,11 +76,7 @@ export default function RegisterScreen() {
       });
 
       if (signInError) {
-        router.replace({
-          pathname: '/(auth)/check-email',
-          params: { email: email.trim().toLowerCase() },
-        });
-        return;
+        throw signInError;
       }
 
       router.replace(redirectPath);

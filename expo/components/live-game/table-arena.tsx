@@ -179,7 +179,7 @@ export function TableArena({
   const [randomizerKind, setRandomizerKind] = useState<TableRandomKind | null>(null);
   const [randomizerRolling, setRandomizerRolling] = useState(false);
   const reducedMotion = useReducedMotion();
-  const randomizerProgress = useRef(new Animated.Value(0)).current;
+  const [randomizerProgress] = useState(() => new Animated.Value(0));
   const randomizerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const randomizerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragX = useSharedValue(0);

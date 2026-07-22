@@ -3,15 +3,19 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
 const PRODUCTION_SITE_URL = 'https://phyrexian-arena.vercel.app';
-const TESTDEV_SITE_URL = 'https://phyrexian-arena-git-testdev-marco201091-9595s-projects.vercel.app';
+const PREVIEW_SITE_URLS = {
+  Dev: 'https://phyrexian-arena-git-dev-marco201091-9595s-projects.vercel.app',
+  Test: 'https://phyrexian-arena-git-test-marco201091-9595s-projects.vercel.app',
+};
 const SUPPORT_EMAIL = 'support@phyrexianarena.dpdns.org';
-const SUPABASE_PROJECT_REF = 'zljvnpjfartozqbrejwp';
 
 const REDIRECT_URLS = [
   `${PRODUCTION_SITE_URL}/auth/callback`,
   `${PRODUCTION_SITE_URL}/auth/reset-password`,
-  `${TESTDEV_SITE_URL}/auth/callback`,
-  `${TESTDEV_SITE_URL}/auth/reset-password`,
+  ...Object.values(PREVIEW_SITE_URLS).flatMap((siteUrl) => [
+    `${siteUrl}/auth/callback`,
+    `${siteUrl}/auth/reset-password`,
+  ]),
   'http://localhost:3000/auth/callback',
   'http://localhost:3000/auth/reset-password',
   'phyrexianarena://callback',
@@ -76,36 +80,20 @@ function upsertVercelEnv(name, value, target, gitBranch) {
   console.log(`ok vercel:${name}:${target}${gitBranch ? `:${gitBranch}` : ''}`);
 }
 
-async function configureSupabaseAuth(accessToken) {
-  const response = await fetch(`https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      site_url: PRODUCTION_SITE_URL,
-      uri_allow_list: REDIRECT_URLS.join(','),
-      mailer_autoconfirm: true,
-    }),
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(`Supabase auth config failed (${response.status}): ${JSON.stringify(payload)}`);
-  }
-
-  console.log('ok supabase:auth-config');
-  return payload;
-}
-
 const env = loadEnv('.env.local');
 
 const vercelTargets = [
+  { name: 'NEXT_PUBLIC_SUPABASE_URL', value: env.NEXT_PUBLIC_SUPABASE_URL, targets: ['production', 'preview'] },
+  { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: env.NEXT_PUBLIC_SUPABASE_ANON_KEY, targets: ['production', 'preview'] },
   { name: 'RESEND_API_KEY', value: env.RESEND_API_KEY, targets: ['production', 'preview'] },
   { name: 'RESEND_FROM_EMAIL', value: env.RESEND_FROM_EMAIL, targets: ['production', 'preview'] },
   { name: 'NEXT_PUBLIC_SITE_URL', value: PRODUCTION_SITE_URL, targets: ['production'] },
-  { name: 'NEXT_PUBLIC_SITE_URL', value: TESTDEV_SITE_URL, targets: ['preview'], gitBranch: 'TestDev' },
+  ...Object.entries(PREVIEW_SITE_URLS).map(([gitBranch, value]) => ({
+    name: 'NEXT_PUBLIC_SITE_URL',
+    value,
+    targets: ['preview'],
+    gitBranch,
+  })),
   { name: 'NEXT_PUBLIC_HCAPTCHA_SITE_KEY', value: env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY, targets: ['preview'] },
   { name: 'HCAPTCHA_SECRET_KEY', value: env.HCAPTCHA_SECRET_KEY, targets: ['preview'] },
   { name: 'SUPABASE_SERVICE_ROLE_KEY', value: env.SUPABASE_SERVICE_ROLE_KEY, targets: ['production', 'preview'] },
@@ -121,20 +109,9 @@ for (const item of vercelTargets) {
   }
 }
 
-const accessToken = process.env.SUPABASE_ACCESS_TOKEN || env.SUPABASE_ACCESS_TOKEN;
-if (accessToken) {
-  console.log('Configuring Supabase auth URLs...');
-  await configureSupabaseAuth(accessToken);
-} else {
-  console.log('skip supabase:auth-config (SUPABASE_ACCESS_TOKEN missing)');
-  console.log('Add SUPABASE_ACCESS_TOKEN to .env.local from https://supabase.com/dashboard/account/tokens');
-  console.log('Then rerun: node scripts/configure-auth-deployment.mjs');
-  console.log('Manual redirect URLs to allow:');
-  for (const url of REDIRECT_URLS) {
-    console.log(`- ${url}`);
-  }
-}
+console.log('Self-hosted Auth must allow these redirect URLs:');
+for (const url of REDIRECT_URLS) console.log(`- ${url}`);
 
 assert.ok(env.RESEND_API_KEY, 'RESEND_API_KEY missing in .env.local');
 assert.ok(env.RESEND_FROM_EMAIL, 'RESEND_FROM_EMAIL missing in .env.local');
-console.log('Auth deployment configuration finished.');
+console.log('Vercel auth environment configuration finished.');
