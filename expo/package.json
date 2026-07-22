@@ -1,6 +1,6 @@
 {
   "name": "phyrexian-arena-app",
-  "version": "4.5.1",
+  "version": "5.0.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
