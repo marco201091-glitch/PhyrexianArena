@@ -19,11 +19,10 @@
       }
     },
     "ios-unsigned": {
-      "environment": "preview",
+      "environment": "production",
       "ios": {
         "withoutCredentials": true,
         "resourceClass": "m-medium",
-        "image": "sdk-53",
         "config": "unsigned-ios.yml"
       }
     },
