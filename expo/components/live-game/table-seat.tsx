@@ -200,7 +200,7 @@ export function TableSeat({
             style={styles.backgroundImage}
             containerStyle={styles.backgroundImageWrap}
             contentFit="cover"
-            contentPosition="top"
+            contentPosition={isIPad && isSideways ? 'center' : 'top'}
           />
         </View>
         <View style={styles.scrim} pointerEvents="none" />
@@ -257,74 +257,76 @@ export function TableSeat({
             ) : null}
           </View>
         ) : (
-          <GestureDetector gesture={dragGesture}>
-          <AnimatedView style={styles.dragSurface}>
+          <>
+            <GestureDetector gesture={dragGesture}>
+              <AnimatedView style={styles.dragSurface} />
+            </GestureDetector>
+
             <HoldPressable
-              style={[styles.edgeButton, styles.minusButton]}
+              style={[styles.edgeButton, styles.minusButton, isIPad && styles.edgeButtonIPad]}
               onShort={() => onAdjust(-1)}
               onLong={() => onAdjust(-10)}
               accessibilityRole="button"
               accessibilityLabel={`${player.displayName} -1`}
             >
-              <Text style={styles.edgeButtonText}>−</Text>
+              <Text style={[styles.edgeButtonText, isIPad && styles.edgeButtonTextIPad]}>−</Text>
             </HoldPressable>
 
             <HoldPressable
-              style={[styles.edgeButton, styles.plusButton]}
+              style={[styles.edgeButton, styles.plusButton, isIPad && styles.edgeButtonIPad]}
               onShort={() => onAdjust(1)}
               onLong={() => onAdjust(10)}
               accessibilityRole="button"
               accessibilityLabel={`${player.displayName} +1`}
             >
-              <Text style={styles.edgeButtonText}>+</Text>
+              <Text style={[styles.edgeButtonText, isIPad && styles.edgeButtonTextIPad]}>+</Text>
             </HoldPressable>
 
-              <AnimatedView style={[styles.lifeReadout, lifeStyle]}>
-                <View style={styles.playerMetaRow}>
-                  <View style={styles.playerNamePill}>
-                    <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
-                  </View>
-                  {recentLifeDelta !== 0 ? (
-                    <Text style={[
-                      styles.recentLifeDelta,
-                      isIPad && styles.recentLifeDeltaIPad,
-                      recentLifeDelta < 0 ? styles.recentLifeLoss : styles.recentLifeGain,
-                    ]}>
-                      {recentLifeDelta > 0 ? '+' : '−'}{Math.abs(recentLifeDelta)}
-                    </Text>
-                  ) : null}
+            <AnimatedView style={[styles.lifeReadout, lifeStyle]}>
+              <View style={styles.playerMetaRow}>
+                <View style={styles.playerNamePill}>
+                  <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
                 </View>
-                <Text
-                  style={[
-                    styles.lifeValue,
-                    { fontSize: lifeFontSize, lineHeight: lifeFontSize + 4 },
-                    isLow && styles.dangerLife,
-                  ]}
-                >
-                  {mainValue}
-                </Text>
-              </AnimatedView>
+                {recentLifeDelta !== 0 ? (
+                  <Text style={[
+                    styles.recentLifeDelta,
+                    isIPad && styles.recentLifeDeltaIPad,
+                    recentLifeDelta < 0 ? styles.recentLifeLoss : styles.recentLifeGain,
+                  ]}>
+                    {recentLifeDelta > 0 ? '+' : '−'}{Math.abs(recentLifeDelta)}
+                  </Text>
+                ) : null}
+              </View>
+              <Text
+                style={[
+                  styles.lifeValue,
+                  { fontSize: lifeFontSize, lineHeight: lifeFontSize + 4 },
+                  isLow && styles.dangerLife,
+                ]}
+              >
+                {mainValue}
+              </Text>
+            </AnimatedView>
 
             <Pressable
-              style={styles.damageDetailsButton}
+              style={[styles.damageDetailsButton, isIPad && styles.damageDetailsButtonIPad]}
               onPress={onOpenDetails}
               disabled={!onOpenDetails}
               accessibilityRole="button"
               accessibilityLabel={`${player.displayName} · ${labels.commanderDamage} · ${labels.infect}`}
             >
-              <Ionicons name="shield-half-outline" size={21} color="#ddd6fe" />
+              <Ionicons name="shield-half-outline" size={isIPad ? 28 : 21} color="#ddd6fe" />
             </Pressable>
 
             <Pressable
-              style={styles.koButton}
+              style={[styles.koButton, isIPad && styles.koButtonIPad]}
               onPress={onEliminate}
               accessibilityRole="button"
               accessibilityLabel={`${labels.ko}: ${player.displayName}`}
             >
-              <Ionicons name="skull-outline" size={15} color="rgba(254,202,202,0.86)" />
+              <Ionicons name="skull-outline" size={isIPad ? 20 : 15} color="rgba(254,202,202,0.86)" />
             </Pressable>
-          </AnimatedView>
-          </GestureDetector>
+          </>
         )}
       </View>
     </AnimatedView>
@@ -469,6 +471,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  edgeButtonIPad: {
+    width: 64,
+    height: 84,
+    marginTop: -42,
+  },
   minusButton: {
     left: 0,
   },
@@ -483,6 +490,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.9)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 7,
+  },
+  edgeButtonTextIPad: {
+    fontSize: 50,
+    lineHeight: 56,
   },
   playerNamePill: {
     flexShrink: 1,
@@ -590,6 +601,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(221,214,254,0.32)',
   },
+  damageDetailsButtonIPad: {
+    width: 56,
+    height: 50,
+    marginLeft: -28,
+    marginTop: 58,
+    borderRadius: 25,
+  },
   koButton: {
     position: 'absolute',
     top: 8,
@@ -603,6 +621,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.34)',
     borderWidth: 1,
     borderColor: 'rgba(254,202,202,0.14)',
+  },
+  koButtonIPad: {
+    top: 10,
+    left: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   eliminatedOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -58,6 +58,10 @@ export function DamageConfirmSheet({
   const widePhone = !isIPad && phoneCardWidth >= 440;
   const straightPhone = !isIPad && !quarterTurn;
   const compactPhone = !isIPad && phoneCardHeight < 310;
+  const ipadCardDim = Math.min(
+    Math.max(340, Math.min(width, height) - 80),
+    600,
+  );
   const [amount, setAmount] = useState(0);
   const [mode, setMode] = useState<DamageMode>(defaultMode);
   const [scope, setScope] = useState<'single' | GroupDamageScope>('single');
@@ -87,7 +91,7 @@ export function DamageConfirmSheet({
       <View style={[
         styles.damageCard,
         isIPad && styles.damageCardIPad,
-        !isIPad && { width: phoneCardWidth, height: phoneCardHeight },
+        isIPad ? { width: ipadCardDim, height: ipadCardDim } : { width: phoneCardWidth, height: phoneCardHeight },
         { transform: [{ rotate: `${sourceRotation}deg` }] },
       ]}>
         {isIPad ? (
@@ -302,9 +306,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   damageCardIPad: {
-    width: '100%',
-    aspectRatio: 1,
     maxWidth: 600,
+    maxHeight: 600,
   },
   damageCardContentIPad: {
     gap: 10,
