@@ -92,7 +92,7 @@ export function DamageConfirmSheet({
         styles.damageCard,
         isIPad && styles.damageCardIPad,
         isIPad ? { width: ipadCardDim, height: ipadCardDim } : { width: phoneCardWidth, height: phoneCardHeight },
-        { transform: [{ rotate: `${sourceRotation}deg` }] },
+        !isIPad && { transform: [{ rotate: `${sourceRotation}deg` }] },
       ]}>
         {isIPad ? (
           <DeckImage
@@ -102,7 +102,7 @@ export function DamageConfirmSheet({
             containerStyle={styles.stageImageWrap}
           />
         ) : null}
-        <View style={styles.stageShade} />
+        <View style={styles.stageShade} pointerEvents="none" />
         <View style={[styles.damageCardContent, compactPhone && styles.damageCardContentCompact, isIPad && styles.damageCardContentIPad]}>
           <View style={[styles.compactHeader, compactPhone && styles.compactHeaderPhone, isIPad && styles.compactHeaderIPad]}>
             <Ionicons name="flash-outline" size={isIPad ? 26 : 20} color={colors.primaryLight} />
@@ -298,10 +298,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   damageCardContent: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     gap: 6,
     padding: spacing.sm,
-    position: 'relative',
     zIndex: 2,
     elevation: 2,
   },
