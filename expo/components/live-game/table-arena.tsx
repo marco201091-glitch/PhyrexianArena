@@ -190,6 +190,8 @@ export function TableArena({
   const dragHoverRef = useRef<ParticipantKey | null>(null);
   const podBoundsRef = useRef<Record<string, PodBounds>>({});
   const podRefs = useRef<Record<string, View | null>>({});
+  const gridHostRef = useRef<View | null>(null);
+  const gridHostOriginRef = useRef({ x: 0, y: 0 });
   const activePickerResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [clockNow, setClockNow] = useState(0);
 
@@ -314,17 +316,36 @@ export function TableArena({
     [players],
   );
 
-  const refreshPodBounds = useCallback((key: string) => {
-    const ref = podRefs.current[key];
+  // Pod bounds are computed from seat layouts + grid host origin instead of
+  // measureInWindow because rotated views (±90°) return wrong coordinates on iOS.
+  const syncGridOrigin = useCallback(() => {
+    const ref = gridHostRef.current;
     if (!ref) return;
-    ref.measureInWindow((x, y, width, height) => {
-      podBoundsRef.current[key] = { x, y, width, height };
+    ref.measureInWindow((x, y) => {
+      gridHostOriginRef.current = { x, y };
     });
   }, []);
 
-  const refreshAllBounds = useCallback(() => {
-    seatAssignments.forEach(({ player }) => refreshPodBounds(player.participantKey));
-  }, [refreshPodBounds, seatAssignments]);
+  const syncPodBoundsFromLayout = useCallback(() => {
+    const origin = gridHostOriginRef.current;
+    if (origin.x <= 0 && origin.y <= 0) syncGridOrigin();
+    seatAssignments.forEach(({ player, layout }) => {
+      podBoundsRef.current[player.participantKey] = {
+        x: origin.x + layout.left,
+        y: origin.y + layout.top,
+        width: layout.width,
+        height: layout.height,
+      };
+    });
+  }, [seatAssignments, syncGridOrigin]);
+
+  // Measure grid origin on mount and on dimension changes so drag always has
+  // accurate screen coordinates.
+  useEffect(() => {
+    // Run after layout settles
+    const timer = setTimeout(() => syncGridOrigin(), 120);
+    return () => clearTimeout(timer);
+  }, [arenaSize.width, arenaSize.height, syncGridOrigin]);
 
   const resolveDropTarget = useCallback((x: number, y: number, sourceKey: ParticipantKey) => {
     return findPodAtPoint(podBoundsRef.current, x, y, sourceKey);
@@ -337,7 +358,7 @@ export function TableArena({
   }, []);
 
   const handleDragStart = useCallback((key: ParticipantKey, x: number, y: number) => {
-    refreshAllBounds();
+    syncPodBoundsFromLayout();
     dragSourceRef.current = key;
     dragHoverRef.current = null;
     setDragSource(key);
@@ -347,7 +368,7 @@ export function TableArena({
     dragSourceX.value = x;
     dragSourceY.value = y;
     void hapticLight();
-  }, [dragSourceX, dragSourceY, dragX, dragY, refreshAllBounds]);
+  }, [dragSourceX, dragSourceY, dragX, dragY, syncPodBoundsFromLayout]);
 
   const handleDragMove = useCallback((x: number, y: number) => {
     dragX.value = x;
@@ -550,6 +571,7 @@ export function TableArena({
         {syncError ? <Ionicons name="refresh" size={12} color="#fecaca" /> : null}
       </Pressable>
       <View
+        ref={gridHostRef}
         style={[
           styles.gridHost,
           {
@@ -566,7 +588,6 @@ export function TableArena({
           <View
             key={player.participantKey}
             ref={(ref) => { podRefs.current[player.participantKey] = ref; }}
-            onLayout={() => refreshPodBounds(player.participantKey)}
             style={[
               styles.seatHost,
               styles.seatHostAbsolute,

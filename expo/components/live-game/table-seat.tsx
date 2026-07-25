@@ -282,7 +282,7 @@ export function TableSeat({
               <Text style={[styles.edgeButtonText, isIPad && styles.edgeButtonTextIPad]}>+</Text>
             </HoldPressable>
 
-            <AnimatedView style={[styles.lifeReadout, lifeStyle]}>
+            <AnimatedView style={[styles.lifeReadout, lifeStyle]} pointerEvents="none">
               <View style={styles.playerMetaRow}>
                 <View style={styles.playerNamePill}>
                   <Text style={styles.playerName} numberOfLines={1}>{player.displayName}</Text>
