@@ -39,7 +39,6 @@ export function ConfirmModal({
     <Modal
       visible={visible}
       onClose={onClose}
-      scroll={false}
       presentation="dialog"
       maxWidth={480}
       footer={(
