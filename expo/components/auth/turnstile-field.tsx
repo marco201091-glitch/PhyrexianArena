@@ -34,7 +34,7 @@ export function TurnstileField({ onVerify, onExpire, onError, resetSignal = 0, u
   return <View style={styles.wrapper}>
     {verified ? <Text style={styles.verified}>✓ {verifiedLabel}</Text> : <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={verifyLabel} style={styles.button}><Text style={styles.buttonText}>🛡 {verifyLabel}</Text><Text style={styles.buttonHint}>Richiesto per continuare</Text></Pressable>}
     {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
-    <Modal visible={visible} onClose={() => { close(); onExpire(); }} scroll={false}>
+    <Modal visible={visible} onClose={() => { close(); onExpire(); }} scroll={false} presentation="dialog">
       <Text style={styles.modalTitle}>{verifyLabel}</Text>
       <View style={[styles.challengeHost, { height: Math.min(height * 0.48, 360) }]}>
         <WebView key={`${resetSignal}-${sessionKey}`} source={source} originWhitelist={['https://*']} javaScriptEnabled domStorageEnabled thirdPartyCookiesEnabled sharedCookiesEnabled onMessage={(event) => { try { const message = JSON.parse(event.nativeEvent.data) as { type: string; token?: string }; if (message.type === 'token' && message.token) { setVerified(true); setErrorMessage(null); close(); onVerify(message.token); } else if (message.type === 'expired') { close(); onExpire(); } else if (message.type === 'error') { close(); setErrorMessage(errorLabel); onExpire(); onError?.(); } } catch { setErrorMessage(errorLabel); onError?.(); } }} />

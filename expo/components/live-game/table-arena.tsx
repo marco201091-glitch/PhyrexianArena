@@ -189,7 +189,6 @@ export function TableArena({
   const dragSourceRef = useRef<ParticipantKey | null>(null);
   const dragHoverRef = useRef<ParticipantKey | null>(null);
   const podBoundsRef = useRef<Record<string, PodBounds>>({});
-  const podRefs = useRef<Record<string, View | null>>({});
   const activePickerResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [clockNow, setClockNow] = useState(0);
 
@@ -314,17 +313,22 @@ export function TableArena({
     [players],
   );
 
-  const refreshPodBounds = useCallback((key: string) => {
-    const ref = podRefs.current[key];
-    if (!ref) return;
-    ref.measureInWindow((x, y, width, height) => {
-      podBoundsRef.current[key] = { x, y, width, height };
+  // Pod bounds are computed from seat layouts + safe area insets instead of
+  // measureInWindow because rotated views (±90°) return wrong coordinates on iOS.
+  // The gridHost has margins of max(insets, SYSTEM_GESTURE_GUARD), so its
+  // screen origin is deterministic from those values.
+  const syncPodBoundsFromLayout = useCallback(() => {
+    const originX = Math.max(insets.left, SYSTEM_GESTURE_GUARD);
+    const originY = Math.max(insets.top, SYSTEM_GESTURE_GUARD);
+    seatAssignments.forEach(({ player, layout }) => {
+      podBoundsRef.current[player.participantKey] = {
+        x: originX + layout.left,
+        y: originY + layout.top,
+        width: layout.width,
+        height: layout.height,
+      };
     });
-  }, []);
-
-  const refreshAllBounds = useCallback(() => {
-    seatAssignments.forEach(({ player }) => refreshPodBounds(player.participantKey));
-  }, [refreshPodBounds, seatAssignments]);
+  }, [seatAssignments, insets]);
 
   const resolveDropTarget = useCallback((x: number, y: number, sourceKey: ParticipantKey) => {
     return findPodAtPoint(podBoundsRef.current, x, y, sourceKey);
@@ -337,7 +341,7 @@ export function TableArena({
   }, []);
 
   const handleDragStart = useCallback((key: ParticipantKey, x: number, y: number) => {
-    refreshAllBounds();
+    syncPodBoundsFromLayout();
     dragSourceRef.current = key;
     dragHoverRef.current = null;
     setDragSource(key);
@@ -347,7 +351,7 @@ export function TableArena({
     dragSourceX.value = x;
     dragSourceY.value = y;
     void hapticLight();
-  }, [dragSourceX, dragSourceY, dragX, dragY, refreshAllBounds]);
+  }, [dragSourceX, dragSourceY, dragX, dragY, syncPodBoundsFromLayout]);
 
   const handleDragMove = useCallback((x: number, y: number) => {
     dragX.value = x;
@@ -565,8 +569,6 @@ export function TableArena({
         {arenaSize.width > 0 && seatAssignments.map(({ player, layout }) => (
           <View
             key={player.participantKey}
-            ref={(ref) => { podRefs.current[player.participantKey] = ref; }}
-            onLayout={() => refreshPodBounds(player.participantKey)}
             style={[
               styles.seatHost,
               styles.seatHostAbsolute,
