@@ -9,6 +9,7 @@ const targets = [
   path.join(expoDir, 'android', 'app', 'build'),
   path.join(expoDir, 'node_modules', 'expo', 'android', 'build'),
   path.join(expoDir, 'node_modules', 'expo-constants', 'android', 'build'),
+  path.join(expoDir, 'node_modules', 'react-native-reanimated', 'android', '.cxx'),
 ];
 
 for (const target of targets) {
