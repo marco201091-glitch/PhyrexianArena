@@ -15,6 +15,7 @@
     "android:stop-gradle": "cd android && gradlew.bat --stop && cd ..",
     "android:clean": "npm run android:stop-gradle && cd android && gradlew.bat clean --no-build-cache && cd ..",
     "android:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
+    "build:apk:production": "cd android && gradlew.bat :app:assembleRelease --console=plain",
     "android:open": "adb shell am start -n com.phyrexianarena.app/.MainActivity",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",

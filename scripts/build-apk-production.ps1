@@ -11,9 +11,9 @@ function Step([string]$label) {
 try {
   Set-Location -LiteralPath $expo
 
-  Step '1/5 CHECK EAS AUTH'
-  npx eas-cli whoami
-  if ($LASTEXITCODE -ne 0) { throw 'EAS auth missing. Run: npx eas-cli login' }
+  Step '1/5 CHECK LOCAL ANDROID TOOLCHAIN'
+  if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'Java non trovato nel PATH' }
+  Write-Host "Java: $(java -version 2>&1 | Select-Object -First 1)"
 
   Step '2/5 TYPECHECK'
   npm run typecheck
@@ -24,22 +24,25 @@ try {
   Step '4/5 TESTS'
   npm test
 
-  Step '5/5 EAS PRODUCTION APK'
-  Write-Host 'Profile: production-apk | environment: production | artifact: APK' -ForegroundColor Yellow
-  npx eas-cli build --platform android --profile production-apk --wait --build-logger-level info
-  if ($LASTEXITCODE -ne 0) { throw 'EAS build failed' }
-
-  New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
-  Set-Location -LiteralPath $artifactDir
-  Write-Host "`nDownloading latest APK artifact..." -ForegroundColor Cyan
-  npx eas-cli build:download --platform android --non-interactive
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host 'Build completed, artifact download failed. Use EAS URL shown above.' -ForegroundColor Yellow
-    exit 2
+  Step '5/5 LOCAL GRADLE RELEASE APK'
+  Write-Host 'Build locale: android/app/build/outputs/apk/release/app-release.apk' -ForegroundColor Yellow
+  Push-Location (Join-Path $expo 'android')
+  try {
+    .\gradlew.bat :app:assembleRelease --console=plain
+    if ($LASTEXITCODE -ne 0) { throw 'Gradle release build failed' }
+  }
+  finally {
+    Pop-Location
   }
 
+  New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+  $apk = Join-Path $expo 'android\app\build\outputs\apk\release\app-release.apk'
+  if (-not (Test-Path -LiteralPath $apk)) { throw "APK non trovato: $apk" }
+  $target = Join-Path $artifactDir 'phyrexian-arena-production.apk'
+  Copy-Item -LiteralPath $apk -Destination $target -Force
+
   Write-Host "`nBUILD OK. APK directory: $artifactDir" -ForegroundColor Green
-  Get-ChildItem -LiteralPath $artifactDir -Filter '*.apk' | Select-Object FullName, Length, LastWriteTime
+  Get-Item -LiteralPath $target | Select-Object FullName, Length, LastWriteTime
   exit 0
 }
 catch {
