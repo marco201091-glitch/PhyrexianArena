@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { DeckImage } from '@/components/deck/deck-image';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Input } from '@/components/ui/input';
 import { colors } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
@@ -160,7 +161,15 @@ export function CommanderPicker({
       ) : null}
 
       {!searching && results.length > 0 && !selectedCommander ? (
-        <ScrollView style={styles.resultsScroll} nestedScrollEnabled keyboardShouldPersistTaps="always" keyboardDismissMode="none">
+        <KeyboardAwareScrollView
+          style={styles.resultsScroll}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
+          enableOnAndroid
+          enableAutomaticScroll
+          extraScrollHeight={12}
+        >
           <View style={styles.results}>
             {results.map((commander) => (
               <Pressable
@@ -182,7 +191,7 @@ export function CommanderPicker({
               </Pressable>
             ))}
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       ) : null}
 
       {!selectedCommander && searchQuery.trim().length >= 2 && !searching && results.length === 0 ? (
@@ -259,7 +268,15 @@ export function CommanderPicker({
           ) : null}
 
           {partnerResults.length > 0 ? (
-            <ScrollView style={styles.partnerResultsScroll} nestedScrollEnabled keyboardShouldPersistTaps="always" keyboardDismissMode="none">
+            <KeyboardAwareScrollView
+              style={styles.partnerResultsScroll}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="none"
+              enableOnAndroid
+              enableAutomaticScroll
+              extraScrollHeight={12}
+            >
               <View style={styles.results}>
                 {partnerResults.map((result) => (
                   <Pressable
@@ -281,7 +298,7 @@ export function CommanderPicker({
                   </Pressable>
                 ))}
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           ) : null}
 
           {!searchingPartner && partnerSearchQuery.length >= 2 && partnerResults.length === 0 ? (

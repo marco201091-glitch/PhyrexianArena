@@ -97,7 +97,7 @@ export function EditDeckModal({
 
   return (
     <Modal visible={visible} onClose={onClose}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="always" keyboardDismissMode="none">
+      <View style={styles.content}>
         <Text style={styles.title}>{labels.title}</Text>
         <Text style={styles.deckName}>{deck.name}</Text>
 
@@ -180,7 +180,7 @@ export function EditDeckModal({
         </View>
 
         <Button label={labels.close} variant="ghost" onPress={onClose} disabled={saving} />
-      </ScrollView>
+      </View>
     </Modal>
   );
 }

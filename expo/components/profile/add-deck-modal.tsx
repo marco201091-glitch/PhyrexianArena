@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { CommanderPicker } from '@/components/commander/commander-picker';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
@@ -166,7 +167,8 @@ export function AddDeckModal({
   onSaveManual,
   onSaveArchidektBatch,
 }: AddDeckModalProps) {
-  const modalBodyHeight = Math.min(Dimensions.get('screen').height * 0.62, 520);
+  const { height: windowHeight } = useWindowDimensions();
+  const modalBodyHeight = Math.min(windowHeight * 0.62, 520);
   const [overwriteConfirm, setOverwriteConfirm] = useState<OverwriteConfirmState | null>(null);
   const overwriteResolver = useRef<((value: boolean | 'overwrite' | 'skip' | 'cancel') => void) | null>(null);
   const [mode, setMode] = useState<AddDeckMode>('import');
@@ -449,7 +451,7 @@ export function AddDeckModal({
 
   return (
     <>
-    <Modal visible={visible} onClose={onClose} scroll={false} footer={actionFooter}>
+    <Modal visible={visible} onClose={onClose} scroll={false}>
       <View style={[styles.shell, { height: modalBodyHeight }]}>
         <Text style={styles.title}>{labels.title}</Text>
 
@@ -467,11 +469,14 @@ export function AddDeckModal({
           ))}
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
+          enableOnAndroid
+          enableAutomaticScroll
+          extraScrollHeight={16}
           showsVerticalScrollIndicator
           nestedScrollEnabled
         >
@@ -677,7 +682,8 @@ export function AddDeckModal({
             </>
           )
         ) : null}
-        </ScrollView>
+        </KeyboardAwareScrollView>
+        <View style={styles.stickyActions}>{actionFooter}</View>
       </View>
     </Modal>
 
@@ -733,6 +739,7 @@ export function AddDeckModal({
 
 const styles = StyleSheet.create({
   shell: {
+    position: 'relative',
     gap: 14,
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -743,7 +750,7 @@ const styles = StyleSheet.create({
   },
   bodyContent: {
     gap: 14,
-    paddingBottom: 8,
+    paddingBottom: 92,
   },
   title: { color: colors.foreground, fontSize: 20, fontWeight: '700' },
   tabRow: {
@@ -839,6 +846,20 @@ const styles = StyleSheet.create({
   batchImage: { width: 72, height: 52, borderRadius: 6 },
   batchInfo: { flex: 1, gap: 2 },
   alreadySaved: { color: '#fbbf24', fontSize: 11, fontWeight: '600' },
-  actions: { flexDirection: 'row', gap: 10 },
-  actionButton: { flex: 1 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  stickyActions: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
+    elevation: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+    backgroundColor: colors.modalSurface,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  actionButton: { flex: 1, minWidth: 132 },
 });

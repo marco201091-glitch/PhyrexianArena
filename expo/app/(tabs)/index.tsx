@@ -365,10 +365,12 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     marginTop: 4,
   },
   modalButton: {
     flex: 1,
+    minWidth: 132,
   },
 });

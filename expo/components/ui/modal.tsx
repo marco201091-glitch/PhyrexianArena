@@ -1,19 +1,18 @@
-import { PropsWithChildren, useEffect, useState, type ReactNode } from 'react';
+import { PropsWithChildren, type ReactNode } from 'react';
 import {
-  Keyboard,
   KeyboardAvoidingView,
   Modal as RNModal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
-import { keyboardAvoidingBehavior, keyboardAvoidingEnabled } from '@/lib/keyboard';
+import { keyboardAvoidingBehavior } from '@/lib/keyboard';
 import { useReducedMotion } from '@/lib/reduced-motion';
 
 type ModalProps = PropsWithChildren<{
@@ -33,40 +32,19 @@ export function Modal({
   children,
   scroll = true,
   footer,
-  presentation = 'sheet',
+  presentation = 'dialog',
   maxWidth = 560,
 }: ModalProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isDialog = presentation === 'dialog' || width >= 720;
   const reducedMotion = useReducedMotion();
-  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !visible) {
-      setAndroidKeyboardHeight(0);
-      return;
-    }
-
-    const showSubscription = Keyboard.addListener('keyboardDidShow', (event) => {
-      setAndroidKeyboardHeight(Math.max(0, event.endCoordinates.height - insets.bottom));
-    });
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-      setAndroidKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, [insets.bottom, visible]);
-
   const panel = (
     <View style={styles.wrapper}>
       {!isDialog ? <View style={styles.sheetHandle} /> : null}
       <PhyrexianPanel variant="modal" style={styles.card} padded={false}>
         {scroll ? (
-          <ScrollView
+          <KeyboardAwareScrollView
             contentContainerStyle={[
               styles.scrollContent,
               footer ? styles.scrollWithFooter : styles.scrollStandalone,
@@ -74,12 +52,15 @@ export function Modal({
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="none"
             automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            enableOnAndroid
+            enableAutomaticScroll
+            extraScrollHeight={spacing.lg}
             showsVerticalScrollIndicator
             nestedScrollEnabled
             bounces={false}
           >
             {children}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         ) : (
           <View style={[styles.body, footer ? styles.bodyWithFooter : styles.bodyStandalone]}>
             {children}
@@ -98,37 +79,33 @@ export function Modal({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View
-        style={[
-          styles.root,
-          isDialog && styles.dialogRoot,
-          { paddingTop: Math.max(insets.top, spacing.md) },
-        ]}
+      <KeyboardAvoidingView
+        behavior={keyboardAvoidingBehavior}
+        style={styles.keyboardAvoid}
+        keyboardVerticalOffset={insets.top}
       >
-        <Pressable style={styles.backdrop} onPress={onClose} />
         <View
           style={[
-            styles.sheetHost,
-            isDialog && styles.dialogHost,
-            {
-              paddingBottom: Math.max(insets.bottom, spacing.md) + androidKeyboardHeight,
-              maxWidth: isDialog ? maxWidth : undefined,
-            },
+            styles.root,
+            isDialog && styles.dialogRoot,
+            { paddingTop: Math.max(insets.top, spacing.md) },
           ]}
         >
-          {keyboardAvoidingEnabled ? (
-            <KeyboardAvoidingView
-              behavior={keyboardAvoidingBehavior}
-              style={styles.keyboardAvoid}
-              keyboardVerticalOffset={insets.top}
-            >
-              {panel}
-            </KeyboardAvoidingView>
-          ) : (
-            panel
-          )}
+          <Pressable style={styles.backdrop} onPress={onClose} />
+          <View
+            style={[
+              styles.sheetHost,
+              isDialog && styles.dialogHost,
+              {
+                paddingBottom: Math.max(insets.bottom, spacing.md),
+                maxWidth: isDialog ? maxWidth : undefined,
+              },
+            ]}
+          >
+            {panel}
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </RNModal>
   );
 }
@@ -155,8 +132,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   keyboardAvoid: {
+    flex: 1,
     width: '100%',
-    maxHeight: '100%',
   },
   wrapper: {
     width: '100%',

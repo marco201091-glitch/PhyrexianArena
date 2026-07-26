@@ -1,12 +1,12 @@
 import { PropsWithChildren, useMemo } from 'react';
 import {
   KeyboardAvoidingView,
-  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { AppBackground } from '@/components/ui/app-background';
 import { useAuth } from '@/contexts/auth-context';
 import { colors, spacing } from '@/constants/theme';
@@ -66,15 +66,18 @@ export function Screen({
   );
 
   const content = scroll ? (
-    <ScrollView
+    <KeyboardAwareScrollView
       contentContainerStyle={[styles.scrollContent, paddedStyle]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       automaticallyAdjustKeyboardInsets
+      enableOnAndroid
+      enableAutomaticScroll
+      extraScrollHeight={spacing.lg}
       showsVerticalScrollIndicator={false}
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   ) : (
     <View style={[styles.content, paddedStyle]}>{children}</View>
   );

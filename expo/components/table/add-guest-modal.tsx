@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CommanderPicker } from '@/components/commander/commander-picker';
 import { Button } from '@/components/ui/button';
@@ -176,7 +176,7 @@ export function AddGuestModal({
 
   return (
     <Modal visible={visible} onClose={onClose}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="always" keyboardDismissMode="none">
+      <View style={styles.content}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.hint}>{hint}</Text>
 
@@ -252,7 +252,7 @@ export function AddGuestModal({
             </View>
           </View>
         ) : null}
-      </ScrollView>
+      </View>
     </Modal>
   );
 }
@@ -315,10 +315,12 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     marginTop: 4,
   },
   actionButton: {
     flex: 1,
+    minWidth: 132,
   },
 });

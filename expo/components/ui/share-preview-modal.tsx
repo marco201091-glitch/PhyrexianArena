@@ -83,10 +83,12 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     marginTop: 4,
   },
   action: {
     flex: 1,
+    minWidth: 132,
   },
 });
