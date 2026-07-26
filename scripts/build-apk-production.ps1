@@ -13,6 +13,11 @@ function Step([string]$label) {
 try {
   Set-Location -LiteralPath $expo
 
+  # Production builds must never inherit the local expo/.env preview endpoint.
+  # Existing environment variables win over dotenv values loaded by Expo.
+  $env:EXPO_PUBLIC_API_BASE_URL = 'https://app.phyrexianarena.dpdns.org'
+  $env:EXPO_PUBLIC_SITE_URL = 'https://app.phyrexianarena.dpdns.org'
+
   Step '1/5 CHECK LOCAL ANDROID TOOLCHAIN'
   if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'Java non trovato nel PATH' }
   Write-Host "Java: $(java --version | Select-Object -First 1)"
