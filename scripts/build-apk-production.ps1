@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $expo = Join-Path $root 'expo'
 $artifactDir = Join-Path $root 'artifacts\apk\production'
+$buildDrive = 'P:'
+$buildDriveMounted = $false
 
 function Step([string]$label) {
   Write-Host "`n[$label]" -ForegroundColor Cyan
@@ -13,7 +15,7 @@ try {
 
   Step '1/5 CHECK LOCAL ANDROID TOOLCHAIN'
   if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'Java non trovato nel PATH' }
-  Write-Host "Java: $(java -version 2>&1 | Select-Object -First 1)"
+  Write-Host "Java: $(java --version | Select-Object -First 1)"
 
   Step '2/5 TYPECHECK'
   npm run typecheck
@@ -26,13 +28,19 @@ try {
 
   Step '5/5 LOCAL GRADLE RELEASE APK'
   Write-Host 'Build locale: android/app/build/outputs/apk/release/app-release.apk' -ForegroundColor Yellow
-  Push-Location (Join-Path $expo 'android')
+  if (Test-Path -LiteralPath "$buildDrive\") { throw "$buildDrive già in uso. Scegli un altro drive libero." }
+  subst $buildDrive $expo
+  if ($LASTEXITCODE -ne 0) { throw "Impossibile montare $buildDrive" }
+  $buildDriveMounted = $true
+  Push-Location (Join-Path $buildDrive 'android')
   try {
-    .\gradlew.bat :app:assembleRelease --console=plain
+    .\gradlew.bat :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --console=plain --no-daemon
     if ($LASTEXITCODE -ne 0) { throw 'Gradle release build failed' }
   }
   finally {
     Pop-Location
+    subst $buildDrive /d | Out-Null
+    $buildDriveMounted = $false
   }
 
   New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
@@ -50,6 +58,7 @@ catch {
   exit 1
 }
 finally {
+  if ($buildDriveMounted) { subst $buildDrive /d | Out-Null }
   Write-Host "`nTerminale resta aperto. Premi INVIO per chiudere." -ForegroundColor DarkGray
   Read-Host
 }
