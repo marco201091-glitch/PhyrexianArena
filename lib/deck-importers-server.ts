@@ -289,6 +289,13 @@ async function fetchEstimatedArchidektBracket(deckId: string): Promise<string | 
   }
 }
 
+function buildArchidektHeaders(): Record<string, string> {
+  return {
+    Accept: 'application/json',
+    'User-Agent': ARCHIDEKT_USER_AGENT,
+  };
+}
+
 interface MoxfieldCardEntry {
   quantity?: number;
   card?: {
@@ -333,6 +340,17 @@ function moxfieldBoardToRecord(board: unknown): Record<string, MoxfieldCardEntry
   if (!board || typeof board !== 'object') return {};
 
   const boardRecord = board as Record<string, unknown>;
+  if (Array.isArray(board)) {
+    return board.reduce<Record<string, MoxfieldCardEntry>>((result, entry, index) => {
+      const normalized = normalizeMoxfieldCardEntry(entry);
+      if (normalized) {
+        const name = normalized.card?.name || `card-${index}`;
+        result[name] = normalized;
+      }
+      return result;
+    }, {});
+  }
+
   const cardsSource = boardRecord.cards && typeof boardRecord.cards === 'object'
     ? boardRecord.cards
     : boardRecord;
@@ -510,8 +528,12 @@ export async function fetchFromMoxfield(publicId: string): Promise<DeckData> {
 }
 
 export async function fetchFromArchidekt(deckId: string): Promise<DeckData> {
-  const response = await fetch(`https://archidekt.com/api/decks/${deckId}/`);
-  if (!response.ok) throw new Error('Failed to fetch deck from Archidekt');
+  const response = await fetch(`https://archidekt.com/api/decks/${encodeURIComponent(deckId)}/`, {
+    headers: buildArchidektHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch deck from Archidekt (${response.status})`);
+  }
 
   const data = await response.json() as Record<string, unknown>;
   const cards = Array.isArray(data.cards) ? (data.cards as ArchidektCard[]) : [];
