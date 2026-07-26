@@ -197,28 +197,36 @@ export default function CounterScreen() {
       ? Math.max(0, Math.round((recapEndedAt - new Date(startedAt).getTime()) / 60000))
       : 0;
     const winner = getSuggestedWinner(recap);
+    const formatLabel = format === 'commander' ? 'Commander' : copy('classicMagic');
+    const winnerLabel = winner?.displayName ?? copy('quickGameWinnerUnknown');
     const recapText = [
-      'Phyrexian Arena · Riepilogo partita',
-      `Formato: ${format === 'commander' ? 'Commander' : 'Magic classico'}`,
-      `Durata: ${durationMinutes} min`,
-      `Vincitore: ${winner?.displayName ?? 'Non determinato'}`,
+      `Phyrexian Arena · ${copy('quickGameSummary')}`,
+      copy('quickGameFormat').replace('{value}', formatLabel),
+      copy('quickGameDuration').replace('{value}', String(durationMinutes)),
+      copy('quickGameWinner').replace('{value}', winnerLabel),
       '',
-      ...recap.players.map((player) => `${player.displayName}: ${player.life} vite · ${player.infect} poison · ${Object.values(player.commanderDamageFrom).reduce((sum, value) => sum + value, 0)} danni commander`),
+      ...recap.players.map((player) => `${player.displayName}: ${player.life} ${copy('quickGameLife')} · ${player.infect} ${copy('quickGamePoison')} · ${Object.values(player.commanderDamageFrom).reduce((sum, value) => sum + value, 0)} ${copy('quickGameCommanderDamage')}`),
     ].join('\n');
     return <Screen background="solid">
       <ScrollView contentContainerStyle={styles.setupContent}>
-        <Text style={styles.title}>Riepilogo partita</Text>
-        <Text style={styles.subtitle}>{format === 'commander' ? 'Commander' : 'Magic classico'} · {durationMinutes} min · {winner ? `Vince ${winner.displayName}` : 'Vincitore non determinato'}</Text>
+        <Text style={styles.title}>{copy('quickGameSummary')}</Text>
+        <Text style={styles.subtitle}>{formatLabel} · {durationMinutes} min · {winner ? copy('quickGameWinner').replace('{value}', winner.displayName) : copy('quickGameWinnerUnknown')}</Text>
         {recap.players.map((player) => <View key={player.participantKey} style={styles.recapPlayer}>
           <View style={[styles.recapAccent, { backgroundColor: player.backgroundColor ?? colors.primary }]} />
-          <View style={styles.recapCopy}><Text style={styles.recapName} numberOfLines={1}>{player.displayName}</Text><Text style={styles.recapCommander} numberOfLines={1}>{player.commander}</Text><Text style={styles.recapMeta}>{player.infect} poison · {Object.values(player.commanderDamageFrom).reduce((sum, value) => sum + value, 0)} danni commander</Text></View>
+          <View style={styles.recapCopy}><Text style={styles.recapName} numberOfLines={1}>{player.displayName}</Text><Text style={styles.recapCommander} numberOfLines={1}>{player.commander}</Text><Text style={styles.recapMeta}>{player.infect} {copy('quickGamePoison')} · {Object.values(player.commanderDamageFrom).reduce((sum, value) => sum + value, 0)} {copy('quickGameCommanderDamage')}</Text></View>
           <Text style={styles.recapLife}>{player.life}</Text>
         </View>)}
-        <Button label="Esporta riepilogo" icon="share-outline" onPress={() => void Share.share({ title: 'Phyrexian Arena', message: recapText })} />
-        <Button label="Nuova partita" variant="outline" onPress={() => {
+        <Button label={copy('quickGameExport')} icon="share-outline" onPress={() => void Share.share({ title: 'Phyrexian Arena', message: recapText })} />
+        <Button label={copy('quickGameNew')} variant="outline" onPress={() => {
           setRecap(null);
           setState(null);
           void AsyncStorage.removeItem(STORAGE_KEY);
+        }} />
+        <Button label={copy('quickGameExit')} variant="ghost" onPress={() => {
+          setRecap(null);
+          setState(null);
+          void AsyncStorage.removeItem(STORAGE_KEY);
+          router.back();
         }} />
       </ScrollView>
     </Screen>;

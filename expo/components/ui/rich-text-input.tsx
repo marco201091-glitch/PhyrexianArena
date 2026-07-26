@@ -26,6 +26,7 @@ type RichTextInputProps = {
   placeholder?: string;
   hint?: string;
   minHeight?: number;
+  onFocus?: () => void;
 };
 
 export function RichTextInput({
@@ -35,6 +36,7 @@ export function RichTextInput({
   placeholder,
   hint,
   minHeight = 120,
+  onFocus,
 }: RichTextInputProps) {
   const { copy } = useLanguage();
   const inputRef = useRef<TextInput>(null);
@@ -140,7 +142,10 @@ export function RichTextInput({
               value={value}
               onChangeText={onChangeText}
               onSelectionChange={handleSelectionChange}
-              onFocus={() => setFocused(true)}
+              onFocus={() => {
+                setFocused(true);
+                onFocus?.();
+              }}
               onBlur={() => {
                 setFocused(false);
                 setToolbarOpen(false);
@@ -149,8 +154,9 @@ export function RichTextInput({
               placeholderTextColor={colors.muted}
               selectionColor={colors.primaryLight}
               multiline
+              scrollEnabled
               textAlignVertical="top"
-              style={[styles.input, { minHeight }]}
+              style={[styles.input, { height: minHeight }]}
               maxFontSizeMultiplier={layout.maxFontSizeMultiplier}
             />
           </>

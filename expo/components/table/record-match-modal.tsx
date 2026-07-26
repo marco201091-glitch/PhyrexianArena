@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, Pressable, View } from 'react-native';
+import { StyleSheet, Switch, Text, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextInput } from '@/components/ui/rich-text-input';
@@ -219,7 +219,7 @@ export function RecordMatchModal({
 
   return (
     <Modal visible={visible} onClose={onClose}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="always" keyboardDismissMode="none">
+      <View style={styles.content}>
         <Text style={styles.title}>{labels.title}</Text>
         <Text style={styles.hint}>{labels.hint}</Text>
 
@@ -364,7 +364,7 @@ export function RecordMatchModal({
             style={styles.actionButton}
           />
         </View>
-      </ScrollView>
+      </View>
     </Modal>
   );
 }
@@ -429,10 +429,12 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
   actionButton: {
     flex: 1,
+    minWidth: 132,
   },
 });

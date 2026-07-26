@@ -469,11 +469,13 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
   modalButton: {
     flex: 1,
+    minWidth: 132,
   },
   modalCancel: {
     marginTop: spacing.xs,

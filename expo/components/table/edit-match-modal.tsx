@@ -1,6 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Keyboard,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextInput } from '@/components/ui/rich-text-input';
@@ -111,7 +123,18 @@ export function EditMatchModal({
   onError,
   onSave,
 }: EditMatchModalProps) {
-  const modalBodyHeight = Math.min(Dimensions.get('screen').height * 0.62, 520);
+  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const formScrollRef = useRef<ScrollView>(null);
+  const availableHeight = Platform.OS === 'ios'
+    ? windowHeight - keyboardHeight
+    : windowHeight;
+  const modalBodyHeight = Math.min(
+    windowHeight * 0.62,
+    520,
+    Math.max(180, availableHeight - Math.max(insets.bottom, spacing.md) - spacing.sm),
+  );
   const [winnerKey, setWinnerKey] = useState('');
   const [isDraw, setIsDraw] = useState(false);
   const [participantDecks, setParticipantDecks] = useState<Record<string, string>>({});
@@ -164,6 +187,29 @@ export function EditMatchModal({
     });
     setParticipantDecks(deckMap);
   }, [match, visible]);
+
+  useEffect(() => {
+    if (!visible) {
+      setKeyboardHeight(0);
+      return;
+    }
+
+    const eventName = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const showSubscription = Keyboard.addListener(eventName, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      setTimeout(() => {
+        formScrollRef.current?.scrollToEnd({ animated: true });
+      }, 120);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [visible]);
 
   const handleSave = async () => {
     if (!match) return;
@@ -222,12 +268,18 @@ export function EditMatchModal({
   );
 
   return (
-    <Modal visible={visible} onClose={onClose} scroll={false} footer={actionFooter}>
+    <Modal visible={visible} onClose={onClose} scroll={false}>
       <View style={[styles.shell, { height: modalBodyHeight }]}>
         <Text style={styles.title}>{labels.title}</Text>
         <Text style={styles.hint}>{labels.hint}</Text>
 
-        <ScrollView
+        <KeyboardAwareScrollView
+          innerRef={(ref) => {
+            formScrollRef.current = ref as unknown as ScrollView;
+          }}
+          enableOnAndroid
+          enableAutomaticScroll={false}
+          extraScrollHeight={spacing.lg}
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           keyboardShouldPersistTaps="always"
@@ -354,8 +406,15 @@ export function EditMatchModal({
             onChangeText={setMatchNotes}
             placeholder={labels.notesPlaceholder}
             hint={labels.richTextHint}
+            onFocus={() => {
+              setTimeout(() => {
+                formScrollRef.current?.scrollToEnd({ animated: true });
+              }, 120);
+            }}
           />
-        </ScrollView>
+
+        </KeyboardAwareScrollView>
+        <View style={styles.stickyActions}>{actionFooter}</View>
       </View>
     </Modal>
   );
@@ -363,6 +422,7 @@ export function EditMatchModal({
 
 const styles = StyleSheet.create({
   shell: {
+    position: 'relative',
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -372,7 +432,7 @@ const styles = StyleSheet.create({
   },
   bodyContent: {
     gap: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: 92,
   },
   title: {
     color: colors.foreground,
@@ -451,9 +511,25 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  stickyActions: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
+    elevation: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+    backgroundColor: colors.modalSurface,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
   },
   actionButton: {
     flex: 1,
+    minWidth: 132,
   },
 });

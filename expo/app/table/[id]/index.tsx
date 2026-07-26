@@ -1254,9 +1254,11 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   modalButton: {
     flex: 1,
+    minWidth: 132,
   },
 });
