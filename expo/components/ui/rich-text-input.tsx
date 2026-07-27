@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -43,6 +43,16 @@ export function RichTextInput({
   const [selection, setSelection] = useState<TextSelection>({ start: value.length, end: value.length });
   const [focused, setFocused] = useState(false);
   const [toolbarOpen, setToolbarOpen] = useState(false);
+
+  // Keep the native cursor valid when the controlled value is reset by a form
+  // (opening another match, clearing a field, or applying a toolbar edit).
+  useEffect(() => {
+    const max = value.length;
+    if (selection.start <= max && selection.end <= max) return;
+    const next = { start: Math.min(selection.start, max), end: Math.min(selection.end, max) };
+    setSelection(next);
+    requestAnimationFrame(() => inputRef.current?.setNativeProps({ selection: next }));
+  }, [selection, value.length]);
 
   const applyEdit = useCallback((
     editor: (currentValue: string, currentSelection: TextSelection) => {
@@ -140,10 +150,18 @@ export function RichTextInput({
             <TextInput
               ref={inputRef}
               value={value}
+              selection={selection}
               onChangeText={onChangeText}
               onSelectionChange={handleSelectionChange}
               onFocus={() => {
                 setFocused(true);
+                // Android can restore a stale selection (often position 0)
+                // when a controlled multiline input regains focus.
+                const next = {
+                  start: Math.min(selection.start, value.length),
+                  end: Math.min(selection.end, value.length),
+                };
+                setSelection(next);
                 onFocus?.();
               }}
               onBlur={() => {

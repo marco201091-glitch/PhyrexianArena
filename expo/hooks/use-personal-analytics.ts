@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getDeckDisplayColors } from '@/lib/deck-metadata';
 import {
   buildPersonalAnalytics,
@@ -11,22 +12,14 @@ import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 
 export function usePersonalAnalytics(userId: string | undefined) {
-  const [analytics, setAnalytics] = useState<PersonalAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = useCallback(async () => {
-    if (!userId) {
-      setAnalytics(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { participants, decksById } = await fetchPersonalAnalyticsInputs(supabase, userId);
+  const analyticsQuery = useQuery({
+    queryKey: ['personal-analytics', userId],
+    enabled: Boolean(userId),
+    staleTime: 60_000,
+    queryFn: async (): Promise<PersonalAnalytics> => {
+      const { participants, decksById } = await fetchPersonalAnalyticsInputs(supabase, userId!);
       if (decksById.size === 0) {
-        setAnalytics(emptyPersonalAnalytics());
-        return;
+        return emptyPersonalAnalytics();
       }
 
       const colorOverrides = new Map<string, string[]>();
@@ -38,8 +31,6 @@ export function usePersonalAnalytics(userId: string | undefined) {
       });
 
       const analyticsResult = buildPersonalAnalytics(participants, decksById, colorOverrides);
-      setAnalytics(analyticsResult);
-
       void prefetchDeckImageUrls([
         ...analyticsResult.topDecks.map((deck) => deck.commanderImage),
         analyticsResult.bestDeck?.commanderImage,
@@ -50,20 +41,27 @@ export function usePersonalAnalytics(userId: string | undefined) {
         analyticsResult.bestDeck?.commander,
         ...Array.from(decksById.values()).map((deck) => deck.commander),
       ], { background: true });
-    } catch (error) {
-      console.error(
-        'Error fetching personal analytics:',
-        getSupabaseErrorMessage(error, 'Failed to fetch personal analytics'),
-      );
-      setAnalytics(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+      return analyticsResult;
+    },
+  });
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (analyticsQuery.error) {
+      console.error(
+        'Error fetching personal analytics:',
+        getSupabaseErrorMessage(analyticsQuery.error, 'Failed to fetch personal analytics'),
+      );
+    }
+  }, [analyticsQuery.error]);
 
-  return { analytics, loading, refresh };
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    await analyticsQuery.refetch();
+  }, [analyticsQuery, userId]);
+
+  return {
+    analytics: analyticsQuery.data ?? null,
+    loading: Boolean(userId) && analyticsQuery.isPending,
+    refresh,
+  };
 }

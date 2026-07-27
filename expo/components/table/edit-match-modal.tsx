@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Keyboard,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -11,10 +8,10 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DateField } from '@/components/ui/date-field';
 import { RichTextInput } from '@/components/ui/rich-text-input';
 import { Modal } from '@/components/ui/modal';
 import { colors, spacing } from '@/constants/theme';
@@ -125,11 +122,8 @@ export function EditMatchModal({
 }: EditMatchModalProps) {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const formScrollRef = useRef<ScrollView>(null);
-  const availableHeight = Platform.OS === 'ios'
-    ? windowHeight - keyboardHeight
-    : windowHeight;
+  const formScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
+  const availableHeight = windowHeight;
   const modalBodyHeight = Math.min(
     windowHeight * 0.62,
     520,
@@ -187,29 +181,6 @@ export function EditMatchModal({
     });
     setParticipantDecks(deckMap);
   }, [match, visible]);
-
-  useEffect(() => {
-    if (!visible) {
-      setKeyboardHeight(0);
-      return;
-    }
-
-    const eventName = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const showSubscription = Keyboard.addListener(eventName, (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-      setTimeout(() => {
-        formScrollRef.current?.scrollToEnd({ animated: true });
-      }, 120);
-    });
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, [visible]);
 
   const handleSave = async () => {
     if (!match) return;
@@ -274,12 +245,8 @@ export function EditMatchModal({
         <Text style={styles.hint}>{labels.hint}</Text>
 
         <KeyboardAwareScrollView
-          innerRef={(ref) => {
-            formScrollRef.current = ref as unknown as ScrollView;
-          }}
-          enableOnAndroid
-          enableAutomaticScroll={false}
-          extraScrollHeight={spacing.lg}
+          ref={formScrollRef}
+          bottomOffset={spacing.lg}
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           keyboardShouldPersistTaps="always"
@@ -287,12 +254,12 @@ export function EditMatchModal({
           showsVerticalScrollIndicator
           nestedScrollEnabled
         >
-          <Input
+          <DateField
             label={labels.battleDate}
             value={matchPlayedAt}
-            onChangeText={setMatchPlayedAt}
-            placeholder="YYYY-MM-DD"
-            autoCapitalize="none"
+            onChange={setMatchPlayedAt}
+            maximumDate={new Date()}
+            testID="edit-match-date"
           />
 
           <View style={styles.participantList}>
@@ -408,7 +375,7 @@ export function EditMatchModal({
             hint={labels.richTextHint}
             onFocus={() => {
               setTimeout(() => {
-                formScrollRef.current?.scrollToEnd({ animated: true });
+                formScrollRef.current?.assureFocusedInputVisible();
               }, 120);
             }}
           />

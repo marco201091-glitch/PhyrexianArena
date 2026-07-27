@@ -74,70 +74,24 @@ export function ModalOverlay({
   children: React.ReactNode;
   className?: string;
 }) {
-  const overlayRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const previouslyFocused = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
-    const previousOverflow = document.body.style.overflow;
-    const previousPaddingRight = document.body.style.paddingRight;
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
-    document.body.style.overflow = 'hidden';
-    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
-
-    const focusable = overlayRef.current?.querySelector<HTMLElement>(
-      '[autofocus], button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
-    requestAnimationFrame(() => focusable?.focus());
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.paddingRight = previousPaddingRight;
-      previouslyFocused?.focus();
-    };
-  }, []);
-
-  const trapFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Tab') return;
-
-    const focusable = Array.from(overlayRef.current?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    ) ?? []).filter((element) => !element.hasAttribute('hidden'));
-
-    if (focusable.length === 0) {
-      event.preventDefault();
-      return;
-    }
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
   return (
-    <div
-      ref={overlayRef}
-      role="dialog"
-      aria-modal="true"
-      tabIndex={-1}
-      onKeyDown={trapFocus}
-      className={cn(
-        'fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80',
-        'px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]',
-        'sm:items-center sm:p-4',
-        className,
-      )}
-    >
-      {children}
-    </div>
+    <DialogPrimitive.Root open>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className={cn(
+            'fixed inset-0 z-50 flex items-start justify-center overflow-y-auto outline-none',
+            'px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]',
+            'sm:items-center sm:p-4',
+            className,
+          )}
+        >
+          <DialogPrimitive.Title className="sr-only">Phyrexian Arena</DialogPrimitive.Title>
+          {children}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 

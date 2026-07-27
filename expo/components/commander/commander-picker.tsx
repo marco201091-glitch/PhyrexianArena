@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { DeckImage } from '@/components/deck/deck-image';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Input } from '@/components/ui/input';
 import { colors } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
@@ -166,9 +166,7 @@ export function CommanderPicker({
           nestedScrollEnabled
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
-          enableOnAndroid
-          enableAutomaticScroll
-          extraScrollHeight={12}
+          bottomOffset={12}
         >
           <View style={styles.results}>
             {results.map((commander) => (
@@ -273,9 +271,7 @@ export function CommanderPicker({
               nestedScrollEnabled
               keyboardShouldPersistTaps="always"
               keyboardDismissMode="none"
-              enableOnAndroid
-              enableAutomaticScroll
-              extraScrollHeight={12}
+            bottomOffset={12}
             >
               <View style={styles.results}>
                 {partnerResults.map((result) => (

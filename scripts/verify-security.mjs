@@ -78,4 +78,62 @@ assert.match(metricsMigration, /SET search_path = ''/g, 'Metrics helpers must us
 assert.match(metricsMigration, /REVOKE ALL ON FUNCTION private\.sync_match_live_metrics\(\) FROM PUBLIC, anon, authenticated/, 'Metrics trigger must not be callable by API roles');
 assert.match(metricsMigration, /AFTER UPDATE OF match_id/, 'Finalized live games must persist their compact metrics');
 
+const hardeningMigrationPath = 'supabase/migrations/20260727183959_harden_privileged_rpcs_and_indexes.sql';
+const hardeningMigration = readFileSync(join(root, hardeningMigrationPath), 'utf8');
+assert.match(
+  hardeningMigration,
+  /REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated/,
+  'Every SECURITY DEFINER function must default to no untrusted client access',
+);
+assert.match(
+  hardeningMigration,
+  /GRANT EXECUTE ON FUNCTION %s TO service_role/,
+  'Privileged RPCs must remain available to server-only service-role clients',
+);
+assert.doesNotMatch(
+  hardeningMigration.match(/authenticated_rpc_names[\s\S]*?\];/)?.[0] ?? '',
+  /resolve_login_email|check_api_rate_limit|record_user_access|purge_/,
+  'Sensitive server-only RPCs must never be granted to authenticated clients',
+);
+assert.match(
+  hardeningMigration,
+  /ALTER POLICY "matches_select" ON public\.matches TO authenticated/,
+  'Policies that invoke privileged membership helpers must not run as anon',
+);
+assert.match(
+  hardeningMigration,
+  /CREATE POLICY "matches_anon_public_select"[\s\S]*FOR SELECT TO anon/,
+  'Anonymous arena visibility must remain explicitly read-only',
+);
+assert.match(
+  hardeningMigration,
+  /CREATE INDEX IF NOT EXISTS idx_matches_created_by/,
+  'Foreign-key access paths must be indexed',
+);
+
+const loginRoute = readFileSync(join(root, 'app/api/auth/login/route.ts'), 'utf8');
+assert.match(loginRoute, /authLogin/, 'Password login must be rate limited');
+assert.match(loginRoute, /getSupabaseAdminClient/, 'Login identifier resolution must remain server-side');
+assert.match(loginRoute, /signInWithPassword/, 'Password verification must remain server-side');
+assert.doesNotMatch(loginRoute, /email:\s*data/, 'The login API must never disclose resolved emails');
+const loginSources = [
+  'app/auth/login/page.tsx',
+  'expo/app/(auth)/login.tsx',
+].map((filePath) => readFileSync(join(root, filePath), 'utf8')).join('\n');
+assert.doesNotMatch(
+  loginSources,
+  /\.rpc\(['"]resolve_login_email/,
+  'Public clients must not call the login email resolver directly',
+);
+
+const devBuildScript = readFileSync(join(root, 'scripts/build-apk-dev.bat'), 'utf8');
+const productionBuildScript = readFileSync(join(root, 'scripts/build-apk-production.bat'), 'utf8');
+assert.match(devBuildScript, /verify-expo-build-env\.mjs"?\s+dev/, 'Dev builds must pass the Test-only environment gate');
+assert.match(productionBuildScript, /verify-expo-build-env\.mjs"?\s+production/, 'Production builds must pass the Production environment gate');
+assert.doesNotMatch(
+  productionBuildScript,
+  /supabase-staging\.phyrexianarena/i,
+  'Production build scripts must never target Supabase Test',
+);
+
 console.log('Security verification checks passed.');

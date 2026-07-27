@@ -2,6 +2,11 @@
   "name": "phyrexian-arena-app",
   "version": "6.0.0",
   "private": true,
+  "packageManager": "npm@11.16.0",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "npm": ">=11.0.0 <12"
+  },
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -20,6 +25,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && npm run verify:logos",
+    "quality": "npm run lint && npm run typecheck && npm test",
     "test:coverage": "vitest run --coverage --coverage.include=lib/**/*.ts --coverage.exclude=lib/types/** --coverage.reporter=text --coverage.reporter=json-summary",
     "assets:mana": "node scripts/fetch-mana-symbols.mjs",
     "assets:logo": "node scripts/flatten-logo.mjs",
@@ -39,11 +45,12 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "@expo/ui": "~57.0.7",
     "@expo/vector-icons": "^15.0.3",
     "@hookform/resolvers": "^3.10.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "12.0.1",
-    "@sentry/react-native": "^8.20.0",
+    "@sentry/react-native": "~7.11.0",
     "@shopify/flash-list": "2.0.2",
     "@supabase/supabase-js": "^2.58.0",
     "@tanstack/react-query": "^5.101.4",
@@ -72,7 +79,7 @@
     "react-native": "0.86.0",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-get-random-values": "~1.11.0",
-    "react-native-keyboard-aware-scroll-view": "^0.9.5",
+    "react-native-keyboard-controller": "1.21.9",
     "react-native-qrcode-svg": "6.3.21",
     "react-native-reanimated": "4.5.0",
     "react-native-safe-area-context": "~5.7.0",

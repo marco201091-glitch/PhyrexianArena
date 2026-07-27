@@ -51,39 +51,32 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const trimmedIdentifier = loginIdentifier.trim();
-      const isEmail = trimmedIdentifier.includes('@');
-      let authEmail = trimmedIdentifier;
-
-      if (!isEmail) {
-        const { data, error } = await supabase.rpc('resolve_login_email', {
-          identifier: trimmedIdentifier,
-        });
-
-        if (error) throw error;
-        if (!data) {
-          throw new Error(invalidCredentialsMessage);
-        }
-
-        authEmail = data;
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: loginIdentifier.trim(),
+          password,
+        }),
+      });
+      const payload = await response.json().catch(() => ({})) as {
+        accessToken?: string;
+        refreshToken?: string;
+      };
+      if (!response.ok || !payload.accessToken || !payload.refreshToken) {
+        throw new Error(invalidCredentialsMessage);
       }
 
       setRememberMePreference(rememberMe);
       clearSupabaseAuthStorage();
       resetSupabaseClient();
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password,
+      const { error } = await supabase.auth.setSession({
+        access_token: payload.accessToken,
+        refresh_token: payload.refreshToken,
       });
 
-      if (error) {
-        if (error.message.toLowerCase().includes('email not confirmed')) {
-          router.push(`/auth/resend-confirmation?email=${encodeURIComponent(authEmail)}`);
-          return;
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       router.refresh();
       router.push(redirectPath);

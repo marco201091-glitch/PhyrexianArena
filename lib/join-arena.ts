@@ -18,14 +18,9 @@ export async function fetchGroupByInviteCode(
     p_invite_code: normalizeInviteCode(inviteCode),
   });
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row || typeof row !== 'object' || !('id' in row)) {
-    return null;
-  }
-
+  if (!row || typeof row !== 'object' || !('id' in row)) return null;
   return row as GroupInvitePreview;
 }

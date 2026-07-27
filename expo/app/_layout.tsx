@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { AvatarVersionProvider } from '@/contexts/avatar-version-context';
@@ -63,6 +64,7 @@ function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
+      <KeyboardProvider>
       <QueryProvider>
       <LanguageProvider>
         <AuthProvider>
@@ -98,6 +100,7 @@ function RootLayout() {
         </AuthProvider>
       </LanguageProvider>
       </QueryProvider>
+      </KeyboardProvider>
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );

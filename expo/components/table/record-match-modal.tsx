@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Switch, Text, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DateField } from '@/components/ui/date-field';
 import { RichTextInput } from '@/components/ui/rich-text-input';
 import { Modal } from '@/components/ui/modal';
 import { colors, spacing } from '@/constants/theme';
@@ -340,12 +340,12 @@ export function RecordMatchModal({
           </>
         ) : null}
 
-        <Input
+        <DateField
           label={labels.battleDate}
           value={matchPlayedAt}
-          onChangeText={setMatchPlayedAt}
-          placeholder="YYYY-MM-DD"
-          autoCapitalize="none"
+          onChange={setMatchPlayedAt}
+          maximumDate={new Date()}
+          testID="record-match-date"
         />
         <RichTextInput
           label={labels.notes}

@@ -1,16 +1,14 @@
 import { PropsWithChildren, useMemo } from 'react';
 import {
-  KeyboardAvoidingView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { AppBackground } from '@/components/ui/app-background';
 import { useAuth } from '@/contexts/auth-context';
 import { colors, spacing } from '@/constants/theme';
-import { keyboardAvoidingBehavior, keyboardAvoidingEnabled } from '@/lib/keyboard';
 import { contentPadding, resolveSafeAreaEdges, screenContentMaxWidth } from '@/lib/layout';
 
 type ScreenBackground = 'artwork' | 'solid' | 'auto';
@@ -49,7 +47,6 @@ export function Screen({
   const { user, loading } = useAuth();
   const resolvedBackground = resolveBackground(background, user, loading);
   const resolvedSafeBottom = safeBottom ?? background === 'solid';
-  const resolvedKeyboardAvoiding = keyboardAvoidingEnabled && (keyboardAvoiding ?? scroll);
   const edges = resolveSafeAreaEdges(resolvedSafeBottom);
   const { width } = useWindowDimensions();
   const horizontalPadding = useMemo(() => contentPadding(width), [width]);
@@ -70,10 +67,7 @@ export function Screen({
       contentContainerStyle={[styles.scrollContent, paddedStyle]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-      automaticallyAdjustKeyboardInsets
-      enableOnAndroid
-      enableAutomaticScroll
-      extraScrollHeight={spacing.lg}
+      bottomOffset={spacing.lg}
       showsVerticalScrollIndicator={false}
     >
       {children}
@@ -88,17 +82,7 @@ export function Screen({
     </SafeAreaView>
   );
 
-  const wrappedBody = resolvedKeyboardAvoiding ? (
-    <KeyboardAvoidingView
-      style={styles.keyboardAvoid}
-      behavior={keyboardAvoidingBehavior}
-      keyboardVerticalOffset={4}
-    >
-      {body}
-    </KeyboardAvoidingView>
-  ) : (
-    body
-  );
+  const wrappedBody = body;
 
   if (resolvedBackground === 'solid') {
     return <View style={styles.solid}>{wrappedBody}</View>;

@@ -7,6 +7,7 @@ if /I "%~2"=="--no-pause" set "NO_PAUSE=1"
 set "ROOT_DIR=%~dp0.."
 for %%I in ("%ROOT_DIR%") do set "ROOT_DIR=%%~fI"
 set "EXPO_DIR=%ROOT_DIR%\expo"
+set "ENV_FILE=%EXPO_DIR%\.env"
 
 if not defined VERSION (
     echo Usage: %~nx0 ^<major.minor.patch^>
@@ -19,11 +20,21 @@ if not exist "%ANDROID_HOME%" (
     exit /b 1
 )
 
+if not exist "%ENV_FILE%" (
+    echo ERROR: Missing "%ENV_FILE%".
+    exit /b 1
+)
+for /F "usebackq eol=# tokens=1,* delims==" %%A in ("%ENV_FILE%") do (
+    if not "%%A"=="" set "%%A=%%B"
+)
+
 echo [1/6] Sync version %VERSION%
 node "%~dp0update-mobile-version.mjs" "%VERSION%"
 if errorlevel 1 goto :fail
 
 set "APP_VARIANT=dev"
+node "%~dp0verify-expo-build-env.mjs" dev
+if errorlevel 1 goto :fail
 
 echo [2/6] Stop Gradle
 if exist "%EXPO_DIR%\android\gradlew.bat" call "%EXPO_DIR%\android\gradlew.bat" --stop

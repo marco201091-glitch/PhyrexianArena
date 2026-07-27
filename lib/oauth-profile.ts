@@ -7,12 +7,7 @@ export function deriveUsernameFromEmail(email: string) {
     .toLowerCase()
     .replace(/\./g, '_')
     .replace(/[^a-z0-9_]/g, '');
-
-  if (normalized.length < 3) {
-    return 'user';
-  }
-
-  return normalized.slice(0, 30);
+  return normalized.length < 3 ? 'user' : normalized.slice(0, 30);
 }
 
 export function isGoogleAuthUser(user: Pick<User, 'app_metadata' | 'identities'> | null | undefined) {
@@ -28,26 +23,17 @@ async function findAvailableUsername(
 ) {
   let candidate = baseUsername;
   let suffix = 0;
-
   while (suffix <= 999) {
     const { data: existing, error } = await supabase
       .from('profiles')
       .select('id')
       .eq('username', candidate)
       .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!existing || existing.id === userId) {
-      return candidate;
-    }
-
+    if (error) throw error;
+    if (!existing || existing.id === userId) return candidate;
     suffix += 1;
     candidate = `${baseUsername.slice(0, 24)}_${suffix}`;
   }
-
   return `user_${userId.replace(/-/g, '').slice(0, 8)}`;
 }
 
@@ -55,54 +41,34 @@ export async function ensureOAuthUserProfile(
   supabase: SupabaseClient,
   user: User,
 ) {
-  if (!isGoogleAuthUser(user) || !user.email) {
-    return;
-  }
+  if (!isGoogleAuthUser(user) || !user.email) return;
 
   const desiredBase = deriveUsernameFromEmail(user.email);
-  if (!isValidUsername(desiredBase)) {
-    return;
-  }
+  if (!isValidUsername(desiredBase)) return;
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id, username')
     .eq('id', user.id)
     .maybeSingle();
-
-  if (profileError) {
-    throw profileError;
-  }
+  if (profileError) throw profileError;
 
   const username = await findAvailableUsername(supabase, desiredBase, user.id);
-
   if (!profile) {
-    const { error: insertError } = await supabase
-      .from('profiles')
-      .insert({ id: user.id, username });
-
-    if (insertError) {
-      throw insertError;
-    }
+    const { error } = await supabase.from('profiles').insert({ id: user.id, username });
+    if (error) throw error;
     return;
   }
 
-  const legacyStrippedUsername = user.email
+  const legacyUsername = user.email
     .split('@')[0]
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
-
-  const shouldNormalizeLegacyUsername = profile.username === legacyStrippedUsername
-    && profile.username !== username;
-
-  if (shouldNormalizeLegacyUsername) {
-    const { error: updateError } = await supabase
+  if (profile.username === legacyUsername && profile.username !== username) {
+    const { error } = await supabase
       .from('profiles')
       .update({ username })
       .eq('id', user.id);
-
-    if (updateError) {
-      throw updateError;
-    }
+    if (error) throw error;
   }
 }

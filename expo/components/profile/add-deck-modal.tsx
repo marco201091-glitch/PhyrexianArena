@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { CommanderPicker } from '@/components/commander/commander-picker';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
@@ -474,9 +474,7 @@ export function AddDeckModal({
           contentContainerStyle={styles.bodyContent}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
-          enableOnAndroid
-          enableAutomaticScroll
-          extraScrollHeight={16}
+          bottomOffset={16}
           showsVerticalScrollIndicator
           nestedScrollEnabled
         >

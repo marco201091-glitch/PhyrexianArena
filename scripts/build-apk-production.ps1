@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $expo = Join-Path $root 'expo'
 $artifactDir = Join-Path $root 'artifacts\apk\production'
+$productionEnvFile = Join-Path $expo '.env.production.local'
 $buildDrive = 'P:'
 $buildDriveMounted = $false
 
@@ -13,10 +14,29 @@ function Step([string]$label) {
 try {
   Set-Location -LiteralPath $expo
 
-  # Production builds must never inherit the local expo/.env preview endpoint.
-  # Existing environment variables win over dotenv values loaded by Expo.
+  if (-not (Test-Path -LiteralPath $productionEnvFile)) {
+    throw 'Missing expo/.env.production.local. Copy .env.production.example and insert Production keys.'
+  }
+  Get-Content -LiteralPath $productionEnvFile | ForEach-Object {
+    $line = $_.Trim()
+    if ($line -and -not $line.StartsWith('#')) {
+      $separator = $line.IndexOf('=')
+      if ($separator -gt 0) {
+        [Environment]::SetEnvironmentVariable(
+          $line.Substring(0, $separator),
+          $line.Substring($separator + 1),
+          'Process'
+        )
+      }
+    }
+  }
+
+  $env:APP_VARIANT = 'production'
   $env:EXPO_PUBLIC_API_BASE_URL = 'https://app.phyrexianarena.dpdns.org'
   $env:EXPO_PUBLIC_SITE_URL = 'https://app.phyrexianarena.dpdns.org'
+  $env:EXPO_PUBLIC_SUPABASE_URL = 'https://phyrexianarena.dpdns.org'
+  node (Join-Path $PSScriptRoot 'verify-expo-build-env.mjs') production
+  if ($LASTEXITCODE -ne 0) { throw 'Production environment gate failed' }
 
   Step '1/5 CHECK LOCAL ANDROID TOOLCHAIN'
   if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'Java non trovato nel PATH' }

@@ -17,6 +17,7 @@ export const API_RATE_LIMITS = {
   authForgotPassword: { maxRequests: 3, windowSeconds: 60 * 60 },
   authResendConfirmation: { maxRequests: 5, windowSeconds: 60 * 60 },
   authDemoLogin: { maxRequests: 20, windowSeconds: 60 * 60 },
+  authLogin: { maxRequests: 30, windowSeconds: 60 * 60 },
   accountDelete: { maxRequests: 3, windowSeconds: 60 * 60 },
   accessLog: { maxRequests: 120, windowSeconds: 60 * 60 },
   inviteQr: { maxRequests: 60, windowSeconds: 10 * 60 },

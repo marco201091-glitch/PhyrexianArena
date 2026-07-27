@@ -1,9 +1,10 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, useWatch } from 'react-hook-form';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { PasswordRequirements, isPasswordPolicyValid } from '@/components/auth/password-requirements';
-import { isValidEmail, isValidUsername } from '@/lib/auth-validation';
+import { PasswordRequirements } from '@/components/auth/password-requirements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -18,11 +19,12 @@ import { supabase } from '@/lib/supabase';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { AuthPageShell } from '@/components/legal/auth-page-shell';
 import { RegisterTermsNotice } from '@/components/legal/register-terms-notice';
+import {
+  registerSchema,
+  type RegisterValues,
+} from '@/lib/validation/auth';
 
 function RegisterForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [captchaAvailable, setCaptchaAvailable] = useState(true);
@@ -31,10 +33,20 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { copy: t, language } = useLanguage();
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isValid },
+  } = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    mode: 'onChange',
+    defaultValues: { username: '', email: '', password: '' },
+  });
+  const username = useWatch({ control, name: 'username' });
+  const email = useWatch({ control, name: 'email' });
+  const password = useWatch({ control, name: 'password' });
   const redirectPath = getSafeRedirectPath(searchParams.get('redirect'));
-  const isPasswordValid = isPasswordPolicyValid(password);
-  const isEmailValid = isValidEmail(email);
-  const isUsernameValid = isValidUsername(username);
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const isCaptchaReady = Boolean(turnstileSiteKey && captchaToken && captchaAvailable);
 
@@ -43,41 +55,7 @@ function RegisterForm() {
     setCaptchaResetSignal((signal) => signal + 1);
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!isEmailValid) {
-      toast({
-        title: t({ it: 'Email non valida', en: 'Invalid email' }),
-        description: t({ it: 'Inserisci un indirizzo email valido.', en: 'Enter a valid email address.' }),
-      });
-      return;
-    }
-
-    if (!isUsernameValid) {
-      toast({
-        title: t({ it: 'Nome utente non valido', en: 'Invalid username' }),
-        description: t({
-          it: 'Usa 3-30 caratteri: lettere, numeri o underscore.',
-          en: 'Use 3-30 characters: letters, numbers, or underscores.',
-        }),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!isPasswordValid) {
-      toast({
-        title: t({ it: 'Password troppo debole', en: 'Password too weak' }),
-        description: t({
-          it: 'Usa almeno 8 caratteri, una maiuscola, una minuscola e un numero.',
-          en: 'Use at least 8 characters, one uppercase letter, one lowercase letter, and one number.',
-        }),
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const handleRegister = async ({ email, password, username }: RegisterValues) => {
     if (!isCaptchaReady) {
       toast({
         title: t({ it: 'Verifica richiesta', en: 'Verification required' }),
@@ -165,7 +143,7 @@ function RegisterForm() {
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleRegister} className="space-y-4">
+          <form onSubmit={handleSubmit(handleRegister)} className="space-y-4" noValidate>
             <div className="space-y-2">
               <label htmlFor="username" className="text-sm font-medium text-foreground">
                 {t({ it: 'Nome utente', en: 'Username' })}
@@ -174,17 +152,16 @@ function RegisterForm() {
                 id="username"
                 type="text"
                 placeholder="Newt"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                {...register('username')}
                 required
                 minLength={3}
                 maxLength={30}
                 pattern="[a-zA-Z0-9_]{3,30}"
                 autoComplete="username"
-                aria-invalid={username.length > 0 && !isUsernameValid}
+                aria-invalid={Boolean(errors.username)}
                 className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
               />
-              {username.length > 0 && !isUsernameValid && (
+              {username.length > 0 && errors.username && (
                 <p className="text-xs text-destructive">
                   {t({
                     it: 'Usa solo lettere, numeri o underscore.',
@@ -201,14 +178,13 @@ function RegisterForm() {
                 id="email"
                 type="email"
                 placeholder="planeswalker@phyrexia.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register('email')}
                 required
                 autoComplete="email"
-                aria-invalid={email.length > 0 && !isEmailValid}
+                aria-invalid={Boolean(errors.email)}
                 className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
               />
-              {email.length > 0 && !isEmailValid && (
+              {email.length > 0 && errors.email && (
                 <p className="text-xs text-destructive">
                   {t({ it: 'Inserisci una mail valida.', en: 'Enter a valid email address.' })}
                 </p>
@@ -222,12 +198,11 @@ function RegisterForm() {
                 id="password"
                 type="password"
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...register('password')}
                 required
                 minLength={8}
                 autoComplete="new-password"
-                aria-invalid={password.length > 0 && !isPasswordValid}
+                aria-invalid={Boolean(errors.password)}
                 className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
               />
               <PasswordRequirements password={password} />
@@ -252,7 +227,7 @@ function RegisterForm() {
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800 text-white font-semibold"
-              disabled={loading || !isUsernameValid || !isEmailValid || !isPasswordValid}
+              disabled={loading || !isValid || !isCaptchaReady}
             >
               {loading ? 'Compleating...' : t({ it: 'Inizia la Compleation', en: 'Begin Compleation' })}
             </Button>

@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { getCanonicalRedirectUrl } from '@/lib/canonical-host';
 import { updateSession } from '@/lib/supabase/middleware';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (process.env.VERCEL_ENV !== 'preview') {
     const canonicalRedirect = getCanonicalRedirectUrl(request.nextUrl);
     if (canonicalRedirect) {

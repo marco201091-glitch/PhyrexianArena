@@ -1,53 +1,49 @@
-# Phyrexian Arena V6 — sviluppo
+# Phyrexian Arena V6 — stato operativo
 
-Regola assoluta: sviluppo solo su `Dev` e Supabase `supabase-test`. Mai toccare `main`, Dokploy Production o `supabase-staging`.
+Aggiornato: 2026-07-27.
 
-## UX input e popup
+## Regole non negoziabili
 
-- [x] Valutazione stack: native `<input>` / `<textarea>` e React Native `TextInput` restano la scelta stabile per cursore, IME, selezione, autofill e accessibilità.
-- [x] Creato `AppModal`: Radix Dialog, focus trap, Escape, scroll lock, overlay e semantica screen reader; grafica esistente preservata.
-- [x] Migrati i popup dashboard “Entra” e “Crea arena” a `AppModal`.
-- [x] Corretto campo codice invito: nessuna trasformazione durante digitazione; mai più salto cursore.
-- [x] Aggiornato Vaul a `1.1.2` per drawer/sheet mobile compatibile anche con React 19.
-- [x] Rafforzati tutti i popup legacy `ModalOverlay` / `ModalCard`: focus trap, ciclo Tab, scroll lock e ripristino focus. `AppModal` Radix è lo standard per nuovi flussi.
-- [ ] Valutare Lexical solo se le note diventano un vero editor WYSIWYG. Non introdurlo per i normali campi: aumenterebbe bundle, migrazioni dati e manutenzione.
+- `Dev` e ogni build Dev usano solo Supabase Test.
+- Supabase Test: endpoint storico `supabase-staging.phyrexianarena.dpdns.org`, container DB `supabase-dev-db`.
+- Production: branch `main`, app Production, Supabase `supabase-production`.
+- Mai copiare, ripristinare o sincronizzare dati Test verso Production. In Production entrano solo schema, funzioni, policy, indici e configurazione validati.
+- Nessuna APK durante lo sviluppo: build e test device solo su richiesta al gate finale.
 
-## GitHub issue
+## Implementazione completata
 
-- [x] #26: un deck creato manualmente puo collegarsi a una lista Archidekt/Moxfield; nome e comandante restano invariati, refresh/metadati vengono dalla sorgente. Disponibile Web e Expo.
-- [x] #27: impostazioni profilo Web per username Archidekt e import automatico in background di nuove liste pubbliche; mai sovrascritti mazzi esistenti.
-- [x] Applicata `20260727150000_profile_archidekt_sync_preferences.sql` solo a `supabase-dev-db` / `supabase-staging`; schema e RLS verificati.
-- [ ] Validare end-to-end i due flussi su Dev isolato prima di chiudere issue #26/#27.
+- [x] Expo SDK 57 / React Native 0.86 / React 19 / TypeScript 6 allineati; Capacitor rimosso.
+- [x] Tastiera unificata su `react-native-keyboard-controller`; nessun `KeyboardAvoidingView`, listener o scroll manuale concorrente.
+- [x] Data partita unificata su `@expo/ui` DateTimePicker nativo; rimosso l'input data testuale mobile.
+- [x] Networking Expo unificato: timeout, auth, refresh singolo su 401, errori omogenei e helper HTTP.
+- [x] TanStack Query realmente usato per profilo, analytics, EDHREC e artwork; cache offline specializzata del live tracker resta separata.
+- [x] React Hook Form + Zod attivi nelle registrazioni Web/Expo.
+- [x] Popup Web unificati internamente su Radix Dialog; shell manuale di focus/scroll rimossa.
+- [x] Login username/password spostato interamente su API server rate-limited: l'email risolta non viene più esposta al client.
+- [x] Runtime server Supabase usa `SUPABASE_URL` / `SUPABASE_ANON_KEY`; le variabili `NEXT_PUBLIC_*` restano solo fallback.
+- [x] Varianti Expo Dev/Production separate: package ID, associated domains, intent filter, env EAS e splash.
+- [x] Gate build Dev/Production impediscono target Supabase errati; `.env.production.local` resta ignorato.
+- [x] Migration `20260727183959_harden_privileged_rpcs_and_indexes.sql` applicata e verificata solo su Supabase Test:
+  - 9 indici FK;
+  - RLS con `auth.uid()` cache;
+  - nessuna policy write anon;
+  - RPC `SECURITY DEFINER` deny-by-default;
+  - RPC distruttive/server-only negate ad anon/authenticated;
+  - inviti anon mantenuti read-only;
+  - constraint Archidekt validato.
+- [x] CI GitHub Web/Expo, Node 24, quality gate, Expo Doctor e Knip dependency gate.
+- [x] Next `middleware.ts` migrato a `proxy.ts`.
+- [x] React Web 19.2, Radix, Supabase, Sharp 0.35 e dipendenze compatibili aggiornate.
+- [x] Rimossi 39 file morti/boilerplate e relative dipendenze; moduli puri duplicati consolidati.
+- [x] Cleanup Dokploy: rimosso il target app Test obsoleto; Supabase Test conserva un solo deploy completato.
+- [x] GitHub #26/#27 implementate nel codice.
+- [x] Regola partite 00:00–07:59 ripristinata e coperta da test.
 
-## Regola serate arena
+## Gate finale intenzionalmente rimandato
 
-- [x] Ripristinata: le partite 00:00–07:59 UTC confluiscono nel giorno precedente solo se quel giorno contiene almeno una partita registrata.
-- [x] Allineati Web, Expo e RPC `get_arena_match_day_summaries`; migration applicata anche su `supabase-production` con verifica grant.
-- [x] Coperti entrambi i casi: partita notturna isolata e serata che prosegue oltre mezzanotte.
-
-## Stack mobile
-
-- [x] Allineata versione V6: package `6.0.0`, Android `versionCode 60000`, iOS `buildNumber 60000`.
-- [x] Rimosso interamente Capacitor e il vecchio progetto `mobile/android`: Expo è l'unico stack mobile supportato.
-- [x] Aggiornato Expo SDK `53 → 57`, React Native `0.79 → 0.86`, React `19.2`, TypeScript `6.0` e moduli Expo compatibili.
-- [x] Integrati Sentry Web/Expo, NetInfo e FlashList 2 per lista virtualizzata dei deck.
-- [x] Live tracker: retry ora è guidato da stato rete reale; offline blocca sync inutili, ritorno online svuota journal/outbox durabile.
-- [x] Audit statico V6 completato: dettagli e backlog in `V6_AUDIT.md`.
-
-## Verifica ultima esecuzione
-
-- [x] `npm run typecheck`
-- [x] `npm run test:all` — 53 file, 166 test
-- [x] `npm run build`
-
-## Da valutare, non installare a caso
-
-- [x] Base form trasversale: React Hook Form + Zod aggiornati e primitive accessibili in `components/ui/form.tsx`.
-- [x] Predisposto smoke E2E Maestro `expo/e2e/smoke-quick-game.yaml` con testID stabili.
-- [ ] Eseguire test E2E touch/device una sola volta, alla chiusura della V6.
-- [ ] Rigenerare build native Dev dopo upgrade Expo/Sentry e validare Android/iOS al gate finale.
-- [ ] P0 audit: isolare `.env.local` e `expo/.env` esclusivamente su `supabase-staging`; ora contengono ancora endpoint Supabase Production.
-- [ ] P0 audit: correggere service role del runtime Dev (`/api/public-arena/INVALID` risponde `500`, deve rispondere `404`).
-- [x] Foundation TanStack Query v5 Web/Expo con NetInfo/AppState e policy cache/retry.
-- [x] React Hook Form + Zod integrati anche nella registrazione Expo.
-- [x] Turnstile runtime config per rimuovere la dipendenza da site key incorporata in build Dev obsolete.
+- [ ] Pubblicare il codice su app Dev e verificare API/captcha/OAuth/import reali.
+- [ ] Eseguire Maestro e test manuali Android/iOS: tastiera, data picker, rotazione, drag, offline/reconnect.
+- [ ] Creare APK Dev solo quando richiesto.
+- [ ] Prima del rilascio V6, verificare/ripristinare l'infrastruttura DB Production: al 2026-07-27 il container DB Production non risultava presente e PostgREST risultava unhealthy. Non avviare o ricreare nulla automaticamente.
+- [ ] Applicare la migration hardening a Supabase Production soltanto insieme al rollout V6. Applicarla prima romperebbe il login username delle build V5, che chiamano ancora direttamente `resolve_login_email`.
+- [ ] Dopo il rollout V6: smoke Production, audit RLS/RPC, chiusura issue #26/#27.
