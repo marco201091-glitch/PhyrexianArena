@@ -58,19 +58,13 @@ $null
 *.tsbuildinfo
 next-env.d.ts
 
-# capacitor / android
-mobile/android/.gradle/
-mobile/android/.idea/
-mobile/android/local.properties
-mobile/android/app/build/
-mobile/android/build/
-mobile/android/capacitor-cordova-android-plugins/
-mobile/android/.cxx/
+# signing secrets
 *.keystore
 *.jks
-mobile/android/keystore.properties
+keystore.properties
 
 # expo native prebuild output
+/.expo/
 expo/.expo/
 expo/node_modules/
 artifacts/
