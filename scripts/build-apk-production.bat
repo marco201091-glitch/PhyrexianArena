@@ -7,8 +7,6 @@ if /I "%~2"=="--no-pause" set "NO_PAUSE=1"
 set "ROOT_DIR=%~dp0.."
 for %%I in ("%ROOT_DIR%") do set "ROOT_DIR=%%~fI"
 set "EXPO_DIR=%ROOT_DIR%\expo"
-set "BUILD_DRIVE=Z:"
-set "MOUNTED=0"
 
 if not defined VERSION (
     echo Usage: %~nx0 ^<major.minor.patch^>
@@ -21,11 +19,6 @@ if not exist "%ANDROID_HOME%" (
     exit /b 1
 )
 
-if exist "%BUILD_DRIVE%\" (
-    echo ERROR: %BUILD_DRIVE% already in use. Free it, then retry.
-    exit /b 1
-)
-
 echo [1/6] Sync version %VERSION%
 node "%~dp0update-mobile-version.mjs" "%VERSION%"
 if errorlevel 1 goto :fail
@@ -34,17 +27,13 @@ echo [2/6] Set production endpoints
 set "EXPO_PUBLIC_API_BASE_URL=https://app.phyrexianarena.dpdns.org"
 set "EXPO_PUBLIC_SITE_URL=https://app.phyrexianarena.dpdns.org"
 
-echo [3/6] Mount short build path
-subst %BUILD_DRIVE% "%EXPO_DIR%"
-if errorlevel 1 goto :fail
-set "MOUNTED=1"
-
-echo [4/6] Stop Gradle and clean native cache
-if exist "%BUILD_DRIVE%\android\gradlew.bat" call "%BUILD_DRIVE%\android\gradlew.bat" --stop
-if exist "%BUILD_DRIVE%\node_modules\react-native-reanimated\android\.cxx" rmdir /s /q "%BUILD_DRIVE%\node_modules\react-native-reanimated\android\.cxx"
+echo [3/6] Stop Gradle and clean native cache
+if exist "%EXPO_DIR%\android\gradlew.bat" call "%EXPO_DIR%\android\gradlew.bat" --stop
+if exist "%EXPO_DIR%\node_modules\react-native-reanimated\android\.cxx" rmdir /s /q "%EXPO_DIR%\node_modules\react-native-reanimated\android\.cxx"
 
 echo [5/6] Generate Android production project
-pushd "%BUILD_DRIVE%\"
+rem Expo SDK 57 autolinking resolves package.json via the real project path.
+pushd "%EXPO_DIR%"
 call npx expo prebuild --platform android --clean
 if errorlevel 1 (
     popd
@@ -53,8 +42,8 @@ if errorlevel 1 (
 popd
 
 echo [6/6] Build release APK
-pushd "%BUILD_DRIVE%\android"
-call "%BUILD_DRIVE%\android\gradlew.bat" assembleRelease --console=plain
+pushd "%EXPO_DIR%\android"
+call "%EXPO_DIR%\android\gradlew.bat" assembleRelease -PreactNativeArchitectures=arm64-v8a --console=plain
 if errorlevel 1 (
     popd
     goto :fail
@@ -63,7 +52,7 @@ popd
 
 set "ARTIFACT_DIR=%ROOT_DIR%\artifacts\apk"
 if not exist "%ARTIFACT_DIR%" mkdir "%ARTIFACT_DIR%"
-copy /Y "%BUILD_DRIVE%\android\app\build\outputs\apk\release\app-release.apk" "%ARTIFACT_DIR%\phyrexian-arena-production-v%VERSION%.apk" >nul
+copy /Y "%EXPO_DIR%\android\app\build\outputs\apk\release\app-release.apk" "%ARTIFACT_DIR%\phyrexian-arena-production-v%VERSION%.apk" >nul
 if errorlevel 1 goto :fail
 
 call :cleanup
@@ -80,5 +69,4 @@ if "%NO_PAUSE%"=="0" pause
 exit /b %BUILD_EXIT%
 
 :cleanup
-if "%MOUNTED%"=="1" subst %BUILD_DRIVE% /d >nul 2>&1
 exit /b 0

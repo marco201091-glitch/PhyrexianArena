@@ -1,0 +1,10 @@
+appId: com.phyrexianarena.app
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: login-quick-game
+- tapOn:
+    id: counter-start-game
+- assertVisible:
+    id: counter-arena

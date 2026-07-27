@@ -160,7 +160,6 @@ Poi `eas submit` quando hai Google Play Console.
 |---|---|
 | `/app`, `/lib`, `/components` | Web (Vercel) |
 | `/expo` | Native app (EAS / local Gradle) |
-| `/mobile` | Legacy Capacitor shell (to remove later) |
 
 Web deploy and native build stay **separate pipelines**.
 

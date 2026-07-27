@@ -18,6 +18,17 @@ export function getArenaDayKey(
   return `${adjusted.getUTCFullYear()}-${pad(adjusted.getUTCMonth() + 1)}-${pad(adjusted.getUTCDate())}`;
 }
 
+function getCalendarDayKey(playedAt: string | Date): string {
+  const date = typeof playedAt === 'string' ? new Date(playedAt) : new Date(playedAt.getTime());
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+
+function getPreviousCalendarDayKey(playedAt: string | Date): string {
+  const date = typeof playedAt === 'string' ? new Date(playedAt) : new Date(playedAt.getTime());
+  date.setUTCDate(date.getUTCDate() - 1);
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+
 export interface ArenaMatchDayGroup<T extends { played_at: string }> {
   dayKey: string;
   label: string;
@@ -34,9 +45,15 @@ export function groupMatchesByDay<T extends { played_at: string }>(
 ): ArenaMatchDayGroup<T>[] {
   const boundaryHour = options?.boundaryHour ?? ARENA_DAY_BOUNDARY_HOUR;
   const groups = new Map<string, T[]>();
+  const calendarDaysWithMatches = new Set(matches.map((match) => getCalendarDayKey(match.played_at)));
 
   matches.forEach((match) => {
-    const key = getArenaDayKey(match.played_at, boundaryHour);
+    const date = new Date(match.played_at);
+    const isLateNightMatch = date.getUTCHours() < boundaryHour;
+    const previousCalendarDayHasMatches = calendarDaysWithMatches.has(getPreviousCalendarDayKey(match.played_at));
+    const key = isLateNightMatch && previousCalendarDayHasMatches
+      ? getArenaDayKey(match.played_at, boundaryHour)
+      : getCalendarDayKey(match.played_at);
     const current = groups.get(key) || [];
     current.push(match);
     groups.set(key, current);

@@ -247,14 +247,14 @@ export default function CounterScreen() {
           <View style={styles.colorRow}>{CARD_COLORS.map((color) => <Pressable key={color} onPress={() => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color } : item))} style={[styles.color, { backgroundColor: color }, player.color === color && styles.colorActive]} />)}</View>
         </View>)}
         {REMOTE_GUESTS_ENABLED ? <View style={styles.guestPanel}><View style={styles.guestToggle}><View style={styles.guestCopy}><Text style={styles.sectionTitle}>{copy('guestsQuestion')}</Text><Text style={styles.subtitle}>{guestsEnabled ? copy('temporaryOnlineLobby') : copy('offlineSingleDevice')}</Text></View><Switch value={guestsEnabled} onValueChange={(value) => void toggleGuests(value)} /></View>{online ? <><View style={styles.qr}><QrCode value={buildCounterGuestInviteUrl(getSiteUrl(), online.inviteToken)} size={224} label={copy('gameInviteQr')} /></View><Text style={styles.qrHint}>Guest: {online.guests.length} · {copy('readyGuests')} {online.guests.filter((guest) => guest.ready).length}</Text><Button label={copy('rotateInvite')} variant="outline" onPress={async () => { const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', sessionToken: online.hostToken }) }); const payload = await response.json(); if (response.ok) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }} />{online.guests.map((guest) => <View key={guest.id} style={styles.guestRow}><Text style={styles.guestName}>{guest.ready ? '✓' : '○'} {guest.display_name} · {guest.commander}</Text><Pressable onPress={async () => { await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove', sessionToken: online.hostToken, guestId: guest.id }) }); await refreshOnline(online.hostToken); }}><Text style={styles.removeGuest}>{copy('remove')}</Text></Pressable></View>)}</> : null}</View> : null}
-        <Button label={copy('startGame')} icon="play" disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} onPress={() => void start()} />
+        <Button label={copy('startGame')} icon="play" testID="counter-start-game" disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} onPress={() => void start()} />
         <Button label={copy('back')} variant="ghost" onPress={() => router.back()} />
       </ScrollView>
     </Screen>;
   }
 
   const activePlayers = state.players.filter((player) => !player.isEliminated);
-  return <View style={styles.game}>
+  return <View testID="counter-arena" style={styles.game}>
     <StatusBar hidden />
     <TableArena
       players={state.players}

@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
@@ -9,7 +9,7 @@ import { resolveTabBarHeight, tabBarHorizontalInset } from '@/lib/layout';
 type TabIconProps = {
   name: keyof typeof Ionicons.glyphMap;
   focusedName: keyof typeof Ionicons.glyphMap;
-  color: string;
+  color: ColorValue;
   focused: boolean;
 };
 

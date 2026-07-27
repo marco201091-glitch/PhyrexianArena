@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
+import { FlashList } from '@shopify/flash-list';
 import {
-  FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -59,6 +59,7 @@ export default function ProfileScreen() {
     refreshImportedDeck,
     refreshAllDecks,
     updateDeck,
+    linkDeckSource,
     saveArchidektUserDecks,
     getDeckCommanderOptions,
   } = useProfileDecks(user?.id);
@@ -190,7 +191,7 @@ export default function ProfileScreen() {
   }, [copy, refreshImportedDeck, showToast]);
 
   const renderDeckItem = useCallback(({ item: deck }: { item: ProfileDeck }) => (
-    <View style={styles.deckGridItem}>
+    <View style={[styles.deckGridItem, deckColumns > 1 && styles.deckGridItemMultiColumn]}>
       <DeckCard
         deck={deck}
         winRate={winRates[deck.id]}
@@ -206,7 +207,7 @@ export default function ProfileScreen() {
         onDelete={() => handleDeleteDeck(deck.id)}
       />
     </View>
-  ), [copy, handleDeleteDeck, handleRefreshDeck, openEditDeck, refreshingDeckIds, winRates]);
+  ), [copy, deckColumns, handleDeleteDeck, handleRefreshDeck, openEditDeck, refreshingDeckIds, winRates]);
 
   const listHeader = (
     <View style={styles.listHeader}>
@@ -347,17 +348,13 @@ export default function ProfileScreen() {
 
   return (
     <Screen scroll={false} padded={false}>
-      <FlatList
+      <FlashList
         key={`profile-decks-${deckColumns}`}
         data={filteredDecks}
         numColumns={deckColumns}
-        columnWrapperStyle={deckColumns > 1 ? styles.deckGridRow : undefined}
         keyExtractor={(deck) => deck.id}
         renderItem={renderDeckItem}
-        initialNumToRender={deckColumns * 2}
-        maxToRenderPerBatch={deckColumns * 2}
-        updateCellsBatchingPeriod={50}
-        windowSize={5}
+        drawDistance={500}
         ListHeaderComponent={listHeader}
         ItemSeparatorComponent={() => <View style={styles.deckSeparator} />}
         contentContainerStyle={scrollContentStyle}
@@ -494,6 +491,11 @@ export default function ProfileScreen() {
           saveSelectedCommander: copy('saveSelectedCommander'),
           close: copy('close'),
           saving: copy('saving'),
+          linkSource: language === 'it' ? 'Collega lista esterna' : 'Link external list',
+          linkSourceHint: language === 'it'
+            ? 'Archidekt o Moxfield: il mazzo mantiene nome e comandante, poi puo aggiornarsi dalla sorgente.'
+            : 'Archidekt or Moxfield: the deck keeps its name and commander, then can refresh from its source.',
+          linkSourceAction: language === 'it' ? 'Collega lista' : 'Link list',
         }}
         onClose={() => {
           setEditingDeck(null);
@@ -512,6 +514,19 @@ export default function ProfileScreen() {
             setEditingDeck(null);
             setEditingDeckOptions([]);
             showToast(copy('commanderUpdated'));
+          } catch (error) {
+            showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+          } finally {
+            setSavingDeckEdit(false);
+          }
+        }}
+        onLinkSource={async (sourceUrl) => {
+          if (!editingDeck) return;
+          setSavingDeckEdit(true);
+          try {
+            await linkDeckSource(editingDeck, sourceUrl);
+            void hapticSuccess();
+            showToast(language === 'it' ? 'Lista collegata' : 'List linked');
           } catch (error) {
             showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
           } finally {
@@ -599,12 +614,12 @@ const styles = StyleSheet.create({
   deckSeparator: {
     height: 10,
   },
-  deckGridRow: {
-    gap: spacing.md,
-  },
   deckGridItem: {
     flex: 1,
     minWidth: 0,
+  },
+  deckGridItemMultiColumn: {
+    marginHorizontal: spacing.sm / 2,
   },
   emptyCard: {
     alignItems: 'center',

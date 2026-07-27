@@ -56,9 +56,4 @@ update('expo/app.json', [
 update('expo/lib/app-version.ts', [
   [/APP_DISPLAY_VERSION\s*=\s*'[^']+'/, `APP_DISPLAY_VERSION = '${version}'`],
 ]);
-update('mobile/android/app/build.gradle', [
-  [/(versionCode\s+)\d+/, `$1${versionCode}`],
-  [/(versionName\s+")[^"]+("\s*)/, `$1${version}$2`],
-]);
-
 console.log(`Version ${version} (code ${versionCode}) synchronized.`);

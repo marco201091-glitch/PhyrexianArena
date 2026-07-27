@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   backgroundWrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   backgroundImageWrap: {
     width: '100%',
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   scrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(2, 3, 8, 0.25)',
     zIndex: 1,
   },
@@ -404,17 +404,17 @@ const styles = StyleSheet.create({
     right: 0,
   },
   flash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(239, 68, 68, 0.42)',
     zIndex: 3,
   },
   selectSurface: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 50,
     elevation: 30,
   },
   playerHighlight: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
   dragSurface: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   recentLifeDeltaIPad: {
     minWidth: 50,
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   eliminatedOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 10,
     alignItems: 'center',
     justifyContent: 'center',

@@ -98,12 +98,14 @@ export default function LoginScreen() {
           <Input
             label={copy('emailOrUsername')}
             autoCapitalize="none"
+            testID="login-identifier"
             value={loginIdentifier}
             onChangeText={setLoginIdentifier}
           />
           <Input
             label={copy('password')}
             secureTextEntry
+            testID="login-password"
             value={password}
             onChangeText={setPassword}
           />
@@ -124,6 +126,7 @@ export default function LoginScreen() {
           <Button
             label={loading ? copy('signingIn') : copy('enterArena')}
             onPress={handleLogin}
+            testID="login-submit"
             disabled={loading}
           />
           {Platform.OS === 'android' ? (
@@ -140,6 +143,7 @@ export default function LoginScreen() {
             icon="heart-outline"
             variant="outline"
             onPress={() => router.push('/counter' as Href)}
+            testID="login-quick-game"
           />
         </View>
       </PhyrexianPanel>

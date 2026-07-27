@@ -12,7 +12,21 @@ module.exports = ({ config: base }) => {
     ...base,
     name: isDevVariant ? 'Phyrexian Arena Dev' : base.name,
     scheme: isDevVariant ? devScheme : base.scheme,
-    plugins: [...base.plugins, './plugins/with-clean-intent-filter-markers'],
+    plugins: [
+      ...base.plugins,
+      'expo-font',
+      'expo-image',
+      'expo-splash-screen',
+      'expo-status-bar',
+      'expo-web-browser',
+      ['@sentry/react-native/expo', {
+        organization: process.env.SENTRY_ORG,
+        project: process.env.SENTRY_MOBILE_PROJECT || process.env.SENTRY_PROJECT,
+        url: process.env.SENTRY_URL,
+        disableAutoUpload: isDevVariant,
+      }],
+      './plugins/with-clean-intent-filter-markers',
+    ],
     android: {
       ...base.android,
       package: isDevVariant ? 'com.phyrexianarena.app.dev' : base.android.package,

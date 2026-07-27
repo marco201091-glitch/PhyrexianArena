@@ -343,6 +343,36 @@ export function useProfileDecks(userId: string | undefined) {
     await refresh();
   }, [decks, refresh]);
 
+  const linkDeckSource = useCallback(async (deck: ProfileDeck, sourceUrl: string) => {
+    const { data, error, status } = await apiPost<ImportedDeckPreview & { error?: string }>(
+      '/api/deck-import',
+      { url: sourceUrl },
+    );
+    if (status !== 200 || error || !data?.sourceUrl || !isImportedDeckSource(data.sourceType)) {
+      throw new Error(data?.error || 'Invalid Archidekt or Moxfield link');
+    }
+    const duplicate = decks.find((entry) =>
+      entry.id !== deck.id && entry.user_id === deck.user_id && entry.source_url === data.sourceUrl,
+    );
+    if (duplicate) throw new Error('This list is already linked to another deck');
+
+    const colorFields = deckDataToColorFields({
+      commanderOptions: data.commanderOptions || [],
+      colorIdentity: data.colorIdentity || [],
+    });
+    const { error: updateError } = await supabase
+      .from('decks')
+      .update({
+        source_url: data.sourceUrl,
+        source_type: data.sourceType,
+        bracket: data.bracket,
+        ...colorFields,
+      })
+      .eq('id', deck.id);
+    if (updateError) throw updateError;
+    await refresh();
+  }, [decks, refresh]);
+
   const saveArchidektUserDecks = useCallback(async (input: {
     decks: ImportedDeckPreview[];
     selectedUrls: string[];
@@ -508,6 +538,7 @@ export function useProfileDecks(userId: string | undefined) {
     refreshImportedDeck,
     refreshAllDecks,
     updateDeck,
+    linkDeckSource,
     saveArchidektUserDecks,
     getDeckCommanderOptions,
   };

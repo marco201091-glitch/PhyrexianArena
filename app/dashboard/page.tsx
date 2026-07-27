@@ -30,7 +30,7 @@ import { fetchGroupByInviteCode, normalizeInviteCode } from '@/lib/join-arena';
 
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 import { ManaColorBadge, ManaColorPills } from '@/components/ui/mana-color-pills';
-import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
+import { AppModal } from '@/components/ui/modal-shell';
 import { PanelWithActions } from '@/components/ui/panel-with-actions';
 import {
   Plus,
@@ -782,8 +782,14 @@ export default function DashboardPage() {
       </main>
 
       {showJoinModal && (
-        <ModalOverlay>
-          <ModalCard>
+        <AppModal
+          open={showJoinModal}
+          onOpenChange={(open) => {
+            setShowJoinModal(open);
+            if (!open) setJoiningCode('');
+          }}
+          title={t({ it: 'Entra in un\'arena', en: 'Join an Arena' })}
+        >
             <CardHeader>
               <CardTitle className="text-foreground">{t({ it: 'Entra in un\'arena', en: 'Join an Arena' })}</CardTitle>
               <CardDescription className="text-muted-foreground">
@@ -797,7 +803,8 @@ export default function DashboardPage() {
                   <Input
                     autoFocus
                     value={joiningCode}
-                    onChange={(e) => setJoiningCode(e.target.value.toUpperCase())}
+                    onChange={(e) => setJoiningCode(e.target.value)}
+                    onBlur={() => setJoiningCode((code) => code.toUpperCase())}
                     placeholder={t({ it: 'Es. PHY123', en: 'e.g. PHY123' })}
                     className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground uppercase tracking-widest"
                   />
@@ -824,13 +831,15 @@ export default function DashboardPage() {
                 </div>
               </form>
             </CardContent>
-          </ModalCard>
-        </ModalOverlay>
+        </AppModal>
       )}
 
       {showCreateModal && (
-        <ModalOverlay>
-          <ModalCard>
+        <AppModal
+          open={showCreateModal}
+          onOpenChange={setShowCreateModal}
+          title={t({ it: 'Crea nuova arena', en: 'Create New Arena' })}
+        >
             <CardHeader>
               <CardTitle className="text-foreground">{t({ it: 'Crea nuova arena', en: 'Create New Arena' })}</CardTitle>
               <CardDescription className="text-muted-foreground">
@@ -877,8 +886,7 @@ export default function DashboardPage() {
                 </div>
               </form>
             </CardContent>
-          </ModalCard>
-        </ModalOverlay>
+        </AppModal>
       )}
     </div>
   );

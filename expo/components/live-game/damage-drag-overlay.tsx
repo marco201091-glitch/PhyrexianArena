@@ -121,7 +121,7 @@ export function DamageDragOverlay({ visible, amount, dragX, dragY, sourceX, sour
 
 const styles = StyleSheet.create({
   layer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 40,
   },
   arrowShaft: {
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   arrowGlow: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 6,
     backgroundColor: 'rgba(239,68,68,0.3)',
     shadowColor: '#ef4444',

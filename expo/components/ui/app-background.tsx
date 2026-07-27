@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     top: `${backgroundArt.offsetY * 100}%`,
   },
   overlayStack: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   overlayBandTop: {
     position: 'absolute',

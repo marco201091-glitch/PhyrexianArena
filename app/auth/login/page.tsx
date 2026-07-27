@@ -17,7 +17,6 @@ import { signInWithGoogle } from '@/lib/google-auth';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { DemoLoginButton } from '@/components/auth/demo-login-button';
 import { AuthPageShell } from '@/components/legal/auth-page-shell';
-import { useIsNativeApp } from '@/hooks/use-is-native-app';
 
 function LoginForm() {
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -33,7 +32,6 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const t = useCallback((value: string | { en: string }) => typeof value === 'string' ? value : value.en, []);
-  const isNative = useIsNativeApp();
 
   useEffect(() => {
     const oauthError = searchParams.get('error');
@@ -186,8 +184,7 @@ function LoginForm() {
             </Button>
           </form>
 
-          {!isNative && (
-            <>
+          <>
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-border" />
@@ -207,8 +204,7 @@ function LoginForm() {
               <Button asChild variant="outline" className="mt-3 w-full border-cyan-400/30 text-cyan-100">
                 <Link href="/counter">{t({ en: 'Quick game' })}</Link>
               </Button>
-            </>
-          )}
+          </>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             {t({ en: 'Not registered yet?' })}{' '}

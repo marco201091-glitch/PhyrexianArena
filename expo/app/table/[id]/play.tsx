@@ -1,4 +1,5 @@
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
+import NetInfo from '@react-native-community/netinfo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -536,6 +537,21 @@ export default function LiveGameScreen() {
   }, [syncJournal]);
 
   useEffect(() => {
+    return NetInfo.addEventListener((state) => {
+      const online = state.isConnected === true && state.isInternetReachable !== false;
+      if (!online) {
+        if (syncTimerRef.current) {
+          clearTimeout(syncTimerRef.current);
+          syncTimerRef.current = null;
+        }
+        setSyncStatus('offline');
+        return;
+      }
+      void syncJournal();
+    });
+  }, [syncJournal]);
+
+  useEffect(() => {
     if (!groupId || !user) return;
     let mounted = true;
     void (async () => {
@@ -676,7 +692,11 @@ export default function LiveGameScreen() {
   }, [applySeatSetups, applyStartingLife, groupId, loading, setupParticipants, user]);
 
   useEffect(() => {
-    const interval = setInterval(() => void syncJournal(), 10_000);
+    const interval = setInterval(() => {
+      void NetInfo.fetch().then((state) => {
+        if (state.isConnected === true && state.isInternetReachable !== false) void syncJournal();
+      });
+    }, 10_000);
     const appStateSubscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         void refreshAuthoritativeState().catch(() => undefined).finally(() => syncJournal());

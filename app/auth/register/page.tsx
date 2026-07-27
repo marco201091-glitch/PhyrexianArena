@@ -18,7 +18,6 @@ import { supabase } from '@/lib/supabase';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { AuthPageShell } from '@/components/legal/auth-page-shell';
 import { RegisterTermsNotice } from '@/components/legal/register-terms-notice';
-import { useIsNativeApp } from '@/hooks/use-is-native-app';
 
 function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -32,7 +31,6 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { copy: t, language } = useLanguage();
-  const isNative = useIsNativeApp();
   const redirectPath = getSafeRedirectPath(searchParams.get('redirect'));
   const isPasswordValid = isPasswordPolicyValid(password);
   const isEmailValid = isValidEmail(email);
@@ -260,8 +258,7 @@ function RegisterForm() {
             </Button>
           </form>
 
-          {!isNative && (
-            <>
+          <>
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-border" />
@@ -276,8 +273,7 @@ function RegisterForm() {
                 onClick={handleGoogleRegister}
                 label={{ it: 'Registrati con Google', en: 'Sign up with Google' }}
               />
-            </>
-          )}
+          </>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             {t({ it: 'Hai gia un account?', en: 'Already have an account?' })}{' '}

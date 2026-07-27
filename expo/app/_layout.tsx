@@ -1,7 +1,7 @@
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { AccessLogger } from '@/components/access-logger';
 import { AppAlertHost } from '@/components/ui/app-alert-host';
 import { ImageCacheWarmer } from '@/components/deck/image-cache-warmer';
 import { colors } from '@/constants/theme';
+import { Sentry } from '@/lib/sentry';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -52,7 +53,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(colors.black);
   }, []);
@@ -64,7 +65,7 @@ export default function RootLayout() {
         <AuthProvider>
           <AvatarVersionProvider>
           <ToastProvider>
-          <StatusBar style="light" translucent={Platform.OS === 'android'} />
+          <StatusBar style="light" />
           <AuthGate>
             <AccessLogger />
             <ImageCacheWarmer />
@@ -95,6 +96,8 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 
 const styles = StyleSheet.create({
   authLoadingSurface: {
