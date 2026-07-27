@@ -2,22 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   applyIpRateLimit: vi.fn(),
-  resolveLoginEmail: vi.fn(),
-  signInWithPassword: vi.fn(),
+  fetch: vi.fn(),
 }));
 
 vi.mock('@/app/api/_lib/with-rate-limit', () => ({
   applyIpRateLimit: mocks.applyIpRateLimit,
-}));
-
-vi.mock('@/lib/supabase-admin', () => ({
-  getSupabaseAdminClient: () => ({ rpc: mocks.resolveLoginEmail }),
-}));
-
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({
-    auth: { signInWithPassword: mocks.signInWithPassword },
-  }),
 }));
 
 import { POST } from '@/app/api/auth/login/route';
@@ -34,19 +23,21 @@ describe('password login API', () => {
   beforeEach(() => {
     process.env.SUPABASE_URL = 'https://project.supabase.co';
     process.env.SUPABASE_ANON_KEY = 'publishable-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
     mocks.applyIpRateLimit.mockResolvedValue(null);
-    mocks.resolveLoginEmail.mockResolvedValue({
-      data: 'player@example.com',
-      error: null,
-    });
-    mocks.signInWithPassword.mockResolvedValue({
-      data: {
-        session: {
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        },
-      },
-      error: null,
+    vi.stubGlobal('fetch', mocks.fetch);
+    mocks.fetch.mockImplementation(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/rest/v1/rpc/resolve_login_email')) {
+        return Response.json('player@example.com');
+      }
+      const payload = JSON.parse(String(init?.body ?? '{}')) as { password?: string };
+      return payload.password === 'wrong'
+        ? Response.json({ error: 'invalid credentials' }, { status: 400 })
+        : Response.json({
+            access_token: 'access-token',
+            refresh_token: 'refresh-token',
+          });
     });
   });
 
@@ -55,11 +46,10 @@ describe('password login API', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.resolveLoginEmail).toHaveBeenCalledWith(
-      'resolve_login_email',
-      { identifier: 'usertest' },
-    );
-    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(String(mocks.fetch.mock.calls[0][0])).toContain('/rest/v1/rpc/resolve_login_email');
+    expect(String(mocks.fetch.mock.calls[1][0])).toContain('/auth/v1/token?grant_type=password');
+    expect(JSON.parse(String(mocks.fetch.mock.calls[1][1]?.body))).toEqual({
       email: 'player@example.com',
       password: 'ValidPassword1',
     });
@@ -71,13 +61,9 @@ describe('password login API', () => {
   });
 
   it('returns the same opaque error for unknown usernames and wrong passwords', async () => {
-    mocks.resolveLoginEmail.mockResolvedValueOnce({ data: null, error: null });
+    mocks.fetch.mockResolvedValueOnce(Response.json(null));
     const unknownResponse = await POST(loginRequest('unknown'));
 
-    mocks.signInWithPassword.mockResolvedValueOnce({
-      data: { session: null },
-      error: new Error('invalid credentials'),
-    });
     const wrongPasswordResponse = await POST(loginRequest('player@example.com', 'wrong'));
 
     expect(unknownResponse.status).toBe(401);
@@ -94,7 +80,6 @@ describe('password login API', () => {
     const response = await POST(loginRequest('usertest'));
 
     expect(response.status).toBe(429);
-    expect(mocks.resolveLoginEmail).not.toHaveBeenCalled();
-    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 });
