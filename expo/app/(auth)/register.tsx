@@ -1,8 +1,10 @@
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { Controller, useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { TurnstileField } from '@/components/auth/turnstile-field';
-import { isPasswordPolicyValid, PasswordRequirements } from '@/components/auth/password-requirements';
+import { PasswordRequirements } from '@/components/auth/password-requirements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
@@ -11,8 +13,8 @@ import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { useLanguage } from '@/contexts/language-context';
 import { apiPost } from '@/lib/api';
 import { showAppAlert } from '@/lib/app-alert';
-import { isValidEmail, isValidUsername } from '@/lib/auth-validation';
 import { supabase } from '@/lib/supabase';
+import { registerSchema, type RegisterValues } from '@/lib/validation/auth';
 import { colors } from '@/constants/theme';
 
 function resolveRedirectPath(redirect: string | string[] | undefined): Href {
@@ -28,31 +30,22 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { redirect } = useLocalSearchParams<{ redirect?: string }>();
   const redirectPath = resolveRedirectPath(redirect);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const { control, handleSubmit, formState: { errors } } = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { username: '', email: '', password: '' },
+    mode: 'onBlur',
+  });
+  const password = useWatch({ control, name: 'password' });
 
   const resetCaptcha = () => {
     setCaptchaToken('');
     setCaptchaResetSignal((value) => value + 1);
   };
 
-  const handleRegister = async () => {
-    if (!isValidUsername(username)) {
-      showAppAlert(copy('error'), copy('invalidUsername'));
-      return;
-    }
-    if (!isValidEmail(email)) {
-      showAppAlert(copy('error'), copy('invalidEmail'));
-      return;
-    }
-    if (!isPasswordPolicyValid(password)) {
-      showAppAlert(copy('error'), copy('weakPassword'));
-      return;
-    }
+  const handleRegister = async ({ username, email, password }: RegisterValues) => {
     if (!captchaToken) {
       showAppAlert(language === 'it' ? 'Attenzione' : 'Notice', copy('captchaRequired'));
       return;
@@ -98,9 +91,9 @@ export default function RegisterScreen() {
 
       <PhyrexianPanel variant="strong" style={styles.formPanel}>
         <View style={styles.form}>
-          <Input label={copy('username')} autoCapitalize="none" value={username} onChangeText={setUsername} />
-          <Input label={copy('email')} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-          <Input label={copy('password')} secureTextEntry value={password} onChangeText={setPassword} />
+          <Controller control={control} name="username" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('username')} autoCapitalize="none" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.username ? copy('invalidUsername') : undefined} />} />
+          <Controller control={control} name="email" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('email')} autoCapitalize="none" keyboardType="email-address" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.email ? copy('invalidEmail') : undefined} />} />
+          <Controller control={control} name="password" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('password')} secureTextEntry value={value} onChangeText={onChange} onBlur={onBlur} error={errors.password ? copy('weakPassword') : undefined} />} />
           <PasswordRequirements password={password} />
           <TurnstileField
             resetSignal={captchaResetSignal}
@@ -115,7 +108,7 @@ export default function RegisterScreen() {
           />
           <Button
             label={loading ? copy('creatingAccount') : copy('createAccount')}
-            onPress={handleRegister}
+            onPress={() => void handleSubmit(handleRegister)()}
             disabled={loading}
           />
         </View>

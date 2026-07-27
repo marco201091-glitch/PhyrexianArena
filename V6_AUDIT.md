@@ -10,6 +10,9 @@
 
 - Gate eseguito 2026-07-27: Web `52 file / 163 test`, Expo `53 file / 199 test`, sicurezza, lint, typecheck e build Next tutti verdi.
 - APK Dev v6.0.0 verificata: package `com.phyrexianarena.app.dev`, code `60000`, Android `minSdk 24` / `targetSdk 36`, ABI `arm64-v8a`, SHA-256 `CE3B3AF728A4599CDE4B183406FFBD22AF69E1398CD9767EE2D7BF649978855E`.
+- Foundation dati V6: TanStack Query v5 installato su Web/Expo; provider con cache, retry, stale-time, NetInfo e AppState focus management su Expo.
+- Foundation form V6: React Hook Form + Zod + resolver ora condivisi anche da Expo; registrazione mobile validata in modo dichiarativo.
+- Turnstile: endpoint runtime `/api/auth/turnstile/config` e widget Web/WebView senza dipendenza da site key incorporata in build obsolete.
 - La migration #27 e stata applicata e verificata solo su `supabase-dev-db` / `supabase-staging`: colonne, constraint, RLS e policy `profiles_update` ownership/admin corretti.
 - Root `npm audit --omit=dev`: 3 high, 0 critical. Restano `sharp`/`Next` e `brace-expansion`; l'update sicuro di Next e PostCSS ha ridotto i high da 10 a 3.
 - Expo SDK è allineato a `57.0.8` e tutti i moduli Expo/RN sono alle versioni attese. Gli advisory residui transitivi dell'ecosistema Expo/Sentry non hanno una correzione semver sicura: non viene forzato downgrade/override incompatibile.
@@ -29,7 +32,7 @@
 ## Prossime implementazioni consigliate
 
 1. **Isolamento env locale/Expo** — completato: Web ed Expo locali usano esclusivamente `supabase-staging`; l'APK Dev usa API e sito `dev.phyrexianarena.dpdns.org`.
-2. **Dev API rollout** — P0: il runtime Dev contiene le variabili Supabase corrette, ma il deploy attuale restituisce ancora `500` su `/api/public-arena/INVALID`. Dopo il prossimo deploy Dev, verificare il `404` atteso.
+2. **Dev API/captcha rollout** — P0: il deploy attuale è precedente agli ultimi fix; dopo il prossimo deploy Dev verificare `/api/public-arena/INVALID` (`404`) e `/api/auth/turnstile/config` (`200` con site key runtime).
 3. **Rigenerazione nativa + gate device** — P0: Expo 57 e Sentry aggiungono moduli nativi; creare nuova build Dev Android/iOS, poi eseguire Maestro e test touch/keyboard/rotazione.
 4. **Issue #26/#27 end-to-end** — P0: con env Dev isolati, validare import reale Archidekt/Moxfield, link manuale e auto-import; poi chiudere issue GitHub.
 5. **EAS workflow** — P1: Maestro smoke dopo build Dev e gate manuale prima di release. Le E2E non sostituiscono drag, keyboard e rotazione umani.

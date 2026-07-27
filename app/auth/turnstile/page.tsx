@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 declare global {
   interface Window { turnstile?: { render: (container: HTMLElement, options: Record<string, unknown>) => string; reset: (widgetId?: string) => void }; ReactNativeWebView?: { postMessage: (message: string) => void } }
@@ -8,7 +8,16 @@ declare global {
 
 export default function TurnstileMobilePage() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const [siteKey, setSiteKey] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/turnstile/config', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ siteKey?: string }> : Promise.reject(new Error('Turnstile unavailable')))
+      .then((config) => { if (!cancelled && config.siteKey) setSiteKey(config.siteKey); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!siteKey || !containerRef.current) return;

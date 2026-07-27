@@ -48,3 +48,6 @@ Regola assoluta: sviluppo solo su `Dev` e Supabase `supabase-test`. Mai toccare 
 - [ ] Rigenerare build native Dev dopo upgrade Expo/Sentry e validare Android/iOS al gate finale.
 - [ ] P0 audit: isolare `.env.local` e `expo/.env` esclusivamente su `supabase-staging`; ora contengono ancora endpoint Supabase Production.
 - [ ] P0 audit: correggere service role del runtime Dev (`/api/public-arena/INVALID` risponde `500`, deve rispondere `404`).
+- [x] Foundation TanStack Query v5 Web/Expo con NetInfo/AppState e policy cache/retry.
+- [x] React Hook Form + Zod integrati anche nella registrazione Expo.
+- [x] Turnstile runtime config per rimuovere la dipendenza da site key incorporata in build Dev obsolete.

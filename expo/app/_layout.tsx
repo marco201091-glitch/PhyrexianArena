@@ -14,6 +14,7 @@ import { AppAlertHost } from '@/components/ui/app-alert-host';
 import { ImageCacheWarmer } from '@/components/deck/image-cache-warmer';
 import { colors } from '@/constants/theme';
 import { Sentry } from '@/lib/sentry';
+import { QueryProvider } from '@/components/query-provider';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -61,6 +62,7 @@ function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
+      <QueryProvider>
       <LanguageProvider>
         <AuthProvider>
           <AvatarVersionProvider>
@@ -92,6 +94,7 @@ function RootLayout() {
           </AvatarVersionProvider>
         </AuthProvider>
       </LanguageProvider>
+      </QueryProvider>
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );
