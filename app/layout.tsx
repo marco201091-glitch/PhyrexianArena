@@ -8,6 +8,7 @@ import { AppLocalizer } from '@/components/app-localizer';
 import { AccessLogger } from '@/components/access-logger';
 import { DemoBanner } from '@/components/demo-banner';
 import { QueryProvider } from '@/components/query-provider';
+import { AppErrorBoundary } from '@/components/app-error-boundary';
 
 const inter = Inter({ subsets: ['latin'] });
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['400', '600', '700'], variable: '--font-cinzel' });
@@ -56,7 +57,7 @@ export default function RootLayout({
             <AuthProvider>
             <AccessLogger />
             <DemoBanner />
-            {children}
+            <AppErrorBoundary>{children}</AppErrorBoundary>
             <AppLocalizer />
             <Toaster />
             </AuthProvider>

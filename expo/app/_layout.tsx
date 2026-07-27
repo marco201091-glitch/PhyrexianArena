@@ -15,6 +15,7 @@ import { ImageCacheWarmer } from '@/components/deck/image-cache-warmer';
 import { colors } from '@/constants/theme';
 import { Sentry } from '@/lib/sentry';
 import { QueryProvider } from '@/components/query-provider';
+import { AppErrorBoundary } from '@/components/app-error-boundary';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -68,6 +69,7 @@ function RootLayout() {
           <AvatarVersionProvider>
           <ToastProvider>
           <StatusBar style="light" />
+          <AppErrorBoundary>
           <AuthGate>
             <AccessLogger />
             <ImageCacheWarmer />
@@ -90,6 +92,7 @@ function RootLayout() {
             <Stack.Screen name="counter" />
           </Stack>
           </AuthGate>
+          </AppErrorBoundary>
           </ToastProvider>
           </AvatarVersionProvider>
         </AuthProvider>

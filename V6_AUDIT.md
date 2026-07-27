@@ -13,6 +13,8 @@
 - Foundation dati V6: TanStack Query v5 installato su Web/Expo; provider con cache, retry, stale-time, NetInfo e AppState focus management su Expo.
 - Foundation form V6: React Hook Form + Zod + resolver ora condivisi anche da Expo; registrazione mobile validata in modo dichiarativo.
 - Turnstile: endpoint runtime `/api/auth/turnstile/config` e widget Web/WebView senza dipendenza da site key incorporata in build obsolete.
+- Error isolation: `react-error-boundary` integrato su Web ed Expo con fallback utente e reset controllato.
+- Gate finale 2026-07-27: Web `53 file / 165 test`, Expo `53 file / 199 test`, security, lint, typecheck, build Next e APK Dev verdi.
 - La migration #27 e stata applicata e verificata solo su `supabase-dev-db` / `supabase-staging`: colonne, constraint, RLS e policy `profiles_update` ownership/admin corretti.
 - Root `npm audit --omit=dev`: 3 high, 0 critical. Restano `sharp`/`Next` e `brace-expansion`; l'update sicuro di Next e PostCSS ha ridotto i high da 10 a 3.
 - Expo SDK è allineato a `57.0.8` e tutti i moduli Expo/RN sono alle versioni attese. Gli advisory residui transitivi dell'ecosistema Expo/Sentry non hanno una correzione semver sicura: non viene forzato downgrade/override incompatibile.
