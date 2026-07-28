@@ -16,6 +16,7 @@ import { fetchGroupByInviteCode, type GroupInvitePreview } from '@/lib/join-aren
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { colors, spacing } from '@/constants/theme';
+import { apiPost } from '@/lib/api';
 
 export default function JoinScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -54,16 +55,8 @@ export default function JoinScreen() {
 
     setJoining(true);
     try {
-      const { error } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: group.id,
-          user_id: user.id,
-        });
-
-      if (error && error.code !== '23505') {
-        throw error;
-      }
+      const { status, error } = await apiPost('/api/arena-membership', { inviteCode });
+      if (status !== 200) throw new Error(error || copy('joinArenaFailed'));
 
       void hapticSuccess();
       showToast(copy('joinedArenaBody'));
@@ -73,7 +66,7 @@ export default function JoinScreen() {
     } finally {
       setJoining(false);
     }
-  }, [copy, group, router, showToast, user]);
+  }, [copy, group, inviteCode, router, showToast, user]);
 
   if (loading || authLoading) {
     return <Loader label={copy('loading')} />;

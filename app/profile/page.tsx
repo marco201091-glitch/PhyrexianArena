@@ -101,6 +101,8 @@ import {
   Shield,
   ChevronRight,
   Skull,
+  Link2,
+  Star,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -118,6 +120,7 @@ interface Deck {
   color_identity: string[] | null;
   commander_options: ImportedCommanderOption[] | null;
   commander_cmc: number | null;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string | null;
   profiles?: {
@@ -130,6 +133,9 @@ interface Profile {
   id: string;
   username: string;
   display_name: string | null;
+  archidekt_username: string | null;
+  archidekt_auto_import: boolean;
+  archidekt_last_sync_at: string | null;
 }
 
 interface CommanderSearchResult {
@@ -581,6 +587,10 @@ export default function ProfilePage() {
   const [importedCommanderArts, setImportedCommanderArts] = useState<CommanderArtOption[]>([]);
   const [loadingImportedCommanderArts, setLoadingImportedCommanderArts] = useState(false);
   const [archidektUsername, setArchidektUsername] = useState('');
+  const [archidektSettingsUsername, setArchidektSettingsUsername] = useState('');
+  const [archidektAutoImport, setArchidektAutoImport] = useState(false);
+  const [savingArchidektSettings, setSavingArchidektSettings] = useState(false);
+  const archidektAutoImportStartedRef = useRef(false);
   const [importingUserDecks, setImportingUserDecks] = useState(false);
   const [importedUserDecks, setImportedUserDecks] = useState<ImportedDeckPreview[]>([]);
   const [selectedUserDeckCommanders, setSelectedUserDeckCommanders] = useState<Record<string, ImportedCommanderOption>>({});
@@ -614,6 +624,9 @@ export default function ProfilePage() {
   const [deckArtOptions, setDeckArtOptions] = useState<CommanderArtOption[]>([]);
   const [loadingDeckArtOptions, setLoadingDeckArtOptions] = useState(false);
   const [savingDeckArt, setSavingDeckArt] = useState(false);
+  const [linkingDeck, setLinkingDeck] = useState<Deck | null>(null);
+  const [linkDeckUrl, setLinkDeckUrl] = useState('');
+  const [savingDeckLink, setSavingDeckLink] = useState(false);
   const [deckSearchQuery, setDeckSearchQuery] = useState('');
   const [deckColorFilter, setDeckColorFilter] = useState('all');
   const [deckPlayerFilter, setDeckPlayerFilter] = useState('all');
@@ -980,6 +993,8 @@ export default function ProfilePage() {
     });
 
     return matching.sort((left, right) => {
+      const favoriteOrder = Number(right.is_favorite) - Number(left.is_favorite);
+      if (favoriteOrder !== 0) return favoriteOrder;
       const a = deckPerformance.get(left.id);
       const b = deckPerformance.get(right.id);
       if (deckSort === 'winRate') return (b?.winRate || 0) - (a?.winRate || 0) || (b?.gamesPlayed || 0) - (a?.gamesPlayed || 0);
@@ -994,11 +1009,29 @@ export default function ProfilePage() {
     });
   }, [deckColorFilter, deckPerformance, deckSearchQuery, deckSort, visibleDecks]);
 
+  const toggleDeckFavorite = useCallback(async (deck: Deck) => {
+    if (!user || deck.user_id !== user.id) return;
+    const next = !deck.is_favorite;
+    setDecks((current) => current.map((entry) => entry.id === deck.id ? { ...entry, is_favorite: next } : entry));
+    const { error } = await supabase
+      .from('decks')
+      .update({ is_favorite: next })
+      .eq('id', deck.id)
+      .eq('user_id', user.id);
+    if (error) {
+      setDecks((current) => current.map((entry) => entry.id === deck.id ? { ...entry, is_favorite: !next } : entry));
+      toast({
+        title: t({ it: 'Preferito non aggiornato', en: 'Favorite not updated' }),
+        variant: 'destructive',
+      });
+    }
+  }, [t, toast, user]);
+
   const fetchProfiles = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, display_name')
+        .select('id, username, display_name, archidekt_username, archidekt_auto_import, archidekt_last_sync_at')
         .order('username', { ascending: true });
 
       if (error) throw error;
@@ -1024,6 +1057,14 @@ export default function ProfilePage() {
       fetchProfiles();
     }
   }, [user, fetchDecks, fetchProfiles]);
+
+  useEffect(() => {
+    if (!currentProfile) return;
+    const savedArchidektUsername = currentProfile.archidekt_username || '';
+    setArchidektSettingsUsername(savedArchidektUsername);
+    setArchidektUsername(savedArchidektUsername);
+    setArchidektAutoImport(Boolean(currentProfile.archidekt_auto_import));
+  }, [currentProfile]);
 
   const getTargetProfileId = () => {
     if (!user) return null;
@@ -1074,6 +1115,47 @@ export default function ProfilePage() {
       }
     } finally {
       setSavingDisplayName(false);
+    }
+  };
+
+  const handleSaveArchidektSettings = async () => {
+    if (!user) return;
+    const username = archidektSettingsUsername.trim() || null;
+    if (archidektAutoImport && !username) {
+      toast({
+        title: t({ it: 'Username richiesto', en: 'Username required' }),
+        description: t({ it: 'Inserisci il tuo username Archidekt per abilitare il controllo automatico.', en: 'Enter your Archidekt username to enable automatic checks.' }),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingArchidektSettings(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          archidekt_username: username,
+          archidekt_auto_import: archidektAutoImport,
+        })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      setProfiles((current) => current.map((profile) => profile.id === user.id ? {
+        ...profile,
+        archidekt_username: username,
+        archidekt_auto_import: archidektAutoImport,
+      } : profile));
+      setArchidektUsername(username || '');
+      toast({ title: t({ it: 'Archidekt configurato', en: 'Archidekt configured' }) });
+    } catch (error) {
+      toast({
+        title: t({ it: 'Errore', en: 'Error' }),
+        description: getSupabaseErrorMessage(error, t({ it: 'Impossibile salvare le impostazioni Archidekt.', en: 'Unable to save Archidekt settings.' })),
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingArchidektSettings(false);
     }
   };
 
@@ -1284,6 +1366,69 @@ export default function ProfilePage() {
       });
     } finally {
       setRefreshingDeckIds((ids) => ids.filter((id) => id !== deck.id));
+    }
+  };
+
+  const handleLinkDeckToExternalSource = async () => {
+    if (!linkingDeck || !linkDeckUrl.trim()) return;
+    setSavingDeckLink(true);
+    try {
+      const response = await authenticatedFetch('/api/deck-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: linkDeckUrl }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || t({ it: 'Link non valido.', en: 'Invalid link.' }));
+      }
+
+      const imported = await response.json() as ImportedDeckPreview;
+      if (!isImportedDeckSource(imported.sourceType) || !imported.sourceUrl) {
+        throw new Error(t({ it: 'Sono supportati solo Archidekt e Moxfield.', en: 'Only Archidekt and Moxfield are supported.' }));
+      }
+      const duplicate = decks.find((deck) =>
+        deck.id !== linkingDeck.id
+        && deck.user_id === linkingDeck.user_id
+        && deck.source_url === imported.sourceUrl,
+      );
+      if (duplicate) {
+        throw new Error(t({ it: 'Questa lista e gia collegata a un altro tuo mazzo.', en: 'This list is already linked to another one of your decks.' }));
+      }
+
+      const colorFields = deckDataToColorFields({
+        commanderOptions: imported.commanderOptions || [],
+        colorIdentity: imported.colorIdentity || [],
+      });
+      const commanderCmc = await resolveDeckCommanderCmc(
+        { commander: linkingDeck.commander, commander_options: colorFields.commander_options },
+        lookupCommanderCmcInBrowser,
+      );
+      const update = {
+        source_url: imported.sourceUrl,
+        source_type: imported.sourceType,
+        bracket: imported.bracket,
+        commander_cmc: commanderCmc ?? linkingDeck.commander_cmc,
+        ...colorFields,
+      };
+      const { error } = await supabase.from('decks').update(update).eq('id', linkingDeck.id);
+      if (error) throw error;
+
+      setDecks((current) => current.map((deck) => deck.id === linkingDeck.id ? { ...deck, ...update } : deck));
+      setLinkingDeck(null);
+      setLinkDeckUrl('');
+      toast({
+        title: t({ it: 'Lista collegata', en: 'List linked' }),
+        description: t({ it: 'Il mazzo manterra comandante e nome; da ora puo aggiornarsi dalla sorgente.', en: 'The deck keeps its commander and name; it can now refresh from its source.' }),
+      });
+    } catch (error) {
+      toast({
+        title: t({ it: 'Errore', en: 'Error' }),
+        description: getSupabaseErrorMessage(error, t({ it: 'Impossibile collegare la lista.', en: 'Unable to link the list.' })),
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDeckLink(false);
     }
   };
 
@@ -1934,17 +2079,23 @@ export default function ProfilePage() {
 
     setSavingUserDecks(true);
     try {
-      if (decksToInsert.length > 0) {
-        const { error } = await supabase.from('decks').insert(decksToInsert);
+      if (targetProfileId === user?.id) {
+        const { error } = await supabase.rpc('sync_archidekt_decks', {
+          p_decks: [
+            ...decksToInsert,
+            ...decksToUpdate.map((entry) => entry.payload),
+          ],
+        });
         if (error) throw error;
-      }
-
-      for (const deckUpdate of decksToUpdate) {
-        const { error } = await supabase
-          .from('decks')
-          .update(deckUpdate.payload)
-          .eq('id', deckUpdate.id);
-        if (error) throw error;
+      } else {
+        if (decksToInsert.length > 0) {
+          const { error } = await supabase.from('decks').insert(decksToInsert);
+          if (error) throw error;
+        }
+        for (const deckUpdate of decksToUpdate) {
+          const { error } = await supabase.from('decks').update(deckUpdate.payload).eq('id', deckUpdate.id);
+          if (error) throw error;
+        }
       }
 
       toast({
@@ -1970,6 +2121,68 @@ export default function ProfilePage() {
       setSavingUserDecks(false);
     }
   };
+
+  const autoImportArchidektDecks = useCallback(async (username: string) => {
+    if (!user) return;
+    try {
+      const response = await authenticatedFetch('/api/archidekt-user-decks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+      });
+      if (!response.ok) return;
+
+      const payload = await response.json() as { decks?: ImportedDeckPreview[] };
+      const candidates = (payload.decks || []).filter((deck) =>
+        deck.sourceType === 'archidekt'
+        && deck.sourceUrl
+        && !deck.warning
+        && !deck.error
+        && Boolean(deck.commander?.trim()),
+      );
+      const rows = [];
+      for (const rawDeck of candidates) {
+        const deck = await normalizeImportedDeckPreview(rawDeck);
+        const commander = getDefaultImportedCommanderOption(deck);
+        const colorFields = deckDataToColorFields({
+          commanderOptions: deck.commanderOptions || [],
+          colorIdentity: deck.colorIdentity || [],
+        });
+        const commanderCmc = await resolveDeckCommanderCmc(
+          { commander: commander.name, commander_options: colorFields.commander_options },
+          lookupCommanderCmcInBrowser,
+        );
+        const commanderImage = await resolveImportedDeckCommanderImageForSave(commander, deck);
+        rows.push({
+          user_id: user.id,
+          group_id: null,
+          name: deck.name,
+          commander: commander.name,
+          commander_image: commanderImage,
+          source_url: deck.sourceUrl,
+          source_type: 'archidekt',
+          bracket: deck.bracket,
+          commander_cmc: commanderCmc,
+          ...colorFields,
+        });
+        await delay(SCRYFALL_REQUEST_GAP_MS);
+      }
+      if (rows.length > 0) {
+        const { error } = await supabase.rpc('sync_archidekt_decks', { p_decks: rows });
+        if (error) throw error;
+        await fetchDecks();
+      }
+    } catch {
+      // Background sync must not interrupt profile use.
+    }
+  }, [fetchDecks, user]);
+
+  useEffect(() => {
+    const username = currentProfile?.archidekt_username?.trim();
+    if (!user || !currentProfile?.archidekt_auto_import || !username || archidektAutoImportStartedRef.current) return;
+    archidektAutoImportStartedRef.current = true;
+    void autoImportArchidektDecks(username);
+  }, [autoImportArchidektDecks, currentProfile?.archidekt_auto_import, currentProfile?.archidekt_username, user]);
 
   const saveManualDeck = async () => {
     const targetProfileId = getTargetProfileId();
@@ -2048,7 +2261,7 @@ export default function ProfilePage() {
     setSelectedImportedCommander(null);
     setImportedCommanderArts([]);
     setLoadingImportedCommanderArts(false);
-    setArchidektUsername('');
+    setArchidektUsername(currentProfile?.archidekt_username || '');
     setImportedUserDecks([]);
     setSelectedUserDeckCommanders({});
     setSelectedUserDeckUrls([]);
@@ -2406,6 +2619,50 @@ export default function ProfilePage() {
                   </div>
                 </div>
               ) : null}
+
+              <div className="mt-6 overflow-hidden rounded-xl border border-violet-400/30 bg-violet-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Link2 className="h-4 w-4 text-violet-300" />
+                    <h3 className="font-semibold text-violet-50">Archidekt sync</h3>
+                  </div>
+                  <p className="mb-3 text-sm text-violet-200/70">
+                    {t({
+                      it: 'Collega il tuo profilo pubblico Archidekt. Se attivi il controllo automatico, i nuovi mazzi Commander pubblici vengono aggiunti in background senza modificare quelli esistenti.',
+                      en: 'Connect your public Archidekt profile. When automatic checks are enabled, new public Commander decks are added in the background without changing existing decks.',
+                    })}
+                  </p>
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-violet-100/90">
+                      {t({ it: 'Il tuo username Archidekt', en: 'Your Archidekt username' })}
+                    </label>
+                    <Input
+                      value={archidektSettingsUsername}
+                      onChange={(event) => setArchidektSettingsUsername(event.target.value)}
+                      placeholder={t({ it: 'Username Archidekt', en: 'Archidekt username' })}
+                      className={accountPanelInputClass}
+                    />
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-violet-400/15 bg-black/15 p-3 text-sm text-violet-100/90">
+                      <input
+                        type="checkbox"
+                        checked={archidektAutoImport}
+                        onChange={(event) => setArchidektAutoImport(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 accent-violet-500"
+                      />
+                      <span>
+                        <span className="block font-medium">{t({ it: 'Importa automaticamente nuovi mazzi', en: 'Automatically import new decks' })}</span>
+                        <span className="block text-xs text-violet-200/65">{t({ it: 'Controllo una volta per apertura profilo, con limite API.', en: 'Checked once per profile opening, with API rate limiting.' })}</span>
+                      </span>
+                    </label>
+                    <Button
+                      onClick={handleSaveArchidektSettings}
+                      disabled={savingArchidektSettings}
+                      className="bg-gradient-to-r from-violet-600 to-purple-700 shadow-[0_8px_24px_rgba(124,58,237,0.28)] hover:from-violet-500 hover:to-purple-600"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      {savingArchidektSettings ? t({ it: 'Salvataggio...', en: 'Saving...' }) : t({ it: 'Salva Archidekt', en: 'Save Archidekt' })}
+                    </Button>
+                  </div>
+                </div>
             </CardContent>
           </Card>
         </MotionPanel>
@@ -2685,8 +2942,35 @@ export default function ProfilePage() {
                       </div>
 
                       <div className="mt-auto flex items-center justify-end gap-1 border-t border-border/50 pt-2 sm:border-0 sm:pt-1" onClick={(event) => event.stopPropagation()}>
+                        {deck.user_id === user?.id ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-pressed={deck.is_favorite}
+                            className={`h-10 w-10 ${deck.is_favorite ? 'text-amber-300 hover:text-amber-200' : 'text-muted-foreground hover:text-amber-300'}`}
+                            onClick={() => void toggleDeckFavorite(deck)}
+                            title={t({
+                              it: deck.is_favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti',
+                              en: deck.is_favorite ? 'Remove from favorites' : 'Add to favorites',
+                            })}
+                          >
+                            <Star className={`h-4 w-4 ${deck.is_favorite ? 'fill-current' : ''}`} />
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="sm" className="mr-auto gap-1 text-violet-300" onClick={() => setDetailsDeck(deck)}>
                           Details <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10 text-muted-foreground hover:text-violet-400"
+                          onClick={() => {
+                            setLinkingDeck(deck);
+                            setLinkDeckUrl(deck.source_url || '');
+                          }}
+                          title={t({ it: 'Collega lista Archidekt o Moxfield', en: 'Link an Archidekt or Moxfield list' })}
+                        >
+                          <Link2 className="w-4 h-4" />
                         </Button>
                         {isImportedDeckSource(deck.source_type) && deck.source_url && (
                           <Button
@@ -2878,7 +3162,10 @@ export default function ProfilePage() {
                   <Button
                     variant="outline"
                     className="w-full h-24 flex flex-col items-center justify-center gap-2 border-border hover:border-violet-500 hover:bg-violet-500/10"
-                    onClick={() => setAddMode('archidekt-user')}
+                    onClick={() => {
+                      setArchidektUsername(currentProfile?.archidekt_username || '');
+                      setAddMode('archidekt-user');
+                    }}
                   >
                     <UserIcon className="w-6 h-6" />
                     <span>{t({ it: 'Importa per username Archidekt', en: 'Import by Archidekt username' })}</span>
@@ -2904,8 +3191,8 @@ export default function ProfilePage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     {t({
-                      it: 'Archidekt restituisce senza login solo i mazzi pubblici: quelli privati non vengono caricati.',
-                      en: 'Without Archidekt login, only public decks are returned: private decks are not loaded.',
+                      it: 'Precompilato dal profilo. Puoi modificarlo per questa importazione; Archidekt restituisce solo i mazzi pubblici.',
+                      en: 'Pre-filled from your profile. You can change it for this import; Archidekt returns public decks only.',
                     })}
                   </p>
                   <div className="flex gap-3">
@@ -3531,6 +3818,54 @@ export default function ProfilePage() {
                   disabled={savingDeckArt}
                 >
                   {t({ it: 'Chiudi', en: 'Close' })}
+                </Button>
+              </div>
+            </CardContent>
+          </ModalCard>
+        </ModalOverlay>
+      )}
+
+      {linkingDeck && (
+        <ModalOverlay>
+          <ModalCard size="md">
+            <CardHeader className="shrink-0 border-b border-border/70">
+              <CardTitle className="text-foreground">{t({ it: 'Collega lista esterna', en: 'Link external list' })}</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                {t({
+                  it: 'Il nome e il comandante attuali restano invariati. Il link abilita aggiornamenti, bracket e metadati dalla lista.',
+                  en: 'Your current name and commander stay unchanged. The link enables source refreshes, bracket and metadata.',
+                })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 py-6">
+              <Input
+                value={linkDeckUrl}
+                onChange={(event) => setLinkDeckUrl(event.target.value)}
+                placeholder="https://archidekt.com/decks/... oppure https://moxfield.com/decks/..."
+                autoFocus
+                className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-border text-foreground"
+                  disabled={savingDeckLink}
+                  onClick={() => {
+                    setLinkingDeck(null);
+                    setLinkDeckUrl('');
+                  }}
+                >
+                  {t({ it: 'Annulla', en: 'Cancel' })}
+                </Button>
+                <Button
+                  type="button"
+                  disabled={savingDeckLink || !linkDeckUrl.trim()}
+                  className="bg-gradient-to-r from-violet-600 to-purple-700"
+                  onClick={() => void handleLinkDeckToExternalSource()}
+                >
+                  <Link2 className="mr-2 h-4 w-4" />
+                  {savingDeckLink ? t({ it: 'Collegamento...', en: 'Linking...' }) : t({ it: 'Collega lista', en: 'Link list' })}
                 </Button>
               </div>
             </CardContent>

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getSupabaseServerUrl, getSupabaseServerAnonKey } from '@/lib/supabase/server-env';
 
 export async function requireAuthenticatedUser(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -6,8 +7,8 @@ export async function requireAuthenticatedUser(request: Request) {
 
   if (!token) return null;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = getSupabaseServerUrl();
+  const supabaseAnonKey = getSupabaseServerAnonKey();
   if (!supabaseUrl || !supabaseAnonKey) return null;
 
   const client = createClient(supabaseUrl, supabaseAnonKey, {

@@ -7,7 +7,9 @@ import { LanguageProvider } from '@/components/language-provider';
 import { AppLocalizer } from '@/components/app-localizer';
 import { AccessLogger } from '@/components/access-logger';
 import { DemoBanner } from '@/components/demo-banner';
-import { CapacitorNativeBridge } from '@/components/capacitor-native-bridge';
+import { QueryProvider } from '@/components/query-provider';
+import { AppErrorBoundary } from '@/components/app-error-boundary';
+import { AppNotificationListener } from '@/components/app-notification-listener';
 
 const inter = Inter({ subsets: ['latin'] });
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['400', '600', '700'], variable: '--font-cinzel' });
@@ -51,16 +53,18 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.className} ${cinzel.variable}`} suppressHydrationWarning>
-        <LanguageProvider>
-          <AuthProvider>
+        <QueryProvider>
+          <LanguageProvider>
+            <AuthProvider>
             <AccessLogger />
-            <CapacitorNativeBridge />
+            <AppNotificationListener />
             <DemoBanner />
-            {children}
+            <AppErrorBoundary>{children}</AppErrorBoundary>
             <AppLocalizer />
             <Toaster />
-          </AuthProvider>
-        </LanguageProvider>
+            </AuthProvider>
+          </LanguageProvider>
+        </QueryProvider>
       </body>
     </html>
   );

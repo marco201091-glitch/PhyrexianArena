@@ -1,42 +1,27 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchEdhrecStats, getCachedEdhrecStats, normalizeEdhrecCommander } from '@/lib/edhrec-client';
 import type { EdhrecCommanderStats } from '@/lib/edhrec';
 
 export function useEdhrecStats(commander: string, enabled = true) {
   const normalized = normalizeEdhrecCommander(commander);
-  const [stats, setStats] = useState<EdhrecCommanderStats | null | undefined>(
-    enabled && normalized.length >= 2 && getCachedEdhrecStats(normalized) !== undefined
-      ? getCachedEdhrecStats(normalized) ?? null
-      : undefined,
-  );
+  const cachedStats = getCachedEdhrecStats(normalized);
+  const query = useQuery<EdhrecCommanderStats | null>({
+    queryKey: ['edhrec-stats', normalized],
+    enabled: enabled && normalized.length >= 2,
+    staleTime: 6 * 60 * 60_000,
+    initialData: cachedStats,
+    queryFn: () => fetchEdhrecStats(commander),
+  });
 
   const refresh = useCallback(async () => {
     if (!enabled || normalized.length < 2) return null;
-    const next = await fetchEdhrecStats(commander);
-    setStats(next);
-    return next;
-  }, [commander, enabled, normalized]);
+    const result = await query.refetch();
+    return result.data ?? null;
+  }, [enabled, normalized, query]);
 
-  useEffect(() => {
-    if (!enabled || normalized.length < 2) {
-      setStats(undefined);
-      return;
-    }
-
-    if (getCachedEdhrecStats(normalized) !== undefined) {
-      setStats(getCachedEdhrecStats(normalized) ?? null);
-      return;
-    }
-
-    let cancelled = false;
-    void fetchEdhrecStats(commander).then((next) => {
-      if (!cancelled) setStats(next);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [commander, enabled, normalized]);
-
-  return { stats, refresh };
+  return {
+    stats: enabled && normalized.length >= 2 ? query.data : undefined,
+    refresh,
+  };
 }

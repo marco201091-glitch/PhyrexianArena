@@ -12,6 +12,7 @@ import { showAppAlert } from '@/lib/app-alert';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/theme';
 import { signInWithGoogleOnAndroid } from '@/lib/google-auth';
+import { apiPost } from '@/lib/api';
 
 function resolveRedirectPath(redirect: string | string[] | undefined): Href {
   const value = Array.isArray(redirect) ? redirect[0] : redirect;
@@ -43,31 +44,23 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const trimmedIdentifier = loginIdentifier.trim();
-      const isEmail = trimmedIdentifier.includes('@');
-      let authEmail = trimmedIdentifier;
-
-      if (!isEmail) {
-        const { data, error } = await supabase.rpc('resolve_login_email', {
-          identifier: trimmedIdentifier,
-        });
-        if (error) throw error;
-        if (!data) throw new Error(copy('invalidCredentials'));
-        authEmail = data;
+      const { data, status } = await apiPost<{
+        accessToken?: string;
+        refreshToken?: string;
+      }>(
+        '/api/auth/login',
+        { identifier: loginIdentifier.trim(), password },
+        { authenticated: false },
+      );
+      if (status !== 200 || !data?.accessToken || !data.refreshToken) {
+        throw new Error(copy('invalidCredentials'));
       }
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password,
+      const { error } = await supabase.auth.setSession({
+        access_token: data.accessToken,
+        refresh_token: data.refreshToken,
       });
 
-      if (error) {
-        if (error.message.toLowerCase().includes('email not confirmed')) {
-          router.push('/(auth)/resend-confirmation');
-          return;
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       router.replace(redirectPath);
     } catch {
@@ -98,12 +91,14 @@ export default function LoginScreen() {
           <Input
             label={copy('emailOrUsername')}
             autoCapitalize="none"
+            testID="login-identifier"
             value={loginIdentifier}
             onChangeText={setLoginIdentifier}
           />
           <Input
             label={copy('password')}
             secureTextEntry
+            testID="login-password"
             value={password}
             onChangeText={setPassword}
           />
@@ -124,6 +119,7 @@ export default function LoginScreen() {
           <Button
             label={loading ? copy('signingIn') : copy('enterArena')}
             onPress={handleLogin}
+            testID="login-submit"
             disabled={loading}
           />
           {Platform.OS === 'android' ? (
@@ -140,6 +136,7 @@ export default function LoginScreen() {
             icon="heart-outline"
             variant="outline"
             onPress={() => router.push('/counter' as Href)}
+            testID="login-quick-game"
           />
         </View>
       </PhyrexianPanel>

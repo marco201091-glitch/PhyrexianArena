@@ -1,42 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchCommanderArtOptions } from '@/lib/commander-arts';
 import { prefetchCommanderArtsByName, prefetchDeckImageUrls } from '@/lib/deck-image-cache';
 
 export function useCommanderArts(commanderName: string | null | undefined) {
-  const [arts, setArts] = useState<Awaited<ReturnType<typeof fetchCommanderArtOptions>>>([]);
-  const [loading, setLoading] = useState(false);
+  const trimmed = commanderName?.trim() || '';
+  const query = useQuery({
+    queryKey: ['commander-arts', trimmed.toLocaleLowerCase()],
+    enabled: trimmed.length >= 2,
+    staleTime: 24 * 60 * 60_000,
+    queryFn: async ({ signal }) => {
+      const nextArts = await fetchCommanderArtOptions(trimmed, signal);
+      void prefetchDeckImageUrls(nextArts.map((art) => art.imageUrl), { background: true });
+      void prefetchCommanderArtsByName(trimmed, { background: true });
+      return nextArts;
+    },
+  });
 
-  useEffect(() => {
-    const trimmed = commanderName?.trim() || '';
-    if (trimmed.length < 2) {
-      setArts([]);
-      setLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    setLoading(true);
-
-    void (async () => {
-      try {
-        const nextArts = await fetchCommanderArtOptions(trimmed, controller.signal);
-        if (controller.signal.aborted) return;
-
-        setArts(nextArts);
-        void prefetchDeckImageUrls(nextArts.map((art) => art.imageUrl), { background: true });
-        void prefetchCommanderArtsByName(trimmed, { background: true });
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return;
-        if (!controller.signal.aborted) setArts([]);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    })();
-
-    return () => {
-      controller.abort();
-    };
-  }, [commanderName]);
-
-  return { arts, loading };
+  return {
+    arts: trimmed.length >= 2 ? query.data ?? [] : [],
+    loading: trimmed.length >= 2 && query.isFetching,
+  };
 }

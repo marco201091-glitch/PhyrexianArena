@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { CommanderPicker } from '@/components/commander/commander-picker';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
@@ -82,6 +82,7 @@ type AddDeckModalProps = {
   visible: boolean;
   saving: boolean;
   existingSourceUrls: string[];
+  initialArchidektUsername?: string;
   labels: {
     title: string;
     importTab: string;
@@ -160,6 +161,7 @@ export function AddDeckModal({
   visible,
   saving,
   existingSourceUrls,
+  initialArchidektUsername = '',
   labels,
   onClose,
   onError,
@@ -180,7 +182,7 @@ export function AddDeckModal({
   const [selectedCommander, setSelectedCommander] = useState<CommanderSearchResult | null>(null);
   const [selectedPartnerCommander, setSelectedPartnerCommander] = useState<CommanderSearchResult | null>(null);
   const [selectedArtUrl, setSelectedArtUrl] = useState<string | null>(null);
-  const [archidektUsername, setArchidektUsername] = useState('');
+  const [archidektUsername, setArchidektUsername] = useState(initialArchidektUsername);
   const [importingUserDecks, setImportingUserDecks] = useState(false);
   const [importedUserDecks, setImportedUserDecks] = useState<ImportedDeckPreview[]>([]);
   const [selectedUserDeckCommanders, setSelectedUserDeckCommanders] = useState<Record<string, CommanderOption>>({});
@@ -189,6 +191,10 @@ export function AddDeckModal({
   const { arts: importedArts, loading: loadingImportedArts } = useCommanderArts(
     mode === 'import' && selectedImportedCommander ? selectedImportedCommander.name : null,
   );
+
+  useEffect(() => {
+    if (visible) setArchidektUsername(initialArchidektUsername);
+  }, [initialArchidektUsername, visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -200,11 +206,11 @@ export function AddDeckModal({
     setSelectedCommander(null);
     setSelectedPartnerCommander(null);
     setSelectedArtUrl(null);
-    setArchidektUsername('');
+    setArchidektUsername(initialArchidektUsername);
     setImportedUserDecks([]);
     setSelectedUserDeckCommanders({});
     setSelectedUserDeckUrls([]);
-  }, [visible]);
+  }, [initialArchidektUsername, visible]);
 
   const commanderLabels = {
     deckName: labels.deckName,
@@ -474,9 +480,7 @@ export function AddDeckModal({
           contentContainerStyle={styles.bodyContent}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
-          enableOnAndroid
-          enableAutomaticScroll
-          extraScrollHeight={16}
+          bottomOffset={16}
           showsVerticalScrollIndicator
           nestedScrollEnabled
         >

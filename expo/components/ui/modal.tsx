@@ -1,18 +1,15 @@
 import { PropsWithChildren, type ReactNode } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal as RNModal,
-  Platform,
   Pressable,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
-import { keyboardAvoidingBehavior } from '@/lib/keyboard';
 import { useReducedMotion } from '@/lib/reduced-motion';
 
 type ModalProps = PropsWithChildren<{
@@ -51,10 +48,7 @@ export function Modal({
             ]}
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="none"
-            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-            enableOnAndroid
-            enableAutomaticScroll
-            extraScrollHeight={spacing.lg}
+            bottomOffset={spacing.lg}
             showsVerticalScrollIndicator
             nestedScrollEnabled
             bounces={false}
@@ -79,11 +73,7 @@ export function Modal({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <KeyboardAvoidingView
-        behavior={keyboardAvoidingBehavior}
-        style={styles.keyboardAvoid}
-        keyboardVerticalOffset={insets.top}
-      >
+      <View style={styles.keyboardAvoid}>
         <View
           style={[
             styles.root,
@@ -105,7 +95,7 @@ export function Modal({
             {panel}
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </RNModal>
   );
 }
@@ -120,7 +110,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: colors.modalOverlay,
   },
   sheetHost: {

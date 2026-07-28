@@ -1,77 +1,110 @@
 import { getApiBaseUrl } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+export interface ApiResult<T> {
+  data?: T;
+  error?: string;
+  status: number;
+}
+
+export interface ApiRequestOptions {
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  body?: unknown;
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  authenticated?: boolean;
+}
+
+async function getAccessToken() {
   const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return data.session?.access_token ?? null;
 }
 
-export async function apiGet<T>(
+async function buildHeaders(
+  options: ApiRequestOptions,
+  token: string | null,
+) {
+  return {
+    ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+}
+
+async function parseResponse<T>(response: Response): Promise<ApiResult<T>> {
+  const payload = await response.json().catch(() => ({})) as T & { error?: string };
+  return {
+    data: payload,
+    error: typeof payload?.error === 'string' ? payload.error : undefined,
+    status: response.status,
+  };
+}
+
+export async function apiRequest<T>(
   path: string,
-  options?: { signal?: AbortSignal; timeoutMs?: number },
-): Promise<{ data?: T; error?: string; status: number }> {
-  const headers = await getAuthHeaders();
-  const controller = options?.timeoutMs ? new AbortController() : null;
-  const handleAbort = () => controller?.abort();
-  options?.signal?.addEventListener('abort', handleAbort, { once: true });
-  const timer = controller
-    ? setTimeout(() => controller.abort(), options?.timeoutMs)
-    : null;
-  const signal = controller?.signal ?? options?.signal;
+  options: ApiRequestOptions = {},
+): Promise<ApiResult<T>> {
+  const authenticated = options.authenticated !== false;
+  const controller = new AbortController();
+  const handleAbort = () => controller.abort();
+  options.signal?.addEventListener('abort', handleAbort, { once: true });
+  const timer = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+  );
 
-  let response: Response;
+  const execute = async (token: string | null) => fetch(`${getApiBaseUrl()}${path}`, {
+    method: options.method ?? 'GET',
+    headers: await buildHeaders(options, token),
+    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    signal: controller.signal,
+  });
+
   try {
-    response = await fetch(`${getApiBaseUrl()}${path}`, {
-      headers,
-      ...(signal ? { signal } : {}),
-    });
+    let token = authenticated ? await getAccessToken() : null;
+    let response = await execute(token);
+
+    if (authenticated && token && response.status === 401) {
+      const { data } = await supabase.auth.refreshSession();
+      token = data.session?.access_token ?? null;
+      if (token) response = await execute(token);
+    }
+
+    return await parseResponse<T>(response);
+  } catch (error) {
+    const aborted = controller.signal.aborted;
+    return {
+      error: aborted
+        ? 'Request timed out.'
+        : error instanceof Error
+          ? error.message
+          : 'Network request failed.',
+      status: 0,
+    };
   } finally {
-    if (timer) clearTimeout(timer);
-    options?.signal?.removeEventListener('abort', handleAbort);
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', handleAbort);
   }
-  const payload = await response.json().catch(() => ({})) as T & { error?: string };
-
-  return {
-    data: payload,
-    error: typeof payload?.error === 'string' ? payload.error : undefined,
-    status: response.status,
-  };
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<{ data?: T; error?: string; status: number }> {
-  const authHeaders = await getAuthHeaders();
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const payload = await response.json().catch(() => ({})) as T & { error?: string };
-  return {
-    data: payload,
-    error: typeof payload?.error === 'string' ? payload.error : undefined,
-    status: response.status,
-  };
+export function apiGet<T>(
+  path: string,
+  options?: Omit<ApiRequestOptions, 'method' | 'body'>,
+) {
+  return apiRequest<T>(path, { ...options, method: 'GET' });
 }
 
-export async function apiPatch<T>(path: string, body: unknown): Promise<{ data?: T; error?: string; status: number }> {
-  const authHeaders = await getAuthHeaders();
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-    },
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json().catch(() => ({})) as T & { error?: string };
-  return {
-    data: payload,
-    error: typeof payload?.error === 'string' ? payload.error : undefined,
-    status: response.status,
-  };
+export function apiPost<T>(path: string, body: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+  return apiRequest<T>(path, { ...options, method: 'POST', body });
+}
+
+export function apiPatch<T>(path: string, body: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+  return apiRequest<T>(path, { ...options, method: 'PATCH', body });
+}
+
+export function apiDelete<T>(path: string, body?: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+  return apiRequest<T>(path, { ...options, method: 'DELETE', body });
 }

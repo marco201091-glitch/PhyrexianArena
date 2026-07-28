@@ -8,7 +8,7 @@ const eslintConfig = [
       'expo/.expo/**',
       'expo/dist/**',
       'expo/web-build/**',
-      'mobile/android/**',
+      'mobile/**',
     ],
   },
   ...nextVitals,

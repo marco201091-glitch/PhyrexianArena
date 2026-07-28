@@ -14,6 +14,7 @@ import { Users, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { isDemoUser } from '@/lib/demo';
 import { fetchGroupByInviteCode } from '@/lib/join-arena';
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 
 export default function JoinPage() {
   const params = useParams();
@@ -64,28 +65,17 @@ export default function JoinPage() {
     joinAttemptedRef.current = true;
     setJoining(true);
     try {
-      const { error } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: group.id,
-          user_id: user.id,
-        });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast({
-            title: t({ it: 'Sei gia membro', en: 'Already a member' }),
-            description: t({ it: 'Ti porto all\'arena...', en: 'Redirecting to arena...' }),
-          });
-        } else {
-          throw error;
-        }
-      } else {
-        toast({
-          title: t({ it: 'Benvenuto!', en: 'Welcome!' }),
-          description: t({ it: `Sei entrato in "${group.name}"`, en: `You have entered "${group.name}"` }),
-        });
-      }
+      const response = await authenticatedFetch('/api/arena-membership', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteCode }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Failed to join Arena');
+      toast({
+        title: t({ it: 'Benvenuto!', en: 'Welcome!' }),
+        description: t({ it: `Sei entrato in "${group.name}"`, en: `You have entered "${group.name}"` }),
+      });
 
       router.push(`/table/${group.id}`);
     } catch (error: unknown) {
@@ -98,7 +88,7 @@ export default function JoinPage() {
     } finally {
       setJoining(false);
     }
-  }, [group, router, t, toast, user]);
+  }, [group, inviteCode, router, t, toast, user]);
 
   useEffect(() => {
     if (!authLoading && user && group) {

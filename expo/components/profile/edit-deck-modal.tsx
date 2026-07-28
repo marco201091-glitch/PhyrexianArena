@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { colors } from '@/constants/theme';
 import { useCommanderArts } from '@/hooks/use-commander-arts';
@@ -35,6 +36,9 @@ type EditDeckModalProps = {
     saveSelectedCommander: string;
     close: string;
     saving: string;
+    linkSource: string;
+    linkSourceHint: string;
+    linkSourceAction: string;
   };
   onClose: () => void;
   onLoadOptions: (deck: ProfileDeck) => Promise<CommanderMetadataOption[]>;
@@ -43,6 +47,7 @@ type EditDeckModalProps = {
     commanderImage: string | null;
     commanderOptions: CommanderMetadataOption[];
   }) => Promise<void>;
+  onLinkSource: (sourceUrl: string) => Promise<void>;
 };
 
 export function EditDeckModal({
@@ -54,10 +59,12 @@ export function EditDeckModal({
   onClose,
   onLoadOptions,
   onSave,
+  onLinkSource,
 }: EditDeckModalProps) {
   const [options, setOptions] = useState<CommanderMetadataOption[]>([]);
   const [selectedCommander, setSelectedCommander] = useState<CommanderMetadataOption | null>(null);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState('');
 
   const { arts, loading: loadingArts } = useCommanderArts(
     selectedCommander?.name || deck?.commander || null,
@@ -67,6 +74,7 @@ export function EditDeckModal({
     if (!visible || !deck) return;
 
     setLoadingOptions(true);
+    setSourceUrl(deck.source_url || '');
     void (async () => {
       const loaded = filterSelectableCommanderOptions(
         commanderOptions.length > 0
@@ -100,6 +108,24 @@ export function EditDeckModal({
       <View style={styles.content}>
         <Text style={styles.title}>{labels.title}</Text>
         <Text style={styles.deckName}>{deck.name}</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{labels.linkSource}</Text>
+          <Text style={styles.muted}>{labels.linkSourceHint}</Text>
+          <Input
+            value={sourceUrl}
+            onChangeText={setSourceUrl}
+            placeholder="https://archidekt.com/decks/..."
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Button
+            label={labels.linkSourceAction}
+            variant="outline"
+            disabled={saving || !sourceUrl.trim()}
+            onPress={() => void onLinkSource(sourceUrl)}
+          />
+        </View>
 
         {loadingOptions ? (
           <View style={styles.searchingRow}>

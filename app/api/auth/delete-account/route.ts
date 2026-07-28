@@ -4,6 +4,7 @@ import { requireAuthenticatedUser } from '@/app/api/_lib/auth';
 import { applyUserRateLimit } from '@/app/api/_lib/with-rate-limit';
 import { isDemoEmail } from '@/lib/demo';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { getSupabaseServerAnonKey, getSupabaseServerUrl } from '@/lib/supabase/server-env';
 
 export const runtime = 'nodejs';
 
@@ -49,8 +50,8 @@ export async function POST(request: Request) {
   const confirmation = body.confirmation?.trim().toLowerCase() || '';
   const normalizedEmail = user.email.trim().toLowerCase();
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = getSupabaseServerUrl();
+  const supabaseAnonKey = getSupabaseServerAnonKey();
   const adminClient = getSupabaseAdminClient();
   if (!supabaseUrl || !supabaseAnonKey || !adminClient) {
     return NextResponse.json({ error: 'Account deletion is not configured.' }, { status: 503 });

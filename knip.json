@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "instrumentation*.ts",
+    "sentry.*.config.ts",
+    "scripts/**/*.{js,mjs,cjs}"
+  ],
+  "project": [
+    "app/**/*.{ts,tsx,css}",
+    "components/**/*.{ts,tsx}",
+    "hooks/**/*.{ts,tsx}",
+    "lib/**/*.{ts,tsx}",
+    "*.{ts,tsx,js,mjs,cjs}"
+  ],
+  "ignoreBinaries": [
+    "vercel",
+    "netstat",
+    "findstr"
+  ]
+}

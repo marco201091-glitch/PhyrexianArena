@@ -143,7 +143,9 @@ if (fs.existsSync(androidForeground)) {
 
 if (fs.existsSync(androidSplash)) {
   const splashStats = await analyzeEmblem(androidSplash);
-  assert(splashStats.whiteRatio > 0.03, 'Android splash logo missing emblem');
+  // Expo centers the source inside a much larger native canvas, so evaluating
+  // the full drawable with the launcher threshold produces a false negative.
+  assert(splashStats.whiteRatio > 0.005, 'Android splash logo missing emblem');
   console.log(`OK android splash: white=${(splashStats.whiteRatio * 100).toFixed(1)}%`);
 }
 

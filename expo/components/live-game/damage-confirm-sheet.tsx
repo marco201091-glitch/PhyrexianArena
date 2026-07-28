@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: colors.modalOverlay,
   },
   damageCard: {
@@ -405,10 +405,10 @@ const styles = StyleSheet.create({
   sourceTargetIPad: {
     fontSize: 13,
   },
-  stageImageWrap: { ...StyleSheet.absoluteFillObject, zIndex: 0 },
+  stageImageWrap: { ...StyleSheet.absoluteFill, zIndex: 0 },
   stageImage: { width: '100%', height: '100%' },
   stageShade: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1,
     backgroundColor: 'rgba(24,4,12,0.76)',
   },

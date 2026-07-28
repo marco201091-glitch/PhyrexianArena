@@ -4,7 +4,7 @@ const downloadAsync = vi.hoisted(() => vi.fn());
 const prefetch = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
-vi.mock('expo-file-system', () => ({
+vi.mock('expo-file-system/legacy', () => ({
   cacheDirectory: 'file:///cache/',
   downloadAsync,
   getInfoAsync: vi.fn(),

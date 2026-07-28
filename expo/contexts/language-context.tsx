@@ -13,16 +13,11 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<AppLanguage>('en');
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     void (async () => {
-      try {
-        const stored = await getStoredLanguage();
-        if (stored) setLanguageState(stored);
-      } finally {
-        setReady(true);
-      }
+      const stored = await getStoredLanguage();
+      if (stored) setLanguageState(stored);
     })();
   }, []);
 
@@ -37,8 +32,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     () => ({ language, setLanguage, copy }),
     [language, setLanguage, copy],
   );
-
-  if (!ready) return null;
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }

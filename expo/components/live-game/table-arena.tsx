@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import {
   Animated,
   Easing,
@@ -14,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSharedValue } from 'react-native-reanimated';
 import { DamageConfirmSheet } from '@/components/live-game/damage-confirm-sheet';
 import { DamageDragOverlay } from '@/components/live-game/damage-drag-overlay';
-import { TableSeat } from '@/components/live-game/table-seat';
+import { TableSeat, type TableSeatLabels } from '@/components/live-game/table-seat';
 import { PlayerDamageSheet } from '@/components/live-game/player-damage-sheet';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
@@ -36,6 +37,7 @@ import type { DamageMode, GroupDamageScope, LiveGamePlayer, PlayDirection, Playe
 import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { useReducedMotion } from '@/lib/reduced-motion';
+import { useLiveGameRuntimeStore } from '@/stores/live-game-runtime-store';
 
 type PendingTransfer = {
   sourceKey: ParticipantKey;
@@ -120,6 +122,115 @@ type TableArenaProps = {
 
 const SYSTEM_GESTURE_GUARD = 10;
 
+type RuntimeSeatHandlers = {
+  onAdjust: (key: ParticipantKey, delta: number) => void;
+  onEliminate: (key: ParticipantKey) => void;
+  onRevive: (key: ParticipantKey) => void;
+  onOpenDetails: (key: ParticipantKey) => void;
+  onSelectActivePlayer: (key: ParticipantKey) => void;
+  onDamageDragStart: (key: ParticipantKey, x: number, y: number) => void;
+  onDamageDragMove: (x: number, y: number) => void;
+  onDamageDragEnd: (x: number, y: number) => void;
+  onDamageDragCancel: () => void;
+};
+
+type RuntimeTableSeatProps = {
+  participantKey: ParticipantKey;
+  handlersRef: RefObject<RuntimeSeatHandlers | null>;
+  labels: TableSeatLabels;
+  seatRotation: number;
+  isSource: boolean;
+  isDragHover: boolean;
+  isActiveSelector: boolean;
+  isChoosingActivePlayer: boolean;
+  highlightLabel?: string | null;
+  highlightTone: 'starting' | 'random';
+  startingDirection?: PlayDirection | null;
+  startingBadgeLabel?: string;
+  damagePulse: number;
+};
+
+const RuntimeTableSeat = memo(function RuntimeTableSeat({
+  participantKey,
+  handlersRef,
+  labels,
+  seatRotation,
+  isSource,
+  isDragHover,
+  isActiveSelector,
+  isChoosingActivePlayer,
+  highlightLabel,
+  highlightTone,
+  startingDirection,
+  startingBadgeLabel,
+  damagePulse,
+}: RuntimeTableSeatProps) {
+  const player = useLiveGameRuntimeStore((state) => state.playersByKey[participantKey]);
+  const onAdjust = useCallback(
+    (delta: number) => handlersRef.current?.onAdjust(participantKey, delta),
+    [handlersRef, participantKey],
+  );
+  const onEliminate = useCallback(
+    () => handlersRef.current?.onEliminate(participantKey),
+    [handlersRef, participantKey],
+  );
+  const onOpenDetails = useCallback(
+    () => handlersRef.current?.onOpenDetails(participantKey),
+    [handlersRef, participantKey],
+  );
+  const onSelectActivePlayer = useCallback(
+    () => handlersRef.current?.onSelectActivePlayer(participantKey),
+    [handlersRef, participantKey],
+  );
+  const onRevive = useCallback(
+    () => handlersRef.current?.onRevive(participantKey),
+    [handlersRef, participantKey],
+  );
+  const onDamageDragStart = useCallback(
+    (key: ParticipantKey, x: number, y: number) => handlersRef.current?.onDamageDragStart(key, x, y),
+    [handlersRef],
+  );
+  const onDamageDragMove = useCallback(
+    (x: number, y: number) => handlersRef.current?.onDamageDragMove(x, y),
+    [handlersRef],
+  );
+  const onDamageDragEnd = useCallback(
+    (x: number, y: number) => handlersRef.current?.onDamageDragEnd(x, y),
+    [handlersRef],
+  );
+  const onDamageDragCancel = useCallback(
+    () => handlersRef.current?.onDamageDragCancel(),
+    [handlersRef],
+  );
+
+  if (!player) return null;
+
+  return (
+    <TableSeat
+      player={player}
+      seatRotation={seatRotation}
+      isSource={isSource}
+      isDragHover={isDragHover}
+      isActiveSelector={isActiveSelector}
+      highlightLabel={highlightLabel}
+      highlightTone={highlightTone}
+      startingDirection={startingDirection}
+      startingBadgeLabel={startingBadgeLabel}
+      damagePulse={damagePulse}
+      onAdjust={onAdjust}
+      onEliminate={onEliminate}
+      onOpenDetails={onOpenDetails}
+      onSelectActivePlayer={isChoosingActivePlayer ? onSelectActivePlayer : undefined}
+      onRevive={player.isEliminated ? onRevive : undefined}
+      onDamageDragStart={onDamageDragStart}
+      onDamageDragMove={onDamageDragMove}
+      onDamageDragEnd={onDamageDragEnd}
+      onDamageDragCancel={onDamageDragCancel}
+      labels={labels}
+    />
+  );
+});
+
 function formatTrackerDuration(startedAt: string | null | undefined, now: number) {
   if (!startedAt || now <= 0) return '00:00';
   const started = new Date(startedAt).getTime();
@@ -131,6 +242,17 @@ function formatTrackerDuration(startedAt: string | null | undefined, now: number
   return hours > 0
     ? `${hours}:${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
     : `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+}
+
+function GameDuration({ startedAt }: { startedAt: string | null }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return <Text style={styles.durationText}>{formatTrackerDuration(startedAt, now)}</Text>;
 }
 
 export function TableArena({
@@ -190,13 +312,7 @@ export function TableArena({
   const dragHoverRef = useRef<ParticipantKey | null>(null);
   const podBoundsRef = useRef<Record<string, PodBounds>>({});
   const activePickerResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [clockNow, setClockNow] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setClockNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
+  const seatHandlersRef = useRef<RuntimeSeatHandlers | null>(null);
   const clearRandomizerTimers = useCallback(() => {
     if (randomizerIntervalRef.current) {
       clearInterval(randomizerIntervalRef.current);
@@ -387,7 +503,9 @@ export function TableArena({
 
   const handleArenaLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
-    setArenaSize({ width, height });
+    setArenaSize((current) => (
+      current.width === width && current.height === height ? current : { width, height }
+    ));
   }, []);
 
   const pendingSource = pendingTransfer ? playersByKey.get(pendingTransfer.sourceKey) ?? null : null;
@@ -423,6 +541,43 @@ export function TableArena({
     }, 1600);
   }, [activePlayers, onPickRandom]);
 
+  useEffect(() => {
+    seatHandlersRef.current = {
+      onAdjust,
+      onEliminate,
+      onRevive,
+      onOpenDetails: setDetailsPlayerKey,
+      onSelectActivePlayer: chooseActivePlayer,
+      onDamageDragStart: handleDragStart,
+      onDamageDragMove: handleDragMove,
+      onDamageDragEnd: handleDragEnd,
+      onDamageDragCancel: handleDragCancel,
+    };
+  }, [
+    chooseActivePlayer,
+    handleDragCancel,
+    handleDragEnd,
+    handleDragMove,
+    handleDragStart,
+    onAdjust,
+    onEliminate,
+    onRevive,
+  ]);
+
+  const seatLabels = useMemo<TableSeatLabels>(() => ({
+    commanderDamage: labels.commanderDamageMeta,
+    infect: labels.infect,
+    eliminated: labels.eliminated,
+    revive: labels.revive,
+    ko: labels.ko,
+  }), [
+    labels.commanderDamageMeta,
+    labels.eliminated,
+    labels.infect,
+    labels.ko,
+    labels.revive,
+  ]);
+
   const toolbarControls = (
     <>
       <Pressable
@@ -436,7 +591,7 @@ export function TableArena({
 
       <View style={[styles.durationPill, isVerticalCenterToolbar && styles.durationPillVertical]}>
         <Ionicons name="time-outline" size={15} color={colors.muted} />
-        <Text style={styles.durationText}>{formatTrackerDuration(startedAt, clockNow)}</Text>
+        <GameDuration startedAt={startedAt} />
       </View>
 
       <Pressable
@@ -580,16 +735,16 @@ export function TableArena({
               },
             ]}
           >
-            <TableSeat
-              player={player}
-              allPlayers={players}
+            <RuntimeTableSeat
+              participantKey={player.participantKey}
+              handlersRef={seatHandlersRef}
               seatRotation={tableOrientation === 'landscape'
                 ? getLandscapeSeatRotation(layout, arenaWidth)
                 : getSeatRotation(layout.role, playerCount, layoutVariant)}
-              damageMode="life"
               isSource={dragSource === player.participantKey}
               isDragHover={dragHoverKey === player.participantKey}
               isActiveSelector={activePickerKey === player.participantKey}
+              isChoosingActivePlayer={isChoosingActivePlayer}
               highlightLabel={randomHighlight
                 ? randomHighlight === player.participantKey ? labels.selected : null
                 : startingHighlight === player.participantKey ? labels.startingPlayer : null}
@@ -599,24 +754,7 @@ export function TableArena({
                 ? `${labels.startingPlayer} · ${startingDirection === 'clockwise' ? labels.clockwise : labels.counterclockwise}`
                 : undefined}
               damagePulse={damagePulse[player.participantKey] ?? 0}
-              onAdjust={(delta) => onAdjust(player.participantKey, delta)}
-              onEliminate={() => onEliminate(player.participantKey)}
-              onOpenDetails={() => setDetailsPlayerKey(player.participantKey)}
-              onSelectActivePlayer={isChoosingActivePlayer
-                ? () => chooseActivePlayer(player.participantKey)
-                : undefined}
-              onRevive={player.isEliminated ? () => onRevive(player.participantKey) : undefined}
-              onDamageDragStart={handleDragStart}
-              onDamageDragMove={handleDragMove}
-              onDamageDragEnd={handleDragEnd}
-              onDamageDragCancel={handleDragCancel}
-              labels={{
-                commanderDamage: labels.commanderDamageMeta,
-                infect: labels.infect,
-                eliminated: labels.eliminated,
-                revive: labels.revive,
-                ko: labels.ko,
-              }}
+              labels={seatLabels}
             />
           </View>
         ))}

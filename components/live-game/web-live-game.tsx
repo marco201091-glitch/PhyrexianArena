@@ -106,6 +106,7 @@ import {
   getLiveGameSyncDelay,
 } from '@/lib/live-game-sync-policy';
 import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 
 export type WebTrackerDeck = {
   id: string;
@@ -280,6 +281,8 @@ export function WebLiveGame({
   const [layoutVariant, setLayoutVariant] = useState<TableLayoutVariant>(initialSetup.layoutVariant);
   const [startingLife, setStartingLife] = useState(initialSetup.startingLife);
   const [seats, setSeats] = useState<WebLiveGameSeatSetup[]>(initialSetup.seats);
+  const [setupStep, setSetupStep] = useState(0);
+  const [setupSeatIndex, setSetupSeatIndex] = useState(0);
   const [starting, setStarting] = useState(false);
   const [lobbyId, setLobbyId] = useState<string | null>(null);
   const lobbyIdRef = useRef<string | null>(null);
@@ -582,9 +585,14 @@ export function WebLiveGame({
       if (pendingFinalizationRef.current) {
         const completed = recordRef.current;
         const finalization = pendingFinalizationRef.current;
-        await finalizeLiveGameAsMatch(supabase, {
+        const matchId = await finalizeLiveGameAsMatch(supabase, {
           liveGameId: server.id,
           ...finalization,
+        });
+        void authenticatedFetch('/api/notifications/match-completed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matchId }),
         });
         pendingFinalizationRef.current = null;
         clearWebLiveGameJournal(groupId);
@@ -1235,6 +1243,11 @@ export function WebLiveGame({
       );
     }
     const usedKeys = seats.map((seat) => seat.participantKey).filter(Boolean);
+    const setupLayouts = getSquareTableLayouts(playerCount, 1000, 680, layoutVariant);
+    const activeSetupSeat = seats[setupSeatIndex] ?? seats[0];
+    const activeSetupParticipant = participants.find((entry) => entry.key === activeSetupSeat?.participantKey);
+    const setupComplete = seats.length === playerCount
+      && seats.every((seat) => Boolean(seat.participantKey && seat.deckId));
     return (
       <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#21163b_0%,#08080e_48%,#000_100%)] px-3 pb-10 pt-[max(1rem,env(safe-area-inset-top))] text-foreground sm:px-6">
         <div className="mx-auto max-w-5xl">
@@ -1303,97 +1316,221 @@ export function WebLiveGame({
                 </div> : null}
               </section> : null}
 
-              <section>
-                <div className="mb-3 flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-violet-600 text-xs font-black">1</span><h3 className="font-bold">{copy({ it: 'Numero giocatori', en: 'Number of players' })}</h3></div>
-                <div className="grid grid-cols-5 gap-2">
-                  {[2, 3, 4, 5, 6].map((count) => <button key={count} onClick={() => changePlayerCount(count)} className={cn('h-12 rounded-2xl border text-base font-black transition active:scale-95', playerCount === count ? 'border-violet-400 bg-violet-600/35 text-white shadow-lg shadow-violet-900/30' : 'border-border bg-background/70 text-muted-foreground hover:border-violet-500/50')}>{count}</button>)}
-                </div>
-              </section>
+              <div className="flex items-center gap-2">
+                {[0, 1, 2, 3].map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    aria-label={`${copy({ it: 'Passaggio', en: 'Step' })} ${step + 1}`}
+                    onClick={() => setSetupStep(step)}
+                    className={cn('h-1.5 flex-1 rounded-full transition', step <= setupStep ? 'bg-violet-400' : 'bg-white/10')}
+                  />
+                ))}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const reset = createDefaultWebLiveGameSetup();
+                    setPlayerCount(reset.playerCount);
+                    setLayoutVariant(reset.layoutVariant);
+                    setStartingLife(reset.startingLife);
+                    setSeats(reset.seats);
+                    setSetupStep(0);
+                    setSetupSeatIndex(0);
+                  }}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />Reset
+                </Button>
+              </div>
 
-              <section>
-                <div className="mb-3 flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-violet-600 text-xs font-black">2</span><h3 className="font-bold">Layout</h3></div>
-                <div className="grid grid-cols-2 gap-3">
-                  {(['classic', 'opposed'] as const).map((variant) => <button key={variant} onClick={() => setLayoutVariant(variant)} className={cn('relative min-h-28 rounded-2xl border p-4 text-left transition active:scale-[.98]', layoutVariant === variant ? 'border-violet-400 bg-violet-600/20' : 'border-border bg-background/60')}><div className="mb-3 grid h-12 grid-cols-2 gap-1 rounded-lg border border-border p-1">{Array.from({ length: Math.min(playerCount, 6) }, (_, index) => <span key={index} className="rounded bg-violet-400/45" />)}</div><span className="font-bold">{variant === 'classic' ? copy({ it: 'Intorno al tavolo', en: 'Around the table' }) : copy({ it: 'Lati contrapposti', en: 'Opposing sides' })}</span>{layoutVariant === variant && <Check className="absolute right-3 top-3 h-5 w-5 text-violet-300" />}</button>)}
+              <section className="min-h-[330px] animate-in fade-in slide-in-from-right-2">
+                <div className="mb-5 flex items-center gap-3">
+                  <span className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-sm font-black shadow-lg shadow-violet-950/40">{setupStep + 1}</span>
+                  <div>
+                    <h3 className="text-lg font-black">
+                      {[
+                        copy({ it: 'Quanti giocatori?', en: 'How many players?' }),
+                        copy({ it: 'Punti vita iniziali', en: 'Starting life' }),
+                        copy({ it: 'Scegli il layout', en: 'Choose the layout' }),
+                        copy({ it: 'Assegna i posti', en: 'Assign the seats' }),
+                      ][setupStep]}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {[
+                        copy({ it: 'Puoi giocare da 2 a 6 persone.', en: 'Play with 2 to 6 people.' }),
+                        copy({ it: 'Il totale iniziale vale per tutti.', en: 'The starting total applies to everyone.' }),
+                        copy({ it: 'L’anteprima rispecchia il tavolo di gioco.', en: 'The preview matches the game table.' }),
+                        copy({ it: 'Tocca un posto e scegli giocatore e mazzo.', en: 'Tap a seat, then choose player and deck.' }),
+                      ][setupStep]}
+                    </p>
+                  </div>
                 </div>
-              </section>
 
-              <section>
-                <div className="mb-3 flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-violet-600 text-xs font-black">3</span><h3 className="font-bold">{copy({ it: 'Assegna posti', en: 'Assign seats' })}</h3></div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {seats.map((seat, index) => {
-                    const participant = participants.find((entry) => entry.key === seat.participantKey);
-                    return (
-                      <div key={index} className="min-w-0 rounded-2xl border border-border bg-background/55 p-3">
-                        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          <span className="grid h-6 w-6 place-items-center rounded-full bg-secondary">{index + 1}</span>
-                          {copy({ it: 'Posto', en: 'Seat' })} {index + 1}
-                        </div>
-                        <select
-                          value={seat.participantKey ?? ''}
-                          onChange={(event) => updateSeatParticipant(index, (event.target.value || null) as ParticipantKey | null)}
-                          className="h-12 w-full rounded-xl border border-input bg-card px-3 font-semibold outline-none focus:border-violet-400"
+                {setupStep === 0 ? (
+                  <div className="grid grid-cols-5 gap-2 sm:gap-4">
+                    {[2, 3, 4, 5, 6].map((count) => (
+                      <button
+                        key={count}
+                        onClick={() => changePlayerCount(count)}
+                        className={cn(
+                          'group relative aspect-square rounded-3xl border text-2xl font-black transition hover:-translate-y-1 active:scale-95',
+                          playerCount === count
+                            ? 'border-violet-300 bg-gradient-to-br from-violet-500/40 to-fuchsia-500/15 text-white shadow-xl shadow-violet-950/40'
+                            : 'border-white/10 bg-white/[.035] text-muted-foreground hover:border-violet-400/50 hover:text-white',
+                        )}
+                      >
+                        {count}
+                        <UserRound className="mx-auto mt-2 h-5 w-5 opacity-55" />
+                        {playerCount === count ? <Check className="absolute right-3 top-3 h-4 w-4 text-violet-200" /> : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {setupStep === 1 ? (
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {[20, 25, 30, 40, 60].map((life) => (
+                      <button
+                        key={life}
+                        onClick={() => setStartingLife(life)}
+                        className={cn(
+                          'relative flex h-24 items-center justify-center rounded-3xl border text-2xl font-black transition hover:-translate-y-1 active:scale-95',
+                          startingLife === life
+                            ? 'border-cyan-300 bg-gradient-to-br from-cyan-500/25 to-violet-500/15 text-cyan-50 shadow-xl shadow-cyan-950/20'
+                            : 'border-white/10 bg-white/[.035] text-muted-foreground hover:border-cyan-400/45 hover:text-white',
+                        )}
+                      >
+                        <Heart className="mr-3 h-6 w-6 text-rose-300" />{life}
+                        {startingLife === life ? <Check className="absolute right-4 top-4 h-4 w-4 text-cyan-200" /> : null}
+                      </button>
+                    ))}
+                    <label className="flex h-24 items-center gap-3 rounded-3xl border border-white/10 bg-white/[.035] px-5 focus-within:border-cyan-400/60">
+                      <Heart className="h-6 w-6 text-rose-300" />
+                      <span className="sr-only">{copy({ it: 'Punti vita personalizzati', en: 'Custom starting life' })}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={[20, 25, 30, 40, 60].includes(startingLife) ? '' : startingLife}
+                        placeholder={copy({ it: 'Altro', en: 'Custom' })}
+                        onChange={(event) => {
+                          const value = Number.parseInt(event.target.value, 10);
+                          if (Number.isFinite(value) && value > 0) setStartingLife(value);
+                        }}
+                        className="min-w-0 flex-1 bg-transparent text-xl font-black outline-none placeholder:text-muted-foreground"
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
+                {setupStep === 2 ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {(['classic', 'opposed'] as const).map((variant) => {
+                      const preview = getSquareTableLayouts(playerCount, 500, 320, variant);
+                      return (
+                        <button
+                          key={variant}
+                          onClick={() => setLayoutVariant(variant)}
+                          className={cn(
+                            'relative rounded-3xl border p-4 text-left transition hover:-translate-y-1 active:scale-[.98]',
+                            layoutVariant === variant
+                              ? 'border-violet-300 bg-violet-500/15 shadow-xl shadow-violet-950/30'
+                              : 'border-white/10 bg-white/[.035] hover:border-violet-400/45',
+                          )}
                         >
-                          <option value="">{copy({ it: 'Scegli giocatore', en: 'Choose player' })}</option>
-                          {participants.map((entry) => (
-                            <option
-                              key={entry.key}
-                              value={entry.key}
-                              disabled={usedKeys.includes(entry.key) && entry.key !== seat.participantKey}
-                            >
-                              {entry.displayName}
-                            </option>
-                          ))}
-                        </select>
-                        {participant ? (
-                          <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
-                            {participant.decks.map((deck) => {
-                              const selected = seat.deckId === deck.id;
-                              return (
-                                <button
-                                  key={deck.id}
-                                  type="button"
-                                  aria-pressed={selected}
-                                  onClick={() => setSeats((current) => current.map((item, seatIndex) => (
-                                    seatIndex === index ? { ...item, deckId: deck.id } : item
-                                  )))}
-                                  className={cn(
-                                    'w-28 shrink-0 overflow-hidden rounded-xl border bg-card text-left transition active:scale-[.98]',
-                                    selected
-                                      ? 'border-violet-400 ring-2 ring-violet-500/25'
-                                      : 'border-border hover:border-violet-500/60',
-                                  )}
-                                >
-                                  <DeckImage
-                                    src={deck.commanderImage}
-                                    alt={deck.commander}
-                                    className="h-28 w-full rounded-none object-cover object-top"
-                                    fallbackClassName="h-28 w-full rounded-none"
-                                  />
-                                  <span className="block p-2">
-                                    <b className="line-clamp-2 text-xs leading-tight">{deck.commander}</b>
-                                    {deck.name !== deck.commander ? (
-                                      <small className="mt-1 block truncate text-[10px] text-muted-foreground">{deck.name}</small>
-                                    ) : null}
-                                  </span>
-                                </button>
-                              );
-                            })}
+                          <div className="relative mb-4 aspect-[25/16] overflow-hidden rounded-2xl border border-white/10 bg-black/45">
+                            {preview.map((seat, index) => (
+                              <span
+                                key={index}
+                                className="absolute rounded-md border border-violet-300/35 bg-violet-500/25"
+                                style={{ left: `${seat.left / 5}%`, top: `${seat.top / 3.2}%`, width: `${seat.width / 5}%`, height: `${seat.height / 3.2}%` }}
+                              />
+                            ))}
                           </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
+                          <b>{variant === 'classic' ? copy({ it: 'Intorno al tavolo', en: 'Around the table' }) : copy({ it: 'Lati contrapposti', en: 'Opposing sides' })}</b>
+                          {layoutVariant === variant ? <Check className="absolute right-5 top-5 h-5 w-5 text-violet-200" /> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {setupStep === 3 ? (
+                  <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,.65fr)]">
+                    <div className="relative aspect-[25/17] overflow-hidden rounded-3xl border border-violet-400/20 bg-[radial-gradient(circle_at_center,#171126_0%,#08080d_68%)] shadow-inner">
+                      {setupLayouts.map((layout, index) => {
+                        const seat = seats[index];
+                        const participant = participants.find((entry) => entry.key === seat?.participantKey);
+                        const deck = participant?.decks.find((entry) => entry.id === seat?.deckId);
+                        return (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setSetupSeatIndex(index)}
+                            className={cn(
+                              'absolute overflow-hidden rounded-xl border p-2 text-center transition active:scale-[.98]',
+                              setupSeatIndex === index
+                                ? 'z-10 border-violet-200 bg-violet-500/25 ring-4 ring-violet-500/20'
+                                : 'border-dashed border-violet-300/35 bg-violet-500/10 hover:border-violet-300/70',
+                            )}
+                            style={{ left: `${layout.left / 10}%`, top: `${layout.top / 6.8}%`, width: `${layout.width / 10}%`, height: `${layout.height / 6.8}%` }}
+                          >
+                            {deck?.commanderImage ? <DeckImage src={deck.commanderImage} alt="" className="absolute inset-0 h-full w-full rounded-none object-cover opacity-35" fallbackClassName="hidden" /> : null}
+                            <span className="relative block text-[10px] font-black uppercase tracking-wider text-violet-200">{copy({ it: 'Posto', en: 'Seat' })} {index + 1}</span>
+                            <b className="relative mt-1 block truncate text-xs sm:text-sm">{participant?.displayName ?? '+'}</b>
+                            <small className="relative block truncate text-[9px] text-white/65">{deck?.commander}</small>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                      <p className="mb-3 text-xs font-black uppercase tracking-[.18em] text-violet-300">{copy({ it: 'Posto', en: 'Seat' })} {setupSeatIndex + 1}</p>
+                      <select
+                        value={activeSetupSeat?.participantKey ?? ''}
+                        onChange={(event) => updateSeatParticipant(setupSeatIndex, (event.target.value || null) as ParticipantKey | null)}
+                        className="h-12 w-full rounded-xl border border-input bg-card px-3 font-semibold outline-none focus:border-violet-400"
+                      >
+                        <option value="">{copy({ it: 'Scegli giocatore', en: 'Choose player' })}</option>
+                        {participants.map((entry) => (
+                          <option key={entry.key} value={entry.key} disabled={usedKeys.includes(entry.key) && entry.key !== activeSetupSeat?.participantKey}>{entry.displayName}</option>
+                        ))}
+                      </select>
+                      {activeSetupParticipant ? (
+                        <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+                          {activeSetupParticipant.decks.map((deck) => {
+                            const selected = activeSetupSeat?.deckId === deck.id;
+                            return (
+                              <button
+                                key={deck.id}
+                                type="button"
+                                aria-pressed={selected}
+                                onClick={() => setSeats((current) => current.map((item, index) => index === setupSeatIndex ? { ...item, deckId: deck.id } : item))}
+                                className={cn('w-24 shrink-0 overflow-hidden rounded-xl border bg-card text-left transition active:scale-[.98]', selected ? 'border-violet-300 ring-2 ring-violet-500/25' : 'border-white/10')}
+                              >
+                                <DeckImage src={deck.commanderImage} alt={deck.commander} className="h-24 w-full rounded-none object-cover object-top" fallbackClassName="h-24 w-full rounded-none" />
+                                <b className="line-clamp-2 p-2 text-[10px] leading-tight">{deck.commander}</b>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
               </section>
 
-              <section>
-                <div className="mb-3 flex items-center gap-2"><Heart className="h-5 w-5 text-rose-300" /><h3 className="font-bold">{copy({ it: 'Punti vita iniziali', en: 'Starting life' })}</h3></div>
-                <div className="flex flex-wrap gap-2">{[20, 25, 30, 40, 60].map((life) => <button key={life} onClick={() => setStartingLife(life)} className={cn('h-11 min-w-14 rounded-full border px-4 font-black transition active:scale-95', startingLife === life ? 'border-cyan-300 bg-cyan-500/20 text-cyan-100' : 'border-border bg-background/60 text-muted-foreground')}>{life}</button>)}</div>
-              </section>
-
-              <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
-                <Button variant="outline" onClick={() => { const reset = createDefaultWebLiveGameSetup(); setPlayerCount(reset.playerCount); setLayoutVariant(reset.layoutVariant); setStartingLife(reset.startingLife); setSeats(reset.seats); }}><RotateCcw className="mr-2 h-4 w-4" />Reset</Button>
-                <Button onClick={() => void startGame()} disabled={starting} className="h-12 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-8 font-black shadow-lg shadow-violet-950/40">{starting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Swords className="mr-2 h-5 w-5" />}{copy({ it: 'Avvia partita', en: 'Start game' })}</Button>
+              <div className="flex gap-3 border-t border-border pt-5">
+                {setupStep > 0 ? <Button variant="outline" onClick={() => setSetupStep((step) => step - 1)}><ArrowLeft className="mr-2 h-4 w-4" />{copy({ it: 'Indietro', en: 'Back' })}</Button> : <span className="flex-1" />}
+                {setupStep < 3 ? (
+                  <Button onClick={() => setSetupStep((step) => step + 1)} className="ml-auto h-12 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-7 font-black shadow-lg shadow-violet-950/40">
+                    {copy({ it: 'Avanti', en: 'Next' })}<ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button onClick={() => void startGame()} disabled={starting || !setupComplete} className="ml-auto h-12 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-8 font-black shadow-lg shadow-violet-950/40">
+                    {starting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Swords className="mr-2 h-5 w-5" />}
+                    {setupComplete ? copy({ it: 'Avvia partita', en: 'Start game' }) : copy({ it: 'Completa tutti i posti', en: 'Complete every seat' })}
+                  </Button>
+                )}
               </div>
             </div>
           </div>

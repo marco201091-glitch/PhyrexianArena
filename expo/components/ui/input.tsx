@@ -80,10 +80,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 10,
     fontSize: 16,
+    includeFontPadding: false,
   },
   inputMultiline: {
     minHeight: 96,
     textAlignVertical: 'top',
+    paddingTop: 12,
   },
   disabled: {
     opacity: 0.6,

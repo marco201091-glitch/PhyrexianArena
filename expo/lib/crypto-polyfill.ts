@@ -6,7 +6,7 @@ async function digestSha256(data: ArrayBuffer | ArrayBufferView) {
     ? new Uint8Array(data)
     : new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
 
-  return ExpoCrypto.digest(ExpoCrypto.CryptoDigestAlgorithm.SHA256, bytes);
+  return ExpoCrypto.digest(ExpoCrypto.CryptoDigestAlgorithm.SHA256, bytes as unknown as BufferSource);
 }
 
 const subtlePolyfill = {

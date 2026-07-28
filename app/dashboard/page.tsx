@@ -27,10 +27,12 @@ import { DeckImage } from '@/components/deck-image';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { isDemoUser } from '@/lib/demo';
 import { fetchGroupByInviteCode, normalizeInviteCode } from '@/lib/join-arena';
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+import { PendingArenaInvitations } from '@/components/arena/pending-arena-invitations';
 
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 import { ManaColorBadge, ManaColorPills } from '@/components/ui/mana-color-pills';
-import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
+import { AppModal } from '@/components/ui/modal-shell';
 import { PanelWithActions } from '@/components/ui/panel-with-actions';
 import {
   Plus,
@@ -291,28 +293,17 @@ export default function DashboardPage() {
         return;
       }
 
-      const { error } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: group.id,
-          user_id: user.id,
-        });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast({
-            title: t({ it: 'Sei gia membro', en: 'Already a member' }),
-            description: t({ it: 'Ti porto all\'arena...', en: 'Redirecting to arena...' }),
-          });
-        } else {
-          throw error;
-        }
-      } else {
-        toast({
-          title: t({ it: 'Entrato!', en: 'Joined!' }),
-          description: t({ it: `Benvenuto in "${group.name}"`, en: `Welcome to "${group.name}"` }),
-        });
-      }
+      const response = await authenticatedFetch('/api/arena-membership', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteCode: joiningCode }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Failed to join Arena');
+      toast({
+        title: t({ it: 'Entrato!', en: 'Joined!' }),
+        description: t({ it: `Benvenuto in "${group.name}"`, en: `Welcome to "${group.name}"` }),
+      });
 
       setShowJoinModal(false);
       setJoiningCode('');
@@ -426,6 +417,8 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">{t({ it: 'Crea o entra in un\'arena per tracciare le partite', en: 'Create or join an arena to track your battles' })}</p>
         </PanelWithActions>
 
+        <PendingArenaInvitations onAccepted={() => void fetchGroups()} />
+
         {groups.length === 0 ? (
           <Card className="bg-card/50 border-border">
             <CardContent className="py-12 text-center">
@@ -487,27 +480,27 @@ export default function DashboardPage() {
                     )}
                   </CardHeader>
                   <CardContent className="space-y-5 px-5 pb-5 sm:px-6 sm:pb-6">
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-md border border-border/70 bg-background/35 p-3">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                      <div className="min-w-0 rounded-xl border border-border/70 bg-background/35 p-2.5 sm:p-3">
                         <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">
                           <Users className="h-3.5 w-3.5" />
                           {t({ it: 'Tavolo', en: 'Table' })}
                         </div>
-                        <div className="text-lg font-semibold text-foreground">
+                        <div className="text-base font-semibold text-foreground sm:text-lg">
                           {group.group_members?.length || 0}
                         </div>
                         <div className="text-xs text-muted-foreground">{t({ it: 'giocatori', en: 'players' })}</div>
                       </div>
-                      <div className="rounded-md border border-border/70 bg-background/35 p-3">
+                      <div className="min-w-0 rounded-xl border border-border/70 bg-background/35 p-2.5 sm:p-3">
                         <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">
                           <Hash className="h-3.5 w-3.5" />
                           {t({ it: 'Invito', en: 'Invite' })}
                         </div>
-                        <div className="break-all font-mono text-lg font-semibold text-violet-200">
+                        <div className="truncate font-mono text-xs font-semibold text-violet-200 sm:text-lg">
                           {group.invite_code}
                         </div>
                       </div>
-                      <div className="rounded-md border border-border/70 bg-background/35 p-3">
+                      <div className="min-w-0 rounded-xl border border-border/70 bg-background/35 p-2.5 sm:p-3">
                         <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">
                           <CalendarDays className="h-3.5 w-3.5" />
                           {t({ it: 'Creata', en: 'Created' })}
@@ -576,7 +569,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid min-w-0 max-w-full gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+            <div className="grid min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
               <Card className="min-w-0 max-w-full overflow-hidden border-border/70 bg-card/60">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
@@ -629,7 +622,7 @@ export default function DashboardPage() {
               </Card>
 
               <div className="min-w-0 max-w-full space-y-5">
-                <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
+                <div className="grid grid-cols-2 gap-3">
                   <Card className="border-border/70 bg-card/60">
                     <CardContent className="p-4">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{t({ it: 'Partite', en: 'Games' })}</p>
@@ -782,8 +775,14 @@ export default function DashboardPage() {
       </main>
 
       {showJoinModal && (
-        <ModalOverlay>
-          <ModalCard>
+        <AppModal
+          open={showJoinModal}
+          onOpenChange={(open) => {
+            setShowJoinModal(open);
+            if (!open) setJoiningCode('');
+          }}
+          title={t({ it: 'Entra in un\'arena', en: 'Join an Arena' })}
+        >
             <CardHeader>
               <CardTitle className="text-foreground">{t({ it: 'Entra in un\'arena', en: 'Join an Arena' })}</CardTitle>
               <CardDescription className="text-muted-foreground">
@@ -797,7 +796,8 @@ export default function DashboardPage() {
                   <Input
                     autoFocus
                     value={joiningCode}
-                    onChange={(e) => setJoiningCode(e.target.value.toUpperCase())}
+                    onChange={(e) => setJoiningCode(e.target.value)}
+                    onBlur={() => setJoiningCode((code) => code.toUpperCase())}
                     placeholder={t({ it: 'Es. PHY123', en: 'e.g. PHY123' })}
                     className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground uppercase tracking-widest"
                   />
@@ -824,13 +824,15 @@ export default function DashboardPage() {
                 </div>
               </form>
             </CardContent>
-          </ModalCard>
-        </ModalOverlay>
+        </AppModal>
       )}
 
       {showCreateModal && (
-        <ModalOverlay>
-          <ModalCard>
+        <AppModal
+          open={showCreateModal}
+          onOpenChange={setShowCreateModal}
+          title={t({ it: 'Crea nuova arena', en: 'Create New Arena' })}
+        >
             <CardHeader>
               <CardTitle className="text-foreground">{t({ it: 'Crea nuova arena', en: 'Create New Arena' })}</CardTitle>
               <CardDescription className="text-muted-foreground">
@@ -877,8 +879,7 @@ export default function DashboardPage() {
                 </div>
               </form>
             </CardContent>
-          </ModalCard>
-        </ModalOverlay>
+        </AppModal>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LayoutChangeEvent,
   Platform,
@@ -22,7 +22,6 @@ import { DeckImage } from '@/components/deck/deck-image';
 import { HoldPressable } from '@/components/ui/hold-pressable';
 import { colors, radii } from '@/constants/theme';
 import {
-  type DamageMode,
   type LiveGamePlayer,
   type PlayDirection,
 } from '@/lib/live-game';
@@ -30,11 +29,17 @@ import type { ParticipantKey } from '@/lib/participant-keys';
 import { isIPadViewport } from '@/lib/layout';
 import { useReducedMotion } from '@/lib/reduced-motion';
 
+export type TableSeatLabels = {
+  commanderDamage: string;
+  infect: string;
+  eliminated: string;
+  revive: string;
+  ko: string;
+};
+
 type TableSeatProps = {
   player: LiveGamePlayer;
-  allPlayers: LiveGamePlayer[];
   seatRotation: number;
-  damageMode: DamageMode;
   isSource: boolean;
   isDragHover: boolean;
   isActiveSelector: boolean;
@@ -52,13 +57,7 @@ type TableSeatProps = {
   onDamageDragMove?: (x: number, y: number) => void;
   onDamageDragEnd?: (x: number, y: number) => void;
   onDamageDragCancel?: () => void;
-  labels: {
-    commanderDamage: string;
-    infect: string;
-    eliminated: string;
-    revive: string;
-    ko: string;
-  };
+  labels: TableSeatLabels;
 };
 
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -92,6 +91,8 @@ export function TableSeat({
   const shake = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
   const lifeScale = useSharedValue(1);
+  const lastReportedDragX = useSharedValue(0);
+  const lastReportedDragY = useSharedValue(0);
   const reducedMotion = useReducedMotion();
   const previousLife = useRef(player.life);
   const lifeDeltaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -141,13 +142,20 @@ export function TableSeat({
   const flashStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
   const lifeStyle = useAnimatedStyle(() => ({ transform: [{ scale: lifeScale.value }] }));
 
-  const dragGesture = Gesture.Pan()
+  const dragGesture = useMemo(() => Gesture.Pan()
     .enabled(!player.isEliminated && Boolean(onDamageDragStart))
     .minDistance(8)
     .onStart((event) => {
+      lastReportedDragX.value = event.absoluteX;
+      lastReportedDragY.value = event.absoluteY;
       if (onDamageDragStart) runOnJS(onDamageDragStart)(player.participantKey, event.absoluteX, event.absoluteY);
     })
     .onUpdate((event) => {
+      const moved = Math.abs(event.absoluteX - lastReportedDragX.value)
+        + Math.abs(event.absoluteY - lastReportedDragY.value);
+      if (moved < 4) return;
+      lastReportedDragX.value = event.absoluteX;
+      lastReportedDragY.value = event.absoluteY;
       if (onDamageDragMove) runOnJS(onDamageDragMove)(event.absoluteX, event.absoluteY);
     })
     .onEnd((event) => {
@@ -155,7 +163,16 @@ export function TableSeat({
     })
     .onFinalize((_event, success) => {
       if (!success && onDamageDragCancel) runOnJS(onDamageDragCancel)();
-    });
+    }), [
+      lastReportedDragX,
+      lastReportedDragY,
+      onDamageDragCancel,
+      onDamageDragEnd,
+      onDamageDragMove,
+      onDamageDragStart,
+      player.isEliminated,
+      player.participantKey,
+    ]);
 
   const [seatSize, setSeatSize] = useState({ width: 0, height: 0 });
   const isSideways = Math.abs(seatRotation) % 180 === 90;
@@ -173,7 +190,9 @@ export function TableSeat({
 
   const handleSeatLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
-    setSeatSize({ width, height });
+    setSeatSize((current) => (
+      current.width === width && current.height === height ? current : { width, height }
+    ));
   };
 
   const isCompact = canvasWidth > 0 && canvasWidth < 280;
@@ -373,7 +392,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   backgroundWrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   backgroundImageWrap: {
     width: '100%',
@@ -385,7 +404,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   scrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(2, 3, 8, 0.25)',
     zIndex: 1,
   },
@@ -404,17 +423,17 @@ const styles = StyleSheet.create({
     right: 0,
   },
   flash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(239, 68, 68, 0.42)',
     zIndex: 3,
   },
   selectSurface: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 50,
     elevation: 30,
   },
   playerHighlight: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -566,7 +585,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
   dragSurface: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   recentLifeDeltaIPad: {
     minWidth: 50,
@@ -630,7 +649,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   eliminatedOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 10,
     alignItems: 'center',
     justifyContent: 'center',

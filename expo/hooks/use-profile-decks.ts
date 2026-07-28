@@ -33,6 +33,7 @@ import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { prefetchProfileDeckImages } from '@/lib/deck-image-cache';
 import type { DeckPerformance, DeckWinRate, ProfileDeck } from '@/lib/types/profile';
+import { syncArchidektUserDecks as syncArchidektDecks } from '@/lib/archidekt-auto-sync';
 
 function uniqueCommanderOptions(options: CommanderMetadataOption[]) {
   return options.filter((option, index, allOptions) =>
@@ -177,6 +178,16 @@ export function useProfileDecks(userId: string | undefined) {
     if (error) throw error;
     await refresh();
   }, [refresh]);
+
+  const toggleDeckFavorite = useCallback(async (deckId: string, favorite: boolean) => {
+    if (!userId) throw new Error('Not authenticated');
+    setDecks((current) => current.map((deck) => deck.id === deckId ? { ...deck, is_favorite: favorite } : deck));
+    const { error } = await supabase.from('decks').update({ is_favorite: favorite }).eq('id', deckId).eq('user_id', userId);
+    if (error) {
+      setDecks((current) => current.map((deck) => deck.id === deckId ? { ...deck, is_favorite: !favorite } : deck));
+      throw error;
+    }
+  }, [userId]);
 
   const saveImportedDeck = useCallback(async (
     imported: ImportedDeckPreview,
@@ -343,6 +354,36 @@ export function useProfileDecks(userId: string | undefined) {
     await refresh();
   }, [decks, refresh]);
 
+  const linkDeckSource = useCallback(async (deck: ProfileDeck, sourceUrl: string) => {
+    const { data, error, status } = await apiPost<ImportedDeckPreview & { error?: string }>(
+      '/api/deck-import',
+      { url: sourceUrl },
+    );
+    if (status !== 200 || error || !data?.sourceUrl || !isImportedDeckSource(data.sourceType)) {
+      throw new Error(data?.error || 'Invalid Archidekt or Moxfield link');
+    }
+    const duplicate = decks.find((entry) =>
+      entry.id !== deck.id && entry.user_id === deck.user_id && entry.source_url === data.sourceUrl,
+    );
+    if (duplicate) throw new Error('This list is already linked to another deck');
+
+    const colorFields = deckDataToColorFields({
+      commanderOptions: data.commanderOptions || [],
+      colorIdentity: data.colorIdentity || [],
+    });
+    const { error: updateError } = await supabase
+      .from('decks')
+      .update({
+        source_url: data.sourceUrl,
+        source_type: data.sourceType,
+        bracket: data.bracket,
+        ...colorFields,
+      })
+      .eq('id', deck.id);
+    if (updateError) throw updateError;
+    await refresh();
+  }, [decks, refresh]);
+
   const saveArchidektUserDecks = useCallback(async (input: {
     decks: ImportedDeckPreview[];
     selectedUrls: string[];
@@ -409,26 +450,29 @@ export function useProfileDecks(userId: string | undefined) {
       return { inserted: 0, updated: 0, skipped: selectedDecks.length };
     }
 
-    if (decksToInsert.length > 0) {
-      const { error } = await supabase.from('decks').insert(decksToInsert);
-      if (error) throw error;
-    }
-
-    for (const deckUpdate of decksToUpdate) {
-      const { error } = await supabase
-        .from('decks')
-        .update(deckUpdate.payload)
-        .eq('id', deckUpdate.id);
-      if (error) throw error;
-    }
+    const syncRows = [
+      ...decksToInsert,
+      ...decksToUpdate.map((entry) => entry.payload),
+    ];
+    const { data: syncResult, error } = await supabase.rpc('sync_archidekt_decks', {
+      p_decks: syncRows,
+    });
+    if (error) throw error;
 
     await refresh();
+    const counts = (syncResult || {}) as { inserted?: number; updated?: number };
     return {
-      inserted: decksToInsert.length,
-      updated: decksToUpdate.length,
-      skipped: selectedDecks.length - decksToInsert.length - decksToUpdate.length,
+      inserted: counts.inserted ?? decksToInsert.length,
+      updated: counts.updated ?? decksToUpdate.length,
+      skipped: selectedDecks.length - syncRows.length,
     };
   }, [decks, refresh, userId]);
+
+  const syncArchidektUserDecks = useCallback(async (username: string) => {
+    const result = await syncArchidektDecks(username);
+    await refresh();
+    return result;
+  }, [refresh]);
 
   const refreshAllDecks = useCallback(async () => {
     const decksToRefresh = decks.filter(
@@ -503,12 +547,15 @@ export function useProfileDecks(userId: string | undefined) {
     loading,
     refresh,
     deleteDeck,
+    toggleDeckFavorite,
     saveImportedDeck,
     saveManualDeck,
     refreshImportedDeck,
     refreshAllDecks,
     updateDeck,
+    linkDeckSource,
     saveArchidektUserDecks,
+    syncArchidektUserDecks,
     getDeckCommanderOptions,
   };
 }

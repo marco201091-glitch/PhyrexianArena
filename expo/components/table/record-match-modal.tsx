@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Switch, Text, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DateField } from '@/components/ui/date-field';
 import { RichTextInput } from '@/components/ui/rich-text-input';
 import { Modal } from '@/components/ui/modal';
 import { colors, spacing } from '@/constants/theme';
@@ -31,6 +31,12 @@ type RecordMatchModalProps = {
     selectPlayers: string;
     selectGuests: string;
     selectWinner: string;
+    winCondition: string;
+    winLastStanding: string;
+    winCombo: string;
+    winConcession: string;
+    winAlternate: string;
+    winOther: string;
     draw: string;
     battleDate: string;
     notes: string;
@@ -63,6 +69,7 @@ type RecordMatchModalProps = {
     participantDecks: Record<string, string>;
     matchPlayedAtIso: string;
     matchNotes: string;
+    winCondition: NonNullable<ArenaMatch['win_condition']>;
   }) => Promise<void>;
   onError: (message: string) => void;
 };
@@ -106,6 +113,7 @@ export function RecordMatchModal({
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [winnerKey, setWinnerKey] = useState('');
   const [isDraw, setIsDraw] = useState(false);
+  const [winCondition, setWinCondition] = useState<NonNullable<ArenaMatch['win_condition']>>('other');
   const [participantDecks, setParticipantDecks] = useState<Record<string, string>>({});
   const [matchPlayedAt, setMatchPlayedAt] = useState(toMatchDateValue());
   const [matchNotes, setMatchNotes] = useState('');
@@ -126,6 +134,8 @@ export function RecordMatchModal({
     if (!visible) return;
     setSelectedKeys([]);
     setWinnerKey('');
+    setIsDraw(false);
+    setWinCondition('other');
     setParticipantDecks({});
     setMatchPlayedAt(toMatchDateValue());
     setMatchNotes('');
@@ -201,6 +211,7 @@ export function RecordMatchModal({
       participantDecks,
       matchPlayedAtIso: playedAtIso,
       matchNotes,
+      winCondition,
     });
   };
 
@@ -335,17 +346,37 @@ export function RecordMatchModal({
                 );
               })}
             </View>
+            <Text style={styles.sectionLabel}>{labels.winCondition}</Text>
+            <View style={styles.chipRow}>
+              {([
+                ['last_standing', labels.winLastStanding],
+                ['combo', labels.winCombo],
+                ['concession', labels.winConcession],
+                ['alternate_card', labels.winAlternate],
+                ['other', labels.winOther],
+              ] as const).map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  style={[styles.chip, winCondition === value && styles.conditionChip]}
+                  onPress={() => setWinCondition(value)}
+                >
+                  <Text style={[styles.chipLabel, winCondition === value && styles.chipLabelSelected]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
             </>
             ) : null}
           </>
         ) : null}
 
-        <Input
+        <DateField
           label={labels.battleDate}
           value={matchPlayedAt}
-          onChangeText={setMatchPlayedAt}
-          placeholder="YYYY-MM-DD"
-          autoCapitalize="none"
+          onChange={setMatchPlayedAt}
+          maximumDate={new Date()}
+          testID="record-match-date"
         />
         <RichTextInput
           label={labels.notes}
@@ -418,6 +449,10 @@ const styles = StyleSheet.create({
   winnerChip: {
     borderColor: '#fbbf24',
     backgroundColor: colors.warningSurface,
+  },
+  conditionChip: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySurface,
   },
   chipLabel: {
     color: colors.muted,

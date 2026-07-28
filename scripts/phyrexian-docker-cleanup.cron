@@ -1,0 +1,2 @@
+CRON_TZ=Europe/Rome
+40 3 * * * root /opt/scripts/vm-docker-cleanup.sh >/dev/null 2>&1

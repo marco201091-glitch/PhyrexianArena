@@ -8,12 +8,13 @@ import { cardRowGap, colors, radii, spacing } from '@/constants/theme';
 import { getPlayerRank } from '@/lib/arena-stats';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import type { ArenaProfile, PlayerStats } from '@/lib/types/arena';
+import { DirectArenaInvite } from '@/components/table/direct-arena-invite';
 
 type TablePlayersTabProps = {
   filteredMatchCount: number;
   members: ArenaProfile[];
   playerStats: PlayerStats[];
-  group: { created_by: string };
+  group: { id: string; created_by: string };
   userId?: string;
   isCreator?: boolean;
   labels: {
@@ -30,9 +31,15 @@ type TablePlayersTabProps = {
     guestBadge: string;
     creator: string;
     you: string;
+    directInviteTitle: string;
+    directInviteHint: string;
+    searchUser: string;
+    invitationSent: string;
+    invitationFailed: string;
   };
   canKickMember: (memberId: string) => boolean;
   onKickMember: (memberId: string, displayName: string) => void;
+  onMessage: (message: string, error?: boolean) => void;
 };
 
 function getRankPresentation(rank: number) {
@@ -74,6 +81,7 @@ export function TablePlayersTab({
   labels,
   canKickMember,
   onKickMember,
+  onMessage,
 }: TablePlayersTabProps) {
   const playerRanks = useMemo(
     () => playerStats.map((_, index) => getPlayerRank(playerStats, index)),
@@ -163,6 +171,17 @@ export function TablePlayersTab({
               </View>
             );
           })}
+          <DirectArenaInvite
+            groupId={group.id}
+            labels={{
+              title: labels.directInviteTitle,
+              hint: labels.directInviteHint,
+              search: labels.searchUser,
+              sent: labels.invitationSent,
+              failed: labels.invitationFailed,
+            }}
+            onMessage={onMessage}
+          />
         </CollapsiblePanel>
       ) : null}
     </View>

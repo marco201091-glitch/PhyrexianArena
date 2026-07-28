@@ -29,38 +29,44 @@ export function normalizeGuestDisplayName(value: unknown) {
   return name.length >= 2 ? name : null;
 }
 
-export function parseGuestMutation(value: unknown, state: LiveGameState): LiveGameMutation | null {
+export function parseGuestMutation(
+  value: unknown,
+  state: LiveGameState,
+  actorKey?: ParticipantKey,
+): LiveGameMutation | null {
   if (!value || typeof value !== 'object') return null;
   const input = value as Record<string, unknown>;
   const targetKey = typeof input.targetKey === 'string' ? input.targetKey as ParticipantKey : null;
   const sourceKey = typeof input.sourceKey === 'string' ? input.sourceKey as ParticipantKey : undefined;
   const hasPlayer = (key: ParticipantKey | null | undefined) => Boolean(key && state.players.some((player) => player.participantKey === key));
+  const ownsTarget = (key: ParticipantKey | null | undefined) => !actorKey || key === actorKey;
+  const ownsSource = (key: ParticipantKey | null | undefined) => !actorKey || key === actorKey;
   const amount = typeof input.amount === 'number' && Number.isInteger(input.amount)
     ? Math.max(-99, Math.min(99, input.amount))
     : null;
 
-  if (input.type === 'adjust' && hasPlayer(targetKey) && amount !== null
+  if (input.type === 'adjust' && hasPlayer(targetKey) && ownsTarget(targetKey) && amount !== null
       && (input.mode === 'life' || input.mode === 'commander' || input.mode === 'infect')
       && (input.mode !== 'commander' || hasPlayer(sourceKey))) {
     return { type: 'adjust', targetKey: targetKey!, sourceKey, amount, mode: input.mode };
   }
-  if (input.type === 'adjust_many' && hasPlayer(sourceKey) && amount !== null
+  if (input.type === 'adjust_many' && hasPlayer(sourceKey) && ownsSource(sourceKey) && amount !== null
       && (input.scope === 'opponents' || input.scope === 'all_players')) {
     return { type: 'adjust_many', sourceKey: sourceKey!, amount, scope: input.scope };
   }
-  if (input.type === 'adjust_counter' && hasPlayer(targetKey) && amount !== null
+  if (input.type === 'adjust_counter' && hasPlayer(targetKey) && ownsTarget(targetKey) && amount !== null
       && (input.counter === 'energy' || input.counter === 'experience' || input.counter === 'commanderTax')) {
     return { type: 'adjust_counter', targetKey: targetKey!, amount, counter: input.counter };
   }
-  if (input.type === 'set_emblem' && hasPlayer(targetKey)
+  if (input.type === 'set_emblem' && hasPlayer(targetKey) && ownsTarget(targetKey)
       && (input.emblem === 'monarch' || input.emblem === 'initiative')
       && typeof input.active === 'boolean') {
     return { type: 'set_emblem', targetKey: targetKey!, emblem: input.emblem, active: input.active };
   }
-  if (input.type === 'eliminate' && hasPlayer(targetKey)) {
+  if (input.type === 'eliminate' && hasPlayer(targetKey) && ownsTarget(targetKey)) {
     return { type: 'eliminate', targetKey: targetKey!, eliminatedAt: new Date().toISOString() };
   }
-  if (input.type === 'revive' && hasPlayer(targetKey)) {
+  if (input.type === 'revive' && hasPlayer(targetKey) && ownsTarget(targetKey)) {
     return { type: 'revive', targetKey: targetKey!, startingLife: Math.max(1, Math.min(999, Number(input.startingLife) || 40)) };
   }
   return null;

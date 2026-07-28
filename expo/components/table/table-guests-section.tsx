@@ -14,10 +14,12 @@ type TableGuestsSectionProps = {
     addGuest: string;
     noGuestsBody: string;
     guestBadge: string;
+    upgradeGuest: string;
   };
   onAddGuest: () => void;
   onAddDeckToGuest: (guestId: string) => void;
   onDeleteGuest: (guestId: string) => void;
+  onUpgradeGuest: (guestId: string) => void;
 };
 
 export function TableGuestsSection({
@@ -27,6 +29,7 @@ export function TableGuestsSection({
   onAddGuest,
   onAddDeckToGuest,
   onDeleteGuest,
+  onUpgradeGuest,
 }: TableGuestsSectionProps) {
   const guestMeta = guests.length > 0 ? `${guests.length}` : undefined;
 
@@ -61,11 +64,40 @@ export function TableGuestsSection({
             </View>
             {canManage ? (
               <View style={styles.guestActions}>
-                <Pressable onPress={() => onAddDeckToGuest(guest.id)}>
-                  <Ionicons name="add-circle-outline" size={18} color={colors.primaryMuted} />
+                <Pressable
+                  onPress={() => onUpgradeGuest(guest.id)}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel={labels.upgradeGuest}
+                  style={({ pressed }) => [
+                    styles.guestActionButton,
+                    styles.upgradeActionButton,
+                    pressed && styles.guestActionButtonPressed,
+                  ]}
+                >
+                  <Ionicons name="link-outline" size={24} color={colors.successBright} />
                 </Pressable>
-                <Pressable onPress={() => onDeleteGuest(guest.id)}>
-                  <Ionicons name="trash-outline" size={16} color={colors.muted} />
+                <Pressable
+                  onPress={() => onAddDeckToGuest(guest.id)}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.guestActionButton,
+                    pressed && styles.guestActionButtonPressed,
+                  ]}
+                >
+                  <Ionicons name="add-circle-outline" size={24} color={colors.primaryMuted} />
+                </Pressable>
+                <Pressable
+                  onPress={() => onDeleteGuest(guest.id)}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.guestActionButton,
+                    pressed && styles.guestActionButtonPressed,
+                  ]}
+                >
+                  <Ionicons name="trash-outline" size={22} color={colors.muted} />
                 </Pressable>
               </View>
             ) : null}
@@ -96,7 +128,25 @@ const styles = StyleSheet.create({
   guestActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  guestActionButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  upgradeActionButton: {
+    borderColor: colors.successBorder,
+    backgroundColor: colors.tealMuted,
+  },
+  guestActionButtonPressed: {
+    opacity: 0.66,
+    transform: [{ scale: 0.96 }],
   },
   guestInfo: {
     flex: 1,

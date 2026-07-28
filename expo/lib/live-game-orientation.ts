@@ -14,11 +14,22 @@ function getScreenOrientationModule(): ScreenOrientationModule | null {
   }
 }
 
-export async function applyLiveGameOrientationLock(_playerCount: number): Promise<void> {
+export function getLiveGameOrientationPolicy(platform: string, isPad: boolean) {
+  return platform === 'ios' && isPad ? 'unlocked' : 'portrait';
+}
+
+export async function applyLiveGameOrientationLock(
+  _playerCount: number,
+  device: { platform?: string; isPad?: boolean } = {},
+): Promise<void> {
   const orientationModule = getScreenOrientationModule();
   if (!orientationModule) return;
 
   try {
+    if (getLiveGameOrientationPolicy(device.platform ?? '', device.isPad ?? false) === 'unlocked') {
+      await orientationModule.unlockAsync();
+      return;
+    }
     await orientationModule.lockAsync(orientationModule.OrientationLock.PORTRAIT_UP);
   } catch {
     // Native module missing until the dev client is rebuilt.

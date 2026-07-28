@@ -14,6 +14,7 @@ type ButtonProps = {
   size?: ButtonSize;
   icon?: keyof typeof Ionicons.glyphMap;
   style?: ViewStyle;
+  testID?: string;
 };
 
 export function Button({
@@ -24,6 +25,7 @@ export function Button({
   size = 'default',
   icon,
   style,
+  testID,
 }: ButtonProps) {
   const isPrimary = variant === 'primary';
   const isDestructive = variant === 'destructive';
@@ -32,6 +34,7 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      testID={testID}
       accessibilityRole="button"
       accessibilityState={{ disabled: Boolean(disabled) }}
       hitSlop={size === 'sm' ? 4 : 2}
@@ -77,7 +80,7 @@ export function Button({
 const styles = StyleSheet.create({
   base: {
     minHeight: touch.minHeight,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

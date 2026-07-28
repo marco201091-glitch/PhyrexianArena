@@ -23,7 +23,7 @@
     --border: 240 5% 18%;
     --input: 240 5% 18%;
     --ring: 280 60% 45%;
-    --radius: 0.5rem;
+    --radius: 0.875rem;
 
     /* MTG Colors */
     --mtg-white: 48 100% 94%;
@@ -92,7 +92,7 @@
   @media (max-width: 768px) {
     body {
       background-image:
-        linear-gradient(180deg, rgba(4, 4, 7, 0.34) 0%, rgba(4, 4, 7, 0.56) 58%, rgba(4, 4, 7, 0.78) 100%),
+        linear-gradient(180deg, rgba(4, 4, 7, 0.52) 0%, rgba(4, 4, 7, 0.7) 58%, rgba(4, 4, 7, 0.9) 100%),
         radial-gradient(ellipse at 52% 24%, rgba(20, 184, 166, 0.08) 0%, transparent 36%),
         radial-gradient(ellipse at 68% 38%, rgba(139, 92, 246, 0.08) 0%, transparent 32%),
         url('/app-background.png');
@@ -110,15 +110,15 @@
 
 @layer components {
   .phyrexian-panel {
-    @apply border-border/80 bg-[hsl(var(--card)/0.65)] shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur;
+    @apply rounded-2xl border border-border/80 bg-[hsl(var(--card)/0.72)] shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur-md;
   }
 
   .phyrexian-panel-strong {
-    @apply border-violet-500/25 bg-[linear-gradient(135deg,rgba(139,92,246,0.18),rgba(10,10,15,0.72)_45%,rgba(20,184,166,0.08))] shadow-[0_22px_80px_rgba(0,0,0,0.42)] backdrop-blur;
+    @apply rounded-2xl border border-violet-500/25 bg-[linear-gradient(135deg,rgba(139,92,246,0.2),rgba(10,10,15,0.78)_45%,rgba(20,184,166,0.1))] shadow-[0_22px_80px_rgba(0,0,0,0.42)] backdrop-blur-md;
   }
 
   .phyrexian-divider {
-    @apply border-border/70 bg-black/25 backdrop-blur;
+    @apply border-border/70 bg-black/55 backdrop-blur-xl;
   }
 
   .safe-top {

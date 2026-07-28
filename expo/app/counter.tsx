@@ -24,11 +24,16 @@ import {
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { searchCommandersDirect } from '@/lib/scryfall-search';
 import type { CommanderSearchResult } from '@/lib/commander-types';
-import { getApiBaseUrl, getSiteUrl } from '@/lib/env';
+import { getSiteUrl } from '@/lib/env';
+import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api';
 import { subscribePublicCounterRealtime } from '@/lib/guest-realtime';
 import { buildCounterGuestInviteUrl } from '@/lib/invite-links';
 import { useLanguage } from '@/contexts/language-context';
 import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
+import {
+  clearLiveGameRuntimePlayers,
+  replaceLiveGameRuntimePlayers,
+} from '@/stores/live-game-runtime-store';
 
 const STORAGE_KEY = 'phyrexian:standalone-counter:v1';
 const CARD_COLORS = ['#18181b', '#7f1d1d', '#1e3a8a', '#14532d', '#713f12', '#581c87'];
@@ -93,9 +98,14 @@ export default function CounterScreen() {
   }, []);
 
   const refreshOnline = async (hostToken: string) => {
-    const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { headers: { Authorization: `Bearer ${hostToken}` } });
-    if (!response.ok) return;
-    const payload = await response.json();
+    const { data: payload, status } = await apiGet<{
+      session: { realtimeTopic: string; state?: LiveGameState };
+      guests?: OnlineGuest[];
+    }>('/api/public-counter-session', {
+      authenticated: false,
+      headers: { Authorization: `Bearer ${hostToken}` },
+    });
+    if (status !== 200 || !payload) return;
     setOnline((current) => current ? { ...current, realtimeTopic: payload.session.realtimeTopic, guests: payload.guests ?? [] } : current);
     if (payload.session.state) setState(parseLiveGameState(payload.session.state));
   };
@@ -125,6 +135,14 @@ export default function CounterScreen() {
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ format, state, startedAt }));
   }, [format, startedAt, state]);
 
+  useEffect(() => {
+    replaceLiveGameRuntimePlayers(state?.players ?? []);
+  }, [state?.players]);
+
+  useEffect(() => () => {
+    clearLiveGameRuntimePlayers();
+  }, []);
+
   const mutate = (mutation: LiveGameMutation) => {
     if (!state) return;
     setHistory((current) => [...current.slice(-29), state]);
@@ -135,7 +153,13 @@ export default function CounterScreen() {
       occurredAt: new Date().toISOString(),
     });
     setState(next);
-    if (REMOTE_GUESTS_ENABLED && online) void fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mutate', sessionToken: online.hostToken, mutation }) }).then(() => refreshOnline(online.hostToken));
+    if (REMOTE_GUESTS_ENABLED && online) {
+      void apiPost('/api/public-counter-session', {
+        action: 'mutate',
+        sessionToken: online.hostToken,
+        mutation,
+      }, { authenticated: false }).then(() => refreshOnline(online.hostToken));
+    }
   };
 
   const start = async () => {
@@ -156,8 +180,12 @@ export default function CounterScreen() {
     }));
     const nextState = { version: 0, players, events: [], summary: createLiveGameSummary(), layoutVariant: 'classic' } satisfies LiveGameState;
     if (REMOTE_GUESTS_ENABLED && online) {
-      const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start', sessionToken: online.hostToken, state: nextState }) });
-      if (!response.ok) return;
+      const { status } = await apiPost('/api/public-counter-session', {
+        action: 'start',
+        sessionToken: online.hostToken,
+        state: nextState,
+      }, { authenticated: false });
+      if (status < 200 || status >= 300) return;
     }
     setState(nextState);
     setStartedAt(new Date().toISOString());
@@ -168,15 +196,22 @@ export default function CounterScreen() {
   const toggleGuests = async (enabled: boolean) => {
     if (!REMOTE_GUESTS_ENABLED) return;
     if (!enabled) {
-      if (online) await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken: online.hostToken }) });
+      if (online) {
+        await apiDelete('/api/public-counter-session', {
+          sessionToken: online.hostToken,
+        }, { authenticated: false });
+      }
       await AsyncStorage.removeItem(ONLINE_STORAGE_KEY);
       setOnline(null);
       setGuestsEnabled(false);
       return;
     }
-    const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', format }) });
-    if (!response.ok) return;
-    const payload = await response.json();
+    const { data: payload, status } = await apiPost<{
+      hostToken: string;
+      inviteToken: string;
+      realtimeTopic: string;
+    }>('/api/public-counter-session', { action: 'create', format }, { authenticated: false });
+    if (status !== 200 || !payload) return;
     setOnline({ hostToken: payload.hostToken, inviteToken: payload.inviteToken, realtimeTopic: payload.realtimeTopic, guests: [] });
     setGuestsEnabled(true);
   };
@@ -246,15 +281,15 @@ export default function CounterScreen() {
           {format === 'commander' ? <><Input label={copy('searchCommander')} value={player.commander} onChangeText={(value) => void searchCommander(index, value)} />{searchIndex === index && searchResults.length ? <View style={styles.searchResults}>{searchResults.slice(0, 8).map((result) => <Pressable key={result.id} style={styles.searchResult} onPress={() => { setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, commander: result.name, commanderImage: result.imageUrl } : item)); setSearchResults([]); }}><DeckImage uri={result.imageUrl} alt={result.name} style={styles.searchImage} containerStyle={styles.searchImageWrap} /><Text style={styles.searchName} numberOfLines={2}>{result.name}</Text></Pressable>)}</View> : null}</> : null}
           <View style={styles.colorRow}>{CARD_COLORS.map((color) => <Pressable key={color} onPress={() => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color } : item))} style={[styles.color, { backgroundColor: color }, player.color === color && styles.colorActive]} />)}</View>
         </View>)}
-        {REMOTE_GUESTS_ENABLED ? <View style={styles.guestPanel}><View style={styles.guestToggle}><View style={styles.guestCopy}><Text style={styles.sectionTitle}>{copy('guestsQuestion')}</Text><Text style={styles.subtitle}>{guestsEnabled ? copy('temporaryOnlineLobby') : copy('offlineSingleDevice')}</Text></View><Switch value={guestsEnabled} onValueChange={(value) => void toggleGuests(value)} /></View>{online ? <><View style={styles.qr}><QrCode value={buildCounterGuestInviteUrl(getSiteUrl(), online.inviteToken)} size={224} label={copy('gameInviteQr')} /></View><Text style={styles.qrHint}>Guest: {online.guests.length} · {copy('readyGuests')} {online.guests.filter((guest) => guest.ready).length}</Text><Button label={copy('rotateInvite')} variant="outline" onPress={async () => { const response = await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rotate', sessionToken: online.hostToken }) }); const payload = await response.json(); if (response.ok) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }} />{online.guests.map((guest) => <View key={guest.id} style={styles.guestRow}><Text style={styles.guestName}>{guest.ready ? '✓' : '○'} {guest.display_name} · {guest.commander}</Text><Pressable onPress={async () => { await fetch(`${getApiBaseUrl()}/api/public-counter-session`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove', sessionToken: online.hostToken, guestId: guest.id }) }); await refreshOnline(online.hostToken); }}><Text style={styles.removeGuest}>{copy('remove')}</Text></Pressable></View>)}</> : null}</View> : null}
-        <Button label={copy('startGame')} icon="play" disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} onPress={() => void start()} />
+        {REMOTE_GUESTS_ENABLED ? <View style={styles.guestPanel}><View style={styles.guestToggle}><View style={styles.guestCopy}><Text style={styles.sectionTitle}>{copy('guestsQuestion')}</Text><Text style={styles.subtitle}>{guestsEnabled ? copy('temporaryOnlineLobby') : copy('offlineSingleDevice')}</Text></View><Switch value={guestsEnabled} onValueChange={(value) => void toggleGuests(value)} /></View>{online ? <><View style={styles.qr}><QrCode value={buildCounterGuestInviteUrl(getSiteUrl(), online.inviteToken)} size={224} label={copy('gameInviteQr')} /></View><Text style={styles.qrHint}>Guest: {online.guests.length} · {copy('readyGuests')} {online.guests.filter((guest) => guest.ready).length}</Text><Button label={copy('rotateInvite')} variant="outline" onPress={async () => { const { data: payload, status } = await apiPatch<{ inviteToken: string }>('/api/public-counter-session', { action: 'rotate', sessionToken: online.hostToken }, { authenticated: false }); if (status === 200 && payload) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }} />{online.guests.map((guest) => <View key={guest.id} style={styles.guestRow}><Text style={styles.guestName}>{guest.ready ? '✓' : '○'} {guest.display_name} · {guest.commander}</Text><Pressable onPress={async () => { await apiPatch('/api/public-counter-session', { action: 'remove', sessionToken: online.hostToken, guestId: guest.id }, { authenticated: false }); await refreshOnline(online.hostToken); }}><Text style={styles.removeGuest}>{copy('remove')}</Text></Pressable></View>)}</> : null}</View> : null}
+        <Button label={copy('startGame')} icon="play" testID="counter-start-game" disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} onPress={() => void start()} />
         <Button label={copy('back')} variant="ghost" onPress={() => router.back()} />
       </ScrollView>
     </Screen>;
   }
 
   const activePlayers = state.players.filter((player) => !player.isEliminated);
-  return <View style={styles.game}>
+  return <View testID="counter-arena" style={styles.game}>
     <StatusBar hidden />
     <TableArena
       players={state.players}

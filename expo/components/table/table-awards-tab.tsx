@@ -16,7 +16,14 @@ type Props = {
     slugger: string;
     executioner: string;
     runnerUp: string;
+    archenemy: string;
+    comebacker: string;
+    oneTrick: string;
+    comboWinner: string;
+    junkMaster: string;
     trackedGames: string;
+    games: string;
+    wins: string;
   };
 };
 
@@ -27,12 +34,29 @@ export function TableAwardsTab({ awards, labels }: Props) {
   return <View style={styles.section}>
     <Text style={styles.hint}>{labels.hint}</Text>
     {awards.map((award) => {
-      const title = award.kind === 'fastest' ? labels.fastest : award.kind === 'group_slugger' ? labels.slugger : award.kind === 'executioner' ? labels.executioner : labels.runnerUp;
-      const value = award.kind === 'fastest' ? formatGameDuration(award.value) : award.kind === 'runner_up' ? `${award.value}× #2` : award.kind === 'executioner' ? `${award.value} KO` : `${award.value} dmg`;
+      const presentation = award.kind === 'fastest'
+        ? { title: labels.fastest, value: formatGameDuration(award.value) }
+        : award.kind === 'group_slugger'
+          ? { title: labels.slugger, value: `${award.value} dmg` }
+          : award.kind === 'executioner'
+            ? { title: labels.executioner, value: `${award.value} KO` }
+            : award.kind === 'runner_up'
+              ? { title: labels.runnerUp, value: `${award.value}× #2` }
+              : award.kind === 'archenemy'
+                ? { title: labels.archenemy, value: `×${award.value}` }
+                : award.kind === 'comebacker'
+                  ? { title: labels.comebacker, value: `×${award.value}` }
+                  : award.kind === 'one_trick'
+                    ? { title: labels.oneTrick, value: `${award.value} ${labels.games}` }
+                    : award.kind === 'combo_winner'
+                      ? { title: labels.comboWinner, value: `${award.value} ${labels.wins}` }
+                      : { title: labels.junkMaster, value: `${award.value} ${labels.wins}` };
+      const metaGames = award.kind === 'one_trick' ? award.gamesPlayed : award.trackedGames;
+      const metaLabel = award.kind === 'one_trick' ? labels.games : labels.trackedGames;
       return <PhyrexianPanel key={award.kind} variant="inset" style={styles.card}>
         <CommanderArt uri={award.commanderImage} alt={award.commander} size="sm" />
-        <View style={styles.main}><Text style={styles.kicker}>{title}</Text><Text style={styles.name} numberOfLines={1}>{award.name}</Text><Text style={styles.commander} numberOfLines={1}>{award.commander}</Text><Text style={styles.meta}>{award.trackedGames} {labels.trackedGames}</Text></View>
-        <Text style={styles.value}>{value}</Text>
+        <View style={styles.main}><Text style={styles.kicker}>{presentation.title}</Text><Text style={styles.name} numberOfLines={1}>{award.name}</Text><Text style={styles.commander} numberOfLines={1}>{award.commander}</Text><Text style={styles.meta}>{metaGames} {metaLabel}</Text></View>
+        <Text style={styles.value}>{presentation.value}</Text>
       </PhyrexianPanel>;
     })}
   </View>;

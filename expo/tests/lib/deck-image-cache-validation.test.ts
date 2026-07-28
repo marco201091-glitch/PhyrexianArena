@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getInfoAsync = vi.hoisted(() => vi.fn());
 const loadAsync = vi.hoisted(() => vi.fn());
 
-vi.mock('expo-file-system', () => ({
+vi.mock('expo-file-system/legacy', () => ({
   cacheDirectory: 'file:///cache/', getInfoAsync,
   makeDirectoryAsync: vi.fn(), readAsStringAsync: vi.fn(), writeAsStringAsync: vi.fn(),
   deleteAsync: vi.fn(), moveAsync: vi.fn(), downloadAsync: vi.fn(),
