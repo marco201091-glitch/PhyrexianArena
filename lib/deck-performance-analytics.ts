@@ -45,10 +45,23 @@ export interface DeckPerformanceStats {
   eliminations: number;
   groupDamageDealt: number;
   groupDamageEvents: number;
+  firstEliminations: number;
+  comebackWins: number;
+  comboWins: number;
+  alternateWins: number;
   medianWinningDurationSeconds: number | null;
 }
 
-export type ArenaAwardKind = 'fastest' | 'group_slugger' | 'executioner' | 'runner_up';
+export type ArenaAwardKind =
+  | 'fastest'
+  | 'group_slugger'
+  | 'executioner'
+  | 'runner_up'
+  | 'archenemy'
+  | 'comebacker'
+  | 'one_trick'
+  | 'combo_winner'
+  | 'junk_master';
 
 export interface ArenaAward {
   kind: ArenaAwardKind;
@@ -99,6 +112,10 @@ export function buildDeckPerformanceStats(rows: DeckPerformanceInputRow[]) {
       eliminations: 0,
       groupDamageDealt: 0,
       groupDamageEvents: 0,
+      firstEliminations: 0,
+      comebackWins: 0,
+      comboWins: 0,
+      alternateWins: 0,
       medianWinningDurationSeconds: null,
       winningDurations: [],
     };
@@ -146,6 +163,15 @@ function topBy(
     .sort((a, b) => selector(b) - selector(a) || b.trackedGames - a.trackedGames)[0] || null;
 }
 
+function topByAll(
+  decks: DeckPerformanceStats[],
+  selector: (deck: DeckPerformanceStats) => number,
+) {
+  return [...decks]
+    .filter((deck) => selector(deck) > 0)
+    .sort((a, b) => selector(b) - selector(a) || b.gamesPlayed - a.gamesPlayed)[0] || null;
+}
+
 export function buildArenaAwards(decks: DeckPerformanceStats[]): ArenaAward[] {
   const awards: ArenaAward[] = [];
   const fastest = [...decks]
@@ -167,6 +193,21 @@ export function buildArenaAwards(decks: DeckPerformanceStats[]): ArenaAward[] {
 
   const runnerUp = topBy(decks, (deck) => deck.secondPlaces);
   if (runnerUp) awards.push({ kind: 'runner_up', deck: runnerUp, value: runnerUp.secondPlaces });
+
+  const archenemy = topBy(decks, (deck) => deck.firstEliminations);
+  if (archenemy) awards.push({ kind: 'archenemy', deck: archenemy, value: archenemy.firstEliminations });
+
+  const comebacker = topBy(decks, (deck) => deck.comebackWins);
+  if (comebacker) awards.push({ kind: 'comebacker', deck: comebacker, value: comebacker.comebackWins });
+
+  const oneTrick = topByAll(decks, (deck) => deck.gamesPlayed);
+  if (oneTrick) awards.push({ kind: 'one_trick', deck: oneTrick, value: oneTrick.gamesPlayed });
+
+  const comboWinner = topByAll(decks, (deck) => deck.comboWins);
+  if (comboWinner) awards.push({ kind: 'combo_winner', deck: comboWinner, value: comboWinner.comboWins });
+
+  const junkMaster = topByAll(decks, (deck) => deck.alternateWins);
+  if (junkMaster) awards.push({ kind: 'junk_master', deck: junkMaster, value: junkMaster.alternateWins });
 
   return awards;
 }

@@ -23,6 +23,7 @@ type DeckCardProps = {
   onEdit?: () => void;
   onRefresh?: () => void;
   onDelete: () => void;
+  onToggleFavorite: () => void;
 };
 
 function externalLinkTone(sourceType: string | null | undefined): 'violet' | 'blue' | 'purple' {
@@ -44,6 +45,7 @@ export const DeckCard = memo(function DeckCard({
   onEdit,
   onRefresh,
   onDelete,
+  onToggleFavorite,
 }: DeckCardProps) {
   const manaColors = getDeckDisplayColors(deck);
   const canRefresh = deck.source_type !== 'manual' && Boolean(deck.source_url);
@@ -101,6 +103,18 @@ export const DeckCard = memo(function DeckCard({
       </View>
 
       <View style={styles.actions}>
+        <Pressable
+          onPress={onToggleFavorite}
+          style={styles.actionButton}
+          accessibilityRole="button"
+          accessibilityState={{ selected: deck.is_favorite }}
+        >
+          <Ionicons
+            name={deck.is_favorite ? 'star' : 'star-outline'}
+            size={20}
+            color={deck.is_favorite ? '#fcd34d' : colors.primaryMuted}
+          />
+        </Pressable>
         <Pressable onPress={onDetails} style={[styles.actionButton, styles.detailsButton]} accessibilityRole="button">
           <Ionicons name="stats-chart-outline" size={18} color={colors.primaryMuted} />
           <Text style={styles.detailsLabel}>{detailsLabel}</Text>

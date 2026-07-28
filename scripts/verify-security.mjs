@@ -113,8 +113,21 @@ assert.match(
 
 const loginRoute = readFileSync(join(root, 'app/api/auth/login/route.ts'), 'utf8');
 assert.match(loginRoute, /authLogin/, 'Password login must be rate limited');
-assert.match(loginRoute, /getSupabaseAdminClient/, 'Login identifier resolution must remain server-side');
-assert.match(loginRoute, /signInWithPassword/, 'Password verification must remain server-side');
+assert.match(
+  loginRoute,
+  /SUPABASE_SERVICE_ROLE_KEY/,
+  'Login identifier resolution must use server-only credentials',
+);
+assert.match(
+  loginRoute,
+  /\/rest\/v1\/rpc\/resolve_login_email/,
+  'Login identifier resolution must remain server-side',
+);
+assert.match(
+  loginRoute,
+  /\/auth\/v1\/token\?grant_type=password/,
+  'Password verification must remain server-side',
+);
 assert.doesNotMatch(loginRoute, /email:\s*data/, 'The login API must never disclose resolved emails');
 const loginSources = [
   'app/auth/login/page.tsx',

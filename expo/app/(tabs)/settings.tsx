@@ -40,7 +40,7 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { version: avatarVersion } = useAvatarVersion();
-  const { profile, updateDisplayName, uploadAvatar, getAvatarUrl } = useProfile(user?.id);
+  const { profile, updateDisplayName, uploadAvatar, getAvatarUrl, refresh: refreshProfile } = useProfile(user?.id);
   const { pickAvatar } = useAvatarPicker({ uploadAvatar });
   const avatarUrl = getAvatarUrl(avatarVersion);
   const { showToast } = useToast();
@@ -58,10 +58,19 @@ export default function SettingsScreen() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [accessibility, setAccessibility] = useState<AccessibilityPreferences>(DEFAULT_ACCESSIBILITY_PREFERENCES);
+  const [archidektUsername, setArchidektUsername] = useState('');
+  const [archidektAutoImport, setArchidektAutoImport] = useState(false);
+  const [savingArchidektSettings, setSavingArchidektSettings] = useState(false);
 
   useEffect(() => {
     void loadAccessibilityPreferences().then(setAccessibility);
   }, []);
+
+  useEffect(() => {
+    if (!profile) return;
+    setArchidektUsername(profile.archidekt_username || '');
+    setArchidektAutoImport(Boolean(profile.archidekt_auto_import));
+  }, [profile]);
 
   const updateReducedMotion = (value: boolean) => {
     const next = { ...accessibility, reducedMotion: value };
@@ -150,6 +159,25 @@ export default function SettingsScreen() {
     void hapticSuccess();
   };
 
+  const saveArchidektSettings = async () => {
+    if (!user) return;
+    setSavingArchidektSettings(true);
+    try {
+      const { error } = await supabase.from('profiles').update({
+        archidekt_username: archidektUsername.trim() || null,
+        archidekt_auto_import: archidektAutoImport,
+      }).eq('id', user.id);
+      if (error) throw error;
+      await refreshProfile();
+      void hapticSuccess();
+      showToast(copy('profileUpdated'));
+    } catch (error) {
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('updateProfileFailed')));
+    } finally {
+      setSavingArchidektSettings(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (!user) return;
 
@@ -227,6 +255,38 @@ export default function SettingsScreen() {
             onPress={() => setShowLanguageModal(true)}
           />
         </View>
+      </PhyrexianPanel>
+
+      <PhyrexianPanel style={styles.card}>
+        <SectionHeader title="Archidekt sync" />
+        <Text style={styles.preferenceHint}>{copy('archidektPublicHint')}</Text>
+        <Input
+          label={copy('archidektUsername')}
+          value={archidektUsername}
+          onChangeText={setArchidektUsername}
+          placeholder={copy('archidektUsernamePlaceholder')}
+          autoCapitalize="none"
+        />
+        <View style={styles.preferenceRow}>
+          <View style={styles.preferenceCopy}>
+            <Text style={styles.preferenceLabel}>Auto-update</Text>
+            {profile?.archidekt_last_sync_at ? (
+              <Text style={styles.preferenceHint}>
+                {new Date(profile.archidekt_last_sync_at).toLocaleString()}
+              </Text>
+            ) : null}
+          </View>
+          <Switch
+            value={archidektAutoImport}
+            onValueChange={setArchidektAutoImport}
+            trackColor={{ true: colors.primary }}
+          />
+        </View>
+        <Button
+          label={savingArchidektSettings ? copy('saving') : copy('save')}
+          onPress={() => void saveArchidektSettings()}
+          disabled={savingArchidektSettings}
+        />
       </PhyrexianPanel>
 
       <PhyrexianPanel style={styles.card}>

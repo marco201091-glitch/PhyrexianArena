@@ -37,6 +37,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GuestCommanderPicker } from '@/components/arena/guest-commander-picker';
+import { DirectArenaInvite } from '@/components/arena/direct-arena-invite';
 import { MatchParticipantRow, toDeckOption } from '@/components/arena/match-participant-row';
 import { BracketBadge } from '@/components/deck/bracket-badge';
 import { EdhrecBadge } from '@/components/deck/edhrec-badge';
@@ -136,6 +137,7 @@ import {
   QrCode,
   Shield,
   Flag,
+  Link2,
 } from 'lucide-react';
 
 const ARENA_DECK_PICKER_COLUMNS = `
@@ -449,6 +451,7 @@ export default function TablePage() {
   const [hiddenParticipantDeckLists, setHiddenParticipantDeckLists] = useState<Record<string, boolean>>({});
   const [winnerKey, setWinnerKey] = useState<ParticipantKey | ''>('');
   const [matchIsDraw, setMatchIsDraw] = useState(false);
+  const [matchWinCondition, setMatchWinCondition] = useState<NonNullable<Match['win_condition']>>('other');
   const [matchNotes, setMatchNotes] = useState('');
   const [matchPlayedAt, setMatchPlayedAt] = useState(() => toMatchDateValue());
   const [savingMatch, setSavingMatch] = useState(false);
@@ -461,6 +464,7 @@ export default function TablePage() {
   const [guestSelectedPartnerCommander, setGuestSelectedPartnerCommander] = useState<CommanderSearchResult | null>(null);
   const [savingGuest, setSavingGuest] = useState(false);
   const [deletingGuestIds, setDeletingGuestIds] = useState<string[]>([]);
+  const [creatingGuestClaimIds, setCreatingGuestClaimIds] = useState<string[]>([]);
 
   // Edit arena modal state
   const [showEditArenaModal, setShowEditArenaModal] = useState(false);
@@ -1488,6 +1492,40 @@ export default function TablePage() {
     }
   };
 
+  const createGuestClaimLink = async (guest: ArenaGuest) => {
+    setCreatingGuestClaimIds((ids) => [...ids, guest.id]);
+    try {
+      const response = await authenticatedFetch('/api/guest-claims', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestId: guest.id }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Could not create claim link');
+      if (navigator.share) {
+        await navigator.share({
+          title: t({ it: `Evolvi ${guest.display_name}`, en: `Upgrade ${guest.display_name}` }),
+          text: t({ it: 'Crea il tuo account e mantieni mazzi e statistiche.', en: 'Create your account and keep decks and stats.' }),
+          url: payload.url,
+        }).catch(() => undefined);
+      } else {
+        await navigator.clipboard.writeText(payload.url);
+      }
+      toast({
+        title: t({ it: 'Link evoluzione creato', en: 'Upgrade link created' }),
+        description: t({ it: 'Il link monouso è pronto da condividere e scade tra 7 giorni.', en: 'The one-time link is ready to share and expires in 7 days.' }),
+      });
+    } catch (error) {
+      toast({
+        title: t({ it: 'Link non creato', en: 'Link not created' }),
+        description: error instanceof Error ? error.message : String(error),
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingGuestClaimIds((ids) => ids.filter((id) => id !== guest.id));
+    }
+  };
+
   const refreshMissingImportedDeckImages = useCallback(async (deckIds: string[]) => {
     const uniqueDeckIds = Array.from(new Set(deckIds.filter(Boolean)));
     const demoAccount = isDemoUser(user);
@@ -1631,6 +1669,7 @@ export default function TablePage() {
     setHiddenParticipantDeckLists({});
     setWinnerKey('');
     setMatchIsDraw(false);
+    setMatchWinCondition('other');
     setMatchNotes('');
     setMatchPlayedAt(toMatchDateValue());
   };
@@ -1684,6 +1723,7 @@ export default function TablePage() {
         is_draw: matchIsDraw,
         winner_id: !matchIsDraw && winnerParsed?.type === 'user' ? winnerParsed.id : null,
         winner_guest_id: !matchIsDraw && winnerParsed?.type === 'guest' ? winnerParsed.id : null,
+        win_condition: matchIsDraw ? null : matchWinCondition,
         created_by: user!.id,
         notes: matchNotes || null,
         played_at: playedAtIso,
@@ -1710,6 +1750,11 @@ export default function TablePage() {
         await supabase.from('matches').delete().eq('id', match.id);
         throw participantsError;
       }
+      void authenticatedFetch('/api/notifications/match-completed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId: match.id }),
+      });
 
       const guestIds = selectedParticipantKeys
         .map((key) => parseParticipantKey(key))
@@ -2298,7 +2343,7 @@ export default function TablePage() {
         </PanelWithActions>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="mb-6 flex min-w-0 flex-col gap-3 rounded-lg border border-border/70 bg-black/25 p-3 backdrop-blur xl:flex-row xl:items-center xl:justify-between">
+          <div className="mb-6 flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-black/35 p-3 shadow-lg shadow-black/20 backdrop-blur-xl xl:flex-row xl:items-center xl:justify-between">
             <TabsList className="grid h-auto w-full min-w-0 grid-cols-5 gap-1 border border-border/70 bg-card/60 p-1 xl:inline-flex xl:h-11 xl:w-auto">
               <TabsTrigger
                 value="matches"
@@ -2550,8 +2595,8 @@ export default function TablePage() {
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {t({
-                    it: 'Primati basati sulle partite realtime tracciate. Servono almeno 3 partite tracciate per mazzo.',
-                    en: 'Records based on realtime-tracked matches. A deck needs at least 3 tracked games.',
+                    it: 'I primati usano tutte le partite registrate; quelli realtime richiedono almeno 3 partite tracciate.',
+                    en: 'Records use every saved match; realtime awards require at least 3 tracked games.',
                   })}
                 </p>
               </div>
@@ -2576,7 +2621,17 @@ export default function TablePage() {
                         ? { icon: Flame, title: 'Group Slugger', value: `${award.value} dmg`, tone: 'text-orange-300' }
                         : award.kind === 'executioner'
                           ? { icon: Crosshair, title: t({ it: 'Executioner', en: 'Executioner' }), value: `${award.value} KO`, tone: 'text-rose-300' }
-                          : { icon: Crown, title: t({ it: 'Eterno Secondo', en: 'Runner-up' }), value: `${award.value}× #2`, tone: 'text-amber-300' };
+                          : award.kind === 'runner_up'
+                            ? { icon: Crown, title: t({ it: 'Eterno Secondo', en: 'Runner-up' }), value: `${award.value}× #2`, tone: 'text-amber-300' }
+                            : award.kind === 'archenemy'
+                              ? { icon: Skull, title: 'Archenemy', value: `×${award.value}`, tone: 'text-red-300' }
+                              : award.kind === 'comebacker'
+                                ? { icon: TrendingUp, title: 'Comebacker', value: `×${award.value} <10 PF`, tone: 'text-emerald-300' }
+                                : award.kind === 'one_trick'
+                                  ? { icon: Target, title: 'The one-trick', value: `${award.value} ${t({ it: 'partite', en: 'games' })}`, tone: 'text-blue-300' }
+                                  : award.kind === 'combo_winner'
+                                    ? { icon: Flame, title: 'I think I won', value: `${award.value} ${t({ it: 'vittorie', en: 'wins' })}`, tone: 'text-fuchsia-300' }
+                                    : { icon: Trophy, title: 'Junk Master', value: `${award.value} ${t({ it: 'vittorie', en: 'wins' })}`, tone: 'text-lime-300' };
                     const Icon = presentation.icon;
                     return (
                       <Card key={award.kind} className="phyrexian-panel overflow-hidden">
@@ -2593,7 +2648,12 @@ export default function TablePage() {
                             <div className="min-w-0">
                               <p className="line-clamp-1 font-semibold text-foreground">{award.deck.name}</p>
                               <p className="line-clamp-2 text-xs text-violet-300">{award.deck.commander}</p>
-                              <p className="mt-1 text-[11px] text-muted-foreground">{award.deck.trackedGames} {t({ it: 'partite tracciate', en: 'tracked games' })}</p>
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                {award.kind === 'one_trick' ? award.deck.gamesPlayed : award.deck.trackedGames}{' '}
+                                {award.kind === 'one_trick'
+                                  ? t({ it: 'partite', en: 'games' })
+                                  : t({ it: 'partite tracciate', en: 'tracked games' })}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -2803,6 +2863,7 @@ export default function TablePage() {
                         );
                       })}
                     </div>
+                    {canManageGroup && group ? <DirectArenaInvite groupId={group.id} /> : null}
                   </CardContent>
                 </Card>
 
@@ -2815,8 +2876,8 @@ export default function TablePage() {
                       </CardTitle>
                       <CardDescription>
                         {t({
-                          it: 'Il creatore dell\'arena e gli admin possono rimuovere i guest. L\'eliminazione cancella anche mazzi e presenze nelle partite.',
-                          en: 'The arena creator and platform admins can remove guests. Deletion also removes decks and battle entries.',
+                          it: 'Crea un link monouso per trasformare un guest in utente senza perdere mazzi, partite o vittorie.',
+                          en: 'Create a one-time link to turn a guest into a user without losing decks, matches, or wins.',
                         })}
                       </CardDescription>
                     </CardHeader>
@@ -2847,6 +2908,17 @@ export default function TablePage() {
                                 </p>
                               </div>
                               <div className="flex shrink-0 items-center gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9 text-muted-foreground hover:text-emerald-300"
+                                  onClick={() => void createGuestClaimLink(guest)}
+                                  disabled={creatingGuestClaimIds.includes(guest.id)}
+                                  title={t({ it: 'Crea link evoluzione', en: 'Create upgrade link' })}
+                                >
+                                  <Link2 className={`h-4 w-4 ${creatingGuestClaimIds.includes(guest.id) ? 'animate-pulse' : ''}`} />
+                                </Button>
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -3276,6 +3348,24 @@ export default function TablePage() {
                             </SelectItem>
                           );
                         })}
+                      </SelectContent>
+                    </Select>
+                    <label className="mb-2 mt-4 block text-sm font-medium text-foreground">
+                      {t({ it: 'Come ha vinto?', en: 'How did they win?' })}
+                    </label>
+                    <Select
+                      value={matchWinCondition}
+                      onValueChange={(value) => setMatchWinCondition(value as NonNullable<Match['win_condition']>)}
+                    >
+                      <SelectTrigger className="w-full border-border bg-background text-foreground">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-border bg-card">
+                        <SelectItem value="last_standing">{t({ it: 'Ultimo in gioco', en: 'Last standing' })}</SelectItem>
+                        <SelectItem value="combo">Combo</SelectItem>
+                        <SelectItem value="concession">{t({ it: 'Concessione', en: 'Concession' })}</SelectItem>
+                        <SelectItem value="alternate_card">{t({ it: 'Vittoria alternativa', en: 'Alternate win' })}</SelectItem>
+                        <SelectItem value="other">{t({ it: 'Altro', en: 'Other' })}</SelectItem>
                       </SelectContent>
                     </Select>
                     </div>

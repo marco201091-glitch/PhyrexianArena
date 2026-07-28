@@ -99,6 +99,7 @@
       "expo-router",
       "expo-screen-orientation",
       "expo-secure-store",
+      "expo-notifications",
       "expo-asset",
       [
         "expo-image-picker",

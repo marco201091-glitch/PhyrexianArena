@@ -50,7 +50,25 @@ describe('deck performance analytics', () => {
   it('awards only decks with at least three tracked games', () => {
     const decks = buildDeckPerformanceStats([row(), row(), row()]);
     expect(buildArenaAwards(decks).map((award) => award.kind)).toEqual([
-      'group_slugger', 'executioner',
+      'group_slugger', 'executioner', 'one_trick',
+    ]);
+  });
+
+  it('adds extended tracked and all-record awards', () => {
+    const [deck] = buildDeckPerformanceStats([row(), row(), row()]);
+    deck.firstEliminations = 2;
+    deck.comebackWins = 1;
+    deck.comboWins = 3;
+    deck.alternateWins = 2;
+
+    expect(buildArenaAwards([deck]).map((award) => award.kind)).toEqual([
+      'group_slugger',
+      'executioner',
+      'archenemy',
+      'comebacker',
+      'one_trick',
+      'combo_winner',
+      'junk_master',
     ]);
   });
 });

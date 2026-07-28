@@ -30,6 +30,10 @@ import { subscribePublicCounterRealtime } from '@/lib/guest-realtime';
 import { buildCounterGuestInviteUrl } from '@/lib/invite-links';
 import { useLanguage } from '@/contexts/language-context';
 import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
+import {
+  clearLiveGameRuntimePlayers,
+  replaceLiveGameRuntimePlayers,
+} from '@/stores/live-game-runtime-store';
 
 const STORAGE_KEY = 'phyrexian:standalone-counter:v1';
 const CARD_COLORS = ['#18181b', '#7f1d1d', '#1e3a8a', '#14532d', '#713f12', '#581c87'];
@@ -130,6 +134,14 @@ export default function CounterScreen() {
     if (!state || !startedAt) return;
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ format, state, startedAt }));
   }, [format, startedAt, state]);
+
+  useEffect(() => {
+    replaceLiveGameRuntimePlayers(state?.players ?? []);
+  }, [state?.players]);
+
+  useEffect(() => () => {
+    clearLiveGameRuntimePlayers();
+  }, []);
 
   const mutate = (mutation: LiveGameMutation) => {
     if (!state) return;

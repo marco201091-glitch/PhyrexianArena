@@ -102,6 +102,7 @@ import {
   ChevronRight,
   Skull,
   Link2,
+  Star,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -119,6 +120,7 @@ interface Deck {
   color_identity: string[] | null;
   commander_options: ImportedCommanderOption[] | null;
   commander_cmc: number | null;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string | null;
   profiles?: {
@@ -562,7 +564,7 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
-  const [activeAccountPanel, setActiveAccountPanel] = useState<'nickname' | 'password' | 'archidekt' | null>(null);
+  const [activeAccountPanel, setActiveAccountPanel] = useState<'nickname' | 'password' | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState<number>(() => Date.now());
   const [hasAvatar, setHasAvatar] = useState(false);
@@ -991,6 +993,8 @@ export default function ProfilePage() {
     });
 
     return matching.sort((left, right) => {
+      const favoriteOrder = Number(right.is_favorite) - Number(left.is_favorite);
+      if (favoriteOrder !== 0) return favoriteOrder;
       const a = deckPerformance.get(left.id);
       const b = deckPerformance.get(right.id);
       if (deckSort === 'winRate') return (b?.winRate || 0) - (a?.winRate || 0) || (b?.gamesPlayed || 0) - (a?.gamesPlayed || 0);
@@ -1004,6 +1008,24 @@ export default function ProfilePage() {
       return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
     });
   }, [deckColorFilter, deckPerformance, deckSearchQuery, deckSort, visibleDecks]);
+
+  const toggleDeckFavorite = useCallback(async (deck: Deck) => {
+    if (!user || deck.user_id !== user.id) return;
+    const next = !deck.is_favorite;
+    setDecks((current) => current.map((entry) => entry.id === deck.id ? { ...entry, is_favorite: next } : entry));
+    const { error } = await supabase
+      .from('decks')
+      .update({ is_favorite: next })
+      .eq('id', deck.id)
+      .eq('user_id', user.id);
+    if (error) {
+      setDecks((current) => current.map((entry) => entry.id === deck.id ? { ...entry, is_favorite: !next } : entry));
+      toast({
+        title: t({ it: 'Preferito non aggiornato', en: 'Favorite not updated' }),
+        variant: 'destructive',
+      });
+    }
+  }, [t, toast, user]);
 
   const fetchProfiles = useCallback(async () => {
     try {
@@ -1038,7 +1060,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!currentProfile) return;
-    setArchidektSettingsUsername(currentProfile.archidekt_username || '');
+    const savedArchidektUsername = currentProfile.archidekt_username || '';
+    setArchidektSettingsUsername(savedArchidektUsername);
+    setArchidektUsername(savedArchidektUsername);
     setArchidektAutoImport(Boolean(currentProfile.archidekt_auto_import));
   }, [currentProfile]);
 
@@ -1122,6 +1146,7 @@ export default function ProfilePage() {
         archidekt_username: username,
         archidekt_auto_import: archidektAutoImport,
       } : profile));
+      setArchidektUsername(username || '');
       toast({ title: t({ it: 'Archidekt configurato', en: 'Archidekt configured' }) });
     } catch (error) {
       toast({
@@ -2054,17 +2079,23 @@ export default function ProfilePage() {
 
     setSavingUserDecks(true);
     try {
-      if (decksToInsert.length > 0) {
-        const { error } = await supabase.from('decks').insert(decksToInsert);
+      if (targetProfileId === user?.id) {
+        const { error } = await supabase.rpc('sync_archidekt_decks', {
+          p_decks: [
+            ...decksToInsert,
+            ...decksToUpdate.map((entry) => entry.payload),
+          ],
+        });
         if (error) throw error;
-      }
-
-      for (const deckUpdate of decksToUpdate) {
-        const { error } = await supabase
-          .from('decks')
-          .update(deckUpdate.payload)
-          .eq('id', deckUpdate.id);
-        if (error) throw error;
+      } else {
+        if (decksToInsert.length > 0) {
+          const { error } = await supabase.from('decks').insert(decksToInsert);
+          if (error) throw error;
+        }
+        for (const deckUpdate of decksToUpdate) {
+          const { error } = await supabase.from('decks').update(deckUpdate.payload).eq('id', deckUpdate.id);
+          if (error) throw error;
+        }
       }
 
       toast({
@@ -2102,18 +2133,15 @@ export default function ProfilePage() {
       if (!response.ok) return;
 
       const payload = await response.json() as { decks?: ImportedDeckPreview[] };
-      const { data: existingRows } = await supabase
-        .from('decks')
-        .select('source_url')
-        .eq('user_id', user.id)
-        .is('group_id', null)
-        .not('source_url', 'is', null);
-      const existingUrls = new Set((existingRows || []).map((deck) => deck.source_url));
-      const unseen = (payload.decks || []).filter((deck) =>
-        deck.sourceType === 'archidekt' && deck.sourceUrl && !existingUrls.has(deck.sourceUrl),
+      const candidates = (payload.decks || []).filter((deck) =>
+        deck.sourceType === 'archidekt'
+        && deck.sourceUrl
+        && !deck.warning
+        && !deck.error
+        && Boolean(deck.commander?.trim()),
       );
       const rows = [];
-      for (const rawDeck of unseen) {
+      for (const rawDeck of candidates) {
         const deck = await normalizeImportedDeckPreview(rawDeck);
         const commander = getDefaultImportedCommanderOption(deck);
         const colorFields = deckDataToColorFields({
@@ -2140,23 +2168,14 @@ export default function ProfilePage() {
         await delay(SCRYFALL_REQUEST_GAP_MS);
       }
       if (rows.length > 0) {
-        const { error } = await supabase.from('decks').insert(rows);
-        if (!error) {
-          await fetchDecks();
-          toast({
-            title: t({ it: 'Nuovi mazzi Archidekt importati', en: 'New Archidekt decks imported' }),
-            description: `${rows.length}`,
-          });
-        }
+        const { error } = await supabase.rpc('sync_archidekt_decks', { p_decks: rows });
+        if (error) throw error;
+        await fetchDecks();
       }
-      await supabase
-        .from('profiles')
-        .update({ archidekt_last_sync_at: new Date().toISOString() })
-        .eq('id', user.id);
     } catch {
       // Background sync must not interrupt profile use.
     }
-  }, [fetchDecks, t, toast, user]);
+  }, [fetchDecks, user]);
 
   useEffect(() => {
     const username = currentProfile?.archidekt_username?.trim();
@@ -2242,7 +2261,7 @@ export default function ProfilePage() {
     setSelectedImportedCommander(null);
     setImportedCommanderArts([]);
     setLoadingImportedCommanderArts(false);
-    setArchidektUsername('');
+    setArchidektUsername(currentProfile?.archidekt_username || '');
     setImportedUserDecks([]);
     setSelectedUserDeckCommanders({});
     setSelectedUserDeckUrls([]);
@@ -2364,7 +2383,7 @@ export default function ProfilePage() {
 
   const canChangePassword = !isGoogleAuthUser(user);
 
-  const toggleAccountPanel = (panel: 'nickname' | 'password' | 'archidekt') => {
+  const toggleAccountPanel = (panel: 'nickname' | 'password') => {
     setActiveAccountPanel((current) => (current === panel ? null : panel));
   };
 
@@ -2470,14 +2489,6 @@ export default function ProfilePage() {
                       {t({ it: 'Password', en: 'Password' })}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className={accountActionButtonClass(activeAccountPanel === 'archidekt')}
-                    onClick={() => toggleAccountPanel('archidekt')}
-                  >
-                    <Link2 className="h-4 w-4 shrink-0 text-violet-300/90" />
-                    Archidekt
-                  </button>
                 </div>
               </div>
               <div className="min-w-0 flex-1 sm:pt-1">
@@ -2609,8 +2620,11 @@ export default function ProfilePage() {
                 </div>
               ) : null}
 
-              {activeAccountPanel === 'archidekt' ? (
-                <div className="mt-6 overflow-hidden rounded-xl border border-violet-400/20 bg-violet-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
+              <div className="mt-6 overflow-hidden rounded-xl border border-violet-400/30 bg-violet-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Link2 className="h-4 w-4 text-violet-300" />
+                    <h3 className="font-semibold text-violet-50">Archidekt sync</h3>
+                  </div>
                   <p className="mb-3 text-sm text-violet-200/70">
                     {t({
                       it: 'Collega il tuo profilo pubblico Archidekt. Se attivi il controllo automatico, i nuovi mazzi Commander pubblici vengono aggiunti in background senza modificare quelli esistenti.',
@@ -2618,6 +2632,9 @@ export default function ProfilePage() {
                     })}
                   </p>
                   <div className="space-y-3">
+                    <label className="block text-sm font-medium text-violet-100/90">
+                      {t({ it: 'Il tuo username Archidekt', en: 'Your Archidekt username' })}
+                    </label>
                     <Input
                       value={archidektSettingsUsername}
                       onChange={(event) => setArchidektSettingsUsername(event.target.value)}
@@ -2646,7 +2663,6 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                 </div>
-              ) : null}
             </CardContent>
           </Card>
         </MotionPanel>
@@ -2926,6 +2942,21 @@ export default function ProfilePage() {
                       </div>
 
                       <div className="mt-auto flex items-center justify-end gap-1 border-t border-border/50 pt-2 sm:border-0 sm:pt-1" onClick={(event) => event.stopPropagation()}>
+                        {deck.user_id === user?.id ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-pressed={deck.is_favorite}
+                            className={`h-10 w-10 ${deck.is_favorite ? 'text-amber-300 hover:text-amber-200' : 'text-muted-foreground hover:text-amber-300'}`}
+                            onClick={() => void toggleDeckFavorite(deck)}
+                            title={t({
+                              it: deck.is_favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti',
+                              en: deck.is_favorite ? 'Remove from favorites' : 'Add to favorites',
+                            })}
+                          >
+                            <Star className={`h-4 w-4 ${deck.is_favorite ? 'fill-current' : ''}`} />
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="sm" className="mr-auto gap-1 text-violet-300" onClick={() => setDetailsDeck(deck)}>
                           Details <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -3131,7 +3162,10 @@ export default function ProfilePage() {
                   <Button
                     variant="outline"
                     className="w-full h-24 flex flex-col items-center justify-center gap-2 border-border hover:border-violet-500 hover:bg-violet-500/10"
-                    onClick={() => setAddMode('archidekt-user')}
+                    onClick={() => {
+                      setArchidektUsername(currentProfile?.archidekt_username || '');
+                      setAddMode('archidekt-user');
+                    }}
                   >
                     <UserIcon className="w-6 h-6" />
                     <span>{t({ it: 'Importa per username Archidekt', en: 'Import by Archidekt username' })}</span>
@@ -3157,8 +3191,8 @@ export default function ProfilePage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     {t({
-                      it: 'Archidekt restituisce senza login solo i mazzi pubblici: quelli privati non vengono caricati.',
-                      en: 'Without Archidekt login, only public decks are returned: private decks are not loaded.',
+                      it: 'Precompilato dal profilo. Puoi modificarlo per questa importazione; Archidekt restituisce solo i mazzi pubblici.',
+                      en: 'Pre-filled from your profile. You can change it for this import; Archidekt returns public decks only.',
                     })}
                   </p>
                   <div className="flex gap-3">

@@ -63,7 +63,7 @@ export function ToastProvider({ children }: PropsWithChildren) {
       {toast ? (
         <Animated.View
           pointerEvents="box-none"
-          style={[styles.host, { top: insets.top + spacing.sm, opacity }]}
+          style={[styles.host, { bottom: insets.bottom + spacing.sm, opacity }]}
         >
           <Pressable style={[styles.toast, styles[`toast_${toast.tone}`]]} onPress={hideToast}>
             <Ionicons name={TONE_ICONS[toast.tone]} size={18} color={colors.foreground} />

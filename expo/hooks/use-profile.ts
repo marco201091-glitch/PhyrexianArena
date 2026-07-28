@@ -26,7 +26,7 @@ export function useProfile(userId: string | undefined) {
       const [{ data, error }, avatarState] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, username, display_name, created_at')
+          .select('id, username, display_name, created_at, archidekt_username, archidekt_auto_import, archidekt_last_sync_at')
           .eq('id', userId!)
           .single(),
         getAvatarObjectState(supabase, userId!),

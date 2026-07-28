@@ -14,10 +14,12 @@ type TableGuestsSectionProps = {
     addGuest: string;
     noGuestsBody: string;
     guestBadge: string;
+    upgradeGuest: string;
   };
   onAddGuest: () => void;
   onAddDeckToGuest: (guestId: string) => void;
   onDeleteGuest: (guestId: string) => void;
+  onUpgradeGuest: (guestId: string) => void;
 };
 
 export function TableGuestsSection({
@@ -27,6 +29,7 @@ export function TableGuestsSection({
   onAddGuest,
   onAddDeckToGuest,
   onDeleteGuest,
+  onUpgradeGuest,
 }: TableGuestsSectionProps) {
   const guestMeta = guests.length > 0 ? `${guests.length}` : undefined;
 
@@ -61,10 +64,18 @@ export function TableGuestsSection({
             </View>
             {canManage ? (
               <View style={styles.guestActions}>
-                <Pressable onPress={() => onAddDeckToGuest(guest.id)}>
+                <Pressable
+                  onPress={() => onUpgradeGuest(guest.id)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={labels.upgradeGuest}
+                >
+                  <Ionicons name="link-outline" size={18} color={colors.successBright} />
+                </Pressable>
+                <Pressable onPress={() => onAddDeckToGuest(guest.id)} hitSlop={8}>
                   <Ionicons name="add-circle-outline" size={18} color={colors.primaryMuted} />
                 </Pressable>
-                <Pressable onPress={() => onDeleteGuest(guest.id)}>
+                <Pressable onPress={() => onDeleteGuest(guest.id)} hitSlop={8}>
                   <Ionicons name="trash-outline" size={16} color={colors.muted} />
                 </Pressable>
               </View>

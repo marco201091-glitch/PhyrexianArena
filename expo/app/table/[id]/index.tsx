@@ -70,6 +70,7 @@ import type { LiveGameRecord } from '@/lib/live-game';
 import { toUserParticipantKey } from '@/lib/participant-keys';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
+import { apiPost } from '@/lib/api';
 import type { ArenaMatch } from '@/lib/types/arena';
 
 type ArenaTab = 'matches' | 'players' | 'decks' | 'awards' | 'meta';
@@ -539,6 +540,20 @@ export default function TableScreen() {
     ]);
   };
 
+  const handleCreateGuestClaimLink = async (guestId: string) => {
+    const guest = guests.find((entry) => entry.id === guestId);
+    const { data, error, status } = await apiPost<{ url: string }>('/api/guest-claims', { guestId });
+    if (status !== 200 || !data?.url) {
+      showAppAlert(copy('error'), error || copy('createGuestLinkFailed'));
+      return;
+    }
+    await Share.share({
+      title: guest?.display_name || copy('guestBadge'),
+      message: `${copy('joinInviteHint')}\n${data.url}`,
+      url: data.url,
+    });
+  };
+
   const handleDeleteMatch = (matchId: string) => {
     showAppAlert(copy('deleteMatch'), copy('deleteMatchConfirm'), [
       { text: copy('cancel'), style: 'cancel' },
@@ -691,6 +706,11 @@ export default function TableScreen() {
               guestBadge: copy('guestBadge'),
               creator: copy('creator'),
               you: copy('you'),
+              directInviteTitle: copy('directInviteTitle'),
+              directInviteHint: copy('directInviteHint'),
+              searchUser: copy('searchUser'),
+              invitationSent: copy('invitationSent'),
+              invitationFailed: copy('invitationFailed'),
             }}
             canKickMember={(memberId) => canKickArenaMember({
               actorId: user?.id || '',
@@ -699,6 +719,7 @@ export default function TableScreen() {
               isPlatformAdmin: false,
             })}
             onKickMember={handleKickMember}
+            onMessage={(message, error) => error ? showAppAlert(copy('error'), message) : showToast(message)}
           />
         ) : null}
 
@@ -730,7 +751,14 @@ export default function TableScreen() {
               slugger: 'Group Slugger',
               executioner: 'Executioner',
               runnerUp: copy('awardRunnerUp'),
+              archenemy: copy('awardArchenemy'),
+              comebacker: copy('awardComebacker'),
+              oneTrick: copy('awardOneTrick'),
+              comboWinner: copy('awardComboWinner'),
+              junkMaster: copy('awardJunkMaster'),
               trackedGames: copy('trackedGames'),
+              games: copy('games'),
+              wins: copy('wins'),
             }}
           />
         ) : null}
@@ -772,6 +800,7 @@ export default function TableScreen() {
               addGuest: copy('addGuest'),
               noGuestsBody: copy('noGuestsBody'),
               guestBadge: copy('guestBadge'),
+              upgradeGuest: copy('upgradeGuest'),
             }}
             onAddGuest={() => {
               setGuestModalMode(undefined);
@@ -784,6 +813,7 @@ export default function TableScreen() {
               setShowGuestModal(true);
             }}
             onDeleteGuest={handleDeleteGuest}
+            onUpgradeGuest={(guestId) => void handleCreateGuestClaimLink(guestId)}
           />
         ) : null}
 
@@ -927,6 +957,12 @@ export default function TableScreen() {
           selectPlayers: copy('selectPlayers'),
           selectGuests: copy('selectGuests'),
           selectWinner: copy('selectWinner'),
+          winCondition: copy('liveGameWinCondition'),
+          winLastStanding: copy('liveGameWinLastStanding'),
+          winCombo: copy('liveGameWinCombo'),
+          winConcession: copy('liveGameWinConcession'),
+          winAlternate: copy('liveGameWinAlternateCard'),
+          winOther: copy('liveGameWinOther'),
           draw: copy('liveGameDraw'),
           battleDate: copy('battleDate'),
           notes: copy('notes'),

@@ -7,6 +7,18 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     restoreMocks: true,
     clearMocks: true,
+    coverage: {
+      provider: 'v8',
+      include: ['lib/**/*.ts'],
+      exclude: ['lib/types/**'],
+      reporter: ['text', 'json-summary'],
+      thresholds: {
+        statements: 30,
+        branches: 65,
+        functions: 50,
+        lines: 30,
+      },
+    },
   },
   resolve: {
     alias: {

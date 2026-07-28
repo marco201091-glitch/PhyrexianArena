@@ -12,18 +12,31 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const AUTH_BOOT_TIMEOUT_MS = 1_500;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    let mounted = true;
+    const bootTimeout = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, AUTH_BOOT_TIMEOUT_MS);
+
+    void supabase.auth.getSession()
+      .then(({ data }) => {
+        if (mounted) setSession(data.session);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        clearTimeout(bootTimeout);
+        if (mounted) setLoading(false);
+      });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+      clearTimeout(bootTimeout);
       setSession(nextSession);
       setLoading(false);
     });
@@ -33,6 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : registerAuthAppStateRefresh(supabase.auth, AppState);
 
     return () => {
+      mounted = false;
+      clearTimeout(bootTimeout);
       subscription.subscription.unsubscribe();
       unregisterAppStateRefresh?.();
     };

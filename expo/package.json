@@ -15,7 +15,7 @@
     "dev:android": "node scripts/adb-reverse.mjs && node scripts/start-android.mjs",
     "android": "expo run:android",
     "android:prebuild": "expo prebuild --platform android --clean",
-    "android:refresh-icons": "npm run assets:logo && npm run assets:android-icon && npm run verify:logos && npm run android:prebuild",
+    "android:refresh-icons": "npm run assets:logo && npm run assets:android-icon && npm run android:prebuild && npm run verify:logos",
     "android:clean-native": "npm run android:stop-gradle && node scripts/clean-native-build.mjs",
     "android:stop-gradle": "cd android && .\\gradlew.bat --stop && cd ..",
     "android:clean": "npm run android:stop-gradle && cd android && gradlew.bat clean --no-build-cache && cd ..",
@@ -25,8 +25,8 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && npm run verify:logos",
-    "quality": "npm run lint && npm run typecheck && npm test",
-    "test:coverage": "vitest run --coverage --coverage.include=lib/**/*.ts --coverage.exclude=lib/types/** --coverage.reporter=text --coverage.reporter=json-summary",
+    "quality": "npm run lint && npm run typecheck && npm run test:coverage && npm run verify:logos",
+    "test:coverage": "vitest run --coverage",
     "assets:mana": "node scripts/fetch-mana-symbols.mjs",
     "assets:logo": "node scripts/flatten-logo.mjs",
     "assets:android-icon": "node scripts/generate-android-icon.mjs",
@@ -65,6 +65,7 @@
     "expo-image-picker": "~57.0.6",
     "expo-keep-awake": "~57.0.1",
     "expo-linking": "~57.0.4",
+    "expo-notifications": "~57.0.7",
     "expo-router": "~57.0.8",
     "expo-screen-orientation": "~57.0.1",
     "expo-secure-store": "~57.0.1",
@@ -89,7 +90,8 @@
     "react-native-web": "^0.21.0",
     "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "zustand": "5.0.14"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",

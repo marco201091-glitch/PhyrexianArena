@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     const current = await admin.from('live_games').select('*').eq('id', lobby.live_game_id).single();
     if (current.error) return NextResponse.json({ error: 'Game unavailable' }, { status: 404 });
     const state = parseLiveGameState(current.data.state);
-    const mutation = parseGuestMutation(body.mutation, state);
+    const mutation = parseGuestMutation(body.mutation, state, `guest:${session.guest_id}`);
     if (!mutation) return NextResponse.json({ error: 'Invalid mutation' }, { status: 400 });
     const nextState = applyLiveGameMutation(state, {
       ...mutation,

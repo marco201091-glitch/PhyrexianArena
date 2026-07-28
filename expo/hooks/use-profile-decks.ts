@@ -178,6 +178,16 @@ export function useProfileDecks(userId: string | undefined) {
     await refresh();
   }, [refresh]);
 
+  const toggleDeckFavorite = useCallback(async (deckId: string, favorite: boolean) => {
+    if (!userId) throw new Error('Not authenticated');
+    setDecks((current) => current.map((deck) => deck.id === deckId ? { ...deck, is_favorite: favorite } : deck));
+    const { error } = await supabase.from('decks').update({ is_favorite: favorite }).eq('id', deckId).eq('user_id', userId);
+    if (error) {
+      setDecks((current) => current.map((deck) => deck.id === deckId ? { ...deck, is_favorite: !favorite } : deck));
+      throw error;
+    }
+  }, [userId]);
+
   const saveImportedDeck = useCallback(async (
     imported: ImportedDeckPreview,
     options?: {
@@ -439,26 +449,49 @@ export function useProfileDecks(userId: string | undefined) {
       return { inserted: 0, updated: 0, skipped: selectedDecks.length };
     }
 
-    if (decksToInsert.length > 0) {
-      const { error } = await supabase.from('decks').insert(decksToInsert);
-      if (error) throw error;
-    }
-
-    for (const deckUpdate of decksToUpdate) {
-      const { error } = await supabase
-        .from('decks')
-        .update(deckUpdate.payload)
-        .eq('id', deckUpdate.id);
-      if (error) throw error;
-    }
+    const syncRows = [
+      ...decksToInsert,
+      ...decksToUpdate.map((entry) => entry.payload),
+    ];
+    const { data: syncResult, error } = await supabase.rpc('sync_archidekt_decks', {
+      p_decks: syncRows,
+    });
+    if (error) throw error;
 
     await refresh();
+    const counts = (syncResult || {}) as { inserted?: number; updated?: number };
     return {
-      inserted: decksToInsert.length,
-      updated: decksToUpdate.length,
-      skipped: selectedDecks.length - decksToInsert.length - decksToUpdate.length,
+      inserted: counts.inserted ?? decksToInsert.length,
+      updated: counts.updated ?? decksToUpdate.length,
+      skipped: selectedDecks.length - syncRows.length,
     };
   }, [decks, refresh, userId]);
+
+  const syncArchidektUserDecks = useCallback(async (username: string) => {
+    const { data, error, status } = await apiPost<{
+      decks?: Array<ImportedDeckPreview & { warning?: string; error?: string }>;
+    }>(
+      '/api/archidekt-user-decks',
+      { username: username.trim() },
+    );
+    if (status !== 200) throw new Error(error || 'Archidekt sync failed');
+    const imported = (data?.decks ?? []).filter((deck) =>
+      deck.sourceType === 'archidekt'
+      && Boolean(deck.sourceUrl)
+      && !deck.warning
+      && !deck.error
+      && Boolean(deck.commander?.trim()),
+    );
+    return saveArchidektUserDecks({
+      decks: imported,
+      selectedUrls: imported.map((deck) => deck.sourceUrl),
+      selectedCommanders: Object.fromEntries(imported.map((deck) => [
+        deck.sourceUrl,
+        getDefaultImportedCommanderOption(deck),
+      ])),
+      overwriteExisting: true,
+    });
+  }, [saveArchidektUserDecks]);
 
   const refreshAllDecks = useCallback(async () => {
     const decksToRefresh = decks.filter(
@@ -533,6 +566,7 @@ export function useProfileDecks(userId: string | undefined) {
     loading,
     refresh,
     deleteDeck,
+    toggleDeckFavorite,
     saveImportedDeck,
     saveManualDeck,
     refreshImportedDeck,
@@ -540,6 +574,7 @@ export function useProfileDecks(userId: string | undefined) {
     updateDeck,
     linkDeckSource,
     saveArchidektUserDecks,
+    syncArchidektUserDecks,
     getDeckCommanderOptions,
   };
 }

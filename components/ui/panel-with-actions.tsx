@@ -17,13 +17,13 @@ export function PanelWithActions({
   return (
     <div
       className={cn(
-        'overflow-hidden',
+        'overflow-hidden rounded-2xl',
         variant === 'strong' ? 'phyrexian-panel-strong' : 'phyrexian-panel',
         className,
       )}
     >
       <div className="p-4 sm:p-5">{children}</div>
-      <div className="flex flex-col gap-3 border-t border-border/70 p-4 sm:flex-row sm:p-5">
+      <div className="grid grid-cols-2 gap-3 border-t border-border/70 p-4 sm:flex sm:p-5">
         {actions}
       </div>
     </div>

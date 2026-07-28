@@ -15,6 +15,7 @@ import type { CommanderSearchResult } from '@/lib/commander-types';
 import { addDeckToGuest, createGuestWithDeck } from '@/lib/guest-arena';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
+import { apiPost } from '@/lib/api';
 import type { ArenaDetail, ArenaMatch, ArenaProfile, MemberDeck } from '@/lib/types/arena';
 import {
   clearArenaCache,
@@ -167,6 +168,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
     participantDecks: Record<string, string>;
     matchPlayedAtIso: string;
     matchNotes: string;
+    winCondition: NonNullable<import('@/lib/types/arena').ArenaMatch['win_condition']>;
   }) => {
     if (!groupId || !userId) {
       throw new Error('Missing arena context');
@@ -185,6 +187,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
         created_by: userId,
         notes: input.matchNotes || null,
         played_at: input.matchPlayedAtIso,
+        win_condition: input.isDraw ? null : input.winCondition,
       })
       .select()
       .single();
@@ -211,6 +214,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
       await supabase.from('matches').delete().eq('id', match.id);
       throw participantsError;
     }
+    void apiPost('/api/notifications/match-completed', { matchId: match.id });
 
     const guestIds = input.selectedParticipantKeys
       .map((key) => parseParticipantKey(key))

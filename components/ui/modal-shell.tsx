@@ -46,7 +46,7 @@ export function AppModal({
         <DialogPrimitive.Content
           aria-describedby={undefined}
           className={cn(
-            'fixed left-1/2 top-1/2 z-50 flex w-[calc(100%-1.5rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg',
+            'fixed left-1/2 top-1/2 z-50 flex w-[calc(100%-1.5rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-violet-500/25 bg-card/95 text-card-foreground shadow-2xl shadow-black/60 backdrop-blur-xl',
             modalWidths[size],
             'max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem)]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -57,7 +57,7 @@ export function AppModal({
           {children}
           <DialogPrimitive.Close
             aria-label="Close dialog"
-            className="absolute right-3 top-3 rounded-sm p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="absolute right-3 top-3 rounded-lg border border-transparent p-1.5 text-muted-foreground opacity-70 transition-all hover:border-border hover:bg-accent hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <X className="h-4 w-4" />
           </DialogPrimitive.Close>

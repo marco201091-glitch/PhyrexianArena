@@ -53,6 +53,10 @@ type DeckRollup = {
   eliminations: number;
   group_damage_dealt: number;
   group_damage_events: number;
+  first_eliminations?: number;
+  comeback_wins?: number;
+  combo_wins?: number;
+  alternate_wins?: number;
   median_winning_duration_seconds: number | null;
 };
 
@@ -194,6 +198,10 @@ export function buildArenaAnalyticsBundle(
     eliminations: row.eliminations,
     groupDamageDealt: row.group_damage_dealt,
     groupDamageEvents: row.group_damage_events,
+    firstEliminations: row.first_eliminations ?? 0,
+    comebackWins: row.comeback_wins ?? 0,
+    comboWins: row.combo_wins ?? 0,
+    alternateWins: row.alternate_wins ?? 0,
     medianWinningDurationSeconds: row.median_winning_duration_seconds,
   }));
 

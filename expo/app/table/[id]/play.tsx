@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
@@ -14,7 +14,6 @@ import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
 import { toDeckOption } from '@/components/table/match-participant-row';
 import { Button } from '@/components/ui/button';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
-import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
@@ -27,6 +26,10 @@ import { useToast } from '@/contexts/toast-context';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useArena } from '@/hooks/use-arena';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
+import {
+  clearLiveGameRuntimePlayers,
+  replaceLiveGameRuntimePlayers,
+} from '@/stores/live-game-runtime-store';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import { apiGet, apiPatch, apiPost } from '@/lib/api';
 import { getSiteUrl } from '@/lib/env';
@@ -390,8 +393,13 @@ export default function LiveGameScreen() {
 
   const setOptimisticRecord = useCallback((record: LiveGameRecord | null) => {
     liveGameRef.current = record;
+    replaceLiveGameRuntimePlayers(record?.state.players ?? []);
     setLiveGame(record);
   }, []);
+
+  useEffect(() => () => {
+    clearLiveGameRuntimePlayers();
+  }, [groupId]);
 
   const saveJournal = useCallback(() => {
     const record = liveGameRef.current;
@@ -431,12 +439,13 @@ export default function LiveGameScreen() {
         await saveLiveGameOutbox(outbox);
       }
       if (item.finalization) {
-        await finalizePendingLiveGame(
+        const matchId = await finalizePendingLiveGame(
           supabase,
           serverRecord.id,
           item.finalization,
           serverRecord.state,
         );
+        void apiPost('/api/notifications/match-completed', { matchId });
       } else if (item.cancel) {
         await cancelLiveGame(supabase, serverRecord.id);
       }
@@ -727,7 +736,10 @@ export default function LiveGameScreen() {
       return undefined;
     }
 
-    void applyLiveGameOrientationLock(liveGamePlayerCount);
+    void applyLiveGameOrientationLock(liveGamePlayerCount, {
+      platform: Platform.OS,
+      isPad: Platform.OS === 'ios' && Platform.isPad,
+    });
     return () => {
       void clearLiveGameOrientationLock();
     };
@@ -1645,11 +1657,15 @@ export default function LiveGameScreen() {
               playerCount={playerCount}
               layoutVariant={layoutVariant}
               seats={seatSetups}
+              startingLife={startingLife}
               participants={setupParticipants}
               onPlayerCountChange={handlePlayerCountChange}
               onLayoutChange={setLayoutVariant}
+              onStartingLifeChange={applyStartingLife}
               onAssignSeat={handleAssignSeat}
               onReset={resetSetup}
+              onStart={handleStart}
+              starting={starting}
               labels={{
                 playerCount: copy('liveGamePlayerCount'),
                 layout: copy('liveGameLayout'),
@@ -1663,64 +1679,13 @@ export default function LiveGameScreen() {
                 clearSeat: copy('liveGameClearSeat'),
                 confirm: copy('confirm'),
                 reset: copy('liveGameResetSetup'),
+                startingLife: copy('liveGameStartingLife'),
+                custom: copy('liveGameCustom'),
+                back: copy('back'),
+                next: copy('next'),
+                start: copy('liveGameStart'),
+                starting: copy('liveGameStarting'),
               }}
-            />
-
-            <View style={styles.configSection}>
-              <Ionicons name="heart-outline" size={18} color={colors.muted} />
-              <Text style={styles.configSectionLabel}>{copy('liveGameStartingLife')}</Text>
-            </View>
-            <View style={styles.presetRow}>
-              {LIFE_PRESETS.map((preset) => (
-                <Pressable
-                  key={preset}
-                  style={({ pressed }) => [
-                    styles.lifePill,
-                    lifePreset === preset && styles.lifePillActive,
-                    pressed && styles.choicePressed,
-                  ]}
-                  onPress={() => {
-                    setLifePreset(preset);
-                    void hapticLight();
-                  }}
-                >
-                  <Text style={[styles.lifePillText, lifePreset === preset && styles.lifePillTextActive]}>
-                    {preset}
-                  </Text>
-                </Pressable>
-              ))}
-              <Pressable
-                style={({ pressed }) => [
-                  styles.lifePill,
-                  lifePreset === 'custom' && styles.lifePillActive,
-                  pressed && styles.choicePressed,
-                ]}
-                onPress={() => {
-                  setLifePreset('custom');
-                  void hapticLight();
-                }}
-              >
-                <Text style={[styles.lifePillText, lifePreset === 'custom' && styles.lifePillTextActive]}>
-                  {copy('liveGameCustom')}
-                </Text>
-              </Pressable>
-            </View>
-            {lifePreset === 'custom' ? (
-              <Input
-                label={copy('liveGameStartingLife')}
-                icon="heart-outline"
-                value={customLife}
-                onChangeText={setCustomLife}
-                keyboardType="number-pad"
-                selectTextOnFocus
-              />
-            ) : null}
-
-            <Button
-              label={starting ? copy('liveGameStarting') : copy('liveGameStart')}
-              onPress={handleStart}
-              disabled={starting}
-              icon="play"
             />
 
             {REMOTE_GUESTS_ENABLED ? <View style={styles.invitePanel}>

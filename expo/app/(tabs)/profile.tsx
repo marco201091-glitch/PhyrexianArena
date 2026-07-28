@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import {
   RefreshControl,
@@ -54,6 +54,7 @@ export default function ProfileScreen() {
     loading: decksLoading,
     refresh,
     deleteDeck,
+    toggleDeckFavorite,
     saveImportedDeck,
     saveManualDeck,
     refreshImportedDeck,
@@ -61,6 +62,7 @@ export default function ProfileScreen() {
     updateDeck,
     linkDeckSource,
     saveArchidektUserDecks,
+    syncArchidektUserDecks,
     getDeckCommanderOptions,
   } = useProfileDecks(user?.id);
 
@@ -79,6 +81,14 @@ export default function ProfileScreen() {
   const [editingDeckOptions, setEditingDeckOptions] = useState<CommanderMetadataOption[]>([]);
   const [savingDeckEdit, setSavingDeckEdit] = useState(false);
   const [refreshingDeckIds, setRefreshingDeckIds] = useState<string[]>([]);
+  const automaticSyncStarted = useRef(false);
+
+  useEffect(() => {
+    const username = profile?.archidekt_username?.trim();
+    if (!username || !profile?.archidekt_auto_import || automaticSyncStarted.current) return;
+    automaticSyncStarted.current = true;
+    void syncArchidektUserDecks(username).catch(() => undefined);
+  }, [profile?.archidekt_auto_import, profile?.archidekt_username, syncArchidektUserDecks]);
 
   const existingSourceUrls = useMemo(
     () => decks.map((deck) => deck.source_url).filter((url): url is string => Boolean(url)),
@@ -103,6 +113,8 @@ export default function ProfileScreen() {
       return true;
     });
     return filtered.sort((a, b) => {
+      const favoriteOrder = Number(b.is_favorite) - Number(a.is_favorite);
+      if (favoriteOrder !== 0) return favoriteOrder;
       if (deckSort === 'recent') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       const left = performance[a.id];
       const right = performance[b.id];
@@ -205,9 +217,12 @@ export default function ProfileScreen() {
         onEdit={() => openEditDeck(deck)}
         onRefresh={() => handleRefreshDeck(deck)}
         onDelete={() => handleDeleteDeck(deck.id)}
+        onToggleFavorite={() => void toggleDeckFavorite(deck.id, !deck.is_favorite).catch((error) => {
+          showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('saveDeckFailed')));
+        })}
       />
     </View>
-  ), [copy, deckColumns, handleDeleteDeck, handleRefreshDeck, openEditDeck, refreshingDeckIds, winRates]);
+  ), [copy, deckColumns, handleDeleteDeck, handleRefreshDeck, openEditDeck, refreshingDeckIds, toggleDeckFavorite, winRates]);
 
   const listHeader = (
     <View style={styles.listHeader}>
@@ -367,6 +382,7 @@ export default function ProfileScreen() {
         visible={showAddDeck}
         saving={savingDeck}
         existingSourceUrls={existingSourceUrls}
+        initialArchidektUsername={profile?.archidekt_username || ''}
         labels={{
           title: copy('addDeckTitle'),
           importTab: copy('importTab'),

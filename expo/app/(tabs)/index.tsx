@@ -30,6 +30,8 @@ import { fetchGroupByInviteCode } from '@/lib/join-arena';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { responsiveGridColumns } from '@/lib/layout';
+import { apiPost } from '@/lib/api';
+import { PendingArenaInvitations } from '@/components/dashboard/pending-arena-invitations';
 
 export default function DashboardScreen() {
   const { user } = useAuth();
@@ -131,22 +133,9 @@ export default function DashboardScreen() {
         return;
       }
 
-      const { error } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: group.id,
-          user_id: user.id,
-        });
-
-      if (error) {
-        if (error.code === '23505') {
-          showAppAlert(copy('alreadyMember'), copy('redirectingToArena'));
-        } else {
-          throw error;
-        }
-      } else {
-        showAppAlert(copy('joinedArena'), `${copy('welcome')} "${group.name}"`);
-      }
+      const { status, error } = await apiPost('/api/arena-membership', { inviteCode: joiningCode });
+      if (status !== 200) throw new Error(error || copy('joinArenaFailed'));
+      showAppAlert(copy('joinedArena'), `${copy('welcome')} "${group.name}"`);
 
       setShowJoinModal(false);
       setJoiningCode('');
@@ -202,6 +191,11 @@ export default function DashboardScreen() {
           <Text style={styles.title}>{copy('yourArenas')}</Text>
           <Text style={styles.subtitle}>{copy('arenasSubtitle')}</Text>
         </PanelWithActions>
+
+        <PendingArenaInvitations
+          labels={{ title: copy('arenaInvitation'), accept: copy('accept'), decline: copy('decline') }}
+          onAccepted={() => void refreshGroups()}
+        />
 
         {groups.length === 0 ? (
           <PhyrexianPanel style={styles.emptyCard}>
