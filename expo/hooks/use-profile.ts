@@ -8,6 +8,7 @@ import type { ProfileRow } from '@/lib/types/profile';
 type ProfileSnapshot = {
   profile: ProfileRow;
   hasAvatar: boolean;
+  avatarObjectName: string | null;
   avatarRevision: string | null;
 };
 
@@ -36,6 +37,7 @@ export function useProfile(userId: string | undefined) {
       return {
         profile: data as ProfileRow,
         hasAvatar: avatarState.exists,
+        avatarObjectName: avatarState.objectName,
         avatarRevision: avatarState.revision,
       };
     },
@@ -90,7 +92,12 @@ export function useProfile(userId: string | undefined) {
 
     if (error) throw error;
     queryClient.setQueryData<ProfileSnapshot>(queryKey, (current) => current
-      ? { ...current, hasAvatar: true, avatarRevision: String(Date.now()) }
+      ? {
+          ...current,
+          hasAvatar: true,
+          avatarObjectName: 'avatar',
+          avatarRevision: String(Date.now()),
+        }
       : current);
   }, [queryClient, queryKey, userId]);
 
@@ -98,11 +105,11 @@ export function useProfile(userId: string | undefined) {
     return resolveAvatarUrl(
       supabase,
       userId,
-      Boolean(profileData?.hasAvatar),
+      profileData?.avatarObjectName ?? null,
       version,
       profileData?.avatarRevision ?? null,
     );
-  }, [profileData?.avatarRevision, profileData?.hasAvatar, userId]);
+  }, [profileData?.avatarObjectName, profileData?.avatarRevision, userId]);
 
   return {
     profile: profileData?.profile ?? null,

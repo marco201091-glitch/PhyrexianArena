@@ -10,6 +10,7 @@ describe('arena analytics bundle', () => {
         is_guest: false, games_played: 4, wins: 2,
       }],
       commanders: [{
+        key: 'deck:d',
         commander: 'Atraxa', commander_image: null, bracket: '4', games_played: 4, wins: 2,
       }],
       colors: [{
@@ -27,6 +28,7 @@ describe('arena analytics bundle', () => {
 
     expect(bundle.players[0]).toMatchObject({ gamesPlayed: 4, wins: 2, winRate: 50 });
     expect(bundle.commanders[0]).toMatchObject({ commander: 'Atraxa', winRate: 50 });
+    expect(bundle.commanders[0].key).toBe('deck:d');
     expect(bundle.colors.played.map((row) => [row.color, row.appearances]))
       .toEqual([['W', 4], ['U', 4]]);
     expect(bundle.decks[0]).toMatchObject({

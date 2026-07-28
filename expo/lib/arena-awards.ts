@@ -1,5 +1,6 @@
 import { getParticipantDeckId, getParticipantDeckSnapshot } from '@/lib/arena-participants';
 import type { ArenaMatch } from '@/lib/types/arena';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type ArenaAwardKind =
   | 'fastest'
@@ -22,6 +23,23 @@ export interface ArenaAward {
   trackedGames: number;
   value: number;
 }
+
+type ArenaAwardDeckRollup = {
+  deck_id: string;
+  deck_name: string;
+  commander: string;
+  commander_image: string | null;
+  games_played: number;
+  tracked_games: number;
+  second_places: number;
+  first_eliminations?: number;
+  comeback_wins?: number;
+  combo_wins?: number;
+  alternate_wins?: number;
+  group_damage_dealt: number;
+  eliminations: number;
+  median_winning_duration_seconds: number | null;
+};
 
 function median(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -131,4 +149,70 @@ export function calculateArenaAwards(matches: ArenaMatch[]): ArenaAward[] {
   const junkMaster = topAll((deck) => deck.alternateWins);
   add('junk_master', junkMaster, junkMaster?.alternateWins ?? null);
   return awards;
+}
+
+export function calculateArenaAwardsFromRollups(rows: ArenaAwardDeckRollup[]): ArenaAward[] {
+  const decks = rows.map((row) => ({
+    deckId: row.deck_id,
+    name: row.deck_name,
+    commander: row.commander,
+    commanderImage: row.commander_image,
+    gamesPlayed: row.games_played,
+    trackedGames: row.tracked_games,
+    medianWinningDuration: row.median_winning_duration_seconds,
+    groupDamage: row.group_damage_dealt,
+    eliminations: row.eliminations,
+    secondPlaces: row.second_places,
+    firstEliminations: row.first_eliminations ?? 0,
+    comebackWins: row.comeback_wins ?? 0,
+    comboWins: row.combo_wins ?? 0,
+    alternateWins: row.alternate_wins ?? 0,
+  }));
+  const eligible = decks.filter((deck) => deck.trackedGames >= 3);
+  const awards: ArenaAward[] = [];
+  const add = (kind: ArenaAwardKind, deck: typeof decks[number] | undefined, value: number | null) => {
+    if (!deck || value == null || value <= 0) return;
+    awards.push({ kind, ...deck, value });
+  };
+  const fastest = [...eligible]
+    .filter((deck) => deck.medianWinningDuration != null)
+    .sort((left, right) => (
+      left.medianWinningDuration! - right.medianWinningDuration!
+      || right.trackedGames - left.trackedGames
+    ))[0];
+  add('fastest', fastest, fastest?.medianWinningDuration ?? null);
+  const top = (selector: (deck: typeof decks[number]) => number) =>
+    [...eligible].sort((left, right) => (
+      selector(right) - selector(left) || right.trackedGames - left.trackedGames
+    ))[0];
+  const topAll = (selector: (deck: typeof decks[number]) => number) =>
+    [...decks].sort((left, right) => (
+      selector(right) - selector(left) || right.gamesPlayed - left.gamesPlayed
+    ))[0];
+  const records: Array<[ArenaAwardKind, typeof decks[number] | undefined, number | undefined]> = [
+    ['group_slugger', top((deck) => deck.groupDamage), top((deck) => deck.groupDamage)?.groupDamage],
+    ['executioner', top((deck) => deck.eliminations), top((deck) => deck.eliminations)?.eliminations],
+    ['runner_up', top((deck) => deck.secondPlaces), top((deck) => deck.secondPlaces)?.secondPlaces],
+    ['archenemy', top((deck) => deck.firstEliminations), top((deck) => deck.firstEliminations)?.firstEliminations],
+    ['comebacker', top((deck) => deck.comebackWins), top((deck) => deck.comebackWins)?.comebackWins],
+    ['one_trick', topAll((deck) => deck.gamesPlayed), topAll((deck) => deck.gamesPlayed)?.gamesPlayed],
+    ['combo_winner', topAll((deck) => deck.comboWins), topAll((deck) => deck.comboWins)?.comboWins],
+    ['junk_master', topAll((deck) => deck.alternateWins), topAll((deck) => deck.alternateWins)?.alternateWins],
+  ];
+  records.forEach(([kind, deck, value]) => add(kind, deck, value ?? null));
+  return awards;
+}
+
+export async function fetchArenaAwards(
+  client: SupabaseClient,
+  groupId: string,
+): Promise<ArenaAward[]> {
+  const { data, error } = await client.rpc('get_arena_analytics_bundle', {
+    p_group_id: groupId,
+    p_since: null,
+    p_until: null,
+  });
+  if (error) throw error;
+  const payload = (data || {}) as { decks?: ArenaAwardDeckRollup[] };
+  return calculateArenaAwardsFromRollups(payload.decks || []);
 }

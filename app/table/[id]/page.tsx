@@ -421,6 +421,7 @@ export default function TablePage() {
   const [members, setMembers] = useState<Profile[]>([]);
   const [guests, setGuests] = useState<ArenaGuest[]>([]);
   const [analyticsPayload, setAnalyticsPayload] = useState<ArenaAnalyticsBundlePayload>({});
+  const [absoluteAnalyticsPayload, setAbsoluteAnalyticsPayload] = useState<ArenaAnalyticsBundlePayload>({});
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
@@ -436,6 +437,10 @@ export default function TablePage() {
   const analyticsBundle = useMemo(
     () => buildArenaAnalyticsBundle(analyticsPayload, bracketFilter, deckStatsSort),
     [analyticsPayload, bracketFilter, deckStatsSort],
+  );
+  const absoluteAnalyticsBundle = useMemo(
+    () => buildArenaAnalyticsBundle(absoluteAnalyticsPayload),
+    [absoluteAnalyticsPayload],
   );
   const playerStats = analyticsBundle.players as PlayerStats[];
   const commanderStats = analyticsBundle.commanders as CommanderStats[];
@@ -764,9 +769,9 @@ export default function TablePage() {
   const getStatsSinceDate = useCallback(() => {
     if (dateFilter === 'all') return null;
     const now = new Date();
-    if (dateFilter === '7d') return subDays(now, 7);
-    if (dateFilter === '30d') return subDays(now, 30);
-    return subDays(now, 90);
+    if (dateFilter === '7d') return startOfDay(subDays(now, 7));
+    if (dateFilter === '30d') return startOfDay(subDays(now, 30));
+    return startOfDay(subDays(now, 90));
   }, [dateFilter]);
 
   const refreshMatches = useCallback(async () => {
@@ -778,7 +783,12 @@ export default function TablePage() {
     }
 
     try {
-      setAnalyticsPayload(await fetchArenaAnalyticsPayload(supabase, groupId, getStatsSinceDate()));
+      const [filteredPayload, allTimePayload] = await Promise.all([
+        fetchArenaAnalyticsPayload(supabase, groupId, getStatsSinceDate()),
+        fetchArenaAnalyticsPayload(supabase, groupId, null),
+      ]);
+      setAnalyticsPayload(filteredPayload);
+      setAbsoluteAnalyticsPayload(allTimePayload);
     } catch (error) {
       console.error('Error refreshing arena stats:', error);
     }
@@ -1005,7 +1015,12 @@ export default function TablePage() {
     if (!user || loading) return;
     void (async () => {
       try {
-        setAnalyticsPayload(await fetchArenaAnalyticsPayload(supabase, groupId, getStatsSinceDate()));
+        const [filteredPayload, allTimePayload] = await Promise.all([
+          fetchArenaAnalyticsPayload(supabase, groupId, getStatsSinceDate()),
+          fetchArenaAnalyticsPayload(supabase, groupId, null),
+        ]);
+        setAnalyticsPayload(filteredPayload);
+        setAbsoluteAnalyticsPayload(allTimePayload);
       } catch (error) {
         console.error('Error fetching arena stats:', error);
       }
@@ -1024,7 +1039,7 @@ export default function TablePage() {
   }, [activeTab, deckIdsInMatches, ensureArenaDeckColors, loading]);
 
   const colorAnalytics = analyticsBundle.colors;
-  const deckPerformance = analyticsBundle.decks;
+  const deckPerformance = absoluteAnalyticsBundle.decks;
   const arenaAwards = useMemo(() => buildArenaAwards(deckPerformance), [deckPerformance]);
 
   const copyInviteLink = () => {

@@ -97,7 +97,7 @@ export async function GET(
       const deckRecord = unwrapRelation(participant.decks) || unwrapRelation(participant.arena_guest_decks);
       const deckId = participant.deck_id || participant.guest_deck_id;
       if (deckRecord && deckId) {
-        const deckKey = `${deckRecord.commander}::${deckRecord.bracket || 'none'}`;
+        const deckKey = `${participant.guest_deck_id ? 'guest' : 'deck'}:${deckId}`;
         const deckStats = deckMap.get(deckKey) || {
           commander: deckRecord.commander,
           commanderImage: deckRecord.commander_image || null,

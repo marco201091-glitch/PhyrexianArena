@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateArenaAwards } from '@/lib/arena-awards';
+import { calculateArenaAwards, calculateArenaAwardsFromRollups } from '@/lib/arena-awards';
 import type { ArenaMatch } from '@/lib/types/arena';
 
 function match(
@@ -38,6 +38,44 @@ function match(
 }
 
 describe('arena awards', () => {
+  it('builds absolute awards from compact all-time rollups', () => {
+    const awards = calculateArenaAwardsFromRollups([{
+      deck_id: 'deck',
+      deck_name: 'Only Deck',
+      commander: 'Commander',
+      commander_image: null,
+      games_played: 4,
+      tracked_games: 3,
+      second_places: 1,
+      first_eliminations: 2,
+      comeback_wins: 1,
+      combo_wins: 1,
+      alternate_wins: 1,
+      group_damage_dealt: 30,
+      eliminations: 3,
+      median_winning_duration_seconds: 1800,
+    }]);
+
+    expect(Object.fromEntries(awards.map((award) => [award.kind, award.value]))).toMatchObject({
+      fastest: 1800,
+      one_trick: 4,
+      executioner: 3,
+    });
+  });
+
+  it('keeps all-time awards independent from a report period', () => {
+    const matches = [
+      match('1'),
+      match('2'),
+      match('3'),
+      match('4', { duration_seconds: null, tracking_version: null }),
+    ];
+    const periodMatches = matches.slice(2);
+
+    expect(calculateArenaAwards(matches).find((award) => award.kind === 'one_trick')?.value).toBe(4);
+    expect(calculateArenaAwards(periodMatches).find((award) => award.kind === 'one_trick')?.value).toBe(2);
+  });
+
   it('counts records and the new win conditions', () => {
     const matches = [
       match('1', { win_condition: 'combo' }),

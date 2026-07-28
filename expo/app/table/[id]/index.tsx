@@ -60,7 +60,7 @@ import { buildMatchShareText } from '@/lib/arena-match-share';
 import { groupMatchesByDay } from '@/lib/arena-session';
 import { buildArenaShareText } from '@/lib/arena-share';
 import { calculatePlayerStats, getMatchWinnerName } from '@/lib/arena-stats';
-import { calculateArenaAwards } from '@/lib/arena-awards';
+import { calculateArenaAwards, fetchArenaAwards } from '@/lib/arena-awards';
 import { getSiteUrl } from '@/lib/env';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
@@ -152,6 +152,7 @@ export default function TableScreen() {
   const [expandedDayKeys, setExpandedDayKeys] = useState<Set<string>>(new Set());
   const [sharePreview, setSharePreview] = useState<{ title: string; message: string } | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [absoluteArenaAwards, setAbsoluteArenaAwards] = useState<Awaited<ReturnType<typeof fetchArenaAwards>> | null>(null);
 
   useEffect(() => {
     if (!detailsMatch?.id || detailsMatch.tracking_version == null) {
@@ -228,7 +229,26 @@ export default function TableScreen() {
     () => computeArenaColorAnalytics(filteredMatches, new Map(), bracketFilter),
     [bracketFilter, filteredMatches],
   );
-  const arenaAwards = useMemo(() => calculateArenaAwards(filteredMatches), [filteredMatches]);
+  const fallbackArenaAwards = useMemo(() => calculateArenaAwards(matches), [matches]);
+  const arenaAwards = absoluteArenaAwards ?? fallbackArenaAwards;
+
+  useEffect(() => {
+    if (!groupId || !user) {
+      setAbsoluteArenaAwards(null);
+      return;
+    }
+    let active = true;
+    void fetchArenaAwards(supabase, groupId)
+      .then((awards) => {
+        if (active) setAbsoluteArenaAwards(awards);
+      })
+      .catch(() => {
+        if (active) setAbsoluteArenaAwards(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [groupId, matches, user]);
 
   const matchDayGroups = useMemo(() => {
     const locale = language === 'it' ? 'it-IT' : 'en-US';

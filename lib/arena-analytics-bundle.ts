@@ -20,6 +20,7 @@ type PlayerRollup = {
 };
 
 type CommanderRollup = {
+  key: string;
   commander: string;
   commander_image: string | null;
   bracket: string | null;
@@ -66,6 +67,7 @@ export type ArenaAnalyticsBundlePayload = {
   colors?: ColorRollup[];
   decks?: DeckRollup[];
   totalMatches?: number;
+  missingColorGames?: number;
 };
 
 export type ArenaAnalyticsBundle = {
@@ -102,7 +104,7 @@ export function buildArenaAnalyticsBundle(
   const commanders = (payload.commanders || [])
     .filter((row) => bracketFilter === 'all' || row.bracket === bracketFilter)
     .map<CommanderStatsRow>((row) => ({
-      key: `${row.commander}::${row.bracket || 'none'}`,
+      key: row.key,
       commander: row.commander,
       commanderImageUrl: row.commander_image,
       bracket: row.bracket,
@@ -170,8 +172,11 @@ export function buildArenaAnalyticsBundle(
       wins: row.wins,
       winRate: percentage(row.wins, row.appearances),
     })).sort((left, right) => right.appearances - left.appearances || right.winRate - left.winRate).slice(0, 5),
-    missingColorGames: 0,
-    totalGamesWithColors: payload.totalMatches || 0,
+    missingColorGames: payload.missingColorGames || 0,
+    totalGamesWithColors: Math.max(
+      0,
+      (payload.totalMatches || 0) - (payload.missingColorGames || 0),
+    ),
   };
 
   const decks = (payload.decks || []).map<DeckPerformanceStats>((row) => ({

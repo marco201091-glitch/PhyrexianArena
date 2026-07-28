@@ -1,4 +1,4 @@
-import { getParticipantDeckSnapshot } from '@/lib/arena-participants';
+import { getParticipantDeckId, getParticipantDeckSnapshot } from '@/lib/arena-participants';
 import type { ArenaMatch } from '@/lib/types/arena';
 
 export interface CommanderStats {
@@ -32,12 +32,13 @@ export function calculateCommanderStats(
   matches.forEach((match) => {
     match.match_participants.forEach((participant) => {
       const deck = getParticipantDeckSnapshot(participant);
-      if (!deck) return;
+      const deckId = getParticipantDeckId(participant);
+      if (!deck || !deckId) return;
       if (bracketFilter !== 'all' && deck.bracket !== bracketFilter) return;
 
       const commander = deck.commander;
       const bracket = deck.bracket;
-      const key = `${commander}::${bracket || 'none'}`;
+      const key = `${participant.guest_deck_id ? 'guest' : 'deck'}:${deckId}`;
 
       if (!commanderMap.has(key)) {
         commanderMap.set(key, {

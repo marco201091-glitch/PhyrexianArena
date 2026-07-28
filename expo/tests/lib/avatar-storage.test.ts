@@ -22,12 +22,12 @@ function fakeClient(files: Array<Record<string, string>> = []) {
 describe('avatar storage cache identity', () => {
   it('uses the durable object revision in the public URL', () => {
     const client = fakeClient();
-    const url = getAvatarPublicUrl(client, 'user-1', 2, '2026-07-17T12:00:00Z');
+    const url = getAvatarPublicUrl(client, 'user-1', 'avatar', 2, '2026-07-17T12:00:00Z');
 
     expect(url).toBe(
       'https://storage.example/user-1/avatar?v=2026-07-17T12%3A00%3A00Z-2',
     );
-    expect(resolveAvatarUrl(client, 'user-1', false, 2, 'revision')).toBeNull();
+    expect(resolveAvatarUrl(client, 'user-1', null, 2, 'revision')).toBeNull();
   });
 
   it('reads avatar existence and revision from Storage metadata', async () => {
@@ -37,6 +37,7 @@ describe('avatar storage cache identity', () => {
 
     expect(state).toEqual({
       exists: true,
+      objectName: 'avatar',
       revision: '2026-07-17T12:00:00Z',
     });
   });

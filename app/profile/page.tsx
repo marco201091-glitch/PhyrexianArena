@@ -61,7 +61,7 @@ import { delay, runTasksWithConcurrency } from '@/lib/async-utils';
 import { runWhenIdle } from '@/lib/idle-work';
 import { type DeckWinRateSnapshot } from '@/lib/personal-analytics';
 import { MANA_COLOR_LABELS, MANA_COLOR_ORDER } from '@/lib/mana-colors';
-import { getAvatarPublicUrl, userHasAvatar } from '@/lib/avatar-storage';
+import { getAvatarObjectState, resolveAvatarUrl } from '@/lib/avatar-storage';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { ManaColorPills } from '@/components/ui/mana-color-pills';
@@ -567,7 +567,11 @@ export default function ProfilePage() {
   const [activeAccountPanel, setActiveAccountPanel] = useState<'nickname' | 'password' | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState<number>(() => Date.now());
-  const [hasAvatar, setHasAvatar] = useState(false);
+  const [avatarState, setAvatarState] = useState<{
+    userId: string | null;
+    objectName: string | null;
+    revision: string | null;
+  }>({ userId: null, objectName: null, revision: null });
   const [profileDisplayNameDrafts, setProfileDisplayNameDrafts] = useState<Record<string, string>>({});
   const [savingProfileDisplayNameIds, setSavingProfileDisplayNameIds] = useState<string[]>([]);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -636,8 +640,14 @@ export default function ProfilePage() {
   const [detailsDeck, setDetailsDeck] = useState<Deck | null>(null);
   const currentProfile = user ? profiles.find((profile) => profile.id === user.id) || null : null;
   const targetProfiles = profiles.filter((profile) => !RESERVED_USERNAMES.has(profile.username.toLowerCase()));
-  const currentAvatarUrl = user && hasAvatar
-    ? getAvatarPublicUrl(supabase, user.id, avatarVersion)
+  const currentAvatarUrl = user && avatarState.userId === user.id
+    ? resolveAvatarUrl(
+        supabase,
+        user.id,
+        avatarState.objectName,
+        avatarVersion,
+        avatarState.revision,
+      ) ?? undefined
     : undefined;
   const manualPartnerMode = selectedCommander ? getManualPartnerMode(selectedCommander) : null;
   const manualPartnerCopy = manualPartnerMode ? getManualPartnerCopy(manualPartnerMode, t) : null;
@@ -661,13 +671,21 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user?.id) {
-      setHasAvatar(false);
+      setAvatarState({ userId: null, objectName: null, revision: null });
       return;
     }
 
+    const userId = user.id;
     let cancelled = false;
-    void userHasAvatar(supabase, user.id).then((exists) => {
-      if (!cancelled) setHasAvatar(exists);
+    setAvatarState({ userId, objectName: null, revision: null });
+    void getAvatarObjectState(supabase, userId).then((state) => {
+      if (!cancelled) {
+        setAvatarState({
+          userId,
+          objectName: state.objectName,
+          revision: state.revision,
+        });
+      }
     });
 
     return () => {
@@ -1271,7 +1289,11 @@ export default function ProfilePage() {
 
       if (uploadError) throw uploadError;
 
-      setHasAvatar(true);
+      setAvatarState({
+        userId: user.id,
+        objectName: 'avatar',
+        revision: String(Date.now()),
+      });
       setAvatarVersion(Date.now());
 
       toast({ title: t({ it: 'Avatar aggiornato', en: 'Avatar updated' }) });
