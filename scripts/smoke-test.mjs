@@ -181,7 +181,14 @@ async function testSupabaseInfra(env) {
 }
 
 async function main() {
-  const env = loadEnv('.env.local');
+  const fileEnv = loadEnv('.env.local');
+  const env = {
+    ...fileEnv,
+    NEXT_PUBLIC_SUPABASE_URL:
+      process.env.SMOKE_SUPABASE_URL || fileEnv.NEXT_PUBLIC_SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY:
+      process.env.SMOKE_SUPABASE_SERVICE_ROLE_KEY || fileEnv.SUPABASE_SERVICE_ROLE_KEY,
+  };
   await testRoutes();
   await testProtectedApis();
   await testPublicArenaApi();
