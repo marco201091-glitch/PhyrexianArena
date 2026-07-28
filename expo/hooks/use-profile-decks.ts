@@ -33,6 +33,7 @@ import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { prefetchProfileDeckImages } from '@/lib/deck-image-cache';
 import type { DeckPerformance, DeckWinRate, ProfileDeck } from '@/lib/types/profile';
+import { syncArchidektUserDecks as syncArchidektDecks } from '@/lib/archidekt-auto-sync';
 
 function uniqueCommanderOptions(options: CommanderMetadataOption[]) {
   return options.filter((option, index, allOptions) =>
@@ -468,30 +469,10 @@ export function useProfileDecks(userId: string | undefined) {
   }, [decks, refresh, userId]);
 
   const syncArchidektUserDecks = useCallback(async (username: string) => {
-    const { data, error, status } = await apiPost<{
-      decks?: Array<ImportedDeckPreview & { warning?: string; error?: string }>;
-    }>(
-      '/api/archidekt-user-decks',
-      { username: username.trim() },
-    );
-    if (status !== 200) throw new Error(error || 'Archidekt sync failed');
-    const imported = (data?.decks ?? []).filter((deck) =>
-      deck.sourceType === 'archidekt'
-      && Boolean(deck.sourceUrl)
-      && !deck.warning
-      && !deck.error
-      && Boolean(deck.commander?.trim()),
-    );
-    return saveArchidektUserDecks({
-      decks: imported,
-      selectedUrls: imported.map((deck) => deck.sourceUrl),
-      selectedCommanders: Object.fromEntries(imported.map((deck) => [
-        deck.sourceUrl,
-        getDefaultImportedCommanderOption(deck),
-      ])),
-      overwriteExisting: true,
-    });
-  }, [saveArchidektUserDecks]);
+    const result = await syncArchidektDecks(username);
+    await refresh();
+    return result;
+  }, [refresh]);
 
   const refreshAllDecks = useCallback(async () => {
     const decksToRefresh = decks.filter(

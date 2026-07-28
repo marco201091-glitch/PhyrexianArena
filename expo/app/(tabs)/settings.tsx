@@ -34,6 +34,7 @@ import {
   saveAccessibilityPreferences,
   type AccessibilityPreferences,
 } from '@/lib/accessibility-preferences';
+import { runArchidektAutoSync } from '@/lib/archidekt-auto-sync';
 
 export default function SettingsScreen() {
   const { copy, language, setLanguage } = useLanguage();
@@ -161,18 +162,30 @@ export default function SettingsScreen() {
 
   const saveArchidektSettings = async () => {
     if (!user) return;
+    const username = archidektUsername.trim();
+    if (archidektAutoImport && !username) {
+      showAppAlert(copy('error'), copy('archidektUsernameRequired'));
+      return;
+    }
     setSavingArchidektSettings(true);
     try {
       const { error } = await supabase.from('profiles').update({
-        archidekt_username: archidektUsername.trim() || null,
+        archidekt_username: username || null,
         archidekt_auto_import: archidektAutoImport,
       }).eq('id', user.id);
       if (error) throw error;
+      const syncResult = archidektAutoImport
+        ? await runArchidektAutoSync(user.id, { force: true })
+        : null;
       await refreshProfile();
       void hapticSuccess();
-      showToast(copy('profileUpdated'));
+      showToast(syncResult
+        ? copy('archidektSyncComplete')
+            .replace('{inserted}', String(syncResult.inserted))
+            .replace('{updated}', String(syncResult.updated))
+        : copy('profileUpdated'));
     } catch (error) {
-      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('updateProfileFailed')));
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('archidektSyncFailed')));
     } finally {
       setSavingArchidektSettings(false);
     }

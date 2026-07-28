@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import {
   RefreshControl,
@@ -62,7 +62,6 @@ export default function ProfileScreen() {
     updateDeck,
     linkDeckSource,
     saveArchidektUserDecks,
-    syncArchidektUserDecks,
     getDeckCommanderOptions,
   } = useProfileDecks(user?.id);
 
@@ -81,15 +80,6 @@ export default function ProfileScreen() {
   const [editingDeckOptions, setEditingDeckOptions] = useState<CommanderMetadataOption[]>([]);
   const [savingDeckEdit, setSavingDeckEdit] = useState(false);
   const [refreshingDeckIds, setRefreshingDeckIds] = useState<string[]>([]);
-  const automaticSyncStarted = useRef(false);
-
-  useEffect(() => {
-    const username = profile?.archidekt_username?.trim();
-    if (!username || !profile?.archidekt_auto_import || automaticSyncStarted.current) return;
-    automaticSyncStarted.current = true;
-    void syncArchidektUserDecks(username).catch(() => undefined);
-  }, [profile?.archidekt_auto_import, profile?.archidekt_username, syncArchidektUserDecks]);
-
   const existingSourceUrls = useMemo(
     () => decks.map((deck) => deck.source_url).filter((url): url is string => Boolean(url)),
     [decks],

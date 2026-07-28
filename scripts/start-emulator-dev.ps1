@@ -72,6 +72,7 @@ $apiProcess = Start-Process `
     -PassThru
 
 $env:EXPO_PUBLIC_API_BASE_URL = "http://127.0.0.1:3000"
+$env:EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS = "true"
 $metroProcess = Start-Process `
     -FilePath $npm `
     -ArgumentList @("run", "start", "--", "--dev-client", "--host", "lan", "--port", "8081", "--clear") `

@@ -18,6 +18,10 @@ import { Sentry } from '@/lib/sentry';
 import { QueryProvider } from '@/components/query-provider';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { AppNotificationListener } from '@/components/app-notification-listener';
+import { ArchidektAutoSync } from '@/components/archidekt-auto-sync';
+
+const pushNotificationsEnabled =
+  process.env.EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS !== 'true';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -83,7 +87,8 @@ function RootLayout() {
           <AppErrorBoundary>
           <AuthGate>
             <AccessLogger />
-            <AppNotificationListener />
+            {pushNotificationsEnabled ? <AppNotificationListener /> : null}
+            <ArchidektAutoSync />
             <ImageCacheWarmer />
             <AppAlertHost />
             <Stack

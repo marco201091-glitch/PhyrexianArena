@@ -1,6 +1,6 @@
 {
   "name": "nextjs",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "private": true,
   "packageManager": "npm@11.16.0",
   "engines": {
@@ -39,6 +39,8 @@
     "expo:android": "npm --prefix expo run android",
     "expo:ios": "npm --prefix expo run ios",
     "expo:ios:config": "npm --prefix expo run ios:config",
+    "expo:ios:ready": "npm --prefix expo run ios:ready",
+    "expo:ios:bundle:check": "npm --prefix expo run ios:bundle:check",
     "expo:typecheck": "npm --prefix expo run typecheck",
     "expo:eas:init": "npm --prefix expo run eas:init",
     "expo:eas:preview": "npm --prefix expo run eas:build:preview",
