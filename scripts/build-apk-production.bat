@@ -49,17 +49,17 @@ echo [3/6] Stop Gradle and clean native cache
 if exist "%EXPO_DIR%\android\gradlew.bat" call "%EXPO_DIR%\android\gradlew.bat" --stop
 if exist "%EXPO_DIR%\node_modules\react-native-reanimated\android\.cxx" rmdir /s /q "%EXPO_DIR%\node_modules\react-native-reanimated\android\.cxx"
 
-echo [5/6] Generate Android production project
+echo [4/6] Generate Android production project
 rem Expo SDK 57 autolinking resolves package.json via the real project path.
 pushd "%EXPO_DIR%"
-call npx expo prebuild --platform android --clean
+call npx expo prebuild --platform android --clean --no-install
 if errorlevel 1 (
     popd
     goto :fail
 )
 popd
 
-echo [6/6] Build release APK
+echo [5/6] Build release APK
 pushd "%EXPO_DIR%\android"
 call "%EXPO_DIR%\android\gradlew.bat" assembleRelease -PreactNativeArchitectures=arm64-v8a --console=plain
 if errorlevel 1 (
@@ -75,6 +75,8 @@ if errorlevel 1 goto :fail
 
 node "%~dp0verify-release-apk.mjs" "%ARTIFACT_DIR%\mtg-commander-v%VERSION%.apk" "%VERSION%"
 if errorlevel 1 goto :fail
+
+echo [6/6] Release artifact verified
 
 call :cleanup
 echo BUILD OK: %ARTIFACT_DIR%\mtg-commander-v%VERSION%.apk

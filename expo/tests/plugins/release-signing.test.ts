@@ -1,4 +1,6 @@
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const require = createRequire(import.meta.url);
@@ -27,6 +29,11 @@ const generatedBuildGradle = `android {
 }`;
 
 describe('production Android signing plugin', () => {
+  it('is wired into Expo production prebuild', () => {
+    expect(readFileSync(resolve('app.config.js'), 'utf8'))
+      .toContain("'./plugins/with-release-signing'");
+  });
+
   it('keeps debug signing isolated and replaces only release signing', () => {
     const result = injectReleaseSigning(generatedBuildGradle);
 

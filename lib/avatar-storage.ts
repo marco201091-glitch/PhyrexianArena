@@ -5,6 +5,16 @@ function avatarObjectPath(userId: string) {
 }
 
 export async function userHasAvatar(client: SupabaseClient, userId: string) {
+  const profile = await client
+    .from('profiles')
+    .select('avatar_revision')
+    .eq('id', userId)
+    .maybeSingle();
+  if (!profile.error) {
+    return Boolean((profile.data as { avatar_revision?: string | null } | null)?.avatar_revision);
+  }
+
+  // V6 compatibility while production still uses Storage metadata.
   const { data, error } = await client.storage.from('avatars').list(userId, { limit: 20 });
   if (error || !data?.length) return false;
   return data.some((file) => file.name === 'avatar' || file.name.startsWith('avatar.'));

@@ -1,17 +1,3 @@
-/** Official-style mana symbol SVGs from Scryfall's symbology API. */
-export const MANA_SYMBOL_SVG_URLS: Record<string, string> = {
-  W: 'https://svgs.scryfall.io/card-symbols/W.svg',
-  U: 'https://svgs.scryfall.io/card-symbols/U.svg',
-  B: 'https://svgs.scryfall.io/card-symbols/B.svg',
-  R: 'https://svgs.scryfall.io/card-symbols/R.svg',
-  G: 'https://svgs.scryfall.io/card-symbols/G.svg',
-  C: 'https://svgs.scryfall.io/card-symbols/C.svg',
-};
-
-export function getManaSymbolSvgUrl(color: string) {
-  return MANA_SYMBOL_SVG_URLS[color] || MANA_SYMBOL_SVG_URLS.C;
-}
-
 export const MANA_COLOR_LABELS: Record<string, { it: string; en: string }> = {
   W: { it: 'Bianco', en: 'White' },
   U: { it: 'Blu', en: 'Blue' },

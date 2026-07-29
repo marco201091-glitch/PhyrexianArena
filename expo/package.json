@@ -36,7 +36,6 @@
     "test": "vitest run && npm run verify:logos",
     "quality": "npm run lint && npm run typecheck && npm run test:coverage && npm run verify:logos",
     "test:coverage": "vitest run --coverage",
-    "assets:mana": "node scripts/fetch-mana-symbols.mjs",
     "assets:logo": "node scripts/flatten-logo.mjs",
     "assets:android-icon": "node scripts/generate-android-icon.mjs",
     "verify:logos": "node scripts/verify-logos.mjs",

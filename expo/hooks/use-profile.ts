@@ -23,6 +23,22 @@ export function useProfile(userId: string | undefined) {
     enabled: Boolean(userId),
     staleTime: 60_000,
     queryFn: async () => {
+      const current = await supabase
+        .from('profiles')
+        .select('id, username, display_name, created_at, avatar_revision, archidekt_username, archidekt_auto_import, archidekt_last_sync_at')
+        .eq('id', userId!)
+        .single();
+
+      if (!current.error) {
+        const profile = current.data as ProfileRow;
+        return {
+          profile,
+          hasAvatar: Boolean(profile.avatar_revision),
+          avatarRevision: profile.avatar_revision ?? null,
+        };
+      }
+
+      // V6 compatibility while production is still on the previous schema.
       const [{ data, error }, avatarState] = await Promise.all([
         supabase
           .from('profiles')
@@ -31,7 +47,6 @@ export function useProfile(userId: string | undefined) {
           .single(),
         getAvatarObjectState(supabase, userId!),
       ]);
-
       if (error) throw error;
       return {
         profile: data as ProfileRow,
@@ -89,8 +104,13 @@ export function useProfile(userId: string | undefined) {
       });
 
     if (error) throw error;
+    const avatarRevision = new Date().toISOString();
+    await supabase
+      .from('profiles')
+      .update({ avatar_revision: avatarRevision })
+      .eq('id', userId);
     queryClient.setQueryData<ProfileSnapshot>(queryKey, (current) => current
-      ? { ...current, hasAvatar: true, avatarRevision: String(Date.now()) }
+      ? { ...current, hasAvatar: true, avatarRevision }
       : current);
   }, [queryClient, queryKey, userId]);
 

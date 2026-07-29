@@ -34,6 +34,15 @@ jobs:
         working-directory: expo
         run: npm ci
 
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Full automated release gate
+        run: |
+          npm run quality
+          npm --prefix expo run quality
+          npm run verify:obtainium -- --release
+
       - name: Build verified signed APK
         shell: pwsh
         env:

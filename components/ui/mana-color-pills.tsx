@@ -1,6 +1,6 @@
 'use client';
 
-import { getManaSymbolSvgUrl, MANA_COLOR_LABELS } from '@/lib/mana-colors';
+import { MANA_CHART_COLORS, MANA_COLOR_LABELS } from '@/lib/mana-colors';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/components/language-provider';
 
@@ -36,23 +36,19 @@ export function ManaColorBadge({
       role="img"
       aria-label={title}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center leading-none',
+        'inline-flex shrink-0 items-center justify-center rounded-full border border-white/25 font-extrabold leading-none shadow-sm',
         muted && 'opacity-40 grayscale',
         className,
       )}
+      style={{
+        width: symbolSize,
+        height: symbolSize,
+        color: color === 'W' || color === 'C' ? '#111827' : '#f8fafc',
+        backgroundColor: MANA_CHART_COLORS[color] || MANA_CHART_COLORS.C,
+        fontSize: Math.round(symbolSize * 0.45),
+      }}
     >
-      {/* Tiny external SVGs do not benefit from Next's raster image optimization. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={getManaSymbolSvgUrl(color)}
-        alt=""
-        width={symbolSize}
-        height={symbolSize}
-        className="block"
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-      />
+      <span aria-hidden="true">{color}</span>
       <span className="sr-only">{label.en}</span>
     </span>
   );

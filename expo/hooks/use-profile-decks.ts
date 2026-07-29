@@ -32,6 +32,7 @@ import { getDeckDisplayColors } from '@/lib/deck-metadata';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { prefetchProfileDeckImages } from '@/lib/deck-image-cache';
+import { fetchProfileDeckPerformance } from '@/lib/profile-deck-performance';
 import type { DeckPerformance, DeckWinRate, ProfileDeck } from '@/lib/types/profile';
 import { syncArchidektUserDecks as syncArchidektDecks } from '@/lib/archidekt-auto-sync';
 
@@ -85,6 +86,14 @@ export function useProfileDecks(userId: string | undefined) {
         return;
       }
 
+      const rollup = await fetchProfileDeckPerformance(supabase, userId);
+      if (rollup) {
+        setWinRates(rollup.winRates);
+        setPerformance(rollup.performance);
+        return;
+      }
+
+      // V6 compatibility while production is waiting for the aggregate RPC.
       const { data: participantRows, error: participantsError } = await supabase
         .from('match_participants')
         .select('is_winner, deck_id, placement, life_lost, life_gained, life_damage_dealt, commander_damage_dealt, infect_dealt, eliminations_caused, matches (duration_seconds, tracking_version)')

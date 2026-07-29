@@ -40,6 +40,7 @@ module.exports = ({ config: base }) => {
         disableAutoUpload: isDevVariant || !process.env.SENTRY_AUTH_TOKEN,
       }],
       './plugins/with-clean-intent-filter-markers',
+      './plugins/with-release-signing',
     ],
     android: {
       ...base.android,

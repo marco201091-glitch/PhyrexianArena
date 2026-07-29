@@ -1332,6 +1332,10 @@ export default function ProfilePage() {
 
       if (uploadError) throw uploadError;
 
+      await supabase
+        .from('profiles')
+        .update({ avatar_revision: new Date().toISOString() })
+        .eq('id', user.id);
       setHasAvatar(true);
       setAvatarVersion(Date.now());
 

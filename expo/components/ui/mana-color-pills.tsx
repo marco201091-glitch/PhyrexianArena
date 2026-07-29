@@ -1,6 +1,5 @@
-import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
-import { getManaSymbolImageSource, MANA_COLOR_LABELS } from '@/lib/mana-colors';
+import { StyleSheet, Text, View } from 'react-native';
+import { MANA_CHART_COLORS, MANA_COLOR_LABELS } from '@/lib/mana-colors';
 import type { AppLanguage } from '@/lib/i18n/types';
 
 const SYMBOL_SIZES = {
@@ -27,13 +26,29 @@ export function ManaColorBadge({
   const symbolSize = SYMBOL_SIZES[size];
 
   return (
-    <View style={[styles.badge, muted && styles.muted, { width: symbolSize, height: symbolSize }]}>
-      <Image
-        source={getManaSymbolImageSource(color)}
-        style={{ width: symbolSize, height: symbolSize }}
-        contentFit="contain"
-        alt={accessibilityLabel ?? color}
-      />
+    <View
+      accessible
+      accessibilityLabel={accessibilityLabel ?? color}
+      style={[
+        styles.badge,
+        muted && styles.muted,
+        {
+          width: symbolSize,
+          height: symbolSize,
+          borderRadius: symbolSize / 2,
+          backgroundColor: MANA_CHART_COLORS[color] || MANA_CHART_COLORS.C,
+        },
+      ]}
+    >
+      <Text style={[
+        styles.badgeText,
+        {
+          color: color === 'W' || color === 'C' ? '#111827' : '#f8fafc',
+          fontSize: Math.round(symbolSize * 0.45),
+        },
+      ]}>
+        {color}
+      </Text>
     </View>
   );
 }
@@ -81,6 +96,12 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  badgeText: {
+    fontWeight: '800',
+    lineHeight: 14,
   },
   muted: {
     opacity: 0.4,
