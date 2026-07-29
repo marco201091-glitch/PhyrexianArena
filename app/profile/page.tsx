@@ -20,6 +20,7 @@ import { AppLoader } from '@/components/ui/app-loader';
 import { ManaLogo } from '@/components/ui/mana-logo';
 import { AppProfileButton } from '@/components/navigation/app-profile-button';
 import { DeckCollectionInsights } from '@/components/profile/deck-collection-insights';
+import { DeckMasteryBadge } from '@/components/profile/deck-mastery-badge';
 import { DeckImage } from '@/components/deck-image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/components/language-provider';
@@ -73,6 +74,7 @@ import {
   type DeckPerformanceStats,
 } from '@/lib/deck-performance-analytics';
 import { formatGameDuration } from '@/lib/live-game-duration';
+import { getDeckMastery } from '@/lib/deck-mastery';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PasswordRequirements, isPasswordPolicyValid } from '@/components/auth/password-requirements';
 import { isGoogleAuthUser } from '@/lib/oauth-profile';
@@ -128,6 +130,8 @@ interface Deck {
     display_name: string | null;
   } | null;
 }
+
+const PROFILE_DECK_COLUMNS = 'id, user_id, group_id, name, commander, commander_image, source_url, source_type, bracket, color_identity, commander_options, commander_cmc, is_favorite, created_at, updated_at';
 
 interface Profile {
   id: string;
@@ -220,6 +224,44 @@ function expandDeckCommanderNames(commander: string) {
 
 const SCRYFALL_REQUEST_GAP_MS = 120;
 const commanderSearchCache = new Map<string, CommanderSearchResult[]>();
+const COMMANDER_ART_CACHE_MS = 30 * 24 * 60 * 60 * 1_000;
+const COMMANDER_ART_STORAGE_KEY = 'phyrexian-arena:commander-art-options:v7';
+const commanderArtCache = new Map<string, { expiresAt: number; options: CommanderArtOption[] }>();
+const commanderArtInflight = new Map<string, Promise<CommanderArtOption[]>>();
+let commanderArtCacheHydrated = false;
+
+function hydrateCommanderArtCache() {
+  if (commanderArtCacheHydrated) return;
+  commanderArtCacheHydrated = true;
+  try {
+    const raw = window.localStorage.getItem(COMMANDER_ART_STORAGE_KEY);
+    if (!raw) return;
+    const stored = JSON.parse(raw) as Record<string, { expiresAt: number; options: CommanderArtOption[] }>;
+    const now = Date.now();
+    Object.entries(stored).forEach(([key, entry]) => {
+      if (entry.expiresAt > now && Array.isArray(entry.options)) {
+        commanderArtCache.set(key, entry);
+      }
+    });
+  } catch {
+    // Storage may be unavailable; memory cache still works.
+  }
+}
+
+function rememberCommanderArts(key: string, options: CommanderArtOption[]) {
+  commanderArtCache.set(key, {
+    expiresAt: Date.now() + COMMANDER_ART_CACHE_MS,
+    options,
+  });
+  try {
+    window.localStorage.setItem(
+      COMMANDER_ART_STORAGE_KEY,
+      JSON.stringify(Object.fromEntries(commanderArtCache)),
+    );
+  } catch {
+    // Storage quota/private mode: memory cache still works.
+  }
+}
 
 async function lookupCommanderImageFromBrowser(name: string): Promise<string | null> {
   const match = await lookupCommanderFromBrowser(name);
@@ -440,31 +482,50 @@ async function fetchCommanderSearchResults(
 async function fetchScryfallArtOptionsFromBrowser(commanderName: string) {
   const queryText = sanitizeScryfallQuery(commanderName);
   if (queryText.length < 2) return [];
+  hydrateCommanderArtCache();
+  const cacheKey = queryText.toLocaleLowerCase();
+  const cached = commanderArtCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.options;
 
-  const response = await fetch(
-    `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${queryText}"`)}&unique=art&order=released`,
-    { headers: { Accept: 'application/json' } }
-  );
+  const inflight = commanderArtInflight.get(cacheKey);
+  if (inflight) return inflight;
 
-  if (response.status === 404) return [];
-  if (!response.ok) throw new Error('Scryfall art search failed');
+  const request = (async () => {
+    const response = await fetch(
+      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${queryText}"`)}&unique=art&order=released`,
+      { headers: { Accept: 'application/json' } }
+    );
 
-  const data = await response.json() as ScryfallBrowserSearchResponse;
-  return (data.data || [])
-    .map((card) => {
-      const imageUrl = extractBrowserScryfallImage(card, queryText);
-      if (!imageUrl) return null;
+    if (response.status === 404) return [];
+    if (!response.ok) throw new Error('Scryfall art search failed');
 
-      return {
-        id: card.id,
-        name: card.name,
-        imageUrl,
-        setName: card.set_name || '',
-        collectorNumber: card.collector_number || '',
-        releasedAt: card.released_at || null,
-      };
-    })
-    .filter((option): option is CommanderArtOption => Boolean(option));
+    const data = await response.json() as ScryfallBrowserSearchResponse;
+    const options = (data.data || [])
+      .map((card) => {
+        const imageUrl = extractBrowserScryfallImage(card, queryText);
+        if (!imageUrl) return null;
+
+        return {
+          id: card.id,
+          name: card.name,
+          imageUrl,
+          setName: card.set_name || '',
+          collectorNumber: card.collector_number || '',
+          releasedAt: card.released_at || null,
+        };
+      })
+      .filter((option): option is CommanderArtOption => Boolean(option));
+
+    rememberCommanderArts(cacheKey, options);
+    return options;
+  })();
+
+  commanderArtInflight.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    commanderArtInflight.delete(cacheKey);
+  }
 }
 
 function manualDeckColorFields(commander: CommanderSearchResult, partnerCommander?: CommanderSearchResult | null) {
@@ -937,12 +998,12 @@ export default function ProfilePage() {
       const query = adminMode
         ? supabase
             .from('decks')
-            .select('*, profiles:user_id (username, display_name)')
+            .select(`${PROFILE_DECK_COLUMNS}, profiles:user_id (username, display_name)`)
             .is('group_id', null)
             .order('created_at', { ascending: false })
         : supabase
             .from('decks')
-            .select('*')
+            .select(PROFILE_DECK_COLUMNS)
             .is('group_id', null)
             .eq('user_id', user!.id)
             .order('created_at', { ascending: false });
@@ -1214,7 +1275,7 @@ export default function ProfilePage() {
       toast({
         title: t({ it: 'Password aggiornata', en: 'Password updated' }),
         description: t({
-          it: 'La tua password e stata cambiata con successo.',
+          it: 'La tua password è stata cambiata con successo.',
           en: 'Your password was changed successfully.',
         }),
       });
@@ -1292,7 +1353,7 @@ export default function ProfilePage() {
     const response = await authenticatedFetch('/api/deck-import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: deck.source_url }),
+      body: JSON.stringify({ url: deck.source_url, fresh: true }),
     });
 
     if (!response.ok) return null;
@@ -2860,154 +2921,156 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         ) : (
-          <MotionList className="grid gap-3 sm:gap-4 lg:grid-cols-2">
-            {filteredDecks.map((deck) => (
-              <MotionItem key={deck.id}>
-                <Card
-                  className="phyrexian-panel group relative h-full cursor-pointer overflow-hidden transition-colors hover:border-violet-500/45"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setDetailsDeck(deck)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') setDetailsDeck(deck);
-                  }}
-                >
-                  <div className="pointer-events-none absolute -right-24 -top-24 h-52 w-52 rounded-full bg-violet-500/10 blur-3xl opacity-70 transition-opacity group-hover:opacity-100" />
-                  <div className="relative flex min-w-0 flex-col sm:flex-row">
+          <MotionList className="space-y-3 sm:space-y-4">
+            {filteredDecks.map((deck) => {
+              const performance = deckPerformance.get(deck.id);
+              const gamesPlayed = performance?.gamesPlayed ?? 0;
+              const wins = performance?.wins ?? 0;
+              const mastery = getDeckMastery(gamesPlayed, wins);
+
+              return (
+                <MotionItem key={deck.id}>
+                  <Card
+                    className="phyrexian-panel group relative min-h-[15rem] cursor-pointer overflow-hidden border-2 transition-[border-color,box-shadow] hover:brightness-110"
+                    style={gamesPlayed > 0 ? {
+                      borderColor: mastery.color,
+                      boxShadow: `0 0 24px ${mastery.color}26`,
+                    } : undefined}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailsDeck(deck)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') setDetailsDeck(deck);
+                    }}
+                  >
                     <DeckImage
                       src={deck.commander_image}
                       alt={deck.commander}
-                      className="h-36 w-full shrink-0 object-cover object-top sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-52"
+                      className="absolute inset-0 h-full w-full rounded-none object-cover object-top"
+                      fallbackClassName="absolute inset-0 h-full w-full rounded-none"
                     />
-                    <CardContent className="flex min-w-0 flex-1 flex-col gap-2.5 py-3 px-3 sm:gap-3 sm:px-5 sm:py-4">
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/45" />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/35" />
+
+                    <CardContent className="relative flex min-h-[15rem] flex-col gap-4 p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="line-clamp-2 text-lg font-black leading-tight text-white sm:text-xl">
+                            {deck.name}
+                          </h3>
+                          <p className="mt-1 line-clamp-2 text-sm font-semibold text-white/75">{deck.commander}</p>
+                        </div>
+                        <ManaColorPills colors={getDeckDisplayColors(deck)} size="xs" gap="tight" className="shrink-0" />
+                      </div>
+
                       <div className="flex flex-wrap items-center gap-1.5">
                         {getSourceBadge(deck.source_type)}
-                        <BracketBadge
-                          bracket={deck.bracket}
-                          className="rounded-full border border-emerald-500/30 px-2"
-                        />
+                        <BracketBadge bracket={deck.bracket} className="rounded-full border border-emerald-500/30 px-2" />
                         {getDeckWinRateBadge(deck.id)}
-                        <ManaColorPills colors={getDeckDisplayColors(deck)} size="xs" gap="tight" />
+                        {adminMode && deck.profiles?.username ? (
+                          <span className="rounded-full border border-white/15 bg-black/35 px-2 py-1 text-[10px] text-white/70">
+                            {getProfileDisplayName(deck.profiles)}
+                          </span>
+                        ) : null}
                       </div>
 
-                      <div className="min-w-0 space-y-0.5">
-                        <h3 className="font-semibold text-foreground text-sm leading-snug line-clamp-2 group-hover:text-violet-200 sm:text-base">
-                          {deck.name}
-                        </h3>
-                        <p className="text-xs leading-snug text-violet-400 line-clamp-2 sm:text-sm">{deck.commander}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {adminMode && deck.profiles?.username ? (
-                            <>
-                              {t({ it: 'Proprietario', en: 'Owner' })}: {getProfileDisplayName(deck.profiles)}
-                              <span className="mx-1.5 text-border">·</span>
-                            </>
-                          ) : null}
-                          {t({ it: 'Aggiunto il', en: 'Added' })} {format(new Date(deck.created_at), 'MMM d, yyyy')}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border border-border/60 bg-background/25 p-2.5" onClick={(event) => event.stopPropagation()}>
-                        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                          {t({ it: 'Collegamenti', en: 'Links' })}
-                        </p>
-                        <div className="flex flex-col gap-1.5">
-                          {deck.source_url ? (
-                            <DeckExternalLinkChip
-                              href={deck.source_url}
-                              label={getSourceLinkLabel(deck.source_type)}
-                              tone={deck.source_type === 'moxfield' ? 'purple' : deck.source_type === 'archidekt' ? 'blue' : 'violet'}
-                              className="w-full"
-                            />
-                          ) : null}
-                          <EdhrecDeckInsights
-                            commander={deck.commander}
-                            localBracket={deck.bracket}
-                            showBadge={false}
-                            showBracketComparison={false}
-                            linkVariant="chip"
-                            linkClassName="w-full"
-                            className="w-full"
+                      <div className="flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                        {deck.source_url ? (
+                          <DeckExternalLinkChip
+                            href={deck.source_url}
+                            label={getSourceLinkLabel(deck.source_type)}
+                            tone={deck.source_type === 'moxfield' ? 'purple' : deck.source_type === 'archidekt' ? 'blue' : 'violet'}
                           />
-                        </div>
-                      </div>
-
-                      <div onClick={(event) => event.stopPropagation()}>
+                        ) : null}
                         <EdhrecDeckInsights
                           commander={deck.commander}
                           localBracket={deck.bracket}
-                          showLink={false}
-                          showBracketComparison
-                          className="min-h-[1.375rem] flex-wrap gap-1.5"
+                          showBadge={false}
+                          showBracketComparison={false}
+                          linkVariant="chip"
                         />
                       </div>
 
-                      <div className="mt-auto flex items-center justify-end gap-1 border-t border-border/50 pt-2 sm:border-0 sm:pt-1" onClick={(event) => event.stopPropagation()}>
-                        {deck.user_id === user?.id ? (
+                      <div className="mt-auto flex flex-col gap-3 lg:flex-row lg:items-end">
+                        <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-7">
+                          <DeckMasteryBadge gamesPlayed={gamesPlayed} wins={wins} />
+                          <div className="min-w-[4.75rem] text-center">
+                            <p className="text-2xl font-black text-white">{performance?.winRate ?? 0}%</p>
+                            <p className="text-xs text-white/60">Win rate</p>
+                          </div>
+                        </div>
+
+                        <div
+                          className="flex flex-wrap items-center justify-end gap-1 rounded-xl border border-white/10 bg-black/50 p-1"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {deck.user_id === user?.id ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-pressed={deck.is_favorite}
+                              className={`h-11 w-11 ${deck.is_favorite ? 'text-amber-300 hover:text-amber-200' : 'text-white/60 hover:text-amber-300'}`}
+                              onClick={() => void toggleDeckFavorite(deck)}
+                              title={t({
+                                it: deck.is_favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti',
+                                en: deck.is_favorite ? 'Remove from favorites' : 'Add to favorites',
+                              })}
+                            >
+                              <Star className={`h-4 w-4 ${deck.is_favorite ? 'fill-current' : ''}`} />
+                            </Button>
+                          ) : null}
+                          <Button variant="ghost" size="sm" className="min-h-11 gap-1 px-3 text-violet-200" onClick={() => setDetailsDeck(deck)}>
+                            {t({ it: 'Dettagli', en: 'Details' })} <ChevronRight className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            aria-pressed={deck.is_favorite}
-                            className={`h-10 w-10 ${deck.is_favorite ? 'text-amber-300 hover:text-amber-200' : 'text-muted-foreground hover:text-amber-300'}`}
-                            onClick={() => void toggleDeckFavorite(deck)}
-                            title={t({
-                              it: deck.is_favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti',
-                              en: deck.is_favorite ? 'Remove from favorites' : 'Add to favorites',
-                            })}
+                            className="h-11 w-11 text-white/60 hover:text-violet-300"
+                            onClick={() => {
+                              setLinkingDeck(deck);
+                              setLinkDeckUrl(deck.source_url || '');
+                            }}
+                            title={t({ it: 'Collega lista Archidekt o Moxfield', en: 'Link an Archidekt or Moxfield list' })}
                           >
-                            <Star className={`h-4 w-4 ${deck.is_favorite ? 'fill-current' : ''}`} />
+                            <Link2 className="h-4 w-4" />
                           </Button>
-                        ) : null}
-                        <Button variant="ghost" size="sm" className="mr-auto gap-1 text-violet-300" onClick={() => setDetailsDeck(deck)}>
-                          Details <ChevronRight className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10 text-muted-foreground hover:text-violet-400"
-                          onClick={() => {
-                            setLinkingDeck(deck);
-                            setLinkDeckUrl(deck.source_url || '');
-                          }}
-                          title={t({ it: 'Collega lista Archidekt o Moxfield', en: 'Link an Archidekt or Moxfield list' })}
-                        >
-                          <Link2 className="w-4 h-4" />
-                        </Button>
-                        {isImportedDeckSource(deck.source_type) && deck.source_url && (
+                          {isImportedDeckSource(deck.source_type) && deck.source_url ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-11 w-11 text-white/60 hover:text-violet-300"
+                              onClick={() => handleRefreshImportedDeck(deck)}
+                              disabled={refreshingDeckIds.includes(deck.id)}
+                              title={t({ it: 'Aggiorna da sorgente', en: 'Refresh from source' })}
+                            >
+                              <RefreshCw className={`h-4 w-4 ${refreshingDeckIds.includes(deck.id) ? 'animate-spin' : ''}`} />
+                            </Button>
+                          ) : null}
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-10 w-10 text-muted-foreground hover:text-violet-400"
-                            onClick={() => handleRefreshImportedDeck(deck)}
-                            disabled={refreshingDeckIds.includes(deck.id)}
-                            title={t({ it: 'Aggiorna da sorgente', en: 'Refresh from source' })}
+                            className="h-11 w-11 text-white/60 hover:text-white"
+                            onClick={() => openDeckArtEditor(deck)}
+                            title={t({ it: 'Modifica comandante', en: 'Edit commander' })}
                           >
-                            <RefreshCw className={`w-4 h-4 ${refreshingDeckIds.includes(deck.id) ? 'animate-spin' : ''}`} />
+                            <ImageIcon className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10 text-muted-foreground hover:text-foreground"
-                          onClick={() => openDeckArtEditor(deck)}
-                          title={t({ it: 'Modifica comandante', en: 'Edit commander' })}
-                        >
-                          <ImageIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteDeck(deck.id, deck.name)}
-                          title={t({ it: 'Elimina mazzo', en: 'Delete deck' })}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-11 w-11 text-white/60 hover:text-destructive"
+                            onClick={() => handleDeleteDeck(deck.id, deck.name)}
+                            title={t({ it: 'Elimina mazzo', en: 'Delete deck' })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
-                  </div>
-                </Card>
-              </MotionItem>
-            ))}
+                  </Card>
+                </MotionItem>
+              );
+            })}
           </MotionList>
         )}
       </main>

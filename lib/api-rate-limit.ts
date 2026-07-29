@@ -22,19 +22,10 @@ export const API_RATE_LIMITS = {
   accessLog: { maxRequests: 120, windowSeconds: 60 * 60 },
   inviteQr: { maxRequests: 60, windowSeconds: 10 * 60 },
   publicCommanderSearch: { maxRequests: 60, windowSeconds: 10 * 60 },
-  guestLobbyCreate: { maxRequests: 20, windowSeconds: 60 * 60 },
-  guestLobbyJoin: { maxRequests: 20, windowSeconds: 60 * 60 },
-  guestLobbySession: { maxRequests: 600, windowSeconds: 10 * 60 },
-  guestLobbyRecovery: { maxRequests: 10, windowSeconds: 60 * 60 },
-  guestClaimPreview: { maxRequests: 60, windowSeconds: 10 * 60 },
-  guestClaimCreate: { maxRequests: 20, windowSeconds: 60 * 60 },
   arenaInvitation: { maxRequests: 60, windowSeconds: 60 * 60 },
   arenaMembership: { maxRequests: 20, windowSeconds: 60 * 60 },
   pushToken: { maxRequests: 30, windowSeconds: 60 * 60 },
   matchCompleted: { maxRequests: 120, windowSeconds: 10 * 60 },
-  publicCounterCreate: { maxRequests: 12, windowSeconds: 60 * 60 },
-  publicCounterJoin: { maxRequests: 20, windowSeconds: 60 * 60 },
-  publicCounterSession: { maxRequests: 600, windowSeconds: 10 * 60 },
 } as const satisfies Record<string, RateLimitConfig>;
 
 interface RateLimitResult {

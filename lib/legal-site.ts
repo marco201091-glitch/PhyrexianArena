@@ -1,5 +1,5 @@
 export const LEGAL_SITE_NAME = 'Phyrexian Arena';
-export const APP_VERSION = '6.0.0';
+export const APP_VERSION = '7.0.0';
 export const LEGAL_LAST_UPDATED = '2026-07-27';
 export const OFFICIAL_SUPPORT_EMAIL = 'support@phyrexianarena.dpdns.org';
 

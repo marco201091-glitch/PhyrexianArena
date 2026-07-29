@@ -158,7 +158,7 @@ Poi `eas submit` quando hai Google Play Console.
 
 | Path | Product |
 |---|---|
-| `/app`, `/lib`, `/components` | Web (Vercel) |
+| `/app`, `/lib`, `/components` | Web (Next.js / Dokploy) |
 | `/expo` | Native app (EAS / local Gradle) |
 
 Web deploy and native build stay **separate pipelines**.

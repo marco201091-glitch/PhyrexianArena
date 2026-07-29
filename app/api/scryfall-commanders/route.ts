@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    return NextResponse.json({ data: await searchCommanders(query, partnerMode) });
+    return NextResponse.json(
+      { data: await searchCommanders(query, partnerMode) },
+      { headers: { 'Cache-Control': 'private, max-age=86400, stale-while-revalidate=604800' } },
+    );
   } catch (error) {
     console.error('Scryfall search error:', error);
     return NextResponse.json(

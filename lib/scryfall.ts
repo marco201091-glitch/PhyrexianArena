@@ -1,4 +1,5 @@
 import { isScryfallError, resolveCommanderCmcFromCard } from '@/lib/commander-cmc';
+import { unstable_cache } from 'next/cache';
 
 export { extractCardCmc, resolveCommanderCmcFromCard } from '@/lib/commander-cmc';
 
@@ -61,6 +62,22 @@ const SCRYFALL_HEADERS = {
 
 const SCRYFALL_MAX_RETRIES = 2;
 const SCRYFALL_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const ART_OPTIONS_CACHE_MS = 365 * 24 * 60 * 60 * 1_000;
+const ART_OPTIONS_EMPTY_CACHE_MS = 60 * 60 * 1_000;
+const ART_OPTIONS_CACHE_LIMIT = 500;
+const artOptionsCache = new Map<string, { expiresAt: number; options: CommanderArtOption[] }>();
+const artOptionsInflight = new Map<string, Promise<CommanderArtOption[]>>();
+
+function cacheArtOptions(key: string, options: CommanderArtOption[]) {
+  if (artOptionsCache.size >= ART_OPTIONS_CACHE_LIMIT) {
+    const oldestKey = artOptionsCache.keys().next().value;
+    if (oldestKey) artOptionsCache.delete(oldestKey);
+  }
+  artOptionsCache.set(key, {
+    expiresAt: Date.now() + (options.length > 0 ? ART_OPTIONS_CACHE_MS : ART_OPTIONS_EMPTY_CACHE_MS),
+    options,
+  });
+}
 
 function normalizeColorIdentity(value: unknown): string[] {
   const colors = Array.isArray(value) ? value : [];
@@ -121,45 +138,57 @@ function isResolvedScryfallCard(card: ScryfallCard | null): card is ScryfallCard
   return Boolean(card && !isScryfallError(card));
 }
 
+const fetchCardByNamePersistent = unstable_cache(
+  async (queryText: string) => {
+    const exact = await fetchScryfallJson<ScryfallCard>(
+      `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(queryText)}`,
+    );
+    if (isResolvedScryfallCard(exact)) return exact;
+
+    const fuzzy = await fetchScryfallJson<ScryfallCard>(
+      `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(queryText)}`,
+    );
+    return isResolvedScryfallCard(fuzzy) ? fuzzy : null;
+  },
+  ['scryfall-card-by-name-v7'],
+  { revalidate: 30 * 24 * 60 * 60 },
+);
+
 export async function fetchCardByName(name: string): Promise<ScryfallCard | null> {
   const queryText = sanitizeCommanderQuery(name);
   if (!queryText) return null;
-
-  const exact = await fetchScryfallJson<ScryfallCard>(
-    `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(queryText)}`,
-  );
-  if (isResolvedScryfallCard(exact)) return exact;
-
-  const fuzzy = await fetchScryfallJson<ScryfallCard>(
-    `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(queryText)}`,
-  );
-  if (isResolvedScryfallCard(fuzzy)) return fuzzy;
-
-  return null;
+  return fetchCardByNamePersistent(queryText);
 }
+
+const fetchCommanderCardPersistent = unstable_cache(
+  async (queryText: string) => {
+    const named = await fetchCardByName(queryText);
+    if (named) return named;
+
+    try {
+      const commanderSearch = await fetchScryfallJson<ScryfallSearchResponse>(
+        `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:commander name:"${queryText}"`)}&unique=cards`,
+      );
+      const commanderCard = commanderSearch?.data?.[0];
+      if (commanderCard) return commanderCard;
+
+      const broadSearch = await fetchScryfallJson<ScryfallSearchResponse>(
+        `https://api.scryfall.com/cards/search?q=${encodeURIComponent(queryText)}&unique=cards`,
+      );
+      return broadSearch?.data?.[0] || null;
+    } catch (error) {
+      console.error('fetchCommanderCard error for', queryText, error);
+      return null;
+    }
+  },
+  ['scryfall-commander-card-v7'],
+  { revalidate: 30 * 24 * 60 * 60 },
+);
 
 export async function fetchCommanderCard(commanderName: string): Promise<ScryfallCard | null> {
   const queryText = sanitizeCommanderQuery(commanderName);
   if (!queryText || queryText === 'Unknown Commander') return null;
-
-  const named = await fetchCardByName(queryText);
-  if (named) return named;
-
-  try {
-    const commanderSearch = await fetchScryfallJson<ScryfallSearchResponse>(
-      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:commander name:"${queryText}"`)}&unique=cards`,
-    );
-    const commanderCard = commanderSearch?.data?.[0];
-    if (commanderCard) return commanderCard;
-
-    const broadSearch = await fetchScryfallJson<ScryfallSearchResponse>(
-      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(queryText)}&unique=cards`,
-    );
-    return broadSearch?.data?.[0] || null;
-  } catch (error) {
-    console.error('fetchCommanderCard error for', commanderName, error);
-    return null;
-  }
+  return fetchCommanderCardPersistent(queryText);
 }
 
 export async function fetchCommanderCmc(commanderName: string): Promise<number | null> {
@@ -175,29 +204,8 @@ export async function fetchCommanderImage(commanderName: string): Promise<string
   if (!queryText || queryText === 'Unknown Commander') return null;
 
   try {
-    const exact = await fetchScryfallJson<ScryfallCard>(
-      `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(queryText)}`
-    );
-    if (exact) return extractScryfallImageForName(exact, queryText);
-
-    const fuzzy = await fetchScryfallJson<ScryfallCard>(
-      `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(queryText)}`
-    );
-    if (fuzzy) return extractScryfallImageForName(fuzzy, queryText);
-
-    const commanderSearch = await fetchScryfallJson<ScryfallSearchResponse>(
-      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:commander name:"${queryText}"`)}&unique=cards`
-    );
-    const commanderCard = commanderSearch?.data?.[0];
-    if (commanderCard) return extractScryfallImage(commanderCard);
-
-    const broadSearch = await fetchScryfallJson<ScryfallSearchResponse>(
-      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(queryText)}&unique=cards`
-    );
-    const broadCard = broadSearch?.data?.[0];
-    if (broadCard) return extractScryfallImage(broadCard);
-
-    return null;
+    const card = await fetchCommanderCard(queryText);
+    return card ? extractScryfallImageForName(card, queryText) : null;
   } catch (error) {
     console.error('fetchCommanderImage error for', commanderName, error);
     return null;
@@ -234,28 +242,32 @@ function toCommanderSearchResult(card: ScryfallCard): CommanderSearchResult {
   };
 }
 
+const searchCommandersPersistent = unstable_cache(
+  async (queryText: string, partnerMode: CommanderPartnerMode | null) => {
+    const baseQuery = partnerModeQuery(partnerMode);
+    const search = await fetchScryfallJson<ScryfallSearchResponse>(
+      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${baseQuery} (${queryText} or name:"${queryText}")`)}&order=edhrec&unique=cards`
+    );
+    return (search?.data || []).slice(0, 20).map(toCommanderSearchResult);
+  },
+  ['scryfall-commander-search-v7'],
+  { revalidate: 7 * 24 * 60 * 60 },
+);
+
 export async function searchCommanders(query: string, partnerMode: CommanderPartnerMode | null = null): Promise<CommanderSearchResult[]> {
   const queryText = sanitizeCommanderQuery(query);
   if (queryText.length < 2) return [];
 
   try {
-    const baseQuery = partnerModeQuery(partnerMode);
-    const search = await fetchScryfallJson<ScryfallSearchResponse>(
-      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${baseQuery} (${queryText} or name:"${queryText}")`)}&order=edhrec&unique=cards`
-    );
-
-    return (search?.data || []).slice(0, 20).map(toCommanderSearchResult);
+    return await searchCommandersPersistent(queryText, partnerMode);
   } catch (error) {
     console.error('searchCommanders error for', query, error);
     throw error;
   }
 }
 
-export async function fetchCommanderArtOptions(commanderName: string): Promise<CommanderArtOption[]> {
-  const queryText = sanitizeCommanderQuery(commanderName);
-  if (queryText.length < 2) return [];
-
-  try {
+const fetchCommanderArtOptionsPersistent = unstable_cache(
+  async (queryText: string) => {
     const search = await fetchScryfallJson<ScryfallSearchResponse>(
       `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${queryText}"`)}&unique=art&order=released`
     );
@@ -275,8 +287,34 @@ export async function fetchCommanderArtOptions(commanderName: string): Promise<C
         };
       })
       .filter((option): option is CommanderArtOption => Boolean(option));
+  },
+  ['scryfall-commander-arts-v7'],
+  { revalidate: 365 * 24 * 60 * 60 },
+);
+
+export async function fetchCommanderArtOptions(commanderName: string): Promise<CommanderArtOption[]> {
+  const queryText = sanitizeCommanderQuery(commanderName);
+  if (queryText.length < 2) return [];
+  const cacheKey = queryText.toLocaleLowerCase();
+  const cached = artOptionsCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.options;
+
+  const inflight = artOptionsInflight.get(cacheKey);
+  if (inflight) return inflight;
+
+  const request = (async () => {
+    const options = await fetchCommanderArtOptionsPersistent(queryText);
+    cacheArtOptions(cacheKey, options);
+    return options;
+  })();
+
+  artOptionsInflight.set(cacheKey, request);
+  try {
+    return await request;
   } catch (error) {
     console.error('fetchCommanderArtOptions error for', commanderName, error);
     throw error;
+  } finally {
+    artOptionsInflight.delete(cacheKey);
   }
 }

@@ -75,6 +75,7 @@ import { fetchMatchesForDay, fetchMatchesSince, fetchRecentArenaMatches } from '
 import { fetchActiveLiveGame, fetchLiveGameByMatchId } from '@/lib/live-game-service';
 import type { LiveGameRecord } from '@/lib/live-game';
 import { formatGameDuration } from '@/lib/live-game-duration';
+import { subscribeToArenaCatalog } from '@/lib/arena-catalog-realtime';
 import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
 import { buildArenaAwards } from '@/lib/deck-performance-analytics';
 
@@ -137,7 +138,6 @@ import {
   QrCode,
   Shield,
   Flag,
-  Link2,
 } from 'lucide-react';
 
 const ARENA_DECK_PICKER_COLUMNS = `
@@ -151,6 +151,7 @@ const ARENA_DECK_PICKER_COLUMNS = `
   source_type,
   bracket,
   color_identity,
+  is_favorite,
   created_at
 `;
 
@@ -233,6 +234,7 @@ async function fetchArenaMemberDecks(groupId: string, memberIds: string[]) {
         .from('decks')
         .select(ARENA_DECK_PICKER_COLUMNS)
         .eq('user_id', memberId)
+        .order('is_favorite', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(ARENA_MEMBER_DECK_LIMIT);
 
@@ -267,6 +269,7 @@ interface Deck {
   source_type: string | null;
   bracket: string | null;
   color_identity: string[] | null;
+  is_favorite: boolean;
   created_at: string;
 }
 
@@ -421,6 +424,7 @@ export default function TablePage() {
   const [members, setMembers] = useState<Profile[]>([]);
   const [guests, setGuests] = useState<ArenaGuest[]>([]);
   const [analyticsPayload, setAnalyticsPayload] = useState<ArenaAnalyticsBundlePayload>({});
+  const [allTimeAwardsPayload, setAllTimeAwardsPayload] = useState<ArenaAnalyticsBundlePayload>({});
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
@@ -464,7 +468,6 @@ export default function TablePage() {
   const [guestSelectedPartnerCommander, setGuestSelectedPartnerCommander] = useState<CommanderSearchResult | null>(null);
   const [savingGuest, setSavingGuest] = useState(false);
   const [deletingGuestIds, setDeletingGuestIds] = useState<string[]>([]);
-  const [creatingGuestClaimIds, setCreatingGuestClaimIds] = useState<string[]>([]);
 
   // Edit arena modal state
   const [showEditArenaModal, setShowEditArenaModal] = useState(false);
@@ -778,7 +781,12 @@ export default function TablePage() {
     }
 
     try {
-      setAnalyticsPayload(await fetchArenaAnalyticsPayload(supabase, groupId, getStatsSinceDate()));
+      const since = getStatsSinceDate();
+      const currentRequest = fetchArenaAnalyticsPayload(supabase, groupId, since);
+      const allTimeRequest = since ? fetchArenaAnalyticsPayload(supabase, groupId, null) : currentRequest;
+      const [currentPayload, allTimePayload] = await Promise.all([currentRequest, allTimeRequest]);
+      setAnalyticsPayload(currentPayload);
+      setAllTimeAwardsPayload(allTimePayload);
     } catch (error) {
       console.error('Error refreshing arena stats:', error);
     }
@@ -1005,7 +1013,12 @@ export default function TablePage() {
     if (!user || loading) return;
     void (async () => {
       try {
-        setAnalyticsPayload(await fetchArenaAnalyticsPayload(supabase, groupId, getStatsSinceDate()));
+        const since = getStatsSinceDate();
+        const currentRequest = fetchArenaAnalyticsPayload(supabase, groupId, since);
+        const allTimeRequest = since ? fetchArenaAnalyticsPayload(supabase, groupId, null) : currentRequest;
+        const [currentPayload, allTimePayload] = await Promise.all([currentRequest, allTimeRequest]);
+        setAnalyticsPayload(currentPayload);
+        setAllTimeAwardsPayload(allTimePayload);
       } catch (error) {
         console.error('Error fetching arena stats:', error);
       }
@@ -1025,7 +1038,14 @@ export default function TablePage() {
 
   const colorAnalytics = analyticsBundle.colors;
   const deckPerformance = analyticsBundle.decks;
-  const arenaAwards = useMemo(() => buildArenaAwards(deckPerformance), [deckPerformance]);
+  const allTimeAwardsDeckPerformance = useMemo(
+    () => buildArenaAnalyticsBundle(allTimeAwardsPayload, 'all', 'winRate').decks,
+    [allTimeAwardsPayload],
+  );
+  const arenaAwards = useMemo(
+    () => buildArenaAwards(allTimeAwardsDeckPerformance),
+    [allTimeAwardsDeckPerformance],
+  );
 
   const copyInviteLink = () => {
     if (!group) return;
@@ -1092,7 +1112,7 @@ export default function TablePage() {
       toast({
         title: t({ it: 'Sei uscito dall\'arena', en: 'You left the arena' }),
         description: t({
-          it: 'Non vedrai piu questa arena nella dashboard.',
+          it: 'Non vedrai più questa arena nella dashboard.',
           en: 'This arena will no longer appear on your dashboard.',
         }),
       });
@@ -1138,7 +1158,7 @@ export default function TablePage() {
       toast({
         title: t({ it: 'Giocatore rimosso', en: 'Player removed' }),
         description: t({
-          it: `${getProfileDisplayName(member)} non fa piu parte dell\'arena.`,
+          it: `${getProfileDisplayName(member)} non fa più parte dell\'arena.`,
           en: `${getProfileDisplayName(member)} is no longer part of this arena.`,
         }),
       });
@@ -1275,6 +1295,19 @@ export default function TablePage() {
     setGuests((data || []) as ArenaGuest[]);
   }, [groupId]);
 
+  useEffect(() => {
+    if (!user || !groupId) return;
+    return subscribeToArenaCatalog(supabase, groupId, (event) => {
+      if (event.entity === 'deck') {
+        void loadArenaDecks(members.map((member) => member.id));
+      } else if (event.entity === 'guest' || event.entity === 'guest_deck') {
+        void reloadGuests();
+      } else {
+        void fetchData();
+      }
+    });
+  }, [fetchData, groupId, loadArenaDecks, members, reloadGuests, user]);
+
   const resetGuestModal = () => {
     setShowGuestModal(false);
     setGuestName('');
@@ -1398,7 +1431,7 @@ export default function TablePage() {
         resetGuestModal();
         toast({
           title: t({ it: 'Mazzo aggiunto', en: 'Deck added' }),
-          description: t({ it: 'Il mazzo e stato aggiunto al guest', en: 'Deck added to guest' }),
+          description: t({ it: 'Il mazzo è stato aggiunto al guest', en: 'Deck added to guest' }),
         });
       } catch (error: unknown) {
         toast({
@@ -1427,7 +1460,7 @@ export default function TablePage() {
       resetGuestModal();
       toast({
         title: t({ it: 'Guest aggiunto', en: 'Guest added' }),
-        description: t({ it: 'Il guest e stato aggiunto alla partita', en: 'Guest added to this battle' }),
+        description: t({ it: 'Il guest è stato aggiunto alla partita', en: 'Guest added to this battle' }),
       });
     } catch (error: unknown) {
       toast({
@@ -1489,40 +1522,6 @@ export default function TablePage() {
       });
     } finally {
       setDeletingGuestIds((ids) => ids.filter((id) => id !== guest.id));
-    }
-  };
-
-  const createGuestClaimLink = async (guest: ArenaGuest) => {
-    setCreatingGuestClaimIds((ids) => [...ids, guest.id]);
-    try {
-      const response = await authenticatedFetch('/api/guest-claims', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestId: guest.id }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Could not create claim link');
-      if (navigator.share) {
-        await navigator.share({
-          title: t({ it: `Evolvi ${guest.display_name}`, en: `Upgrade ${guest.display_name}` }),
-          text: t({ it: 'Crea il tuo account e mantieni mazzi e statistiche.', en: 'Create your account and keep decks and stats.' }),
-          url: payload.url,
-        }).catch(() => undefined);
-      } else {
-        await navigator.clipboard.writeText(payload.url);
-      }
-      toast({
-        title: t({ it: 'Link evoluzione creato', en: 'Upgrade link created' }),
-        description: t({ it: 'Il link monouso è pronto da condividere e scade tra 7 giorni.', en: 'The one-time link is ready to share and expires in 7 days.' }),
-      });
-    } catch (error) {
-      toast({
-        title: t({ it: 'Link non creato', en: 'Link not created' }),
-        description: error instanceof Error ? error.message : String(error),
-        variant: 'destructive',
-      });
-    } finally {
-      setCreatingGuestClaimIds((ids) => ids.filter((id) => id !== guest.id));
     }
   };
 
@@ -1773,7 +1772,7 @@ export default function TablePage() {
         title: t({ it: 'Partita registrata!', en: 'Battle recorded!' }),
         description: matchIsDraw
           ? t({ it: 'Esito registrato: patta', en: 'Result logged: draw' })
-          : t({ it: 'La vittoria e stata salvata', en: 'Victory has been logged' }),
+          : t({ it: 'La vittoria è stata salvata', en: 'Victory has been logged' }),
       });
       resetMatchForm();
       refreshMatches();
@@ -1907,7 +1906,7 @@ export default function TablePage() {
       totalMatches: t({ it: 'Partite', en: 'Matches' }),
       topPlayers: t({ it: 'Top giocatori', en: 'Top players' }),
       topDecks: t({ it: 'Top mazzi', en: 'Top decks' }),
-      topColors: t({ it: 'Colori piu giocati', en: 'Most played colors' }),
+      topColors: t({ it: 'Colori più giocati', en: 'Most played colors' }),
       recentMatches: t({ it: 'Ultime partite', en: 'Recent matches' }),
       winner: t({ it: 'Vincitore', en: 'Winner' }),
       winRate: t({ it: 'win rate', en: 'win rate' }),
@@ -1927,7 +1926,7 @@ export default function TablePage() {
       await navigator.clipboard.writeText(text);
       toast({
         title: t({ it: 'Statistiche copiate', en: 'Stats copied' }),
-        description: t({ it: 'Il riepilogo arena e negli appunti', en: 'Arena summary copied to clipboard' }),
+        description: t({ it: 'Il riepilogo arena è negli appunti', en: 'Arena summary copied to clipboard' }),
       });
     } catch (error) {
       if ((error as DOMException)?.name === 'AbortError') return;
@@ -2005,7 +2004,7 @@ export default function TablePage() {
       toast({
         title: t({ it: 'Export copiato', en: 'Export copied' }),
         description: t({
-          it: 'Il testo del giorno e negli appunti.',
+          it: 'Il testo del giorno è negli appunti.',
           en: 'The day export is in your clipboard.',
         }),
       });
@@ -2017,7 +2016,7 @@ export default function TablePage() {
         toast({
           title: t({ it: 'Export copiato', en: 'Export copied' }),
           description: t({
-            it: 'Il testo del giorno e negli appunti.',
+            it: 'Il testo del giorno è negli appunti.',
             en: 'The day export is in your clipboard.',
           }),
         });
@@ -2058,7 +2057,7 @@ export default function TablePage() {
         await navigator.clipboard.writeText(text);
         toast({
           title: t({ it: 'Log copiato', en: 'Log copied' }),
-          description: t({ it: 'Il testo della partita e negli appunti.', en: 'The match text is in your clipboard.' }),
+          description: t({ it: 'Il testo della partita è negli appunti.', en: 'The match text is in your clipboard.' }),
         });
       } catch {
         toast({
@@ -2419,18 +2418,20 @@ export default function TablePage() {
                   </SelectContent>
                 </Select>
               ) : null}
-              <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as typeof dateFilter)}>
-                <SelectTrigger className="h-11 w-full min-w-0 bg-card/70 border-border text-foreground xl:min-w-[10rem]">
-                  <Calendar className="mr-2 h-4 w-4 shrink-0" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="all">{t({ it: 'Sempre', en: 'All Time' })}</SelectItem>
-                  <SelectItem value="7d">{t({ it: 'Ultimi 7 giorni', en: 'Last 7 Days' })}</SelectItem>
-                  <SelectItem value="30d">{t({ it: 'Ultimi 30 giorni', en: 'Last 30 Days' })}</SelectItem>
-                  <SelectItem value="90d">{t({ it: 'Ultimi 90 giorni', en: 'Last 90 Days' })}</SelectItem>
-                </SelectContent>
-              </Select>
+              {activeTab !== 'awards' ? (
+                <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as typeof dateFilter)}>
+                  <SelectTrigger className="h-11 w-full min-w-0 bg-card/70 border-border text-foreground xl:min-w-[10rem]">
+                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="all">{t({ it: 'Sempre', en: 'All Time' })}</SelectItem>
+                    <SelectItem value="7d">{t({ it: 'Ultimi 7 giorni', en: 'Last 7 Days' })}</SelectItem>
+                    <SelectItem value="30d">{t({ it: 'Ultimi 30 giorni', en: 'Last 30 Days' })}</SelectItem>
+                    <SelectItem value="90d">{t({ it: 'Ultimi 90 giorni', en: 'Last 90 Days' })}</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null}
             </div>
           </div>
 
@@ -2908,17 +2909,6 @@ export default function TablePage() {
                                 </p>
                               </div>
                               <div className="flex shrink-0 items-center gap-1">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-9 w-9 text-muted-foreground hover:text-emerald-300"
-                                  onClick={() => void createGuestClaimLink(guest)}
-                                  disabled={creatingGuestClaimIds.includes(guest.id)}
-                                  title={t({ it: 'Crea link evoluzione', en: 'Create upgrade link' })}
-                                >
-                                  <Link2 className={`h-4 w-4 ${creatingGuestClaimIds.includes(guest.id) ? 'animate-pulse' : ''}`} />
-                                </Button>
                                 <Button
                                   type="button"
                                   variant="ghost"

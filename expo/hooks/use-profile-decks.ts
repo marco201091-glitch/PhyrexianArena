@@ -61,7 +61,7 @@ export function useProfileDecks(userId: string | undefined) {
     try {
       const { data: deckRows, error: deckError } = await supabase
         .from('decks')
-        .select('*')
+        .select('id, user_id, group_id, name, commander, commander_image, source_url, source_type, bracket, color_identity, commander_options, commander_cmc, is_favorite, created_at, updated_at')
         .is('group_id', null)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
@@ -70,6 +70,7 @@ export function useProfileDecks(userId: string | undefined) {
 
       const loadedDecks = (deckRows as ProfileDeck[]) || [];
       setDecks(loadedDecks);
+      setLoading(false);
       prefetchProfileDeckImages(loadedDecks);
       void repairLoadedDeckArtwork(loadedDecks).then((repairedDecks) => {
         const repairedById = new Map(repairedDecks.map((deck) => [deck.id, deck]));
@@ -89,7 +90,15 @@ export function useProfileDecks(userId: string | undefined) {
         .select('is_winner, deck_id, placement, life_lost, life_gained, life_damage_dealt, commander_damage_dealt, infect_dealt, eliminations_caused, matches (duration_seconds, tracking_version)')
         .in('deck_id', deckIds);
 
-      if (participantsError) throw participantsError;
+      if (participantsError) {
+        console.error(
+          'Error fetching deck performance:',
+          getSupabaseErrorMessage(participantsError, 'Failed to fetch deck performance'),
+        );
+        setWinRates({});
+        setPerformance({});
+        return;
+      }
 
       const participants = (participantRows as PersonalMatchParticipantRow[]) || [];
       const decksById = new Map<string, PersonalDeckSnapshot>(
@@ -291,7 +300,7 @@ export function useProfileDecks(userId: string | undefined) {
 
     const { data, error, status } = await apiPost<ImportedDeckPreview & { error?: string }>(
       '/api/deck-import',
-      { url: deck.source_url },
+      { url: deck.source_url, fresh: true },
     );
 
     if (status !== 200 || error || !data?.name) return null;

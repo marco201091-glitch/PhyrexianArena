@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Check,
-  ChevronDown,
   ChevronRight,
   CircleDot,
   Clock3,
@@ -21,7 +20,6 @@ import {
   MoreHorizontal,
   Pause,
   Plus,
-  QrCode,
   Redo2,
   RotateCcw,
   Shield,
@@ -105,7 +103,6 @@ import {
   LIVE_GAME_SYNC_BATCH_SIZE,
   getLiveGameSyncDelay,
 } from '@/lib/live-game-sync-policy';
-import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 import { authenticatedFetch } from '@/lib/authenticated-fetch';
 
 export type WebTrackerDeck = {
@@ -113,6 +110,7 @@ export type WebTrackerDeck = {
   name: string;
   commander: string;
   commanderImage: string | null;
+  isFavorite: boolean;
 };
 
 export type WebTrackerParticipant = {
@@ -123,27 +121,6 @@ export type WebTrackerParticipant = {
   guestId: string | null;
   decks: WebTrackerDeck[];
 };
-
-type LobbyGuest = {
-  id: string;
-  ready: boolean;
-  guest_id: string;
-  guest_deck_id: string;
-  arena_guests: { display_name: string } | Array<{ display_name: string }> | null;
-  arena_guest_decks: {
-    name: string;
-    commander: string;
-    commander_image: string | null;
-  } | Array<{
-    name: string;
-    commander: string;
-    commander_image: string | null;
-  }> | null;
-};
-
-function relationOne<T>(value: T | T[] | null): T | null {
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
 
 type DragState = {
   sourceKey: ParticipantKey;
@@ -244,7 +221,7 @@ export function WebLiveGame({
   groupId,
   arenaName,
   userId,
-  participants: baseParticipants,
+  participants,
 }: {
   groupId: string;
   arenaName: string;
@@ -284,145 +261,6 @@ export function WebLiveGame({
   const [setupStep, setSetupStep] = useState(0);
   const [setupSeatIndex, setSetupSeatIndex] = useState(0);
   const [starting, setStarting] = useState(false);
-  const [lobbyId, setLobbyId] = useState<string | null>(null);
-  const lobbyIdRef = useRef<string | null>(null);
-  const [inviteToken, setInviteToken] = useState<string | null>(null);
-  const [lobbyGuests, setLobbyGuests] = useState<LobbyGuest[]>([]);
-  const [creatingInvite, setCreatingInvite] = useState(false);
-  const [inviteOrigin, setInviteOrigin] = useState('');
-  const [inviteExpanded, setInviteExpanded] = useState(true);
-  const participants = useMemo<WebTrackerParticipant[]>(() => [
-    ...baseParticipants,
-    ...lobbyGuests.map((entry) => {
-      const guest = relationOne(entry.arena_guests);
-      const deck = relationOne(entry.arena_guest_decks);
-      return {
-        key: `guest:${entry.guest_id}` as ParticipantKey,
-        displayName: guest?.display_name ?? copy({ it: 'Ospite', en: 'Guest' }),
-        isGuest: true,
-        userId: null,
-        guestId: entry.guest_id,
-        decks: deck ? [{
-          id: entry.guest_deck_id,
-          name: deck.name,
-          commander: deck.commander,
-          commanderImage: deck.commander_image,
-        }] : [],
-      };
-    }),
-  ], [baseParticipants, copy, lobbyGuests]);
-
-  useEffect(() => {
-    setInviteOrigin(window.location.origin);
-    if (!REMOTE_GUESTS_ENABLED) {
-      localStorage.removeItem(`phyrexian:live-lobby:${groupId}`);
-      return;
-    }
-    const raw = localStorage.getItem(`phyrexian:live-lobby:${groupId}`);
-    if (!raw) return;
-    try {
-      const saved = JSON.parse(raw) as { id?: string; token?: string };
-      if (saved.id && saved.token) {
-        lobbyIdRef.current = saved.id;
-        setLobbyId(saved.id);
-        setInviteToken(saved.token);
-      }
-    } catch {
-      localStorage.removeItem(`phyrexian:live-lobby:${groupId}`);
-    }
-  }, [groupId]);
-
-  const refreshLobby = useCallback(async () => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!lobbyIdRef.current) return;
-    const response = await fetch(`/api/live-game-lobby?id=${encodeURIComponent(lobbyIdRef.current)}`, { cache: 'no-store' });
-    if (!response.ok) return;
-    const result = await response.json() as { guests?: LobbyGuest[] };
-    setLobbyGuests(result.guests ?? []);
-  }, []);
-
-  useEffect(() => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!lobbyId || record) return;
-    void refreshLobby();
-    const timer = window.setInterval(() => void refreshLobby(), 1500);
-    return () => window.clearInterval(timer);
-  }, [lobbyId, record, refreshLobby]);
-
-  useEffect(() => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (record || lobbyGuests.length === 0) return;
-    setSeats((current) => {
-      const next = [...current];
-      let changed = false;
-      for (const guest of lobbyGuests) {
-        const key = `guest:${guest.guest_id}` as ParticipantKey;
-        if (next.some((seat) => seat.participantKey === key)) continue;
-        const empty = next.findIndex((seat) => !seat.participantKey);
-        if (empty >= 0) {
-          next[empty] = { participantKey: key, deckId: guest.guest_deck_id };
-          changed = true;
-        } else if (next.length < 6) {
-          next.push({ participantKey: key, deckId: guest.guest_deck_id });
-          changed = true;
-        }
-      }
-      if (changed) setPlayerCount(next.length);
-      return changed ? next : current;
-    });
-  }, [lobbyGuests, record]);
-
-  const createInvite = async () => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    setCreatingInvite(true);
-    try {
-      const response = await fetch('/api/live-game-lobby', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupId }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? 'Invite creation failed');
-      lobbyIdRef.current = result.id;
-      setLobbyId(result.id);
-      setInviteToken(result.token);
-      localStorage.setItem(`phyrexian:live-lobby:${groupId}`, JSON.stringify({ id: result.id, token: result.token }));
-    } catch (error) {
-      toast({
-        title: copy({ it: 'Invito non creato', en: 'Invite not created' }),
-        description: error instanceof Error ? error.message : undefined,
-        variant: 'destructive',
-      });
-    } finally {
-      setCreatingInvite(false);
-    }
-  };
-
-  const rotateInvite = async () => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!lobbyIdRef.current) return;
-    const response = await fetch('/api/live-game-lobby', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lobbyId: lobbyIdRef.current, action: 'rotate' }),
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.token) return;
-    setInviteToken(result.token);
-    localStorage.setItem(`phyrexian:live-lobby:${groupId}`, JSON.stringify({ id: lobbyIdRef.current, token: result.token }));
-  };
-
-  const removeLobbyGuest = async (guestSessionId: string) => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!lobbyIdRef.current) return;
-    await fetch('/api/live-game-lobby', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lobbyId: lobbyIdRef.current, action: 'remove', guestSessionId }),
-    });
-    await refreshLobby();
-  };
-
   const [damageDraft, setDamageDraft] = useState<DamageDraft | null>(null);
   const [damageAmount, setDamageAmount] = useState('0');
   const [damagePanelKey, setDamagePanelKey] = useState<ParticipantKey | null>(null);
@@ -563,14 +401,6 @@ export function WebLiveGame({
         server = await ensureLiveGameCreated(supabase, recordRef.current);
         serverRef.current = server;
         needsCreateRef.current = false;
-        if (REMOTE_GUESTS_ENABLED && lobbyIdRef.current) {
-          const response = await fetch('/api/live-game-lobby', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lobbyId: lobbyIdRef.current, liveGameId: server.id }),
-          });
-          if (!response.ok) throw new Error('Guest lobby link failed');
-        }
       }
       while (queueRef.current.length > 0) {
         const batch = queueRef.current.slice(0, LIVE_GAME_SYNC_BATCH_SIZE);
@@ -1269,53 +1099,6 @@ export function WebLiveGame({
               <p className="mt-1 text-sm text-muted-foreground">{copy({ it: 'Scegli layout, posti e mazzi. L’ultima configurazione viene ricordata.', en: 'Choose layout, seats and decks. Your last setup is remembered.' })}</p>
             </div>
             <div className="flex flex-col gap-7 p-4 sm:p-7">
-              {REMOTE_GUESTS_ENABLED ? <section className="order-last overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-500/15 via-background/70 to-cyan-500/10">
-                <div className="flex flex-wrap items-center gap-3 border-b border-white/10 p-4">
-                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-200"><QrCode className="h-5 w-5" /></span>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-black">{copy({ it: 'Guest da remoto', en: 'Remote guests' })}</h3>
-                    <p className="text-xs text-muted-foreground">{copy({ it: 'Aggiungi altri giocatori tramite link o QR.', en: 'Add other players through a link or QR code.' })}</p>
-                  </div>
-                  {!inviteToken ? <Button onClick={() => void createInvite()} disabled={creatingInvite} className="w-full font-black sm:w-auto">
-                    {creatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-                    {copy({ it: 'Crea invito', en: 'Create invite' })}
-                  </Button> : null}
-                  {inviteToken ? <Button size="icon" variant="ghost" onClick={() => setInviteExpanded((value) => !value)}><ChevronDown className={cn('transition', inviteExpanded && 'rotate-180')} /></Button> : null}
-                </div>
-                {inviteToken && inviteExpanded ? <div className="grid gap-4 p-4 sm:grid-cols-[160px_1fr]">
-                  <div className="rounded-2xl bg-white p-2 shadow-xl">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/api/game-invite-qr?token=${encodeURIComponent(inviteToken)}`}
-                      alt={copy({ it: 'QR invito partita', en: 'Game invite QR' })}
-                      className="aspect-square w-full"
-                    />
-                  </div>
-                  <div className="min-w-0 space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => void navigator.clipboard.writeText(`${inviteOrigin}/game/join/${inviteToken}`)}
-                      className="w-full truncate rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-left text-xs text-violet-200"
-                    >
-                      {inviteOrigin}/game/join/{inviteToken}
-                    </button>
-                    <Button variant="outline" className="w-full" onClick={() => void rotateInvite()}>{copy({ it: 'Crea nuovo invito', en: 'Create new invite' })}</Button>
-                    <div className="space-y-2">
-                      {lobbyGuests.length ? lobbyGuests.map((guest) => {
-                        const profile = relationOne(guest.arena_guests);
-                        const deck = relationOne(guest.arena_guest_decks);
-                        return <div key={guest.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
-                          <span className={cn('h-2.5 w-2.5 rounded-full', guest.ready ? 'bg-emerald-400 shadow-[0_0_12px_#34d399]' : 'bg-amber-400')} />
-                          <div className="min-w-0 flex-1"><b className="block truncate">{profile?.display_name ?? 'Guest'}</b><span className="block truncate text-xs text-muted-foreground">{deck?.commander}</span></div>
-                          <span className={cn('rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider', guest.ready ? 'bg-emerald-500/15 text-emerald-200' : 'bg-amber-500/15 text-amber-200')}>{guest.ready ? copy({ it: 'Pronto', en: 'Ready' }) : copy({ it: 'In attesa', en: 'Waiting' })}</span>
-                          <Button size="icon" variant="ghost" onClick={() => void removeLobbyGuest(guest.id)}><Trash2 className="h-4 w-4" /></Button>
-                        </div>;
-                      }) : <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-muted-foreground">{copy({ it: 'Nessun guest collegato.', en: 'No guests connected.' })}</p>}
-                    </div>
-                  </div>
-                </div> : null}
-              </section> : null}
-
               <div className="flex items-center gap-2">
                 {[0, 1, 2, 3].map((step) => (
                   <button

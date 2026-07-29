@@ -4,12 +4,14 @@ const getInfoAsync = vi.hoisted(() => vi.fn());
 const loadAsync = vi.hoisted(() => vi.fn());
 
 vi.mock('expo-file-system/legacy', () => ({
+  documentDirectory: 'file:///documents/',
   cacheDirectory: 'file:///cache/', getInfoAsync,
   makeDirectoryAsync: vi.fn(), readAsStringAsync: vi.fn(), writeAsStringAsync: vi.fn(),
+  readDirectoryAsync: vi.fn().mockResolvedValue([]),
   deleteAsync: vi.fn(), moveAsync: vi.fn(), downloadAsync: vi.fn(),
 }));
 vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
-vi.mock('expo-image', () => ({ Image: { loadAsync } }));
+vi.mock('expo-image', () => ({ Image: { loadAsync, prefetch: vi.fn() } }));
 vi.mock('@/lib/commander-arts', () => ({ fetchCommanderArtOptions: vi.fn() }));
 
 import { splitCommanderNames, validateDeckImageCacheEntry } from '@/lib/deck-image-cache';

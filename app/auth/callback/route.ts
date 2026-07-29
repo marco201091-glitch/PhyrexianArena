@@ -5,12 +5,7 @@ import { getSafeRedirectPath } from '@/lib/safe-redirect';
 import { ensureOAuthUserProfile } from '@/lib/oauth-profile';
 import { CANONICAL_SITE_ORIGIN } from '@/lib/canonical-host';
 import { getSupabaseServerConfig } from '@/lib/supabase/server-env';
-import {
-  buildOAuthOriginBounceUrl,
-  getSafeOAuthReturnOrigin,
-  isVercelTeamDeploymentOrigin,
-  readOAuthReturnOrigin,
-} from '@/lib/oauth-return-origin';
+import { getSafeOAuthReturnOrigin } from '@/lib/oauth-return-origin';
 
 function getAuthOrigin(request: NextRequest, requestUrl: URL) {
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
@@ -24,9 +19,7 @@ function getAuthOrigin(request: NextRequest, requestUrl: URL) {
   }
 
   const requestOrigin = getSafeOAuthReturnOrigin(requestUrl.origin);
-  return requestOrigin && !isVercelTeamDeploymentOrigin(requestOrigin)
-    ? requestOrigin
-    : CANONICAL_SITE_ORIGIN;
+  return requestOrigin ?? CANONICAL_SITE_ORIGIN;
 }
 
 function redirectToLogin(request: NextRequest, requestUrl: URL, message: string) {
@@ -37,13 +30,6 @@ function redirectToLogin(request: NextRequest, requestUrl: URL, message: string)
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
-  const returnOrigin = readOAuthReturnOrigin(requestUrl.searchParams);
-  const bounceUrl = buildOAuthOriginBounceUrl(requestUrl, returnOrigin);
-
-  if (bounceUrl) {
-    return NextResponse.redirect(bounceUrl);
-  }
-
   const authError = requestUrl.searchParams.get('error_description')
     || requestUrl.searchParams.get('error');
   if (authError) {

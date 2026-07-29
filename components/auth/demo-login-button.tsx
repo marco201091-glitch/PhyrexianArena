@@ -13,14 +13,12 @@ interface DemoLoginButtonProps {
   disabled?: boolean;
   redirectPath?: string;
   className?: string;
-  forceEnglish?: boolean;
 }
 
 export function DemoLoginButton({
   disabled = false,
   redirectPath = '/dashboard',
   className,
-  forceEnglish = false,
 }: DemoLoginButtonProps) {
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoModeEnabled, setDemoModeEnabled] = useState(false);
@@ -76,8 +74,8 @@ export function DemoLoginButton({
       router.push(redirectPath);
     } catch {
       toast({
-        title: forceEnglish ? 'Error' : t({ it: 'Errore', en: 'Error' }),
-        description: forceEnglish ? 'Demo login is unavailable right now.' : t({
+        title: t({ it: 'Errore', en: 'Error' }),
+        description: t({
           it: 'Accesso demo non disponibile al momento.',
           en: 'Demo login is unavailable right now.',
         }),
@@ -101,8 +99,8 @@ export function DemoLoginButton({
       disabled={disabled || demoLoading}
     >
       {demoLoading
-        ? forceEnglish ? 'Signing into demo...' : t({ it: 'Accesso demo...', en: 'Signing into demo...' })
-        : forceEnglish ? 'Try the demo' : t({ it: 'Prova la demo', en: 'Try the demo' })}
+        ? t({ it: 'Accesso demo...', en: 'Signing into demo...' })
+        : t({ it: 'Prova la demo', en: 'Try the demo' })}
     </Button>
   );
 }

@@ -285,7 +285,7 @@ console.log(`DEMO_USER_EMAIL=${DEMO_EMAIL}`);
 console.log(`DEMO_USER_PASSWORD=${demoPassword}`);
 console.log(`Arena invite code: ${seeded.inviteCode}`);
 console.log('');
-console.log('Add these to .env.local and Vercel (Preview TestDev + Production):');
+console.log('Add these to the local environment and the matching Dokploy application:');
 console.log('DEMO_MODE_ENABLED=true');
 console.log('NEXT_PUBLIC_DEMO_MODE=true');
 console.log(`DEMO_USER_ID=${demoUser.id}`);

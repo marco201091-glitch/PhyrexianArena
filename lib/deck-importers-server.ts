@@ -14,6 +14,7 @@ import {
   moxfieldHttpsGet,
 } from '@/lib/moxfield-http';
 import { fetchCommanderImage } from '@/lib/scryfall';
+import { unstable_cache } from 'next/cache';
 
 interface ArchidektOracleFace {
   name?: string;
@@ -470,12 +471,17 @@ async function fetchEstimatedMoxfieldBracket(publicId: string): Promise<string |
   }
 }
 
-export async function fetchFromMoxfield(publicId: string): Promise<DeckData> {
+async function fetchFromMoxfieldFresh(publicId: string): Promise<DeckData> {
   const data = await fetchMoxfieldDeckJson(publicId);
 
   if (data.visibility && data.visibility !== 'public') {
     throw new Error('This Moxfield deck is not public. Only public deck URLs can be imported.');
   }
+
+  const storedBracket = normalizeBracket(data.bracket) || normalizeBracket(data.bracketType);
+  const bracketPromise = storedBracket
+    ? Promise.resolve(storedBracket)
+    : fetchEstimatedMoxfieldBracket(publicId);
 
   const commanderEntries = Object.values(data.commanders || {});
   const companionEntries = Object.values(data.companions || {});
@@ -523,11 +529,11 @@ export async function fetchFromMoxfield(publicId: string): Promise<DeckData> {
     commanderImageUrl: commanderOptions[0]?.imageUrl || await fetchCommanderImage(commander),
     commanderOptions,
     colorIdentity: finalizeDeckColorIdentity(deckColorIdentity),
-    bracket: normalizeBracket(data.bracket) || normalizeBracket(data.bracketType) || await fetchEstimatedMoxfieldBracket(publicId),
+    bracket: await bracketPromise,
   };
 }
 
-export async function fetchFromArchidekt(deckId: string): Promise<DeckData> {
+async function fetchFromArchidektFresh(deckId: string): Promise<DeckData> {
   const response = await fetch(`https://archidekt.com/api/decks/${encodeURIComponent(deckId)}/`, {
     headers: buildArchidektHeaders(),
   });
@@ -537,6 +543,10 @@ export async function fetchFromArchidekt(deckId: string): Promise<DeckData> {
 
   const data = await response.json() as Record<string, unknown>;
   const cards = Array.isArray(data.cards) ? (data.cards as ArchidektCard[]) : [];
+  const storedBracket = normalizeBracket(data.edhBracket);
+  const bracketPromise = storedBracket
+    ? Promise.resolve(storedBracket)
+    : fetchEstimatedArchidektBracket(deckId);
 
   const commanderCards = cards.filter(isArchidektCommanderCard);
   const leaderCards = commanderCards.filter((card) => !isArchidektBackgroundCard(card));
@@ -585,9 +595,10 @@ export async function fetchFromArchidekt(deckId: string): Promise<DeckData> {
 
   const colorIdentity = finalizeDeckColorIdentity(deckColorIdentity);
   const featuredImage = archidektDeckFeaturedImage(data);
-  const leaderImage = primaryLeaderCard
-    ? await resolveArchidektCommanderImage(primaryLeaderCard, optionNames[0] || commander)
-    : null;
+  const primaryOptionName = optionNames[0]?.toLowerCase();
+  const leaderImage = commanderOptions.find(
+    (option) => option.name.toLowerCase() === primaryOptionName,
+  )?.imageUrl || commanderOptions[0]?.imageUrl || null;
 
   return {
     name: String(data.name || 'Untitled Deck'),
@@ -595,11 +606,37 @@ export async function fetchFromArchidekt(deckId: string): Promise<DeckData> {
     commanderImageUrl: leaderImage || featuredImage || commanderOptions[0]?.imageUrl || await fetchCommanderImage(commander),
     commanderOptions,
     colorIdentity,
-    bracket: normalizeBracket(data.edhBracket) || await fetchEstimatedArchidektBracket(deckId),
+    bracket: await bracketPromise,
   };
 }
 
-export async function fetchDeckFromSource(source: DeckSource, deckId: string): Promise<DeckData> {
-  if (source === 'moxfield') return fetchFromMoxfield(deckId);
-  return fetchFromArchidekt(deckId);
+const fetchFromMoxfieldPersistent = unstable_cache(
+  fetchFromMoxfieldFresh,
+  ['moxfield-deck-v7'],
+  { revalidate: 5 * 60 },
+);
+
+const fetchFromArchidektPersistent = unstable_cache(
+  fetchFromArchidektFresh,
+  ['archidekt-deck-v7'],
+  { revalidate: 5 * 60 },
+);
+
+export async function fetchFromMoxfield(publicId: string): Promise<DeckData> {
+  return fetchFromMoxfieldPersistent(publicId);
+}
+
+export async function fetchFromArchidekt(deckId: string): Promise<DeckData> {
+  return fetchFromArchidektPersistent(deckId);
+}
+
+export async function fetchDeckFromSource(
+  source: DeckSource,
+  deckId: string,
+  options: { fresh?: boolean } = {},
+): Promise<DeckData> {
+  if (source === 'moxfield') {
+    return options.fresh ? fetchFromMoxfieldFresh(deckId) : fetchFromMoxfield(deckId);
+  }
+  return options.fresh ? fetchFromArchidektFresh(deckId) : fetchFromArchidekt(deckId);
 }

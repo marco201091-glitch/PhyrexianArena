@@ -115,7 +115,7 @@ export function DeckCollectionInsights({
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
             <section className="space-y-3">
               <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                {t({ it: 'Colori singoli piu frequenti', en: 'Most common individual colors' })}
+                {t({ it: 'Colori singoli più frequenti', en: 'Most common individual colors' })}
               </p>
               <div className="space-y-2.5">
                 {analytics.colorStats.slice(0, 6).map((stat) => {

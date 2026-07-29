@@ -55,6 +55,5 @@ module.exports = withSentryConfig(nextConfig, {
   tunnelRoute: '/monitoring',
   webpack: {
     treeshake: { removeDebugLogging: true },
-    automaticVercelMonitors: false,
   },
 });

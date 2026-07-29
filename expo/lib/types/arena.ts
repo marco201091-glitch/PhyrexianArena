@@ -17,6 +17,7 @@ export interface MemberDeck {
   source_type: string | null;
   bracket: string | null;
   color_identity: string[] | null;
+  is_favorite: boolean;
   created_at: string;
 }
 

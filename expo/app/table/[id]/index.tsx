@@ -70,7 +70,6 @@ import type { LiveGameRecord } from '@/lib/live-game';
 import { toUserParticipantKey } from '@/lib/participant-keys';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
-import { apiPost } from '@/lib/api';
 import type { ArenaMatch } from '@/lib/types/arena';
 
 type ArenaTab = 'matches' | 'players' | 'decks' | 'awards' | 'meta';
@@ -228,7 +227,7 @@ export default function TableScreen() {
     () => computeArenaColorAnalytics(filteredMatches, new Map(), bracketFilter),
     [bracketFilter, filteredMatches],
   );
-  const arenaAwards = useMemo(() => calculateArenaAwards(filteredMatches), [filteredMatches]);
+  const arenaAwards = useMemo(() => calculateArenaAwards(matches), [matches]);
 
   const matchDayGroups = useMemo(() => {
     const locale = language === 'it' ? 'it-IT' : 'en-US';
@@ -540,20 +539,6 @@ export default function TableScreen() {
     ]);
   };
 
-  const handleCreateGuestClaimLink = async (guestId: string) => {
-    const guest = guests.find((entry) => entry.id === guestId);
-    const { data, error, status } = await apiPost<{ url: string }>('/api/guest-claims', { guestId });
-    if (status !== 200 || !data?.url) {
-      showAppAlert(copy('error'), error || copy('createGuestLinkFailed'));
-      return;
-    }
-    await Share.share({
-      title: guest?.display_name || copy('guestBadge'),
-      message: `${copy('joinInviteHint')}\n${data.url}`,
-      url: data.url,
-    });
-  };
-
   const handleDeleteMatch = (matchId: string) => {
     showAppAlert(copy('deleteMatch'), copy('deleteMatchConfirm'), [
       { text: copy('cancel'), style: 'cancel' },
@@ -800,7 +785,6 @@ export default function TableScreen() {
               addGuest: copy('addGuest'),
               noGuestsBody: copy('noGuestsBody'),
               guestBadge: copy('guestBadge'),
-              upgradeGuest: copy('upgradeGuest'),
             }}
             onAddGuest={() => {
               setGuestModalMode(undefined);
@@ -813,7 +797,6 @@ export default function TableScreen() {
               setShowGuestModal(true);
             }}
             onDeleteGuest={handleDeleteGuest}
-            onUpgradeGuest={(guestId) => void handleCreateGuestClaimLink(guestId)}
           />
         ) : null}
 

@@ -6,7 +6,7 @@ import { ModalHeader } from '@/components/ui/modal-header';
 import { QrCode } from '@/components/ui/qr-code';
 import { colors, radii, spacing } from '@/constants/theme';
 import { getSiteUrl } from '@/lib/env';
-import { buildArenaInviteUrl } from '@/lib/invite-links';
+import { buildArenaJoinUrl } from '@/lib/arena-invite-qr';
 
 export function ArenaInviteQrModal({
   visible,
@@ -22,7 +22,7 @@ export function ArenaInviteQrModal({
   labels: { title: string; hint: string; close: string; link: string; qr: string; share: string };
 }) {
   const [mode, setMode] = useState<'link' | 'qr'>('link');
-  const joinUrl = buildArenaInviteUrl(getSiteUrl(), inviteCode);
+  const joinUrl = buildArenaJoinUrl(getSiteUrl(), inviteCode);
 
   useEffect(() => {
     if (visible) setMode('link');
@@ -69,7 +69,7 @@ export function ArenaInviteQrModal({
 const styles = StyleSheet.create({
   content: { alignItems: 'center', gap: spacing.md },
   modeRow: { width: '100%', flexDirection: 'row', gap: spacing.xs, padding: 4, borderRadius: radii.lg, backgroundColor: colors.cardInset },
-  modeButton: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md },
+  modeButton: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md },
   modeButtonActive: { backgroundColor: colors.selectionTintStrong, borderWidth: 1, borderColor: colors.primary },
   modeText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
   modeTextActive: { color: colors.foreground },

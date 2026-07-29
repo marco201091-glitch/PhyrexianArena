@@ -1,4 +1,4 @@
-const PUBLIC_ROUTE_PREFIXES = ['/auth', '/arena', '/counter', '/game/join', '/join', '/legal'];
+const PUBLIC_ROUTE_PREFIXES = ['/auth', '/arena', '/counter', '/join', '/legal'];
 
 export function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTE_PREFIXES.some(

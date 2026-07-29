@@ -1,11 +1,14 @@
 {
   "name": "phyrexian-arena-app",
-  "version": "6.0.1",
+  "version": "7.0.0",
   "private": true,
   "packageManager": "npm@11.16.0",
   "engines": {
     "node": ">=24.0.0 <25",
     "npm": ">=11.0.0 <12"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   },
   "main": "expo-router/entry",
   "scripts": {
@@ -13,7 +16,9 @@
     "dev": "node scripts/adb-reverse.mjs && expo start",
     "dev:reset": "node scripts/reset-metro.mjs && node scripts/adb-reverse.mjs && expo start --clear",
     "dev:android": "node scripts/adb-reverse.mjs && node scripts/start-android.mjs",
+    "doctor": "npx expo-doctor",
     "android": "expo run:android",
+    "android:bundle:check": "expo export --platform android --output-dir .qa-android-export --clear",
     "android:prebuild": "expo prebuild --platform android --clean",
     "android:refresh-icons": "npm run assets:logo && npm run assets:android-icon && npm run android:prebuild && npm run verify:logos",
     "android:clean-native": "npm run android:stop-gradle && node scripts/clean-native-build.mjs",
@@ -56,7 +61,7 @@
     "@react-native-community/netinfo": "12.0.1",
     "@sentry/react-native": "~7.11.0",
     "@shopify/flash-list": "2.0.2",
-    "@supabase/supabase-js": "^2.58.0",
+    "@supabase/supabase-js": "2.111.0",
     "@tanstack/react-query": "^5.101.4",
     "expo": "^57",
     "expo-asset": "~57.0.7",
@@ -102,6 +107,6 @@
     "@types/react": "~19.2.4",
     "@vitest/coverage-v8": "3.2.7",
     "typescript": "~6.0.3",
-    "vitest": "^3.2.7"
+    "vitest": "3.2.7"
   }
 }

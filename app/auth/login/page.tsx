@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-persistence';
 import { clearSupabaseAuthStorage } from '@/lib/supabase-auth-recovery';
@@ -17,6 +17,7 @@ import { signInWithGoogle } from '@/lib/google-auth';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { DemoLoginButton } from '@/components/auth/demo-login-button';
 import { AuthPageShell } from '@/components/legal/auth-page-shell';
+import { useLanguage } from '@/components/language-provider';
 
 function LoginForm() {
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -24,6 +25,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const router = useRouter();
+  const { copy: t } = useLanguage();
 
   useEffect(() => {
     setRememberMe(getRememberMePreference());
@@ -31,20 +33,18 @@ function LoginForm() {
 
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const t = useCallback((value: string | { en: string }) => typeof value === 'string' ? value : value.en, []);
-
   useEffect(() => {
     const oauthError = searchParams.get('error');
     if (!oauthError) return;
 
     toast({
-      title: t({ en: 'Error' }),
+      title: t({ it: 'Errore', en: 'Error' }),
       description: oauthError,
       variant: 'destructive',
     });
   }, [searchParams, t, toast]);
   const redirectPath = getSafeRedirectPath(searchParams.get('redirect'));
-  const invalidCredentialsMessage = t({ en: 'Invalid credentials.' });
+  const invalidCredentialsMessage = t({ it: 'Credenziali non valide.', en: 'Invalid credentials.' });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +82,7 @@ function LoginForm() {
       router.push(redirectPath);
     } catch {
       toast({
-        title: t({ en: 'Error' }),
+        title: t({ it: 'Errore', en: 'Error' }),
         description: invalidCredentialsMessage,
         variant: 'destructive',
       });
@@ -97,10 +97,10 @@ function LoginForm() {
       await signInWithGoogle(redirectPath);
     } catch (error: unknown) {
       toast({
-        title: t({ en: 'Error' }),
+        title: t({ it: 'Errore', en: 'Error' }),
         description: error instanceof Error
           ? error.message
-          : t({ en: 'Failed to sign in with Google' }),
+          : t({ it: 'Accesso con Google non riuscito', en: 'Failed to sign in with Google' }),
         variant: 'destructive',
       });
       setLoading(false);
@@ -119,13 +119,13 @@ function LoginForm() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="loginIdentifier" className="text-sm font-medium text-foreground">
-                {t({ en: 'Email or username' })}
+                {t({ it: 'Email o username', en: 'Email or username' })}
               </label>
               <Input
                 id="loginIdentifier"
                 type="text"
                 autoComplete="username"
-                placeholder={t({ en: 'User ID or email' })}
+                placeholder={t({ it: 'Username o email', en: 'Username or email' })}
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
                 required
@@ -135,13 +135,13 @@ function LoginForm() {
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <label htmlFor="password" className="text-sm font-medium text-foreground">
-                  {t({ en: 'Password' })}
+                  {t({ it: 'Password', en: 'Password' })}
                 </label>
                 <Link
                   href="/auth/forgot-password"
                   className="text-xs font-medium text-violet-400 hover:text-violet-300"
                 >
-                  {t({ en: 'Forgot password?' })}
+                  {t({ it: 'Password dimenticata?', en: 'Forgot password?' })}
                 </Link>
               </div>
               <Input
@@ -164,7 +164,7 @@ function LoginForm() {
                 onCheckedChange={(checked) => setRememberMe(checked === true)}
                 className="border-violet-400/70 data-[state=checked]:border-violet-400 data-[state=checked]:bg-violet-600"
               />
-              <span>{t({ en: 'Remember me on this device' })}</span>
+              <span>{t({ it: 'Ricordami su questo dispositivo', en: 'Remember me on this device' })}</span>
             </label>
             <Button
               type="submit"
@@ -172,8 +172,8 @@ function LoginForm() {
               disabled={loading}
             >
               {loading
-                ? t({ en: 'Signing in...' })
-                : t({ en: 'Enter Arena' })}
+                ? t({ it: 'Accesso...', en: 'Signing in...' })
+                : t({ it: 'Entra nell’Arena', en: 'Enter Arena' })}
             </Button>
           </form>
 
@@ -183,26 +183,26 @@ function LoginForm() {
                   <span className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">{t({ en: 'Or continue with' })}</span>
+                  <span className="bg-card px-2 text-muted-foreground">{t({ it: 'Oppure continua con', en: 'Or continue with' })}</span>
                 </div>
               </div>
 
               <GoogleSignInButton
                 disabled={loading}
                 onClick={handleGoogleLogin}
-                label={{ it: 'Continue with Google', en: 'Continue with Google' }}
+                label={{ it: 'Continua con Google', en: 'Continue with Google' }}
               />
 
-              <DemoLoginButton disabled={loading} redirectPath={redirectPath} forceEnglish />
+              <DemoLoginButton disabled={loading} redirectPath={redirectPath} />
               <Button asChild variant="outline" className="mt-3 w-full border-cyan-400/30 text-cyan-100">
-                <Link href="/counter">{t({ en: 'Quick game' })}</Link>
+                <Link href="/counter">{t({ it: 'Partita veloce', en: 'Quick game' })}</Link>
               </Button>
           </>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            {t({ en: 'Not registered yet?' })}{' '}
+            {t({ it: 'Non sei ancora registrato?', en: 'Not registered yet?' })}{' '}
             <Link href={`/auth/register?redirect=${encodeURIComponent(redirectPath)}`} className="text-violet-400 hover:text-violet-300 font-medium">
-              {t({ en: 'Create one' })}
+              {t({ it: 'Crea un account', en: 'Create one' })}
             </Link>
           </div>
 

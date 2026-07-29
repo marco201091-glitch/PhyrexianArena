@@ -3,6 +3,7 @@ import { requireAuthOr401 } from '@/app/api/_lib/require-auth';
 import { applyUserRateLimit } from '@/app/api/_lib/with-rate-limit';
 import { buildCanonicalDeckSourceUrl } from '@/lib/deck-importers';
 import { fetchFromArchidekt } from '@/lib/deck-importers-server';
+import { unstable_cache } from 'next/cache';
 
 interface ArchidektDeckSummary {
   id: number;
@@ -19,6 +20,26 @@ interface ArchidektDeckSearchResponse {
 
 const MAX_IMPORTABLE_DECKS = 80;
 const ARCHIDEKT_IMPORT_CONCURRENCY = 3;
+
+const fetchArchidektUserDecksPersistent = unstable_cache(
+  async (username: string) => {
+    const searchUrl = new URL('https://archidekt.com/api/decks/v3/');
+    searchUrl.searchParams.set('ownerUsername', username);
+    searchUrl.searchParams.set('deckFormat', '3');
+    searchUrl.searchParams.set('orderBy', '-updatedAt');
+    searchUrl.searchParams.set('pageSize', String(MAX_IMPORTABLE_DECKS));
+
+    const response = await fetch(searchUrl.toString(), {
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`Archidekt profile request failed (${response.status})`);
+    }
+    return response.json() as Promise<ArchidektDeckSearchResponse>;
+  },
+  ['archidekt-user-decks-v7'],
+  { revalidate: 5 * 60 },
+);
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -55,21 +76,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Archidekt username is required' }, { status: 400 });
     }
 
-    const searchUrl = new URL('https://archidekt.com/api/decks/v3/');
-    searchUrl.searchParams.set('ownerUsername', cleanUsername);
-    searchUrl.searchParams.set('deckFormat', '3');
-    searchUrl.searchParams.set('orderBy', '-updatedAt');
-    searchUrl.searchParams.set('pageSize', String(MAX_IMPORTABLE_DECKS));
-
-    const response = await fetch(searchUrl.toString(), {
-      headers: { accept: 'application/json' },
-    });
-
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to fetch Archidekt user decks' }, { status: response.status });
-    }
-
-    const data = await response.json() as ArchidektDeckSearchResponse;
+    const data = await fetchArchidektUserDecksPersistent(cleanUsername);
     const publicDecks = (data.results || [])
       .filter((deck) => deck.id && deck.private !== true)
       .slice(0, MAX_IMPORTABLE_DECKS);

@@ -1,24 +1,26 @@
 import { memo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CommanderArt } from '@/components/deck/commander-art';
+import { DeckImage } from '@/components/deck/deck-image';
 import { DeckExternalLinkChip } from '@/components/deck/deck-external-link-chip';
 import { EdhrecInsights } from '@/components/deck/edhrec-insights';
+import { DeckMasteryBadge } from '@/components/profile/deck-mastery-badge';
 import { ManaColorPills } from '@/components/ui/mana-color-pills';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
+import { getDeckMastery } from '@/lib/deck-mastery';
 import { getDeckDisplayColors } from '@/lib/deck-metadata';
+import type { AppLanguage } from '@/lib/i18n/types';
 import type { DeckWinRate, ProfileDeck } from '@/lib/types/profile';
 
 type DeckCardProps = {
   deck: ProfileDeck;
   winRate?: DeckWinRate;
-  gamesLabel: string;
-  winsLabel: string;
   openDeckLabel: string;
   viewOnEdhrecLabel: string;
   refreshing?: boolean;
   detailsLabel: string;
+  language: AppLanguage;
   onDetails: () => void;
   onEdit?: () => void;
   onRefresh?: () => void;
@@ -35,12 +37,11 @@ function externalLinkTone(sourceType: string | null | undefined): 'violet' | 'bl
 export const DeckCard = memo(function DeckCard({
   deck,
   winRate,
-  gamesLabel,
-  winsLabel,
   openDeckLabel,
   viewOnEdhrecLabel,
   refreshing = false,
   detailsLabel,
+  language,
   onDetails,
   onEdit,
   onRefresh,
@@ -49,49 +50,63 @@ export const DeckCard = memo(function DeckCard({
 }: DeckCardProps) {
   const manaColors = getDeckDisplayColors(deck);
   const canRefresh = deck.source_type !== 'manual' && Boolean(deck.source_url);
+  const gamesPlayed = winRate?.gamesPlayed ?? 0;
+  const wins = winRate?.wins ?? 0;
+  const mastery = getDeckMastery(gamesPlayed, wins);
+  const hasMastery = gamesPlayed > 0;
 
   return (
-    <PhyrexianPanel padded={false} style={styles.card}>
-      <View style={styles.row}>
-        <CommanderArt
-          uri={deck.commander_image}
-          alt={deck.commander}
-          size="hero"
-          style={styles.art}
-        />
+    <PhyrexianPanel
+      padded={false}
+      style={[
+        styles.card,
+        hasMastery && {
+          borderColor: mastery.color,
+          shadowColor: mastery.color,
+          shadowOpacity: 0.28,
+          shadowRadius: 12,
+          elevation: 8,
+        },
+      ]}
+    >
+      <DeckImage
+        uri={deck.commander_image}
+        alt={deck.commander}
+        style={styles.backgroundArt}
+        containerStyle={styles.backgroundArt}
+        contentFit="cover"
+        contentPosition="top"
+      />
+      <View pointerEvents="none" style={styles.scrim} />
 
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
+      <View style={styles.content}>
+        <View style={styles.titleRow}>
+          <View style={styles.titleCopy}>
             <Text style={styles.name} numberOfLines={2}>{deck.name}</Text>
-            <ManaColorPills colors={manaColors} />
+            <Text style={styles.commander} numberOfLines={2}>{deck.commander}</Text>
           </View>
+          <ManaColorPills colors={manaColors} size="xs" language={language} />
+        </View>
 
-          <Text style={styles.commander} numberOfLines={2}>{deck.commander}</Text>
+        <View style={styles.metaRow}>
+          {deck.source_type ? <Text style={styles.source}>{deck.source_type}</Text> : null}
+          {deck.bracket ? <Text style={styles.bracket}>B{deck.bracket}</Text> : null}
+        </View>
 
-          <View style={styles.metaRow}>
-            {deck.source_type ? (
-              <Text style={styles.source}>{deck.source_type}</Text>
-            ) : null}
-            {deck.bracket ? (
-              <Text style={styles.bracket}>B{deck.bracket}</Text>
-            ) : null}
+        <View style={styles.performanceRow}>
+          <DeckMasteryBadge gamesPlayed={gamesPlayed} wins={wins} language={language} />
+          <View style={styles.winRateStat}>
+            <Text style={styles.statValue}>{winRate?.winRate ?? 0}%</Text>
+            <Text style={styles.statLabel}>Win rate</Text>
           </View>
+        </View>
 
-          {winRate && winRate.gamesPlayed > 0 ? (
-            <View style={styles.statsRow}>
-              <Text style={styles.statValue}>{winRate.winRate}%</Text>
-              <Text style={styles.stats}>
-                {winRate.gamesPlayed} {gamesLabel} · {winRate.wins} {winsLabel}
-              </Text>
-            </View>
-          ) : null}
-
+        <View style={styles.linksRow}>
           <EdhrecInsights
             commander={deck.commander}
             viewOnEdhrecLabel={viewOnEdhrecLabel}
-            layout="stacked"
+            layout="inline"
           />
-
           {deck.source_url ? (
             <DeckExternalLinkChip
               href={deck.source_url}
@@ -144,37 +159,53 @@ export const DeckCard = memo(function DeckCard({
 const styles = StyleSheet.create({
   card: {
     overflow: 'hidden',
+    minHeight: 286,
+    borderWidth: 2,
   },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    padding: spacing.md,
+  backgroundArt: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
   },
-  art: {
-    flexShrink: 0,
+  scrim: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(4, 6, 10, 0.66)',
   },
   content: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0,
+    minHeight: 230,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    justifyContent: 'space-between',
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.sm,
-    flexWrap: 'wrap',
   },
-  name: {
-    color: colors.foreground,
-    fontSize: 16,
-    fontWeight: '700',
+  titleCopy: {
     flex: 1,
     minWidth: 0,
+    gap: 2,
+  },
+  name: {
+    color: '#fff',
+    fontSize: 19,
+    lineHeight: 23,
+    fontWeight: '800',
   },
   commander: {
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.78)',
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: 19,
+    fontWeight: '600',
   },
   metaRow: {
     flexDirection: 'row',
@@ -182,7 +213,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   source: {
-    color: colors.primaryMuted,
+    color: '#ddd6fe',
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -192,33 +223,46 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  statsRow: {
+  performanceRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+  },
+  winRateStat: {
+    minWidth: 76,
+    alignItems: 'center',
   },
   statValue: {
-    color: colors.foreground,
-    fontSize: 18,
-    fontWeight: '700',
+    color: '#fff',
+    fontSize: 19,
+    fontWeight: '800',
   },
-  stats: {
-    color: colors.muted,
-    fontSize: 12,
+  statLabel: {
+    color: 'rgba(255,255,255,0.68)',
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  linksRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(3, 4, 8, 0.78)',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   actionButton: {
-    minWidth: 40,
-    minHeight: 40,
+    minWidth: 44,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },

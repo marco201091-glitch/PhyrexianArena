@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   if (rateLimited) return rateLimited;
 
   try {
-    const { url } = await request.json();
+    const { url, fresh } = await request.json();
 
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'Deck URL is required' }, { status: 400 });
@@ -26,7 +26,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const deckData = await fetchDeckFromSource(parsed.source, parsed.deckId);
+    const deckData = await fetchDeckFromSource(
+      parsed.source,
+      parsed.deckId,
+      { fresh: fresh === true },
+    );
 
     return NextResponse.json({
       name: deckData.name,

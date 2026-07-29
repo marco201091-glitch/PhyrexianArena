@@ -674,7 +674,7 @@ export default function DashboardPage() {
                         {t({ it: 'Miglior mazzo', en: 'Best deck' })}
                       </CardTitle>
                       <CardDescription>
-                        {t({ it: 'Min. 3 partite · win rate piu alto', en: 'Min. 3 games · highest win rate' })}
+                        {t({ it: 'Min. 3 partite · win rate più alto', en: 'Min. 3 games · highest win rate' })}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -741,7 +741,7 @@ export default function DashboardPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-foreground">
                       <Palette className="h-5 w-5 text-violet-300" />
-                      {t({ it: 'Colori piu giocati', en: 'Most Played Colors' })}
+                      {t({ it: 'Colori più giocati', en: 'Most Played Colors' })}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

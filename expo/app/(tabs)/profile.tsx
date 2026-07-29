@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
@@ -39,7 +38,6 @@ import { MANA_COLOR_ORDER } from '@/lib/mana-colors';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import type { ProfileDeck } from '@/lib/types/profile';
-import { responsiveGridColumns } from '@/lib/layout';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -67,8 +65,6 @@ export default function ProfileScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
-  const { width } = useWindowDimensions();
-  const deckColumns = responsiveGridColumns(width, 290, 3, spacing.md);
   const [searchQuery, setSearchQuery] = useState('');
   const [deckColorFilter, setDeckColorFilter] = useState('all');
   const [deckSort, setDeckSort] = useState<'recent' | 'wr' | 'games' | 'damage' | 'eliminations' | 'fastest'>('recent');
@@ -193,12 +189,11 @@ export default function ProfileScreen() {
   }, [copy, refreshImportedDeck, showToast]);
 
   const renderDeckItem = useCallback(({ item: deck }: { item: ProfileDeck }) => (
-    <View style={[styles.deckGridItem, deckColumns > 1 && styles.deckGridItemMultiColumn]}>
+    <View style={styles.deckListItem}>
       <DeckCard
         deck={deck}
         winRate={winRates[deck.id]}
-        gamesLabel={copy('games')}
-        winsLabel={copy('wins')}
+        language={language}
         openDeckLabel={copy('openDeck')}
         viewOnEdhrecLabel={copy('viewOnEdhrec')}
         refreshing={refreshingDeckIds.includes(deck.id)}
@@ -212,7 +207,7 @@ export default function ProfileScreen() {
         })}
       />
     </View>
-  ), [copy, deckColumns, handleDeleteDeck, handleRefreshDeck, openEditDeck, refreshingDeckIds, toggleDeckFavorite, winRates]);
+  ), [copy, handleDeleteDeck, handleRefreshDeck, language, openEditDeck, refreshingDeckIds, toggleDeckFavorite, winRates]);
 
   const listHeader = (
     <View style={styles.listHeader}>
@@ -354,9 +349,7 @@ export default function ProfileScreen() {
   return (
     <Screen scroll={false} padded={false}>
       <FlashList
-        key={`profile-decks-${deckColumns}`}
         data={filteredDecks}
-        numColumns={deckColumns}
         keyExtractor={(deck) => deck.id}
         renderItem={renderDeckItem}
         drawDistance={500}
@@ -620,12 +613,9 @@ const styles = StyleSheet.create({
   deckSeparator: {
     height: 10,
   },
-  deckGridItem: {
-    flex: 1,
+  deckListItem: {
+    width: '100%',
     minWidth: 0,
-  },
-  deckGridItemMultiColumn: {
-    marginHorizontal: spacing.sm / 2,
   },
   emptyCard: {
     alignItems: 'center',

@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/components/language-provider';
 import { supabase } from '@/lib/supabase';
 import { toGuestParticipantKey, toUserParticipantKey } from '@/lib/participant-keys';
+import { subscribeToArenaCatalog } from '@/lib/arena-catalog-realtime';
 
 type GroupPayload = {
   id: string;
@@ -24,6 +25,7 @@ type UserDeck = {
   name: string;
   commander: string;
   commander_image: string | null;
+  is_favorite: boolean;
 };
 
 type GuestPayload = {
@@ -47,9 +49,9 @@ export default function WebLiveGamePage() {
   const [arenaName, setArenaName] = useState('');
   const [participants, setParticipants] = useState<WebTrackerParticipant[]>([]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!user || !groupId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const [{ data: group, error: groupError }, { data: guests, error: guestsError }] = await Promise.all([
         supabase
@@ -88,8 +90,9 @@ export default function WebLiveGamePage() {
       const memberIds = payload.group_members.map((member) => member.user_id);
       const { data: decks, error: decksError } = await supabase
         .from('decks')
-        .select('id,user_id,name,commander,commander_image')
+        .select('id,user_id,name,commander,commander_image,is_favorite')
         .in('user_id', memberIds)
+        .order('is_favorite', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(720);
       if (decksError) throw decksError;
@@ -108,6 +111,7 @@ export default function WebLiveGamePage() {
             name: deck.name,
             commander: deck.commander,
             commanderImage: deck.commander_image,
+            isFavorite: deck.is_favorite,
           })),
         }));
       const guestOptions: WebTrackerParticipant[] = ((guests ?? []) as GuestPayload[]).map((guest) => ({
@@ -121,19 +125,27 @@ export default function WebLiveGamePage() {
           name: deck.name,
           commander: deck.commander,
           commanderImage: deck.commander_image,
+          isFavorite: false,
         })),
       }));
       setArenaName(payload.name);
       setParticipants([...memberOptions, ...guestOptions]);
     } catch (error) {
       console.error('Failed to load web live tracker', error);
-      router.replace(`/table/${groupId}`);
+      if (!silent) router.replace(`/table/${groupId}`);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [groupId, router, user]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!user || !groupId) return;
+    return subscribeToArenaCatalog(supabase, groupId, () => {
+      void load(true);
+    });
+  }, [groupId, load, user]);
 
   if (authLoading || loading || !user) {
     return <AppLoader label={copy({ it: 'Caricamento tracker...', en: 'Loading tracker...' })} />;

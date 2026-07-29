@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseParticipantKey } from '@/lib/participant-keys';
 import type { ArenaGuest } from '@/lib/arena-participants';
 import {
@@ -17,6 +17,7 @@ import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { apiPost } from '@/lib/api';
 import type { ArenaDetail, ArenaMatch, ArenaProfile, MemberDeck } from '@/lib/types/arena';
+import { subscribeToArenaCatalog } from '@/lib/arena-catalog-realtime';
 import {
   clearArenaCache,
   loadArenaCache,
@@ -31,6 +32,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
   const [guests, setGuests] = useState<ArenaGuest[]>([]);
   const [decks, setDecks] = useState<MemberDeck[]>([]);
   const [loading, setLoading] = useState(true);
+  const memberIdsRef = useRef<string[]>([]);
 
   const applySnapshot = useCallback((snapshot: ArenaCacheSnapshot) => {
     setGroup(snapshot.group);
@@ -38,6 +40,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
     setMatches(snapshot.matches);
     setGuests(snapshot.guests);
     setDecks(snapshot.decks);
+    memberIdsRef.current = snapshot.members.map((member) => member.id);
   }, []);
 
   const refreshMatches = useCallback(async () => {
@@ -88,6 +91,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
       setGuests(guestData);
 
       const memberIds = groupData.group_members.map((member) => member.user_id);
+      memberIdsRef.current = memberIds;
       const loadedDecks = await loadMemberDecks(memberIds);
 
       await saveArenaCache({
@@ -158,6 +162,21 @@ export function useArena(groupId: string | undefined, userId: string | undefined
     })();
     return () => { cancelled = true; };
   }, [applySnapshot, groupId, refresh, userId]);
+
+  useEffect(() => {
+    if (!groupId || !userId) return;
+    return subscribeToArenaCatalog(supabase, groupId, (event) => {
+      if (event.entity === 'deck') {
+        void loadMemberDecks(memberIdsRef.current);
+        return;
+      }
+      if (event.entity === 'guest' || event.entity === 'guest_deck') {
+        void fetchArenaGuests(supabase, groupId).then(setGuests);
+        return;
+      }
+      void refresh(false);
+    });
+  }, [groupId, loadMemberDecks, refresh, userId]);
 
   const playerStats = useMemo(() => calculatePlayerStats(matches), [matches]);
 

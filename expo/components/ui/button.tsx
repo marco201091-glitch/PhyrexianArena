@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sm: {
-    minHeight: 36,
+    minHeight: touch.minHeight,
     paddingHorizontal: 12,
   },
   primary: {

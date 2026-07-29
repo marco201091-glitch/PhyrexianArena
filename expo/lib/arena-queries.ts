@@ -59,6 +59,7 @@ const DECK_PICKER_COLUMNS = `
   source_type,
   bracket,
   color_identity,
+  is_favorite,
   created_at
 `;
 
@@ -157,6 +158,7 @@ export async function fetchArenaMemberDecks(
         .from('decks')
         .select(DECK_PICKER_COLUMNS)
         .eq('user_id', memberId)
+        .order('is_favorite', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(MEMBER_DECK_LIMIT);
 

@@ -17,7 +17,6 @@ import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
-import { QrCode } from '@/components/ui/qr-code';
 import { Screen } from '@/components/ui/screen';
 import { ArenaSkeleton } from '@/components/ui/screen-skeletons';
 import { useAuth } from '@/contexts/auth-context';
@@ -31,10 +30,7 @@ import {
   replaceLiveGameRuntimePlayers,
 } from '@/stores/live-game-runtime-store';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
-import { apiGet, apiPatch, apiPost } from '@/lib/api';
-import { getSiteUrl } from '@/lib/env';
-import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
-import { buildGameGuestInviteUrl } from '@/lib/invite-links';
+import { apiPost } from '@/lib/api';
 import { getLastDeckSelectionForParticipant } from '@/lib/arena-participants';
 import { getPreferredDeckId } from '@/lib/arena-deck-selection';
 import {
@@ -106,17 +102,6 @@ import { supabase } from '@/lib/supabase';
 import type { MemberDeck } from '@/lib/types/arena';
 
 type LifePreset = '20' | '25' | '30' | '40' | '60' | 'custom';
-type LobbyGuestStatus = {
-  id: string;
-  ready: boolean;
-  arena_guests: { display_name: string } | Array<{ display_name: string }> | null;
-  arena_guest_decks: { commander: string } | Array<{ commander: string }> | null;
-};
-
-function relationOne<T>(value: T | T[] | null): T | null {
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
-
 const LIFE_PRESETS: LifePreset[] = ['20', '25', '30', '40', '60'];
 const ALTERNATIVE_WIN_CONDITIONS: Array<{
   value: Exclude<WinCondition, 'last_standing'>;
@@ -167,13 +152,6 @@ export default function LiveGameScreen() {
   const [lifePreset, setLifePreset] = useState<LifePreset>('40');
   const [customLife, setCustomLife] = useState('40');
   const [starting, setStarting] = useState(false);
-  const [lobbyId, setLobbyId] = useState<string | null>(null);
-  const lobbyIdRef = useRef<string | null>(null);
-  const [inviteToken, setInviteToken] = useState<string | null>(null);
-  const [lobbyGuests, setLobbyGuests] = useState<LobbyGuestStatus[]>([]);
-  const [creatingInvite, setCreatingInvite] = useState(false);
-  const [inviteExpanded, setInviteExpanded] = useState(true);
-
   const [damagePulse, setDamagePulse] = useState<Record<string, number>>({});
   const [randomHighlight, setRandomHighlight] = useState<ParticipantKey | null>(null);
   const [startingHighlight, setStartingHighlight] = useState<ParticipantKey | null>(null);
@@ -211,54 +189,6 @@ export default function LiveGameScreen() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const telemetrySessionRef = useRef(Crypto.randomUUID());
   const setupHydratedRef = useRef<string | null>(null);
-
-  const createGameInvite = useCallback(async () => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!groupId) return;
-    setCreatingInvite(true);
-    const result = await apiPost<{ id: string; token: string }>('/api/live-game-lobby', { groupId });
-    setCreatingInvite(false);
-    if (!result.data?.id || !result.data.token) {
-      showToast(result.error ?? 'Invito non creato');
-      return;
-    }
-    lobbyIdRef.current = result.data.id;
-    setLobbyId(result.data.id);
-    setInviteToken(result.data.token);
-  }, [groupId, showToast]);
-
-  const rotateGameInvite = useCallback(async () => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!lobbyIdRef.current) return;
-    const result = await apiPatch<{ token: string }>('/api/live-game-lobby', {
-      lobbyId: lobbyIdRef.current,
-      action: 'rotate',
-    });
-    if (result.data?.token) setInviteToken(result.data.token);
-  }, []);
-
-  const removeLobbyGuest = useCallback(async (guestSessionId: string) => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!lobbyIdRef.current) return;
-    await apiPatch('/api/live-game-lobby', {
-      lobbyId: lobbyIdRef.current,
-      action: 'remove',
-      guestSessionId,
-    });
-    setLobbyGuests((current) => current.filter((entry) => entry.id !== guestSessionId));
-  }, []);
-
-  useEffect(() => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!lobbyId || liveGame) return;
-    const refresh = async () => {
-      const result = await apiGet<{ guests: LobbyGuestStatus[] }>(`/api/live-game-lobby?id=${encodeURIComponent(lobbyId)}`);
-      if (result.data?.guests) setLobbyGuests(result.data.guests);
-    };
-    void refresh();
-    const timer = setInterval(() => void refresh(), 1500);
-    return () => clearInterval(timer);
-  }, [liveGame, lobbyId]);
 
   const openEndGameModal = useCallback((state: LiveGameState) => {
     const suggested = getSuggestedWinner(state);
@@ -474,13 +404,6 @@ export default function LiveGameScreen() {
           serverRecord = await ensureLiveGameCreated(supabase, serverRecord);
           serverRecordRef.current = serverRecord;
           needsCreateRef.current = false;
-          if (REMOTE_GUESTS_ENABLED && lobbyIdRef.current) {
-            const linked = await apiPatch('/api/live-game-lobby', {
-              lobbyId: lobbyIdRef.current,
-              liveGameId: serverRecord.id,
-            });
-            if (linked.status >= 400) throw new Error(linked.error ?? 'Guest lobby link failed');
-          }
           await saveJournal();
         }
 
@@ -1688,45 +1611,6 @@ export default function LiveGameScreen() {
               }}
             />
 
-            {REMOTE_GUESTS_ENABLED ? <View style={styles.invitePanel}>
-              <View style={styles.inviteHeader}>
-                <Ionicons name="people-outline" size={24} color={colors.primaryLight} />
-                <View style={styles.inviteCopy}>
-                  <Text style={styles.inviteTitle}>{copy('remoteGuests')}</Text>
-                  <Text style={styles.inviteHint}>{copy('remoteGuestsHint')}</Text>
-                </View>
-                {!inviteToken ? <Button
-                  label={creatingInvite ? copy('creatingInvite') : copy('createInvite')}
-                  icon="qr-code-outline"
-                  onPress={createGameInvite}
-                  disabled={creatingInvite}
-                  style={styles.inviteAction}
-                /> : <Button label={inviteExpanded ? copy('hideInvite') : copy('showInvite')} variant="ghost" onPress={() => setInviteExpanded((value) => !value)} style={styles.inviteAction} />}
-              </View>
-              {inviteToken && inviteExpanded ? <View style={styles.inviteBody}>
-                <QrCode
-                  value={buildGameGuestInviteUrl(getSiteUrl(), inviteToken)}
-                  size={200}
-                  label={copy('gameInviteQr')}
-                />
-                <View style={styles.inviteGuests}>
-                  <Button label={copy('rotateInvite')} variant="outline" onPress={rotateGameInvite} />
-                  {lobbyGuests.length ? lobbyGuests.map((entry) => {
-                    const profile = relationOne(entry.arena_guests);
-                    const deck = relationOne(entry.arena_guest_decks);
-                    return <View key={entry.id} style={styles.inviteGuestRow}>
-                      <View style={[styles.readyDot, entry.ready ? styles.readyDotOn : styles.readyDotWaiting]} />
-                      <View style={styles.inviteCopy}>
-                        <Text style={styles.inviteGuestName} numberOfLines={1}>{profile?.display_name ?? 'Guest'}</Text>
-                        <Text style={styles.inviteHint} numberOfLines={1}>{deck?.commander}</Text>
-                      </View>
-                      <Text style={[styles.readyText, entry.ready && styles.readyTextOn]}>{entry.ready ? copy('ready') : copy('waiting')}</Text>
-                      <Pressable onPress={() => void removeLobbyGuest(entry.id)}><Ionicons name="trash-outline" size={20} color={colors.destructive} /></Pressable>
-                    </View>;
-                  }) : <Text style={styles.inviteHint}>{copy('noRemoteGuests')}</Text>}
-                </View>
-              </View> : null}
-            </View> : null}
           </PhyrexianPanel>
       </ScrollView>
       <Modal
@@ -1810,46 +1694,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  invitePanel: {
-    overflow: 'hidden',
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.3)',
-    backgroundColor: 'rgba(91,33,182,0.12)',
-  },
-  inviteHeader: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  inviteCopy: { flex: 1, minWidth: 0 },
-  inviteAction: { width: '100%' },
-  inviteTitle: { color: colors.foreground, fontSize: 15, fontWeight: '900' },
-  inviteHint: { color: colors.muted, fontSize: 11, marginTop: 2 },
-  inviteBody: {
-    alignItems: 'center',
-    gap: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    padding: spacing.md,
-  },
-  inviteGuests: { width: '100%', gap: spacing.xs, justifyContent: 'center' },
-  inviteGuestRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    padding: spacing.sm,
-  },
-  inviteGuestName: { color: colors.foreground, fontSize: 13, fontWeight: '800' },
-  readyDot: { width: 9, height: 9, borderRadius: 5 },
-  readyDotOn: { backgroundColor: '#34d399' },
-  readyDotWaiting: { backgroundColor: '#fbbf24' },
-  readyText: { color: '#fde68a', fontSize: 9, fontWeight: '900' },
-  readyTextOn: { color: '#a7f3d0' },
   sectionLabel: {
     color: colors.foreground,
     fontSize: 13,

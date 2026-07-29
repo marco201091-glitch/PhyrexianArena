@@ -5,6 +5,4 @@ export function normalizeInviteCode(value: string | null | undefined) {
   return code && INVITE_CODE_PATTERN.test(code) ? code : null;
 }
 
-export function buildArenaJoinUrl(origin: string, inviteCode: string) {
-  return `${origin.replace(/\/$/, '')}/join/${encodeURIComponent(inviteCode)}`;
-}
+export * from '@/expo/lib/arena-invite-qr';

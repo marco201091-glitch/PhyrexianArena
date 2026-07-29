@@ -2,14 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { TableArena } from '@/components/live-game/table-arena';
 import { DeckImage } from '@/components/deck/deck-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { QrCode } from '@/components/ui/qr-code';
 import { Screen } from '@/components/ui/screen';
 import { colors, radii, spacing } from '@/constants/theme';
 import {
@@ -24,12 +23,7 @@ import {
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { searchCommandersDirect } from '@/lib/scryfall-search';
 import type { CommanderSearchResult } from '@/lib/commander-types';
-import { getSiteUrl } from '@/lib/env';
-import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api';
-import { subscribePublicCounterRealtime } from '@/lib/guest-realtime';
-import { buildCounterGuestInviteUrl } from '@/lib/invite-links';
 import { useLanguage } from '@/contexts/language-context';
-import { REMOTE_GUESTS_ENABLED } from '@/lib/feature-flags';
 import {
   clearLiveGameRuntimePlayers,
   replaceLiveGameRuntimePlayers,
@@ -39,9 +33,6 @@ const STORAGE_KEY = 'phyrexian:standalone-counter:v1';
 const CARD_COLORS = ['#18181b', '#7f1d1d', '#1e3a8a', '#14532d', '#713f12', '#581c87'];
 type Format = 'commander' | 'classic';
 type SetupPlayer = { name: string; commander: string; commanderImage: string | null; color: string };
-type OnlineGuest = { id: string; display_name: string; commander: string; commander_image: string | null; ready: boolean };
-type OnlineSession = { hostToken: string; inviteToken: string; realtimeTopic: string; guests: OnlineGuest[] };
-const ONLINE_STORAGE_KEY = 'phyrexian:standalone-counter-online:v1';
 
 export default function CounterScreen() {
   useKeepAwake();
@@ -64,9 +55,6 @@ export default function CounterScreen() {
   const [recapEndedAt, setRecapEndedAt] = useState(0);
   const [searchIndex, setSearchIndex] = useState<number | null>(null);
   const [searchResults, setSearchResults] = useState<CommanderSearchResult[]>([]);
-  const [guestsEnabled, setGuestsEnabled] = useState(false);
-  const [online, setOnline] = useState<OnlineSession | null>(null);
-  const onlineHostToken = online?.hostToken;
 
   useEffect(() => {
     void AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
@@ -80,55 +68,7 @@ export default function CounterScreen() {
         }
       } catch { /* Ignore invalid local state. */ }
     });
-    if (!REMOTE_GUESTS_ENABLED) {
-      // Drop obsolete recovery data without contacting remote-guest services.
-      void AsyncStorage.removeItem(ONLINE_STORAGE_KEY);
-      return;
-    }
-    void AsyncStorage.getItem(ONLINE_STORAGE_KEY).then((raw) => {
-      if (!raw) return;
-      try {
-        const saved = JSON.parse(raw) as OnlineSession;
-        if (saved.hostToken) {
-          setOnline(saved);
-          setGuestsEnabled(true);
-        }
-      } catch { /* Ignore invalid recovery data. */ }
-    });
   }, []);
-
-  const refreshOnline = async (hostToken: string) => {
-    const { data: payload, status } = await apiGet<{
-      session: { realtimeTopic: string; state?: LiveGameState };
-      guests?: OnlineGuest[];
-    }>('/api/public-counter-session', {
-      authenticated: false,
-      headers: { Authorization: `Bearer ${hostToken}` },
-    });
-    if (status !== 200 || !payload) return;
-    setOnline((current) => current ? { ...current, realtimeTopic: payload.session.realtimeTopic, guests: payload.guests ?? [] } : current);
-    if (payload.session.state) setState(parseLiveGameState(payload.session.state));
-  };
-
-  useEffect(() => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (online) void AsyncStorage.setItem(ONLINE_STORAGE_KEY, JSON.stringify(online));
-  }, [online]);
-
-  useEffect(() => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    const hostToken = onlineHostToken;
-    if (!hostToken) return;
-    void refreshOnline(hostToken);
-    const timer = setInterval(() => void refreshOnline(hostToken), state ? 15_000 : 2_000);
-    return () => clearInterval(timer);
-  }, [onlineHostToken, state]);
-
-  useEffect(() => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!online?.realtimeTopic || !onlineHostToken) return;
-    return subscribePublicCounterRealtime(online.realtimeTopic, () => void refreshOnline(onlineHostToken));
-  }, [online?.realtimeTopic, onlineHostToken]);
 
   useEffect(() => {
     if (!state || !startedAt) return;
@@ -153,67 +93,29 @@ export default function CounterScreen() {
       occurredAt: new Date().toISOString(),
     });
     setState(next);
-    if (REMOTE_GUESTS_ENABLED && online) {
-      void apiPost('/api/public-counter-session', {
-        action: 'mutate',
-        sessionToken: online.hostToken,
-        mutation,
-      }, { authenticated: false }).then(() => refreshOnline(online.hostToken));
-    }
   };
 
   const start = async () => {
-    const onlineGuests = REMOTE_GUESTS_ENABLED
-      ? online?.guests.slice(0, Math.max(0, 6 - playerCount)) ?? []
-      : [];
-    const keys = [...Array.from({ length: playerCount }, (_, index) => `guest:local-${index + 1}` as ParticipantKey), ...onlineGuests.map((guest) => `guest:public-${guest.id}` as ParticipantKey)];
+    const keys = Array.from(
+      { length: playerCount },
+      (_, index) => `guest:local-${index + 1}` as ParticipantKey,
+    );
     const players = keys.map((participantKey, index) => createLiveGamePlayer({
       slot: index,
       participantKey,
       deckId: `local-${index + 1}`,
-      displayName: index < playerCount ? setup[index].name.trim() || `Player ${index + 1}` : onlineGuests[index - playerCount].display_name,
-      commander: format === 'commander' ? (index < playerCount ? setup[index].commander.trim() || 'Commander' : onlineGuests[index - playerCount].commander) : 'Magic',
-      commanderImage: format === 'commander' ? (index < playerCount ? setup[index].commanderImage : onlineGuests[index - playerCount].commander_image) : null,
-      backgroundColor: index < playerCount ? setup[index].color : CARD_COLORS[index],
+      displayName: setup[index].name.trim() || `Player ${index + 1}`,
+      commander: format === 'commander' ? setup[index].commander.trim() || 'Commander' : 'Magic',
+      commanderImage: format === 'commander' ? setup[index].commanderImage : null,
+      backgroundColor: setup[index].color,
       startingLife: format === 'commander' ? 40 : 20,
       allParticipantKeys: keys,
     }));
     const nextState = { version: 0, players, events: [], summary: createLiveGameSummary(), layoutVariant: 'classic' } satisfies LiveGameState;
-    if (REMOTE_GUESTS_ENABLED && online) {
-      const { status } = await apiPost('/api/public-counter-session', {
-        action: 'start',
-        sessionToken: online.hostToken,
-        state: nextState,
-      }, { authenticated: false });
-      if (status < 200 || status >= 300) return;
-    }
     setState(nextState);
     setStartedAt(new Date().toISOString());
     setRecap(null);
     setRecapEndedAt(0);
-  };
-
-  const toggleGuests = async (enabled: boolean) => {
-    if (!REMOTE_GUESTS_ENABLED) return;
-    if (!enabled) {
-      if (online) {
-        await apiDelete('/api/public-counter-session', {
-          sessionToken: online.hostToken,
-        }, { authenticated: false });
-      }
-      await AsyncStorage.removeItem(ONLINE_STORAGE_KEY);
-      setOnline(null);
-      setGuestsEnabled(false);
-      return;
-    }
-    const { data: payload, status } = await apiPost<{
-      hostToken: string;
-      inviteToken: string;
-      realtimeTopic: string;
-    }>('/api/public-counter-session', { action: 'create', format }, { authenticated: false });
-    if (status !== 200 || !payload) return;
-    setOnline({ hostToken: payload.hostToken, inviteToken: payload.inviteToken, realtimeTopic: payload.realtimeTopic, guests: [] });
-    setGuestsEnabled(true);
   };
 
   const searchCommander = async (index: number, query: string) => {
@@ -281,8 +183,7 @@ export default function CounterScreen() {
           {format === 'commander' ? <><Input label={copy('searchCommander')} value={player.commander} onChangeText={(value) => void searchCommander(index, value)} />{searchIndex === index && searchResults.length ? <View style={styles.searchResults}>{searchResults.slice(0, 8).map((result) => <Pressable key={result.id} style={styles.searchResult} onPress={() => { setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, commander: result.name, commanderImage: result.imageUrl } : item)); setSearchResults([]); }}><DeckImage uri={result.imageUrl} alt={result.name} style={styles.searchImage} containerStyle={styles.searchImageWrap} /><Text style={styles.searchName} numberOfLines={2}>{result.name}</Text></Pressable>)}</View> : null}</> : null}
           <View style={styles.colorRow}>{CARD_COLORS.map((color) => <Pressable key={color} onPress={() => setSetup((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color } : item))} style={[styles.color, { backgroundColor: color }, player.color === color && styles.colorActive]} />)}</View>
         </View>)}
-        {REMOTE_GUESTS_ENABLED ? <View style={styles.guestPanel}><View style={styles.guestToggle}><View style={styles.guestCopy}><Text style={styles.sectionTitle}>{copy('guestsQuestion')}</Text><Text style={styles.subtitle}>{guestsEnabled ? copy('temporaryOnlineLobby') : copy('offlineSingleDevice')}</Text></View><Switch value={guestsEnabled} onValueChange={(value) => void toggleGuests(value)} /></View>{online ? <><View style={styles.qr}><QrCode value={buildCounterGuestInviteUrl(getSiteUrl(), online.inviteToken)} size={224} label={copy('gameInviteQr')} /></View><Text style={styles.qrHint}>Guest: {online.guests.length} · {copy('readyGuests')} {online.guests.filter((guest) => guest.ready).length}</Text><Button label={copy('rotateInvite')} variant="outline" onPress={async () => { const { data: payload, status } = await apiPatch<{ inviteToken: string }>('/api/public-counter-session', { action: 'rotate', sessionToken: online.hostToken }, { authenticated: false }); if (status === 200 && payload) setOnline((current) => current ? { ...current, inviteToken: payload.inviteToken } : current); }} />{online.guests.map((guest) => <View key={guest.id} style={styles.guestRow}><Text style={styles.guestName}>{guest.ready ? '✓' : '○'} {guest.display_name} · {guest.commander}</Text><Pressable onPress={async () => { await apiPatch('/api/public-counter-session', { action: 'remove', sessionToken: online.hostToken, guestId: guest.id }, { authenticated: false }); await refreshOnline(online.hostToken); }}><Text style={styles.removeGuest}>{copy('remove')}</Text></Pressable></View>)}</> : null}</View> : null}
-        <Button label={copy('startGame')} icon="play" testID="counter-start-game" disabled={Boolean(online && (playerCount + online.guests.length > 6 || online.guests.some((guest) => !guest.ready)))} onPress={() => void start()} />
+        <Button label={copy('startGame')} icon="play" testID="counter-start-game" onPress={() => void start()} />
         <Button label={copy('back')} variant="ghost" onPress={() => router.back()} />
       </ScrollView>
     </Screen>;
@@ -407,14 +308,6 @@ const styles = StyleSheet.create({
   colorRow: { flexDirection: 'row', gap: spacing.xs },
   color: { flex: 1, height: 28, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   colorActive: { borderWidth: 3, borderColor: '#c4b5fd' },
-  guestPanel: { gap: spacing.sm, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardInset, padding: spacing.md },
-  guestToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  guestCopy: { flex: 1 },
-  qr: { alignSelf: 'center' },
-  qrHint: { color: colors.muted, textAlign: 'center' },
-  guestName: { color: colors.foreground, fontWeight: '600' },
-  guestRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  removeGuest: { color: colors.destructive, fontWeight: '700' },
   game: { flex: 1, backgroundColor: colors.black },
   recapPlayer: { minHeight: 78, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.cardInset },
   recapAccent: { alignSelf: 'stretch', width: 7 },

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { fetchFromArchidekt } from '@/lib/deck-importers-server';
+import { fetchDeckFromSource } from '@/lib/deck-importers-server';
 
 describe('fetchFromArchidekt commander options', () => {
   it('assigns distinct images to Eirdu and Isilu transform faces', async () => {
-    const deck = await fetchFromArchidekt('22733112');
+    const deck = await fetchDeckFromSource('archidekt', '22733112', { fresh: true });
 
     expect(deck.commanderOptions).toHaveLength(2);
     expect(deck.commanderOptions[0]?.name).toBe('Eirdu, Carrier of Dawn');
@@ -14,7 +14,7 @@ describe('fetchFromArchidekt commander options', () => {
   }, 30_000);
 
   it('assigns distinct images to Urabrask DFC faces', async () => {
-    const deck = await fetchFromArchidekt('9213662');
+    const deck = await fetchDeckFromSource('archidekt', '9213662', { fresh: true });
 
     expect(deck.commanderOptions.length).toBeGreaterThanOrEqual(2);
     expect(deck.commanderOptions[0]?.imageUrl).toBeTruthy();

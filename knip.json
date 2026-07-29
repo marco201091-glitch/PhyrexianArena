@@ -3,17 +3,18 @@
   "entry": [
     "instrumentation*.ts",
     "sentry.*.config.ts",
-    "scripts/**/*.{js,mjs,cjs}"
+    "scripts/**/*.{js,mjs,cjs}",
+    "tests/**/*.test.ts"
   ],
   "project": [
     "app/**/*.{ts,tsx,css}",
     "components/**/*.{ts,tsx}",
     "hooks/**/*.{ts,tsx}",
     "lib/**/*.{ts,tsx}",
+    "tests/**/*.ts",
     "*.{ts,tsx,js,mjs,cjs}"
   ],
   "ignoreBinaries": [
-    "vercel",
     "netstat",
     "findstr"
   ]

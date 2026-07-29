@@ -5,7 +5,7 @@ const enabled = process.env.NEXT_PUBLIC_SENTRY_ENABLED === 'true' && Boolean(pro
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled,
-  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+  environment: process.env.NODE_ENV,
   tracesSampleRate: enabled ? 0.1 : 0,
   sendDefaultPii: false,
 });

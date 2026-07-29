@@ -18,7 +18,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    return NextResponse.json({ data: await fetchCommanderArtOptions(name) });
+    return NextResponse.json(
+      { data: await fetchCommanderArtOptions(name) },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=2592000, stale-while-revalidate=31536000',
+        },
+      },
+    );
   } catch (error) {
     console.error('Scryfall art search error:', error);
     return NextResponse.json(

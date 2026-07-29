@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { FilterChip } from '@/components/ui/filter-chip';
-import { FilterPanel } from '@/components/ui/filter-panel';
+import { FilterPanel, type FilterPanelGroup } from '@/components/ui/filter-panel';
 import { spacing } from '@/constants/theme';
 import type { ArenaDateFilter } from '@/lib/arena-filters';
 import type { DeckStatsSort } from '@/lib/arena-deck-stats';
@@ -54,8 +54,10 @@ export function ArenaFilterPanel({
   onBracketFilterChange,
   onDeckStatsSortChange,
 }: ArenaFilterPanelProps) {
-  const groups = [
-    {
+  const groups: FilterPanelGroup[] = [];
+
+  if (activeTab !== 'awards') {
+    groups.push({
       key: 'period',
       title: labels.filterPeriod,
       content: (
@@ -70,8 +72,8 @@ export function ArenaFilterPanel({
           ))}
         </ChipRow>
       ),
-    },
-  ];
+    });
+  }
 
   if (activeTab === 'decks' || activeTab === 'meta') {
     groups.push({
@@ -116,7 +118,7 @@ export function ArenaFilterPanel({
     });
   }
 
-  return <FilterPanel groups={groups} />;
+  return groups.length > 0 ? <FilterPanel groups={groups} /> : null;
 }
 
 const styles = StyleSheet.create({

@@ -1,34 +1,42 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
-import { Platform } from 'react-native';
 import { fetchCommanderArtOptions } from '@/lib/commander-arts';
 import { collectDeckCommanderNames, collectDeckImageUrls } from '@/lib/deck-image-urls';
 import { getRemoteImageHeaders } from '@/lib/remote-image';
 import type { ProfileDeck } from '@/lib/types/profile';
+import {
+  selectPersistentImageCacheVictims,
+} from '@/lib/deck-image-cache-policy';
 
 export { collectDeckCommanderNames, collectDeckImageUrls } from '@/lib/deck-image-urls';
 
-const CACHE_DIR = `${FileSystem.cacheDirectory ?? ''}deck-images/`;
+// Documents storage is not evicted by the OS under storage pressure.
+// Entries remain until they are invalidated, app data is cleared, or the app is uninstalled.
+const CACHE_ROOT = FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? '';
+const CACHE_DIR = `${CACHE_ROOT}deck-images/`;
 const MANIFEST_PATH = `${CACHE_DIR}manifest.json`;
 const ON_DEMAND_CONCURRENCY = 6;
 const BACKGROUND_CONCURRENCY = 12;
 const MIN_CACHED_FILE_BYTES = 512;
 const ARTS_PER_COMMANDER_PREFETCH = 8;
-const usesNativeImageDiskCache = Platform.OS === 'ios';
 
 type CacheManifest = {
   urls: Record<string, string>;
   names: Record<string, string>;
+  accessed: Record<string, number>;
 };
 
 const downloadInflight = new Map<string, Promise<string>>();
 const resolveInflight = new Map<string, Promise<string | null>>();
 const artsInflight = new Map<string, Promise<string[]>>();
 
-let manifest: CacheManifest = { urls: {}, names: {} };
+let manifest: CacheManifest = { urls: {}, names: {}, accessed: {} };
 let manifestReady = false;
 let manifestPersistScheduled = false;
+let lastAccessPersistAt = 0;
 let initPromise: Promise<void> | null = null;
+let prunePromise: Promise<void> | null = null;
+let downloadsSincePrune = 0;
 
 const memoryUriByRemote = new Map<string, string>();
 const memoryUriByCommander = new Map<string, string>();
@@ -149,6 +157,7 @@ function rememberRemoteMapping(remoteUrl: string, localUri: string): void {
   const normalized = normalizeRemoteUrl(remoteUrl);
   memoryUriByRemote.set(normalized, localUri);
   manifest.urls[normalized] = localUri;
+  manifest.accessed[localUri] = Date.now();
   scheduleManifestPersist();
 }
 
@@ -156,6 +165,14 @@ function rememberCommanderMapping(commanderName: string, localUri: string): void
   const normalized = normalizeCommanderName(commanderName);
   memoryUriByCommander.set(normalized, localUri);
   manifest.names[normalized] = localUri;
+  manifest.accessed[localUri] = Date.now();
+  scheduleManifestPersist();
+}
+
+function touchCacheEntry(localUri: string): void {
+  manifest.accessed[localUri] = Date.now();
+  if (Date.now() - lastAccessPersistAt < 30_000) return;
+  lastAccessPersistAt = Date.now();
   scheduleManifestPersist();
 }
 
@@ -170,7 +187,7 @@ function scheduleManifestPersist(): void {
 }
 
 async function persistManifest(): Promise<void> {
-  if (!FileSystem.cacheDirectory) return;
+  if (!CACHE_ROOT) return;
   try {
     await ensureCacheDir();
     await FileSystem.writeAsStringAsync(MANIFEST_PATH, JSON.stringify(manifest));
@@ -180,7 +197,7 @@ async function persistManifest(): Promise<void> {
 }
 
 async function ensureCacheDir(): Promise<void> {
-  if (!FileSystem.cacheDirectory) return;
+  if (!CACHE_ROOT) return;
 
   const info = await FileSystem.getInfoAsync(CACHE_DIR);
   if (!info.exists) {
@@ -188,8 +205,58 @@ async function ensureCacheDir(): Promise<void> {
   }
 }
 
+async function prunePersistentCache(): Promise<void> {
+  if (!CACHE_ROOT) return;
+  if (prunePromise) return prunePromise;
+
+  prunePromise = (async () => {
+    try {
+      await ensureCacheDir();
+      const names = (await FileSystem.readDirectoryAsync(CACHE_DIR))
+        .filter((name) => name.endsWith('.img'));
+      const entries = await Promise.all(names.map(async (name) => {
+        const uri = `${CACHE_DIR}${name}`;
+        const info = await FileSystem.getInfoAsync(uri);
+        return {
+          uri,
+          modifiedAt: info.exists && typeof info.modificationTime === 'number'
+            ? info.modificationTime
+            : 0,
+          size: info.exists && typeof info.size === 'number' ? info.size : 0,
+        };
+      }));
+      const victims = new Set(selectPersistentImageCacheVictims(entries, manifest.accessed));
+      if (victims.size === 0) return;
+      await Promise.allSettled(
+        [...victims].map((uri) => FileSystem.deleteAsync(uri, { idempotent: true })),
+      );
+
+      Object.entries(manifest.urls).forEach(([remoteUrl, localUri]) => {
+        if (!victims.has(localUri)) return;
+        delete manifest.urls[remoteUrl];
+        memoryUriByRemote.delete(remoteUrl);
+      });
+      Object.entries(manifest.names).forEach(([commanderName, localUri]) => {
+        if (!victims.has(localUri)) return;
+        delete manifest.names[commanderName];
+        memoryUriByCommander.delete(commanderName);
+      });
+      victims.forEach((uri) => validatedLocalUris.delete(uri));
+      victims.forEach((uri) => delete manifest.accessed[uri]);
+      await persistManifest();
+    } catch {
+      // Cache pruning is best effort and must never block image rendering.
+    } finally {
+      downloadsSincePrune = 0;
+      prunePromise = null;
+    }
+  })();
+
+  return prunePromise;
+}
+
 async function loadManifest(): Promise<void> {
-  if (!FileSystem.cacheDirectory) {
+  if (!CACHE_ROOT) {
     manifestReady = true;
     return;
   }
@@ -203,6 +270,7 @@ async function loadManifest(): Promise<void> {
       manifest = {
         urls: parsed.urls || {},
         names: parsed.names || {},
+        accessed: parsed.accessed || {},
       };
 
       Object.entries(manifest.urls).forEach(([remoteUrl, localUri]) => {
@@ -211,19 +279,16 @@ async function loadManifest(): Promise<void> {
       Object.entries(manifest.names).forEach(([commanderName, localUri]) => {
         memoryUriByCommander.set(commanderName, localUri);
       });
+      void prunePersistentCache();
     }
   } catch {
-    manifest = { urls: {}, names: {} };
+    manifest = { urls: {}, names: {}, accessed: {} };
   } finally {
     manifestReady = true;
   }
 }
 
 export async function initDeckImageCache(): Promise<void> {
-  if (usesNativeImageDiskCache) {
-    manifestReady = true;
-    return;
-  }
   if (manifestReady) return;
   if (!initPromise) {
     initPromise = loadManifest();
@@ -235,17 +300,22 @@ export function peekDeckImageUri(
   remoteUrl?: string | null,
   commanderName?: string,
 ): string | null {
-  if (usesNativeImageDiskCache) return null;
   if (remoteUrl?.trim()) {
     const normalized = normalizeRemoteUrl(remoteUrl);
     const cached = memoryUriByRemote.get(normalized) || manifest.urls[normalized];
-    if (cached) return cached;
+    if (cached) {
+      touchCacheEntry(cached);
+      return cached;
+    }
   }
 
   if (commanderName?.trim()) {
     const normalized = normalizeCommanderName(commanderName);
     const cached = memoryUriByCommander.get(normalized) || manifest.names[normalized];
-    if (cached) return cached;
+    if (cached) {
+      touchCacheEntry(cached);
+      return cached;
+    }
   }
 
   return null;
@@ -327,6 +397,8 @@ async function downloadToCache(
       ) {
         await FileSystem.deleteAsync(cachePath, { idempotent: true });
         await FileSystem.moveAsync({ from: downloaded.uri, to: cachePath });
+        downloadsSincePrune += 1;
+        if (downloadsSincePrune >= 50) void prunePersistentCache();
         void warmExpoImageCache(cachePath);
         return cachePath;
       }
@@ -344,15 +416,6 @@ export async function cacheRemoteDeckImage(
   const normalized = normalizeRemoteUrl(remoteUrl);
   if (!normalized) return normalized;
   if (isLocalUri(normalized)) return normalized;
-  if (usesNativeImageDiskCache) {
-    if (options?.background) {
-      void Image.prefetch(normalized, {
-        cachePolicy: 'disk',
-        headers: getRemoteImageHeaders(normalized),
-      }).catch(() => false);
-    }
-    return normalized;
-  }
 
   const peeked = peekDeckImageUri(normalized);
   if (peeked) return peeked;
@@ -370,7 +433,8 @@ export async function cacheRemoteDeckImage(
         rememberRemoteMapping(normalized, localUri);
       }
       return localUri;
-    } catch {
+    } catch (error) {
+      if (process.env.NODE_ENV === 'test') throw error;
       return normalized;
     }
   })();
@@ -392,7 +456,6 @@ export async function resolveCachedRemoteImageUri(
 ): Promise<string | null> {
   const normalized = remoteUrl?.trim();
   if (!normalized) return null;
-  if (usesNativeImageDiskCache) return normalized;
 
   await initDeckImageCache();
   const cached = peekDeckImageUri(normalized);
@@ -437,16 +500,6 @@ export async function prefetchCommanderArtsByName(
     const priority = options?.background ? 'background' : 'on-demand';
 
     if (limitedArts.length > 0) {
-      if (usesNativeImageDiskCache) {
-        limitedArts.forEach((url) => {
-          void Image.prefetch(url, {
-            cachePolicy: 'disk',
-            headers: getRemoteImageHeaders(url),
-          }).catch(() => false);
-        });
-        return limitedArts;
-      }
-
       const nameCachePath = `${CACHE_DIR}cmd-${hashKey(normalizedName.toLowerCase())}.img`;
       const primaryUrl = limitedArts[0];
       const localPrimary = await downloadToCache(primaryUrl, nameCachePath, priority);

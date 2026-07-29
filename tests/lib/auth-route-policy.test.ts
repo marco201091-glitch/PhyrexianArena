@@ -6,7 +6,6 @@ describe('auth-route-policy', () => {
     expect(isPublicRoute('/auth/register')).toBe(true);
     expect(getSessionLossRedirect('/auth/register', '?redirect=%2Fdashboard')).toBeNull();
     expect(getSessionLossRedirect('/counter')).toBeNull();
-    expect(getSessionLossRedirect('/game/join/token')).toBeNull();
   });
 
   it('redirects protected routes and preserves their query', () => {

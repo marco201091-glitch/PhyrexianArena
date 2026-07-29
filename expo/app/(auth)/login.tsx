@@ -6,13 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AuthBranding } from '@/components/auth/auth-branding';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
-import { t } from '@/lib/i18n/translations';
 import { getRememberMePreference, setRememberMePreference } from '@/lib/auth-persistence';
 import { showAppAlert } from '@/lib/app-alert';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/theme';
 import { signInWithGoogleOnAndroid } from '@/lib/google-auth';
 import { apiPost } from '@/lib/api';
+import { useLanguage } from '@/contexts/language-context';
 
 function resolveRedirectPath(redirect: string | string[] | undefined): Href {
   const value = Array.isArray(redirect) ? redirect[0] : redirect;
@@ -23,7 +23,7 @@ function resolveRedirectPath(redirect: string | string[] | undefined): Href {
 }
 
 export default function LoginScreen() {
-  const copy = (key: Parameters<typeof t>[1]) => t('en', key);
+  const { copy } = useLanguage();
   const router = useRouter();
   const { redirect } = useLocalSearchParams<{ redirect?: string }>();
   const redirectPath = resolveRedirectPath(redirect);
@@ -76,7 +76,7 @@ export default function LoginScreen() {
       const result = await signInWithGoogleOnAndroid();
       if (result === 'success') router.replace(redirectPath);
     } catch {
-      showAppAlert(copy('error'), 'Failed to sign in with Google');
+      showAppAlert(copy('error'), copy('googleSignInFailed'));
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ export default function LoginScreen() {
 
   return (
     <Screen background="solid">
-      <AuthBranding forceEnglish />
+      <AuthBranding />
 
       <PhyrexianPanel variant="strong" style={styles.formPanel}>
         <View style={styles.form}>
@@ -124,7 +124,7 @@ export default function LoginScreen() {
           />
           {Platform.OS === 'android' ? (
             <Button
-              label="Continue with Google"
+              label={copy('continueWithGoogle')}
               icon="logo-google"
               variant="outline"
               onPress={handleGoogleLogin}
@@ -132,7 +132,7 @@ export default function LoginScreen() {
             />
           ) : null}
           <Button
-            label="Quick game"
+            label={copy('quickGame')}
             icon="heart-outline"
             variant="outline"
             onPress={() => router.push('/counter' as Href)}
