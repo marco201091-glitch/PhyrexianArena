@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -168,7 +167,6 @@ export function CommanderPicker({
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
           bottomOffset={12}
-          enabled={Platform.OS !== 'android'}
         >
           <View style={styles.results}>
             {results.map((commander) => (
@@ -274,7 +272,6 @@ export function CommanderPicker({
               keyboardShouldPersistTaps="always"
               keyboardDismissMode="none"
               bottomOffset={12}
-              enabled={Platform.OS !== 'android'}
             >
               <View style={styles.results}>
                 {partnerResults.map((result) => (

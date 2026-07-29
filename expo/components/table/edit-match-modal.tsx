@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Platform,
   Pressable,
   StyleSheet,
   Switch,
@@ -248,7 +247,6 @@ export function EditMatchModal({
         <KeyboardAwareScrollView
           ref={formScrollRef}
           bottomOffset={spacing.lg}
-          enabled={Platform.OS !== 'android'}
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           keyboardShouldPersistTaps="always"
@@ -376,7 +374,6 @@ export function EditMatchModal({
             placeholder={labels.notesPlaceholder}
             hint={labels.richTextHint}
             onFocus={() => {
-              if (Platform.OS === 'android') return;
               setTimeout(() => {
                 formScrollRef.current?.assureFocusedInputVisible();
               }, 120);

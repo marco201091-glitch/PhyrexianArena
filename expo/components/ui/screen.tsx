@@ -1,6 +1,5 @@
 import { PropsWithChildren, useMemo } from 'react';
 import {
-  Platform,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -69,7 +68,6 @@ export function Screen({
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       bottomOffset={spacing.lg}
-      enabled={Platform.OS !== 'android'}
       showsVerticalScrollIndicator={false}
     >
       {children}
