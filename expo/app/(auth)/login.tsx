@@ -83,7 +83,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen background="solid">
+    <Screen background="solid" keyboardAvoiding>
       <AuthBranding />
 
       <PhyrexianPanel variant="strong" style={styles.formPanel}>
