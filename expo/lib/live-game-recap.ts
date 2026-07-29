@@ -13,19 +13,14 @@ import {
 } from '@/lib/arena-participants';
 import type { ParticipantKey } from '@/lib/participant-keys';
 
-export type LiveGameRecapPoint = {
-  occurredAt: string;
-  life: number;
-};
-
 export type LiveGameRecapPlayer = {
   participantKey: ParticipantKey;
   displayName: string;
   commander: string;
   commanderImage: string | null;
   finalLife: number;
+  finalInfect: number;
   eliminatedAt: string | null;
-  timeline: LiveGameRecapPoint[];
 };
 
 export type LiveGameRecap = {
@@ -117,27 +112,15 @@ export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
   const orderedEvents = [...record.state.events].sort((left, right) => (
     left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id)
   ));
-  const players = record.state.players.map((player) => {
-    const timeline: LiveGameRecapPoint[] = [{
-      occurredAt: record.started_at ?? record.created_at,
-      life: record.starting_life,
-    }];
-    if (player.life !== record.starting_life) {
-      timeline.push({
-        occurredAt: record.ended_at ?? record.updated_at,
-        life: player.life,
-      });
-    }
-    return {
-      participantKey: player.participantKey,
-      displayName: player.displayName,
-      commander: player.commander,
-      commanderImage: player.commanderImage,
-      finalLife: player.life,
-      eliminatedAt: player.eliminatedAt,
-      timeline,
-    };
-  });
+  const players = record.state.players.map((player) => ({
+    participantKey: player.participantKey,
+    displayName: player.displayName,
+    commander: player.commander,
+    commanderImage: player.commanderImage,
+    finalLife: player.life,
+    finalInfect: player.infect,
+    eliminatedAt: player.eliminatedAt,
+  }));
   return {
     totalEvents: record.state.summary?.totalEvents ?? orderedEvents.length,
     startedAt: record.started_at,

@@ -137,7 +137,7 @@ export default function CounterScreen() {
     const formatLabel = format === 'commander' ? 'Commander' : copy('classicMagic');
     const winnerLabel = winner?.displayName ?? copy('quickGameWinnerUnknown');
     const recapText = [
-      `Phyrexian Arena · ${copy('quickGameSummary')}`,
+      `Tracker & Analytics · ${copy('quickGameSummary')}`,
       copy('quickGameFormat').replace('{value}', formatLabel),
       copy('quickGameDuration').replace('{value}', String(durationMinutes)),
       copy('quickGameWinner').replace('{value}', winnerLabel),
@@ -153,7 +153,7 @@ export default function CounterScreen() {
           <View style={styles.recapCopy}><Text style={styles.recapName} numberOfLines={1}>{player.displayName}</Text><Text style={styles.recapCommander} numberOfLines={1}>{player.commander}</Text><Text style={styles.recapMeta}>{player.infect} {copy('quickGamePoison')} · {Object.values(player.commanderDamageFrom).reduce((sum, value) => sum + value, 0)} {copy('quickGameCommanderDamage')}</Text></View>
           <Text style={styles.recapLife}>{player.life}</Text>
         </View>)}
-        <Button label={copy('quickGameExport')} icon="share-outline" onPress={() => void Share.share({ title: 'Phyrexian Arena', message: recapText })} />
+        <Button label={copy('quickGameExport')} icon="share-outline" onPress={() => void Share.share({ title: 'Tracker & Analytics', message: recapText })} />
         <Button label={copy('quickGameNew')} variant="outline" onPress={() => {
           setRecap(null);
           setState(null);
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   searchName: { flex: 1, color: colors.foreground, fontWeight: '700' },
   colorRow: { flexDirection: 'row', gap: spacing.xs },
   color: { flex: 1, height: 28, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  colorActive: { borderWidth: 3, borderColor: '#c4b5fd' },
+  colorActive: { borderWidth: 3, borderColor: '#a7e3ac' },
   game: { flex: 1, backgroundColor: colors.black },
   recapPlayer: { minHeight: 78, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.cardInset },
   recapAccent: { alignSelf: 'stretch', width: 7 },

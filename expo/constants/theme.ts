@@ -8,19 +8,19 @@ export const colors = {
   modalSurface: '#10101a',
   modalOverlay: 'rgba(0, 0, 0, 0.88)',
   border: '#2a2a3a',
-  borderViolet: '#3b2d5c',
+  borderViolet: '#24592b',
   borderSoft: '#2a2a3a',
   foreground: '#f4f4f5',
   muted: '#a1a1aa',
-  primary: '#7c3aed',
-  primaryLight: '#a78bfa',
-  primaryMuted: '#c4b5fd',
-  primaryDark: '#5b21b6',
-  primarySurface: '#2e1065',
-  primaryForeground: '#ede9fe',
+  primary: '#429f4a',
+  primaryLight: '#72d17b',
+  primaryMuted: '#a7e3ac',
+  primaryDark: '#286b31',
+  primarySurface: '#1a2e05',
+  primaryForeground: '#f7fee7',
   teal: '#14b8a6',
   tealMuted: '#0f1a18',
-  violetGlow: '#1a1428',
+  violetGlow: '#0d1a10',
   destructive: '#ef4444',
   success: '#6ee7b7',
   successBright: '#34d399',
@@ -37,20 +37,10 @@ export const colors = {
   surfaceChip: '#1f1f2b',
   surfaceTrack: '#1f1f2e',
   surfaceTrackMuted: '#18181f',
-  selectionTint: 'rgba(124, 58, 237, 0.16)',
-  selectionTintStrong: 'rgba(124, 58, 237, 0.25)',
-  selectionBorder: 'rgba(124, 58, 237, 0.35)',
+  selectionTint: 'rgba(66, 159, 74, 0.16)',
+  selectionTintStrong: 'rgba(66, 159, 74, 0.25)',
+  selectionBorder: 'rgba(66, 159, 74, 0.35)',
 };
-
-/**
- * Focal point for app-background.png.
- * Adjust when replacing the asset (e.g. mobile crop centered on the tower).
- */
-export const backgroundArt = {
-  scale: 1,
-  offsetX: 0,
-  offsetY: 0,
-} as const;
 
 export const spacing = {
   xs: 4,

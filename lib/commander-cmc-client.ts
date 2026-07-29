@@ -6,7 +6,7 @@ import {
 
 const SCRYFALL_HEADERS = {
   Accept: 'application/json',
-  'User-Agent': 'Phyrexian Arena (https://phyrexianarena.app)',
+  'User-Agent': 'MTG Life Counter & Analytics: Commander (https://phyrexianarena.app)',
 };
 
 const commanderCmcCache = new Map<string, number | null>();

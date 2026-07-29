@@ -3,7 +3,7 @@ import { buildHistoricalLiveGameRecord, buildLiveGameRecap } from '@/lib/live-ga
 import type { LiveGameRecord } from '@/lib/live-game';
 
 describe('live-game recap', () => {
-  it('shows a compact start-to-finish life recap', () => {
+  it('shows compact final counters without inventing a life timeline', () => {
     const record = {
       id: 'game', group_id: 'group', created_by: 'user', status: 'ended', starting_life: 40,
       match_id: 'match', started_at: '2026-01-01T00:00:00.000Z', ended_at: '2026-01-01T00:10:00.000Z',
@@ -17,7 +17,10 @@ describe('live-game recap', () => {
         ],
       },
     } satisfies LiveGameRecord;
-    expect(buildLiveGameRecap(record).players[0].timeline.map((point) => point.life)).toEqual([40, 38]);
+    expect(buildLiveGameRecap(record).players[0]).toMatchObject({
+      finalLife: 38,
+      finalInfect: 0,
+    });
   });
 
   it('rebuilds a recap after the temporary live-game row is purged', () => {

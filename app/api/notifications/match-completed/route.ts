@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const result = match.is_draw ? 'Pareggio' : `Vince ${winner?.display_name || winner?.username || 'un giocatore'}`;
   await notifyUsers(admin, (participants ?? []).map((row) => row.user_id).filter(Boolean) as string[], {
     type: 'match_completed',
-    title: `Partita conclusa · ${group?.name ?? 'Arena'}`,
+    title: `Partita conclusa · ${group?.name ?? 'Playgroup'}`,
     body: result,
     data: { groupId: match.group_id, matchId: match.id },
     dedupeKey: `match_completed:${match.id}`,

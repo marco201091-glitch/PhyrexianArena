@@ -1,7 +1,7 @@
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -19,6 +19,8 @@ import { QueryProvider } from '@/components/query-provider';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { AppNotificationListener } from '@/components/app-notification-listener';
 import { ArchidektAutoSync } from '@/components/archidekt-auto-sync';
+import { ManaLogo } from '@/components/ui/mana-logo';
+import { Cinzel_700Bold, useFonts } from '@expo-google-fonts/cinzel';
 
 const pushNotificationsEnabled =
   process.env.EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS !== 'true';
@@ -57,10 +59,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading || (!user && !isPublicRoute)) {
     return (
       <View style={styles.authLoadingSurface}>
-        <View style={styles.bootMark}>
-          <Text style={styles.bootGlyph}>Φ</Text>
-        </View>
-        <Text style={styles.bootTitle}>PHYREXIAN ARENA</Text>
+        <ManaLogo
+          size="md"
+          showText
+          layout="stacked"
+          subtitle="Tracker & Analytics"
+          centered
+        />
         <ActivityIndicator color={colors.primaryLight} size="small" />
       </View>
     );
@@ -70,6 +75,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayout() {
+  useFonts({ Cinzel_700Bold });
+
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(colors.black);
   }, []);
@@ -130,26 +137,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 14,
     backgroundColor: colors.black,
-  },
-  bootMark: {
-    width: 64,
-    height: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.42)',
-    backgroundColor: 'rgba(124,58,237,0.16)',
-  },
-  bootGlyph: {
-    color: colors.primaryLight,
-    fontSize: 34,
-    fontWeight: '800',
-  },
-  bootTitle: {
-    color: colors.foreground,
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 2.2,
   },
 });

@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
 
@@ -11,6 +12,13 @@ type ArenaTabBarProps = {
 };
 
 const TABS: ArenaTab[] = ['matches', 'players', 'decks', 'awards', 'meta'];
+const TAB_ICONS: Record<ArenaTab, keyof typeof Ionicons.glyphMap> = {
+  matches: 'time-outline',
+  players: 'people-outline',
+  decks: 'layers-outline',
+  awards: 'ribbon-outline',
+  meta: 'analytics-outline',
+};
 
 export function ArenaTabBar({ activeTab, labels, onChange }: ArenaTabBarProps) {
   return (
@@ -24,6 +32,11 @@ export function ArenaTabBar({ activeTab, labels, onChange }: ArenaTabBarProps) {
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === tab }}
           >
+            <Ionicons
+              name={TAB_ICONS[tab]}
+              size={17}
+              color={activeTab === tab ? colors.primaryLight : colors.muted}
+            />
             <Text
               style={[styles.label, activeTab === tab && styles.labelActive]}
               numberOfLines={2}
@@ -53,7 +66,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 10,
+    paddingVertical: 7,
+    gap: 3,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceMuted,
@@ -61,6 +75,10 @@ const styles = StyleSheet.create({
   tabActive: {
     borderColor: colors.primaryLight,
     backgroundColor: colors.primarySurface,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.24,
+    shadowRadius: 8,
+    elevation: 3,
   },
   label: {
     flexShrink: 1,

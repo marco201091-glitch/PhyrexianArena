@@ -1086,12 +1086,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
   toolBtnActive: {
-    backgroundColor: 'rgba(124,58,237,0.28)',
-    borderColor: 'rgba(167,139,250,0.45)',
+    backgroundColor: 'rgba(66, 159, 74,0.28)',
+    borderColor: 'rgba(167, 227, 172,0.45)',
   },
   toolBtnUtility: {
     backgroundColor: 'rgba(91,33,182,0.16)',
-    borderColor: 'rgba(167,139,250,0.24)',
+    borderColor: 'rgba(167, 227, 172,0.24)',
   },
   toolBtnDanger: {
     backgroundColor: 'rgba(127,29,29,0.2)',
@@ -1194,7 +1194,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingLeft: spacing.md,
     paddingRight: 5,
-    backgroundColor: 'rgba(124,58,237,0.16)',
+    backgroundColor: 'rgba(66, 159, 74,0.16)',
   },
   activePickerCancel: {
     minHeight: 36,
@@ -1237,7 +1237,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radii.md,
     paddingHorizontal: spacing.sm,
-    backgroundColor: 'rgba(124,58,237,0.22)',
+    backgroundColor: 'rgba(66, 159, 74,0.22)',
   },
   damageFeedbackUndoText: {
     color: colors.primaryLight,
@@ -1256,12 +1256,12 @@ const styles = StyleSheet.create({
     gap: 5,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.32)',
-    backgroundColor: 'rgba(124,58,237,0.13)',
+    borderColor: 'rgba(167, 227, 172,0.32)',
+    backgroundColor: 'rgba(66, 159, 74,0.13)',
   },
   randomizerButtonActive: {
-    borderColor: 'rgba(196,181,253,0.78)',
-    backgroundColor: 'rgba(124,58,237,0.34)',
+    borderColor: 'rgba(217, 249, 157,0.78)',
+    backgroundColor: 'rgba(66, 159, 74,0.34)',
   },
   randomizerButtonText: {
     color: colors.foreground,
@@ -1283,9 +1283,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: 'rgba(196,181,253,0.72)',
+    borderColor: 'rgba(217, 249, 157,0.72)',
     backgroundColor: '#25134a',
-    shadowColor: '#8b5cf6',
+    shadowColor: '#429f4a',
     shadowOpacity: 0.45,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },

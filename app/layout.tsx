@@ -22,13 +22,16 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Phyrexian Arena - EDH Tracker',
-  description: 'Track your Commander games with the perfection of Phyrexia',
+  title: 'MTG Life Counter & Analytics: Commander',
+  description: 'Life counter, deck analytics, match history, and playgroup tools for Commander.',
+  authors: [{ name: 'blackistoostrong' }],
+  creator: 'blackistoostrong',
+  publisher: 'blackistoostrong',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Phyrexian Arena',
+    title: 'MTG: Commander',
   },
   formatDetection: {
     telephone: false,

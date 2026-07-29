@@ -30,7 +30,7 @@ function normalizeGuestName(name) {
 
 const SCRYFALL_HEADERS = {
   Accept: 'application/json',
-  'User-Agent': 'Phyrexian Arena (https://phyrexianarena.app)',
+  'User-Agent': 'MTG Life Counter & Analytics: Commander (https://phyrexianarena.app)',
 };
 
 function extractScryfallImage(card) {
@@ -101,7 +101,7 @@ async function seedDemoTemplate(admin, demoUserId) {
   const { data: arena, error: arenaError } = await admin
     .from('groups')
     .insert({
-      name: 'Arena Demo Phyrexian',
+      name: 'Playgroup Demo',
       description: 'Sandbox di prova: crea partite, mazzi e ospiti. I dati vengono resettati periodicamente.',
       created_by: demoUserId,
       is_public: true,
@@ -283,7 +283,7 @@ console.log('Demo account ready.');
 console.log(`DEMO_USER_ID=${demoUser.id}`);
 console.log(`DEMO_USER_EMAIL=${DEMO_EMAIL}`);
 console.log(`DEMO_USER_PASSWORD=${demoPassword}`);
-console.log(`Arena invite code: ${seeded.inviteCode}`);
+console.log(`Playgroup invite code: ${seeded.inviteCode}`);
 console.log('');
 console.log('Add these to the local environment and the matching Dokploy application:');
 console.log('DEMO_MODE_ENABLED=true');

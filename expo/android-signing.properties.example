@@ -1,0 +1,6 @@
+# Copy this file outside the repository and pass its absolute path through
+# PHYREXIAN_SIGNING_PROPERTIES. Never commit the populated file or keystore.
+storeFile=C:\\secure\\phyrexian-arena-release.jks
+storePassword=CHANGE_ME
+keyAlias=CHANGE_ME
+keyPassword=CHANGE_ME

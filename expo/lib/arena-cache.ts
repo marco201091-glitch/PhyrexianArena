@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ArenaGuest } from '@/lib/arena-participants';
 import type { ArenaDetail, ArenaMatch, ArenaProfile, MemberDeck } from '@/lib/types/arena';
 import type { ArenaGroup } from '@/lib/types/group';
+import { ARENA_MATCH_CACHE_LIMIT } from '@/lib/arena-matches';
 
 const CACHE_PREFIX = 'phyrexian-arena:arena-cache:v1:';
 const GROUPS_CACHE_PREFIX = 'phyrexian-arena:groups-cache:v1:';
@@ -65,6 +66,7 @@ export async function saveArenaCache(
   try {
     await AsyncStorage.setItem(cacheKey(snapshot.groupId, snapshot.userId), JSON.stringify({
       ...snapshot,
+      matches: snapshot.matches.slice(0, ARENA_MATCH_CACHE_LIMIT),
       savedAt: new Date().toISOString(),
     } satisfies ArenaCacheSnapshot));
   } catch {

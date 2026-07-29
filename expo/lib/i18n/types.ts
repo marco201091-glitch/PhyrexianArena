@@ -194,6 +194,8 @@ export type TranslationKey =
   | 'period'
   | 'totalMatchesLabel'
   | 'recentMatches'
+  | 'loadOlderMatches'
+  | 'loadingOlderMatches'
   | 'winner'
   | 'publicPage'
   | 'noComment'

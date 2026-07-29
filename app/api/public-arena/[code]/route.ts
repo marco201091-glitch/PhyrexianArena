@@ -34,7 +34,7 @@ export async function GET(
     .maybeSingle();
 
   if (groupError || !group || !group.is_public) {
-    return NextResponse.json({ error: 'Public arena not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Public playgroup not found' }, { status: 404 });
   }
 
   const { data: matches, error: matchesError } = await supabase

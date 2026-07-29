@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, touch } from '@/constants/theme';
@@ -11,6 +12,9 @@ type InputProps = TextInputProps & {
 };
 
 export function Input({ label, error, hint, icon, style, accessibilityLabel, accessibilityHint, ...props }: InputProps) {
+  const [focused, setFocused] = useState(false);
+  const { onFocus, onBlur, ...inputProps } = props;
+
   return (
     <View style={styles.wrapper}>
       {label ? (
@@ -20,8 +24,9 @@ export function Input({ label, error, hint, icon, style, accessibilityLabel, acc
       ) : null}
       <View style={[
         styles.inputShell,
+        focused && styles.inputShellFocused,
         error && styles.inputShellError,
-        props.editable === false && styles.disabled,
+        inputProps.editable === false && styles.disabled,
       ]}>
         {icon ? <Ionicons name={icon} size={19} color={colors.muted} /> : null}
         <TextInput
@@ -29,10 +34,18 @@ export function Input({ label, error, hint, icon, style, accessibilityLabel, acc
           selectionColor={colors.primaryLight}
           accessibilityLabel={accessibilityLabel ?? label}
           accessibilityHint={accessibilityHint ?? error ?? hint}
-          accessibilityState={{ disabled: props.editable === false }}
-          style={[styles.input, props.multiline && styles.inputMultiline, style]}
+          accessibilityState={{ disabled: inputProps.editable === false }}
+          style={[styles.input, inputProps.multiline && styles.inputMultiline, style]}
           maxFontSizeMultiplier={layout.maxFontSizeMultiplier}
-          {...props}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
+          {...inputProps}
         />
         {error ? <Ionicons name="alert-circle" size={18} color={colors.destructive} /> : null}
       </View>
@@ -71,6 +84,14 @@ const styles = StyleSheet.create({
   },
   inputShellError: {
     borderColor: colors.destructive,
+  },
+  inputShellFocused: {
+    borderColor: colors.primaryLight,
+    backgroundColor: 'rgba(13, 26, 16, 0.86)',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.24,
+    shadowRadius: 8,
+    elevation: 3,
   },
   input: {
     flex: 1,

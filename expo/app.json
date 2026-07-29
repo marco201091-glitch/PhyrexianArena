@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Phyrexian Arena",
+    "name": "MTG: Commander",
     "slug": "phyrexian-arena",
     "version": "7.0.0",
     "platforms": ["android", "ios", "web"],
@@ -42,6 +42,10 @@
     "android": {
       "package": "com.phyrexianarena.app",
       "versionCode": 70000,
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -101,10 +105,11 @@
       "expo-secure-store",
       "expo-notifications",
       "expo-asset",
+      "./plugins/with-release-signing",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Phyrexian Arena to access your photos to set your profile avatar.",
+          "photosPermission": "Allow MTG: Commander to access your photos to set your profile avatar.",
           "microphonePermission": false
         }
       ]

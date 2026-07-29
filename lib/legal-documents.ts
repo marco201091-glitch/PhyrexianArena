@@ -1,4 +1,11 @@
-import { getLegalContactLabel, LEGAL_LAST_UPDATED, LEGAL_SITE_NAME } from '@/lib/legal-site';
+import {
+  FAN_CONTENT_NOTICE,
+  getLegalContactLabel,
+  LEGAL_BRAND_NAME,
+  LEGAL_CONTROLLER_NAME,
+  LEGAL_LAST_UPDATED,
+  LEGAL_SITE_NAME,
+} from '@/lib/legal-site';
 
 type Language = 'it' | 'en';
 type Copy = Record<Language, string>;
@@ -57,8 +64,8 @@ export const privacyPolicyDocument: LegalDocument = {
       title: { it: 'Titolare del trattamento', en: 'Data controller' },
       paragraphs: [
         {
-          it: `${LEGAL_SITE_NAME} e il gestore del servizio (di seguito "noi") trattano i dati personali degli utenti che creano un account o usano la piattaforma di tracciamento partite Commander/EDH.`,
-          en: `${LEGAL_SITE_NAME} and the service operator ("we") process personal data for users who create an account or use the Commander/EDH game tracking platform.`,
+          it: `Il titolare del trattamento è ${LEGAL_CONTROLLER_NAME}, contattabile all’indirizzo indicato in questo documento. ${LEGAL_SITE_NAME} è il nome del servizio.`,
+          en: `The data controller is ${LEGAL_CONTROLLER_NAME}, reachable at the contact address shown in this document. ${LEGAL_SITE_NAME} is the service name.`,
         },
       ],
     },
@@ -71,8 +78,8 @@ export const privacyPolicyDocument: LegalDocument = {
           en: 'Account data: email, username, password (hash), optional display name, uploaded avatar, registration date, and authentication metadata (e.g. Google sign-in).',
         },
         {
-          it: 'Dati di utilizzo: arene create o a cui partecipi, mazzi, risultati delle partite, statistiche, note collegate al gioco e log di accesso (username e timestamp, deduplicati ogni ora).',
-          en: 'Usage data: arenas you create or join, decks, match results, statistics, game-related notes, and access logs (username and timestamp, deduplicated hourly).',
+          it: 'Dati di utilizzo: playgroup creati o a cui partecipi, mazzi, risultati delle partite, statistiche, note collegate al gioco e log di accesso (username e timestamp, deduplicati ogni ora).',
+          en: 'Usage data: playgroups you create or join, decks, match results, statistics, game-related notes, and access logs (username and timestamp, deduplicated hourly).',
         },
         {
           it: 'Dati tecnici: indirizzo IP e informazioni del browser/device per sicurezza, rate limiting e verifica captcha nelle operazioni sensibili.',
@@ -81,6 +88,14 @@ export const privacyPolicyDocument: LegalDocument = {
         {
           it: 'Metriche diagnostiche aggregate della sincronizzazione partite: piattaforma, conteggi di sincronizzazioni, conflitti ed errori, profondita massima della coda, durata massima e ultimo messaggio di errore abbreviato. Non includono eventi o contenuti della partita.',
           en: 'Aggregated match-sync diagnostics: platform, sync, conflict and error counts, maximum queue depth and duration, and the latest shortened error message. They do not include match events or content.',
+        },
+        {
+          it: 'Dati dell’app mobile: versione dell’app e del sistema operativo, modello o categoria del dispositivo, log di arresto anomalo e prestazioni quando la diagnostica Sentry è attiva, token Expo Push e piattaforma quando autorizzi le notifiche. Sentry è configurato per non inviare dati personali predefiniti.',
+          en: 'Mobile-app data: app and operating-system version, device model or category, crash and performance diagnostics when Sentry diagnostics are enabled, and Expo Push token and platform when you allow notifications. Sentry is configured not to send default personal information.',
+        },
+        {
+          it: 'Fotocamera e immagini: la fotocamera viene usata solo su tua iniziativa per funzioni come QR; l’accesso alle foto viene richiesto solo per scegliere un avatar. Le immagini non selezionate non vengono caricate.',
+          en: 'Camera and images: the camera is used only at your request for features such as QR; photo access is requested only to choose an avatar. Images you do not select are not uploaded.',
         },
         {
           it: 'Preferenze locali: lingua dell’interfaccia e, se attivata, l’opzione "Ricordami" tramite cookie/storage del browser. Per il dettaglio consulta l’Informativa sui cookie.',
@@ -93,8 +108,8 @@ export const privacyPolicyDocument: LegalDocument = {
       title: { it: 'Finalita del trattamento', en: 'Purposes of processing' },
       paragraphs: [
         {
-          it: 'Fornire il servizio (account, sincronizzazione dati, arene condivise, statistiche).',
-          en: 'Provide the service (accounts, data sync, shared arenas, statistics).',
+          it: 'Fornire il servizio (account, sincronizzazione dati, playgroup condivisi, statistiche).',
+          en: 'Provide the service (accounts, data sync, shared playgroups, statistics).',
         },
         {
           it: 'Garantire sicurezza, prevenire abusi e gestire accessi amministrativi.',
@@ -103,6 +118,10 @@ export const privacyPolicyDocument: LegalDocument = {
         {
           it: 'Inviare email transazionali (es. reset password) tramite il provider email configurato quando necessario.',
           en: 'Send transactional emails (e.g. password reset) through the configured email provider when needed.',
+        },
+        {
+          it: 'Consegnare notifiche operative richieste dall’utente, come inviti ai playgroup e aggiornamenti delle partite.',
+          en: 'Deliver operational notifications requested by the user, such as playgroup invitations and match updates.',
         },
         {
           it: 'Migliorare affidabilita e diagnostica del servizio (log tecnici e di accesso con retention limitata).',
@@ -133,12 +152,22 @@ export const privacyPolicyDocument: LegalDocument = {
       title: { it: 'Fornitori e responsabili del trattamento', en: 'Processors and third parties' },
       paragraphs: [
         {
-          it: 'Il servizio si appoggia a fornitori che trattano dati per nostro conto o come autonomi titolari, tra cui: Supabase (database e autenticazione), Dokploy (hosting), Resend (email transazionali), Google (OAuth, se usato), Cloudflare Turnstile (protezione anti-bot).',
-          en: 'The service relies on providers that process data on our behalf or as independent controllers, including: Supabase (database and auth), Dokploy (hosting), Resend (transactional email), Google (OAuth, if used), and Cloudflare Turnstile (bot protection).',
+          it: 'Il servizio usa infrastruttura Supabase self-hosted (database, autenticazione e storage) distribuita tramite Dokploy, Resend (email transazionali), Google (OAuth opzionale), Cloudflare Turnstile (protezione anti-bot), Expo Push (notifiche mobili) e Sentry (diagnostica, solo se abilitata). Tali soggetti possono operare come responsabili o autonomi titolari secondo il servizio fornito.',
+          en: 'The service uses self-hosted Supabase infrastructure (database, authentication, and storage) deployed through Dokploy, Resend (transactional email), Google (optional OAuth), Cloudflare Turnstile (bot protection), Expo Push (mobile notifications), and Sentry (diagnostics, only when enabled). They may act as processors or independent controllers depending on the service provided.',
         },
         {
           it: 'Import deck e metadati carte possono interrogare servizi esterni (es. Scryfall, Archidekt, Moxfield, EDHREC) senza trasferire dati personali identificativi oltre a quanto necessario alla richiesta.',
           en: 'Deck imports and card metadata may query external services (e.g. Scryfall, Archidekt, Moxfield, EDHREC) without sharing identifiable personal data beyond what the request requires.',
+        },
+      ],
+    },
+    {
+      id: 'transfers',
+      title: { it: 'Trasferimenti internazionali', en: 'International transfers' },
+      paragraphs: [
+        {
+          it: 'Alcuni fornitori possono trattare dati fuori dallo Spazio Economico Europeo. In tali casi il trasferimento avviene sulla base di una decisione di adeguatezza, clausole contrattuali standard o altra garanzia prevista dal GDPR, secondo le condizioni del fornitore applicabile.',
+          en: 'Some providers may process data outside the European Economic Area. In those cases, transfers rely on an adequacy decision, Standard Contractual Clauses, or another GDPR-recognized safeguard, according to the applicable provider terms.',
         },
       ],
     },
@@ -157,6 +186,10 @@ export const privacyPolicyDocument: LegalDocument = {
         {
           it: 'Le metriche diagnostiche aggregate della sincronizzazione vengono conservate per 30 giorni dall’ultimo aggiornamento e poi eliminate automaticamente.',
           en: 'Aggregated sync diagnostics are kept for 30 days after their latest update and then deleted automatically.',
+        },
+        {
+          it: 'I token delle notifiche restano associati all’account finché sono validi o finché l’account viene eliminato. Gli eventi diagnostici, se abilitati, seguono la retention configurata presso Sentry e vengono mantenuti solo per il tempo necessario a identificare e correggere problemi.',
+          en: 'Notification tokens remain associated with the account while valid or until the account is deleted. Diagnostic events, when enabled, follow the retention configured with Sentry and are kept only as long as needed to identify and fix issues.',
         },
         {
           it: 'Backup e log tecnici dei fornitori possono avere tempi di conservazione propri, compatibili con le finalita indicate.',
@@ -245,8 +278,8 @@ export const termsOfUseDocument: LegalDocument = {
       title: { it: 'Descrizione del servizio', en: 'Service description' },
       paragraphs: [
         {
-          it: `${LEGAL_SITE_NAME} e uno strumento online per tracciare partite Commander/EDH, gestire mazzi, arene e statistiche tra giocatori. Il servizio e fornito in evoluzione e puo includere funzioni beta o demo.`,
-          en: `${LEGAL_SITE_NAME} is an online tool to track Commander/EDH games, manage decks, arenas, and player statistics. The service is evolving and may include beta or demo features.`,
+          it: `${LEGAL_SITE_NAME}, pubblicato da ${LEGAL_BRAND_NAME}, è uno strumento online gratuito per tracciare partite Commander/EDH, gestire mazzi, playgroup e statistiche tra giocatori. Il servizio è in evoluzione e può includere funzioni beta o demo.`,
+          en: `${LEGAL_SITE_NAME}, published by ${LEGAL_BRAND_NAME}, is a free online tool to track Commander/EDH games, manage decks, playgroups, and player statistics. The service is evolving and may include beta or demo features.`,
         },
       ],
     },
@@ -303,12 +336,48 @@ export const termsOfUseDocument: LegalDocument = {
       title: { it: 'Servizi e marchi di terzi', en: 'Third-party services and marks' },
       paragraphs: [
         {
+          it: FAN_CONTENT_NOTICE,
+          en: FAN_CONTENT_NOTICE,
+        },
+        {
           it: 'Magic: The Gathering, Commander e i relativi marchi appartengono a Wizards of the Coast. Scryfall, EDHREC, Archidekt, Moxfield e altri servizi citati sono indipendenti da noi.',
           en: 'Magic: The Gathering, Commander, and related marks belong to Wizards of the Coast. Scryfall, EDHREC, Archidekt, Moxfield, and other cited services are independent of us.',
         },
         {
           it: `${LEGAL_SITE_NAME} non e affiliato, approvato o sponsorizzato da Wizards of the Coast o da altri titolari di marchi menzionati.`,
           en: `${LEGAL_SITE_NAME} is not affiliated with, endorsed by, or sponsored by Wizards of the Coast or other mentioned trademark owners.`,
+        },
+        {
+          it: 'Quando chiedi di importare un mazzo o aprire un servizio esterno, autorizzi la richiesta necessaria. Restano applicabili i termini e le informative del servizio terzo.',
+          en: 'When you request a deck import or open an external service, you authorize the required request. The third party’s terms and privacy policy continue to apply.',
+        },
+      ],
+    },
+    {
+      id: 'intellectual-property',
+      title: { it: 'Proprietà intellettuale e licenze', en: 'Intellectual property and licenses' },
+      paragraphs: [
+        {
+          it: `Il codice originale del progetto è distribuito da ${LEGAL_BRAND_NAME} secondo la licenza indicata nel repository. Contenuti, marchi e componenti di terzi restano soggetti alle rispettive licenze e non diventano parte della licenza del progetto.`,
+          en: `Original project code is distributed by ${LEGAL_BRAND_NAME} under the license identified in the repository. Third-party content, marks, and components remain subject to their respective licenses and do not become part of the project license.`,
+        },
+        {
+          it: 'Non puoi usare il servizio per creare proxy, contraffazioni o copie destinate a sostituire prodotti ufficiali.',
+          en: 'You may not use the service to create proxies, counterfeits, or copies intended to replace official products.',
+        },
+      ],
+    },
+    {
+      id: 'reporting',
+      title: { it: 'Segnalazioni e rimozione contenuti', en: 'Reporting and content removal' },
+      paragraphs: [
+        {
+          it: 'Puoi segnalare contenuti illeciti, offensivi o che violano proprietà intellettuale scrivendo al contatto indicato in questo documento e specificando contenuto, posizione, motivo e tuoi recapiti. Le segnalazioni vengono valutate e, quando fondate, il contenuto può essere rimosso e l’account limitato o chiuso.',
+          en: 'You may report unlawful, offensive, or intellectual-property-infringing content through the contact shown in this document, identifying the content, its location, the reason, and your contact details. Reports are reviewed and, when substantiated, content may be removed and the account restricted or terminated.',
+        },
+        {
+          it: 'Gli account che pubblicano ripetutamente contenuti illeciti o lesivi di diritti di terzi possono essere sospesi o chiusi.',
+          en: 'Accounts that repeatedly publish unlawful or third-party-rights-infringing content may be suspended or terminated.',
         },
       ],
     },
@@ -403,6 +472,10 @@ export const cookiePolicyDocument: LegalDocument = {
         {
           it: 'Lingua (funzionali): preferenza IT/EN salvata in localStorage (`phyrexian-arena-language`).',
           en: 'Language (functional): IT/EN preference stored in localStorage (`phyrexian-arena-language`).',
+        },
+        {
+          it: 'Cache dell’app (funzionale): playgroup, record recenti, mazzi, immagini dei comandanti e operazioni delle partite live possono essere conservati localmente sul dispositivo per avvio rapido, uso offline e ripristino dopo un crash. La cache è separata per account e viene aggiornata dal server.',
+          en: 'App cache (functional): playgroups, recent records, decks, commander images, and live-game operations may be stored locally on the device for fast startup, offline use, and crash recovery. The cache is separated by account and refreshed from the server.',
         },
         {
           it: 'Sicurezza e funzionamento (necessari/tecnici): sessionStorage temporaneo per il ritorno OAuth, deduplicazione log di accesso, cache demo e cache locale EDHREC per ridurre richieste ripetute.',

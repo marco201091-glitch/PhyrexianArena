@@ -235,8 +235,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
   },
   rankRowFirst: {
-    backgroundColor: 'rgba(124, 58, 237, 0.14)',
-    borderColor: 'rgba(139, 92, 246, 0.35)',
+    backgroundColor: 'rgba(66, 159, 74, 0.14)',
+    borderColor: 'rgba(66, 159, 74, 0.35)',
   },
   rankRowSecond: {
     backgroundColor: 'rgba(148, 163, 184, 0.08)',

@@ -45,7 +45,7 @@ export function TurnstileField({ onVerify, onExpire, onError, resetSignal = 0, u
 
 const styles = StyleSheet.create({
   wrapper: { alignItems: 'stretch', gap: spacing.xs + 2 },
-  button: { minHeight: 62, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.primary, borderRadius: 12, backgroundColor: 'rgba(139, 92, 246, 0.16)', paddingHorizontal: spacing.md },
+  button: { minHeight: 62, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.primary, borderRadius: 12, backgroundColor: 'rgba(66, 159, 74, 0.16)', paddingHorizontal: spacing.md },
   buttonText: { color: colors.primaryLight, fontSize: 17, fontWeight: '800' },
   buttonHint: { color: colors.muted, fontSize: 12, marginTop: 3 },
   verified: { color: colors.successBright, fontSize: 16, fontWeight: '700', paddingVertical: spacing.sm },

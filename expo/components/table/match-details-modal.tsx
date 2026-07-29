@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
-import { CommanderArt } from '@/components/deck/commander-art';
+import { CompactDeckCard } from '@/components/deck/compact-deck-card';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
@@ -29,7 +29,14 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
       {match.match_participants.slice().sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99)).map((participant) => {
         const deck = getParticipantDeckSnapshot(participant);
         return <PhyrexianPanel key={participant.id} variant="inset" style={styles.player}>
-          <View style={styles.header}><CommanderArt uri={deck?.commander_image} alt={deck?.commander || ''} size="sm" /><View style={styles.main}><Text style={styles.name}>{getParticipantDisplayName(participant)}{participant.placement ? ` · #${participant.placement}` : ''}</Text><Text style={styles.commander} numberOfLines={1}>{deck?.commander}</Text>{participant.was_starting_player ? <Text style={styles.started}>{labels.started}</Text> : null}</View></View>
+          <CompactDeckCard
+            artUri={deck?.commander_image}
+            title={getParticipantDisplayName(participant)}
+            commander={deck?.name}
+            meta={[deck?.commander, participant.was_starting_player ? labels.started : null].filter(Boolean).join(' · ')}
+            badge={participant.placement ? `#${participant.placement}` : undefined}
+            winner={participant.is_winner}
+          />
           <View style={styles.metrics}>{[
             [labels.damageDealt, participant.life_damage_dealt || 0], [labels.lifeLost, participant.life_lost || 0], [labels.lifeGained, participant.life_gained || 0], ['KO', participant.eliminations_caused || 0], [labels.commander, participant.commander_damage_dealt || 0], [labels.infect, participant.infect_dealt || 0],
           ].map(([label, value]) => <View key={String(label)} style={[styles.metric, phoneLayout && styles.metricPhone]}><Text style={styles.meta} numberOfLines={2}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
@@ -39,4 +46,4 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
   </Modal>;
 }
 
-const styles = StyleSheet.create({ list: { gap: spacing.sm }, summary: { alignItems: 'center' }, recapLoading: { minHeight: 72, alignItems: 'center', justifyContent: 'center', gap: spacing.xs }, summaryValue: { color: colors.foreground, fontSize: 22, fontWeight: '800' }, player: { gap: spacing.sm }, header: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }, main: { flex: 1 }, name: { color: colors.foreground, fontSize: 14, fontWeight: '700' }, commander: { color: colors.muted, fontSize: 12 }, started: { color: colors.primaryMuted, fontSize: 10, marginTop: 2 }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, metric: { width: '31%', minWidth: 88, minHeight: 66, justifyContent: 'space-between', backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: spacing.sm }, metricPhone: { width: '48%', minWidth: 0, flexGrow: 1 }, meta: { color: colors.muted, fontSize: 10, lineHeight: 13, textTransform: 'uppercase' }, value: { color: colors.foreground, fontSize: 18, fontWeight: '800', marginTop: 4 } });
+const styles = StyleSheet.create({ list: { gap: spacing.sm }, summary: { alignItems: 'center' }, recapLoading: { minHeight: 72, alignItems: 'center', justifyContent: 'center', gap: spacing.xs }, summaryValue: { color: colors.foreground, fontSize: 22, fontWeight: '800' }, player: { gap: spacing.sm }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, metric: { width: '31%', minWidth: 88, minHeight: 66, justifyContent: 'space-between', backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: spacing.sm }, metricPhone: { width: '48%', minWidth: 0, flexGrow: 1 }, meta: { color: colors.muted, fontSize: 10, lineHeight: 13, textTransform: 'uppercase' }, value: { color: colors.foreground, fontSize: 18, fontWeight: '800', marginTop: 4 } });

@@ -139,7 +139,7 @@ function RegisterForm() {
       <Card className="w-full max-w-xl bg-card/80 border-border/50 backdrop-blur">
         <CardHeader className="pb-5 text-center">
           <div className="flex justify-center">
-            <ManaLogo size="xl" showText layout="stacked" subtitle="EDH Tracker" className="w-full" />
+            <ManaLogo size="xl" showText layout="stacked" subtitle="Tracker & Analytics" className="w-full" />
           </div>
         </CardHeader>
         <CardContent>

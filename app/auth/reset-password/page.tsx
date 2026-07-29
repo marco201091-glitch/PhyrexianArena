@@ -121,7 +121,7 @@ function ResetPasswordForm() {
         <Card className="w-full max-w-xl border-border/50 bg-card/80 backdrop-blur">
           <CardHeader className="pb-5 text-center">
             <div className="flex justify-center">
-              <ManaLogo size="xl" showText layout="stacked" subtitle="EDH Tracker" className="w-full" />
+              <ManaLogo size="xl" showText layout="stacked" subtitle="Tracker & Analytics" className="w-full" />
             </div>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
@@ -147,7 +147,7 @@ function ResetPasswordForm() {
       <Card className="w-full max-w-xl border-border/50 bg-card/80 backdrop-blur">
         <CardHeader className="pb-5 text-center">
           <div className="flex justify-center">
-            <ManaLogo size="xl" showText layout="stacked" subtitle="EDH Tracker" className="w-full" />
+            <ManaLogo size="xl" showText layout="stacked" subtitle="Tracker & Analytics" className="w-full" />
           </div>
         </CardHeader>
         <CardContent>

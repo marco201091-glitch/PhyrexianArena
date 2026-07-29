@@ -24,6 +24,7 @@ import {
   saveArenaCache,
   type ArenaCacheSnapshot,
 } from '@/lib/arena-cache';
+import { ARENA_MATCHES_PAGE_SIZE } from '@/lib/arena-matches';
 
 export function useArena(groupId: string | undefined, userId: string | undefined) {
   const [group, setGroup] = useState<ArenaDetail | null>(null);
@@ -32,12 +33,15 @@ export function useArena(groupId: string | undefined, userId: string | undefined
   const [guests, setGuests] = useState<ArenaGuest[]>([]);
   const [decks, setDecks] = useState<MemberDeck[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMoreMatches, setLoadingMoreMatches] = useState(false);
+  const [hasMoreMatches, setHasMoreMatches] = useState(false);
   const memberIdsRef = useRef<string[]>([]);
 
   const applySnapshot = useCallback((snapshot: ArenaCacheSnapshot) => {
     setGroup(snapshot.group);
     setMembers(snapshot.members);
     setMatches(snapshot.matches);
+    setHasMoreMatches(snapshot.matches.length >= ARENA_MATCHES_PAGE_SIZE);
     setGuests(snapshot.guests);
     setDecks(snapshot.decks);
     memberIdsRef.current = snapshot.members.map((member) => member.id);
@@ -45,14 +49,38 @@ export function useArena(groupId: string | undefined, userId: string | undefined
 
   const refreshMatches = useCallback(async () => {
     if (!groupId) return [] as ArenaMatch[];
-    const loaded = await fetchArenaMatches(supabase, groupId);
-    setMatches(loaded);
+    const page = await fetchArenaMatches(supabase, groupId);
+    setMatches(page.matches);
+    setHasMoreMatches(page.hasMore);
     if (userId) {
       const cached = await loadArenaCache(groupId, userId);
-      if (cached) await saveArenaCache({ ...cached, matches: loaded });
+      if (cached) await saveArenaCache({ ...cached, matches: page.matches });
     }
-    return loaded;
+    return page.matches;
   }, [groupId, userId]);
+
+  const loadMoreMatches = useCallback(async () => {
+    if (!groupId || loadingMoreMatches || !hasMoreMatches) return;
+    const oldestMatch = matches.at(-1);
+    if (!oldestMatch) {
+      setHasMoreMatches(false);
+      return;
+    }
+    setLoadingMoreMatches(true);
+    try {
+      const page = await fetchArenaMatches(supabase, groupId, {
+        playedAt: oldestMatch.played_at,
+        id: oldestMatch.id,
+      });
+      setMatches((current) => {
+        const knownIds = new Set(current.map((match) => match.id));
+        return [...current, ...page.matches.filter((match) => !knownIds.has(match.id))];
+      });
+      setHasMoreMatches(page.hasMore);
+    } finally {
+      setLoadingMoreMatches(false);
+    }
+  }, [groupId, hasMoreMatches, loadingMoreMatches, matches]);
 
   const loadMemberDecks = useCallback(async (memberIds: string[]) => {
     if (!groupId) return [] as MemberDeck[];
@@ -69,16 +97,18 @@ export function useArena(groupId: string | undefined, userId: string | undefined
 
     if (showLoading) setLoading(true);
     try {
-      const [groupData, loadedMatches, guestData] = await Promise.all([
+      const [groupData, matchesPage, guestData] = await Promise.all([
         fetchArenaGroup(supabase, groupId),
         fetchArenaMatches(supabase, groupId),
         fetchArenaGuests(supabase, groupId),
       ]);
+      const loadedMatches = matchesPage.matches;
 
       if (!groupData) {
         setGroup(null);
         setMembers([]);
         setMatches([]);
+        setHasMoreMatches(false);
         setGuests([]);
         setDecks([]);
         await clearArenaCache(groupId, userId);
@@ -88,6 +118,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
       setGroup(groupData);
       setMembers(groupData.group_members.map((member) => member.profiles));
       setMatches(loadedMatches);
+      setHasMoreMatches(matchesPage.hasMore);
       setGuests(guestData);
 
       const memberIds = groupData.group_members.map((member) => member.user_id);
@@ -148,6 +179,7 @@ export function useArena(groupId: string | undefined, userId: string | undefined
     setGroup(null);
     setMembers([]);
     setMatches([]);
+    setHasMoreMatches(false);
     setGuests([]);
     setDecks([]);
     setLoading(true);
@@ -438,11 +470,14 @@ export function useArena(groupId: string | undefined, userId: string | undefined
     group,
     members,
     matches,
+    hasMoreMatches,
+    loadingMoreMatches,
     guests,
     decks,
     playerStats,
     loading,
     refresh,
+    loadMoreMatches,
     refreshMatches,
     createMatch,
     updateGroup,

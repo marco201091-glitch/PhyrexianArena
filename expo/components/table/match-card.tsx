@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CommanderArt } from '@/components/deck/commander-art';
+import { CompactDeckCard } from '@/components/deck/compact-deck-card';
 import { FormattedMarkdown } from '@/components/ui/formatted-markdown';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing, touch } from '@/constants/theme';
@@ -43,48 +43,21 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
           const isWinner = participant.is_winner;
 
           return (
-            <View
+            <CompactDeckCard
               key={participant.id}
-              style={[styles.participantRow, isWinner && styles.participantWinner]}
-            >
-              <CommanderArt
-                uri={deck?.commander_image}
-                alt={deck?.commander || name}
-                size="sm"
-                highlighted={isWinner}
-              />
-              <View style={styles.participantMain}>
-                <View style={styles.nameRow}>
-                  {isWinner ? (
-                    <>
-                      <Ionicons name="trophy" size={14} color={colors.primaryMuted} />
-                      {match.win_condition ? <Ionicons name={getWinConditionIcon(match.win_condition)} size={15} color={colors.primaryMuted} /> : null}
-                    </>
-                  ) : null}
-                  <Text
-                    style={[styles.participantName, isWinner && styles.participantNameWinner]}
-                    numberOfLines={1}
-                  >
-                    {name}
-                  </Text>
-                  {deck?.bracket ? (
-                    <View style={styles.bracketBadge}>
-                      <Text style={styles.bracketText}>B{deck.bracket}</Text>
-                    </View>
-                  ) : null}
+              artUri={deck?.commander_image}
+              title={name}
+              commander={deck?.name}
+              meta={[deck?.commander, deck?.bracket ? `B${deck.bracket}` : null].filter(Boolean).join(' · ')}
+              badge={participant.placement ? `#${participant.placement}` : undefined}
+              winner={isWinner}
+              trailing={isWinner ? (
+                <View style={styles.winnerIcons}>
+                  <Ionicons name="trophy" size={18} color={colors.primaryMuted} />
+                  {match.win_condition ? <Ionicons name={getWinConditionIcon(match.win_condition)} size={17} color={colors.primaryMuted} /> : null}
                 </View>
-                {deck?.name ? (
-                  <Text style={styles.deckName} numberOfLines={1}>
-                    {deck.name}
-                  </Text>
-                ) : null}
-                {deck?.commander ? (
-                  <Text style={styles.commander} numberOfLines={2}>
-                    {deck.commander}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
+              ) : undefined}
+            />
           );
         })}
       </View>
@@ -133,69 +106,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   participants: {
-    gap: spacing.xs,
+    gap: spacing.sm,
     padding: spacing.md,
     paddingBottom: spacing.sm,
   },
-  participantRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    borderRadius: 10,
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-  participantWinner: {
-    borderWidth: 1,
-    borderColor: colors.selectionBorder,
-    backgroundColor: colors.selectionTint,
-  },
-  participantMain: {
-    flex: 1,
-    gap: 2,
-    minWidth: 0,
-    paddingTop: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    minWidth: 0,
-  },
-  participantName: {
-    flex: 1,
-    color: colors.foreground,
-    fontSize: 15,
-    fontWeight: '600',
-    minWidth: 0,
-  },
-  participantNameWinner: {
-    color: colors.primaryMuted,
-  },
-  deckName: {
-    color: colors.foreground,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  commander: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  bracketBadge: {
-    borderRadius: 4,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    flexShrink: 0,
-  },
-  bracketText: {
-    color: '#6ee7b7',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  winnerIcons: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   notes: {
     color: colors.muted,
     fontSize: 13,

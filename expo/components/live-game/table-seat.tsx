@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   randomSeat: {
     borderWidth: 3,
-    borderColor: '#c4b5fd',
+    borderColor: '#a7e3ac',
   },
   eliminatedSeat: {
     opacity: 0.82,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(253, 230, 138, 0.95)',
   },
   randomHighlight: {
-    backgroundColor: 'rgba(124, 58, 237, 0.28)',
+    backgroundColor: 'rgba(66, 159, 74, 0.28)',
     borderColor: 'rgba(221, 214, 254, 0.95)',
   },
   startingBadge: {

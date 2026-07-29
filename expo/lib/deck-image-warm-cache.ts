@@ -48,7 +48,7 @@ async function prefetchRecentArenaImages(groupIds: string[]): Promise<void> {
 
   await Promise.allSettled(
     groupIds.map(async (groupId) => {
-      const matches = await fetchArenaMatches(supabase, groupId);
+      const { matches } = await fetchArenaMatches(supabase, groupId);
       const recentMatches = matches.slice(0, MATCH_PREFETCH_LIMIT);
 
       recentMatches.forEach((match) => {

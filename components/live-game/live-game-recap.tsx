@@ -3,19 +3,7 @@
 import { buildLiveGameRecap } from '@/lib/live-game-recap';
 import type { LiveGameRecord } from '@/lib/live-game';
 
-const COLORS = ['#a78bfa', '#22d3ee', '#fb7185', '#fbbf24', '#4ade80', '#f472b6'];
-
-function buildPath(values: number[]) {
-  if (!values.length) return '';
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const spread = Math.max(1, max - min);
-  return values.map((value, index) => {
-    const x = values.length === 1 ? 0 : (index / (values.length - 1)) * 300;
-    const y = 68 - ((value - min) / spread) * 56;
-    return `${index ? 'L' : 'M'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-  }).join(' ');
-}
+const COLORS = ['#72d17b', '#22d3ee', '#fb7185', '#fbbf24', '#4ade80', '#f472b6'];
 
 export function LiveGameRecapView({
   record,
@@ -30,22 +18,19 @@ export function LiveGameRecapView({
       <div>
         <h3 className="text-sm font-black uppercase tracking-[0.18em] text-cyan-200">{labels.timeline}</h3>
         <div className="mt-3 space-y-3">
-          {recap.players.map((player, index) => {
-            const values = player.timeline.map((point) => point.life);
-            return (
-              <div key={player.participantKey} className="grid grid-cols-[minmax(90px,1fr)_2fr_42px] items-center gap-3">
+          {recap.players.map((player, index) => (
+              <div key={player.participantKey} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-bold text-foreground">{player.displayName}</p>
                   <p className="truncate text-[10px] text-muted-foreground">{player.commander}</p>
                 </div>
-                <svg viewBox="0 0 300 80" preserveAspectRatio="none" className="h-16 w-full overflow-visible" role="img" aria-label={`${player.displayName}: ${values.join(', ')}`}>
-                  <path d="M 0 68 L 300 68" stroke="rgba(255,255,255,.08)" strokeWidth="1" />
-                  <path d={buildPath(values)} fill="none" stroke={COLORS[index % COLORS.length]} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-                </svg>
-                <span className="text-right text-lg font-black" style={{ color: COLORS[index % COLORS.length] }}>{player.finalLife}</span>
+                <div className="ml-auto flex items-center gap-3">
+                  {player.finalInfect > 0 ? <span className="text-xs font-bold text-emerald-300">☠ {player.finalInfect}</span> : null}
+                  <span className="text-right text-lg font-black" style={{ color: COLORS[index % COLORS.length] }}>{player.finalLife}</span>
+                </div>
               </div>
-            );
-          })}
+          ))}
         </div>
       </div>
       <div>

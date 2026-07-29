@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     borderWidth: 1,
     borderColor: colors.selectionBorder,
-    backgroundColor: 'rgba(124,58,237,0.14)',
+    backgroundColor: 'rgba(66, 159, 74,0.14)',
     paddingHorizontal: spacing.md,
   },
   toggleButtonPressed: { opacity: 0.72 },

@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   barFillViolet: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: 'rgba(167, 139, 250, 0.9)',
+    backgroundColor: 'rgba(167, 227, 172, 0.9)',
   },
   barFillSky: {
     height: '100%',

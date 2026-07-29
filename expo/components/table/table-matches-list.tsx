@@ -2,6 +2,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { MatchCard } from '@/components/table/match-card';
 import { MatchDayGroup } from '@/components/table/match-day-group';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Button } from '@/components/ui/button';
 import { spacing } from '@/constants/theme';
 import type { ArenaMatch } from '@/lib/types/arena';
 
@@ -28,6 +29,11 @@ type TableMatchesListProps = {
   exportDayLabel: string;
   drawLabel: string;
   onExportDay: (dayKey: string) => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMoreLabel: string;
+  loadingMoreLabel: string;
+  onLoadMore: () => void;
 };
 
 export function TableMatchesList({
@@ -46,6 +52,11 @@ export function TableMatchesList({
   exportDayLabel,
   drawLabel,
   onExportDay,
+  hasMore,
+  loadingMore,
+  loadMoreLabel,
+  loadingMoreLabel,
+  onLoadMore,
 }: TableMatchesListProps) {
   if (dayGroups.length === 0) {
     return (
@@ -89,6 +100,16 @@ export function TableMatchesList({
         </MatchDayGroup>
       )}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
+      ListFooterComponent={hasMore ? (
+        <Button
+          label={loadingMore ? loadingMoreLabel : loadMoreLabel}
+          icon={loadingMore ? 'hourglass-outline' : 'arrow-down-circle-outline'}
+          variant="outline"
+          disabled={loadingMore}
+          onPress={onLoadMore}
+          style={styles.loadMore}
+        />
+      ) : null}
     />
   );
 }
@@ -99,5 +120,8 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: spacing.md,
+  },
+  loadMore: {
+    marginTop: spacing.md,
   },
 });

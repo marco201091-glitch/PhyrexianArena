@@ -57,7 +57,7 @@ export interface CommanderArtOption {
 
 const SCRYFALL_HEADERS = {
   Accept: 'application/json',
-  'User-Agent': 'Phyrexian Arena (https://phyrexianarena.app)',
+  'User-Agent': 'MTG Life Counter & Analytics: Commander (https://phyrexianarena.app)',
 };
 
 const SCRYFALL_MAX_RETRIES = 2;

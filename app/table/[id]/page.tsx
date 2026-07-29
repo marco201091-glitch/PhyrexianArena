@@ -1065,12 +1065,12 @@ export default function TablePage() {
       const { error } = await supabase.from('groups').delete().eq('id', group.id);
       if (error) throw error;
       toast({
-        title: t({ it: 'Arena eliminata', en: 'Arena deleted' }),
-        description: t({ it: 'Arena, partite e iscrizioni collegate sono state rimosse.', en: 'The arena and all related battles have been removed.' }),
+        title: t({ it: 'Playgroup eliminato', en: 'Playgroup deleted' }),
+        description: t({ it: 'Playgroup, partite e iscrizioni collegate sono stati rimossi.', en: 'The playgroup and all related battles have been removed.' }),
       });
       router.push('/dashboard');
     } catch (error: unknown) {
-      toast({ title: t({ it: 'Errore', en: 'Error' }), description: error instanceof Error ? error.message : t({ it: 'Impossibile eliminare l\'arena', en: 'Failed to delete arena' }), variant: 'destructive' });
+      toast({ title: t({ it: 'Errore', en: 'Error' }), description: error instanceof Error ? error.message : t({ it: 'Impossibile eliminare il playgroup', en: 'Failed to delete playgroup' }), variant: 'destructive' });
     } finally {
       setDeletingArena(false);
     }
@@ -1091,8 +1091,8 @@ export default function TablePage() {
       toast({
         title: t({ it: 'Impossibile uscire', en: 'Unable to leave' }),
         description: t({
-          it: 'Se sei l\'ultimo membro, elimina l\'arena con il pulsante esistente.',
-          en: 'If you are the last member, delete the arena using the existing button.',
+          it: 'Se sei l\'ultimo membro, elimina il playgroup con il pulsante esistente.',
+          en: 'If you are the last member, delete the playgroup using the existing button.',
         }),
         variant: 'destructive',
       });
@@ -1110,10 +1110,10 @@ export default function TablePage() {
       if (error) throw error;
 
       toast({
-        title: t({ it: 'Sei uscito dall\'arena', en: 'You left the arena' }),
+        title: t({ it: 'Sei uscito dal playgroup', en: 'You left the playgroup' }),
         description: t({
-          it: 'Non vedrai più questa arena nella dashboard.',
-          en: 'This arena will no longer appear on your dashboard.',
+          it: 'Non vedrai più questo playgroup nella dashboard.',
+          en: 'This playgroup will no longer appear on your dashboard.',
         }),
       });
       setShowLeaveArenaModal(false);
@@ -1124,7 +1124,7 @@ export default function TablePage() {
         title: t({ it: 'Errore', en: 'Error' }),
         description: error instanceof Error
           ? error.message
-          : t({ it: 'Impossibile uscire dall\'arena', en: 'Failed to leave arena' }),
+          : t({ it: 'Impossibile uscire dal playgroup', en: 'Failed to leave playgroup' }),
         variant: 'destructive',
       });
     } finally {
@@ -1158,8 +1158,8 @@ export default function TablePage() {
       toast({
         title: t({ it: 'Giocatore rimosso', en: 'Player removed' }),
         description: t({
-          it: `${getProfileDisplayName(member)} non fa più parte dell\'arena.`,
-          en: `${getProfileDisplayName(member)} is no longer part of this arena.`,
+          it: `${getProfileDisplayName(member)} non fa più parte del playgroup.`,
+          en: `${getProfileDisplayName(member)} is no longer part of this playgroup.`,
         }),
       });
     } catch (error: unknown) {
@@ -1825,7 +1825,7 @@ export default function TablePage() {
     const comment = match.notes?.trim() || t({ it: 'Nessun commento', en: 'No comment' });
 
     return [
-      `${t({ it: 'Partita Phyrexian Arena', en: 'Phyrexian Arena match' })} - ${group?.name || ''}`,
+      `${t({ it: 'Partita Tracker & Analytics', en: 'Tracker & Analytics match' })} - ${group?.name || ''}`,
       format(new Date(match.played_at), 'PPP'),
       match.duration_seconds != null
         ? `${t({ it: 'Durata', en: 'Duration' })}: ${formatGameDuration(match.duration_seconds)}`
@@ -1901,7 +1901,7 @@ export default function TablePage() {
       })),
       publicUrl: group.is_public ? `${window.location.origin}/arena/${group.invite_code}` : null,
     }, {
-      arenaStatsTitle: t({ it: 'Statistiche arena', en: 'Arena stats' }),
+      arenaStatsTitle: t({ it: 'Statistiche playgroup', en: 'Playgroup stats' }),
       period: t({ it: 'Periodo', en: 'Period' }),
       totalMatches: t({ it: 'Partite', en: 'Matches' }),
       topPlayers: t({ it: 'Top giocatori', en: 'Top players' }),
@@ -1917,7 +1917,7 @@ export default function TablePage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `${group.name} - Phyrexian Arena`,
+          title: `${group.name} - Tracker & Analytics`,
           text,
         });
         return;
@@ -1926,7 +1926,7 @@ export default function TablePage() {
       await navigator.clipboard.writeText(text);
       toast({
         title: t({ it: 'Statistiche copiate', en: 'Stats copied' }),
-        description: t({ it: 'Il riepilogo arena è negli appunti', en: 'Arena summary copied to clipboard' }),
+        description: t({ it: 'Il riepilogo del playgroup è negli appunti', en: 'Playgroup summary copied to clipboard' }),
       });
     } catch (error) {
       if ((error as DOMException)?.name === 'AbortError') return;
@@ -2034,7 +2034,7 @@ export default function TablePage() {
   const handleShareMatch = async (match: Match) => {
     const text = buildMatchShareText(match);
     const shareData = {
-      title: t({ it: 'Log partita Phyrexian Arena', en: 'Phyrexian Arena match log' }),
+      title: t({ it: 'Log partita Tracker & Analytics', en: 'Tracker & Analytics match log' }),
       text,
     };
 
@@ -2090,7 +2090,7 @@ export default function TablePage() {
         })
         .eq('id', group.id);
       if (error) throw error;
-      toast({ title: t({ it: 'Arena aggiornata!', en: 'Arena updated!' }) });
+      toast({ title: t({ it: 'Playgroup aggiornato!', en: 'Playgroup updated!' }) });
       setShowEditArenaModal(false);
       setGroup((currentGroup) => currentGroup ? {
         ...currentGroup,
@@ -2099,7 +2099,7 @@ export default function TablePage() {
         is_public: editArenaIsPublic,
       } : currentGroup);
     } catch (error: unknown) {
-      toast({ title: t({ it: 'Errore', en: 'Error' }), description: error instanceof Error ? error.message : t({ it: 'Impossibile aggiornare l\'arena', en: 'Failed to update arena' }), variant: 'destructive' });
+      toast({ title: t({ it: 'Errore', en: 'Error' }), description: error instanceof Error ? error.message : t({ it: 'Impossibile aggiornare il playgroup', en: 'Failed to update playgroup' }), variant: 'destructive' });
     } finally {
       setSavingArena(false);
     }
@@ -2194,7 +2194,7 @@ export default function TablePage() {
   };
 
   if (authLoading || loading) {
-    return <AppLoader label={t({ it: 'Caricamento arena...', en: 'Loading arena...' })} />;
+    return <AppLoader label={t({ it: 'Caricamento playgroup...', en: 'Loading playgroup...' })} />;
   }
 
   if (!group) return null;
@@ -2216,7 +2216,7 @@ export default function TablePage() {
               </div>
               <div className="hidden min-w-0 items-center gap-2 border-l border-border pl-2 sm:flex">
                 <span className="rounded border border-violet-500/30 bg-violet-500/15 px-2 py-0.5 text-xs uppercase tracking-[0.16em] text-violet-200">
-                  Arena
+                  Playgroup
                 </span>
                 <span className="truncate font-semibold text-foreground">{group.name}</span>
                 {group.description && <span className="hidden text-sm text-muted-foreground md:block">— {group.description}</span>}
@@ -2303,8 +2303,8 @@ export default function TablePage() {
                   size="icon"
                   onClick={openLeaveArenaModal}
                   className="h-10 w-10 text-muted-foreground hover:text-foreground"
-                  title={t({ it: 'Esci dall\'arena', en: 'Leave arena' })}
-                  aria-label={t({ it: 'Esci dall\'arena', en: 'Leave arena' })}
+                  title={t({ it: 'Esci dal playgroup', en: 'Leave playgroup' })}
+                  aria-label={t({ it: 'Esci dal playgroup', en: 'Leave playgroup' })}
                 >
                   <DoorOpen className="h-4 w-4" />
                 </Button>
@@ -2316,8 +2316,8 @@ export default function TablePage() {
                   size="icon"
                   onClick={openDeleteArenaModal}
                   className="h-10 w-10 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  title={t({ it: 'Elimina arena', en: 'Delete arena' })}
-                  aria-label={t({ it: 'Elimina arena', en: 'Delete arena' })}
+                  title={t({ it: 'Elimina playgroup', en: 'Delete playgroup' })}
+                  aria-label={t({ it: 'Elimina playgroup', en: 'Delete playgroup' })}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -2329,7 +2329,7 @@ export default function TablePage() {
             <div className="flex min-w-0 items-center gap-2">
               <h1 className="truncate text-2xl font-bold text-foreground">{group.name}</h1>
               {canManageGroup && (
-                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground" onClick={openEditArena} aria-label={t({ it: 'Modifica arena', en: 'Edit arena' })}>
+                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground" onClick={openEditArena} aria-label={t({ it: 'Modifica playgroup', en: 'Edit playgroup' })}>
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
@@ -2609,7 +2609,7 @@ export default function TablePage() {
                       {t({ it: 'Awards non ancora disponibili', en: 'No awards yet' })}
                     </h3>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {t({ it: 'Completa altre partite con il tracking realtime per sbloccare i primati.', en: 'Complete more realtime-tracked games to unlock arena records.' })}
+                      {t({ it: 'Completa altre partite con il tracking realtime per sbloccare i primati.', en: 'Complete more realtime-tracked games to unlock playgroup records.' })}
                     </p>
                   </CardContent>
                 </Card>
@@ -2806,12 +2806,12 @@ export default function TablePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-foreground">
                       <Users className="h-5 w-5" />
-                      {t({ it: 'Membri dell\'arena', en: 'Arena members' })}
+                      {t({ it: 'Membri del playgroup', en: 'Playgroup members' })}
                     </CardTitle>
                     <CardDescription>
                       {t({
-                        it: 'Giocatori registrati con accesso all\'arena. Uscire o essere rimossi non cancella le partite gia registrate.',
-                        en: 'Registered players with access to this arena. Leaving or being removed does not delete past battles.',
+                        it: 'Giocatori registrati con accesso al playgroup. Uscire o essere rimossi non cancella le partite già registrate.',
+                        en: 'Registered players with access to this playgroup. Leaving or being removed does not delete past battles.',
                       })}
                     </CardDescription>
                   </CardHeader>
@@ -2873,7 +2873,7 @@ export default function TablePage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-foreground">
                         <UserPlus className="h-5 w-5" />
-                        {t({ it: 'Guest dell\'arena', en: 'Arena guests' })}
+                        {t({ it: 'Guest del playgroup', en: 'Playgroup guests' })}
                       </CardTitle>
                       <CardDescription>
                         {t({
@@ -2885,7 +2885,7 @@ export default function TablePage() {
                     <CardContent>
                       {guests.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
-                          {t({ it: 'Nessun guest registrato in questa arena.', en: 'No guests registered in this arena.' })}
+                          {t({ it: 'Nessun guest registrato in questo playgroup.', en: 'No guests registered in this playgroup.' })}
                         </p>
                       ) : (
                         <div className="space-y-2">
@@ -3095,7 +3095,7 @@ export default function TablePage() {
                     {t({ it: 'Nessun dato meta ancora', en: 'No meta data yet' })}
                   </h3>
                   <p className="text-muted-foreground">
-                    {t({ it: 'Gioca partite con mazzi tracciati per vedere il meta colori dell\'arena.', en: 'Play tracked-deck battles to see this arena\'s color meta.' })}
+                    {t({ it: 'Gioca partite con mazzi tracciati per vedere il meta colori del playgroup.', en: 'Play tracked-deck battles to see this playgroup\'s color meta.' })}
                   </p>
                 </CardContent>
               </Card>
@@ -3177,7 +3177,7 @@ export default function TablePage() {
           <Card className="mt-6 border-border/70 bg-card/65 lg:hidden">
             <CardHeader className="pb-3">
               <CardTitle className="text-base text-foreground">
-                {t({ it: 'Gestione arena', en: 'Arena management' })}
+                {t({ it: 'Gestione playgroup', en: 'Playgroup management' })}
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-2">
@@ -3189,7 +3189,7 @@ export default function TablePage() {
                   className="h-11 justify-start border-border text-foreground"
                 >
                   <DoorOpen className="mr-2 h-4 w-4" />
-                  {t({ it: 'Esci dall\'arena', en: 'Leave arena' })}
+                  {t({ it: 'Esci dal playgroup', en: 'Leave playgroup' })}
                 </Button>
               )}
               {canManageGroup && (
@@ -3200,7 +3200,7 @@ export default function TablePage() {
                   className="h-11 justify-start border-destructive/35 text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {t({ it: 'Elimina arena', en: 'Delete arena' })}
+                  {t({ it: 'Elimina playgroup', en: 'Delete playgroup' })}
                 </Button>
               )}
             </CardContent>
@@ -3456,18 +3456,18 @@ export default function TablePage() {
           <ModalCard>
             <CardHeader>
               <CardTitle className="text-foreground flex items-center gap-2">
-                <Pencil className="w-5 h-5" /> {t({ it: 'Modifica arena', en: 'Edit Arena' })}
+                <Pencil className="w-5 h-5" /> {t({ it: 'Modifica playgroup', en: 'Edit Playgroup' })}
               </CardTitle>
-              <CardDescription className="text-muted-foreground">{t({ it: 'Aggiorna nome e descrizione dell\'arena', en: 'Update the arena name and description' })}</CardDescription>
+              <CardDescription className="text-muted-foreground">{t({ it: 'Aggiorna nome e descrizione del playgroup', en: 'Update the playgroup name and description' })}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t({ it: 'Nome arena', en: 'Arena Name' })}</label>
+                  <label className="text-sm font-medium text-foreground">{t({ it: 'Nome playgroup', en: 'Playgroup Name' })}</label>
                   <Input
                     value={editArenaName}
                     onChange={(e) => setEditArenaName(e.target.value)}
-                    placeholder={t({ it: 'La mia arena', en: 'My Arena' })}
+                    placeholder={t({ it: 'Il mio playgroup', en: 'My Playgroup' })}
                     className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
@@ -3476,7 +3476,7 @@ export default function TablePage() {
                   <Textarea
                     value={editArenaDescription}
                     onChange={(e) => setEditArenaDescription(e.target.value)}
-                    placeholder={t({ it: 'Descrizione dell\'arena...', en: 'A description of this arena...' })}
+                    placeholder={t({ it: 'Descrizione del playgroup...', en: 'A description of this playgroup...' })}
                     className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground resize-none"
                     rows={3}
                   />
@@ -3489,7 +3489,7 @@ export default function TablePage() {
                   />
                   <div className="space-y-1">
                     <label htmlFor="arena-is-public" className="text-sm font-medium text-foreground">
-                      {t({ it: 'Profilo arena pubblico', en: 'Public arena profile' })}
+                      {t({ it: 'Profilo playgroup pubblico', en: 'Public playgroup profile' })}
                     </label>
                     <p className="text-xs text-muted-foreground">
                       {t({
@@ -3534,12 +3534,12 @@ export default function TablePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-foreground">
                 <DoorOpen className="h-5 w-5" />
-                {t({ it: 'Esci dall\'arena', en: 'Leave arena' })}
+                {t({ it: 'Esci dal playgroup', en: 'Leave playgroup' })}
               </CardTitle>
               <CardDescription>
                 {t({
-                  it: 'Perderai accesso a questa arena, ma le partite gia registrate resteranno nello storico del gruppo.',
-                  en: 'You will lose access to this arena, but battles already recorded will remain in the group history.',
+                  it: 'Perderai accesso a questo playgroup, ma le partite già registrate resteranno nello storico del gruppo.',
+                  en: 'You will lose access to this playgroup, but battles already recorded will remain in the group history.',
                 })}
               </CardDescription>
             </CardHeader>
@@ -3595,12 +3595,12 @@ export default function TablePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-destructive">
                 <Trash2 className="h-5 w-5" />
-                {t({ it: 'Elimina arena', en: 'Delete Arena' })}
+                {t({ it: 'Elimina playgroup', en: 'Delete Playgroup' })}
               </CardTitle>
               <CardDescription className="text-muted-foreground">
                 {t({
-                  it: 'Questa azione rimuove arena, partite e iscrizioni collegate. Non puo essere annullata.',
-                  en: 'This removes the arena, battles, and memberships. It cannot be undone.',
+                  it: 'Questa azione rimuove playgroup, partite e iscrizioni collegate. Non può essere annullata.',
+                  en: 'This removes the playgroup, battles, and memberships. It cannot be undone.',
                 })}
               </CardDescription>
             </CardHeader>
@@ -3612,7 +3612,7 @@ export default function TablePage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
-                    {t({ it: 'Nome arena', en: 'Arena name' })}
+                    {t({ it: 'Nome playgroup', en: 'Playgroup name' })}
                   </label>
                   <Input
                     value={deleteArenaConfirmation}
@@ -3639,7 +3639,7 @@ export default function TablePage() {
                     onClick={handleDeleteGroup}
                     disabled={deletingArena || deleteArenaConfirmation !== group.name}
                   >
-                    {deletingArena ? t({ it: 'Eliminazione...', en: 'Deleting...' }) : t({ it: 'Elimina arena', en: 'Delete Arena' })}
+                    {deletingArena ? t({ it: 'Eliminazione...', en: 'Deleting...' }) : t({ it: 'Elimina playgroup', en: 'Delete Playgroup' })}
                   </Button>
                 </div>
               </div>
@@ -3683,7 +3683,7 @@ export default function TablePage() {
               </div>
 
               {detailsRecapLoading ? <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-6 text-center text-sm text-cyan-100">{t({ it: 'Caricamento riepilogo…', en: 'Loading recap…' })}</div> : null}
-              {(detailsLiveGame || (detailsMatch.tracking_version != null ? buildHistoricalLiveGameRecord(detailsMatch) : null)) ? <LiveGameRecapView record={detailsLiveGame ?? buildHistoricalLiveGameRecord(detailsMatch)} labels={{ timeline: t({ it: 'Andamento vite', en: 'Life timeline' }), highlights: t({ it: 'Momenti chiave', en: 'Highlights' }), empty: t({ it: 'Nessun momento chiave registrato.', en: 'No highlights recorded.' }) }} /> : null}
+              {(detailsLiveGame || (detailsMatch.tracking_version != null ? buildHistoricalLiveGameRecord(detailsMatch) : null)) ? <LiveGameRecapView record={detailsLiveGame ?? buildHistoricalLiveGameRecord(detailsMatch)} labels={{ timeline: t({ it: 'Stato finale', en: 'Final state' }), highlights: t({ it: 'Momenti chiave', en: 'Highlights' }), empty: t({ it: 'Nessun momento chiave registrato.', en: 'No highlights recorded.' }) }} /> : null}
 
               <div className="space-y-3">
                 {detailsMatch.match_participants
@@ -3736,8 +3736,8 @@ export default function TablePage() {
         arenaName={group.name}
         onClose={() => setShowInviteQr(false)}
         labels={{
-          title: t({ it: 'QR Arena', en: 'Arena QR' }),
-          hint: t({ it: 'Scansiona per entrare in questa Arena.', en: 'Scan to join this Arena.' }),
+          title: t({ it: 'QR Playgroup', en: 'Playgroup QR' }),
+          hint: t({ it: 'Scansiona per entrare in questo playgroup.', en: 'Scan to join this playgroup.' }),
           close: t({ it: 'Chiudi', en: 'Close' }),
         }}
       /> : null}
@@ -4008,7 +4008,7 @@ export default function TablePage() {
               </CardTitle>
               <CardDescription className="text-muted-foreground">
                 {guestModalMode === 'pick-existing'
-                  ? t({ it: 'Scegli un guest gia presente in arena o creane uno nuovo', en: 'Pick an existing arena guest or create a new one' })
+                  ? t({ it: 'Scegli un guest già presente nel playgroup o creane uno nuovo', en: 'Pick an existing playgroup guest or create a new one' })
                   : guestModalMode === 'add-deck'
                     ? t({ it: 'Aggiungi un altro mazzo a questo guest', en: 'Add another deck to this guest' })
                     : t({ it: 'Crea un guest con nome e comandante', en: 'Create a guest with a name and commander' })}

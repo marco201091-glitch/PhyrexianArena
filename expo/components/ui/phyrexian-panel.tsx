@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(91, 33, 182, 0.45)',
+    backgroundColor: 'rgba(66, 159, 74, 0.42)',
   },
   strong: {
     backgroundColor: colors.cardElevated,

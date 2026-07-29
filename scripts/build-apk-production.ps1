@@ -71,7 +71,7 @@ try {
   New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
   $apk = Join-Path $expo 'android\app\build\outputs\apk\release\app-release.apk'
   if (-not (Test-Path -LiteralPath $apk)) { throw "APK non trovato: $apk" }
-  $target = Join-Path $artifactDir 'phyrexian-arena-production.apk'
+  $target = Join-Path $artifactDir 'mtg-commander-production.apk'
   Copy-Item -LiteralPath $apk -Destination $target -Force
 
   Write-Host "`nBUILD OK. APK directory: $artifactDir" -ForegroundColor Green

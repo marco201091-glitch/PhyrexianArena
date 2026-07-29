@@ -1,0 +1,79 @@
+name: Android release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer version to build
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: expo/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install mobile dependencies
+        working-directory: expo
+        run: npm ci
+
+      - name: Build verified signed APK
+        shell: pwsh
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+        run: |
+          if (-not $env:RELEASE_KEYSTORE_BASE64) { throw "Missing release keystore secret" }
+          $keystorePath = Join-Path $env:RUNNER_TEMP "phyrexian-arena-release.jks"
+          [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:RELEASE_KEYSTORE_BASE64))
+
+          $signingPath = Join-Path $env:RUNNER_TEMP "android-signing.properties"
+          @(
+            "storeFile=$keystorePath"
+            "storePassword=$env:RELEASE_STORE_PASSWORD"
+            "keyAlias=$env:RELEASE_KEY_ALIAS"
+            "keyPassword=$env:RELEASE_KEY_PASSWORD"
+          ) | Set-Content -LiteralPath $signingPath
+
+          @(
+            "EXPO_PUBLIC_SUPABASE_URL=https://phyrexianarena.dpdns.org"
+            "EXPO_PUBLIC_SUPABASE_ANON_KEY=$env:PRODUCTION_SUPABASE_ANON_KEY"
+            "EXPO_PUBLIC_API_BASE_URL=https://app.phyrexianarena.dpdns.org"
+            "EXPO_PUBLIC_SITE_URL=https://app.phyrexianarena.dpdns.org"
+            "EXPO_PUBLIC_SUPPORT_EMAIL=support@phyrexianarena.dpdns.org"
+            "EXPO_PUBLIC_SENTRY_ENABLED=false"
+          ) | Set-Content -LiteralPath "expo/.env.production.local"
+
+          $env:PHYREXIAN_SIGNING_PROPERTIES = $signingPath
+          cmd /c "scripts\build-apk-production.bat ${{ inputs.version }} --no-pause"
+          if ($LASTEXITCODE -ne 0) { throw "Android release candidate build failed" }
+
+      - name: Upload private release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtg-commander-${{ inputs.version }}
+          path: |
+            artifacts/apk/mtg-commander-v${{ inputs.version }}.apk
+            artifacts/apk/mtg-commander-v${{ inputs.version }}.apk.sha256
+          if-no-files-found: error
+          retention-days: 14

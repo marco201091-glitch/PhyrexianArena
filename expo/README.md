@@ -1,4 +1,4 @@
-# Phyrexian Arena — Expo (native)
+# MTG Life Counter & Analytics: Commander — Expo (native)
 
 React Native app for Android and iOS with **feature parity target** vs the Next.js web app.
 
@@ -193,7 +193,7 @@ Core screens are implemented. Highest-value gaps vs web:
 
 1. Profile depth — avatar upload UI, EDHREC badges, deck collection insights, bulk refresh, external deck links, mana color filter
 2. Table polish — EDHREC on deck stats
-3. Public arena — full color meta charts (pairs, win-rate breakdowns)
+3. Public playgroup — full color meta charts (pairs, win-rate breakdowns)
 4. Auth extras — OAuth remains intentionally excluded from native distributions
 5. Deep links — `/table/[id]` intent filter for opening an arena from a shared link
 6. Admin / demo — intentionally web-only for v1

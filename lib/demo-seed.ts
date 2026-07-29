@@ -60,7 +60,7 @@ export async function seedDemoTemplate(
   const { data: arena, error: arenaError } = await admin
     .from('groups')
     .insert({
-      name: 'Arena Demo Phyrexian',
+      name: 'Playgroup Demo',
       description: 'Sandbox di prova: crea partite, mazzi e ospiti. I dati vengono resettati periodicamente.',
       created_by: demoUserId,
       is_public: true,

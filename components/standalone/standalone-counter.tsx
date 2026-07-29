@@ -72,7 +72,7 @@ function exportRecap(state: LiveGameState, startedAt: string) {
   context.fillRect(0, 0, 1200, 630);
   context.fillStyle = '#c4b5fd';
   context.font = '700 28px system-ui';
-  context.fillText('PHYREXIAN ARENA', 64, 70);
+  context.fillText('TRACKER & ANALYTICS', 64, 70);
   context.fillStyle = '#ffffff';
   context.font = '900 54px system-ui';
   context.fillText('Riepilogo partita', 64, 136);
@@ -100,7 +100,7 @@ function exportRecap(state: LiveGameState, startedAt: string) {
     context.textAlign = 'left';
   });
   const link = document.createElement('a');
-  link.download = `phyrexian-recap-${new Date().toISOString().slice(0, 10)}.png`;
+  link.download = `mtg-commander-recap-${new Date().toISOString().slice(0, 10)}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 }

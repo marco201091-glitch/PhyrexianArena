@@ -19,7 +19,7 @@ module.exports = ({ config: base }) => {
 
   return {
     ...base,
-    name: isDevVariant ? 'Phyrexian Arena Dev' : base.name,
+    name: isDevVariant ? 'MTG: Commander Dev' : base.name,
     scheme: isDevVariant ? devScheme : base.scheme,
     plugins: [
       ...base.plugins,
@@ -27,6 +27,7 @@ module.exports = ({ config: base }) => {
       'expo-image',
       ['expo-splash-screen', {
         image: './assets/splash-icon.png',
+        imageWidth: 220,
         resizeMode: 'contain',
         backgroundColor: '#0a0a0f',
       }],
@@ -36,7 +37,7 @@ module.exports = ({ config: base }) => {
         organization: process.env.SENTRY_ORG,
         project: process.env.SENTRY_MOBILE_PROJECT || process.env.SENTRY_PROJECT,
         url: process.env.SENTRY_URL,
-        disableAutoUpload: isDevVariant,
+        disableAutoUpload: isDevVariant || !process.env.SENTRY_AUTH_TOKEN,
       }],
       './plugins/with-clean-intent-filter-markers',
     ],

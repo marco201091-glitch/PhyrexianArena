@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.selectionTintStrong,
     borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.45)',
+    borderColor: 'rgba(167, 227, 172, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },

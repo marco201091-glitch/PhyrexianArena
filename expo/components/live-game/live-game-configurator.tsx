@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
+import { CompactDeckCard } from '@/components/deck/compact-deck-card';
 import type { DeckOption } from '@/components/table/match-participant-row';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
@@ -388,28 +389,20 @@ export function LiveGameConfigurator({
               <Text style={styles.deckSectionTitle}>{labels.chooseDeck}</Text>
               <ScrollView style={[styles.deckList, tablet && styles.deckListTablet]} contentContainerStyle={styles.optionListContent} nestedScrollEnabled>
                 {selectedParticipant.decks.map((deck) => (
-                  <Pressable
+                  <CompactDeckCard
                     key={deck.id}
+                    artUri={deck.commander_image}
+                    title={deck.name}
+                    commander={deck.commander}
                     onPress={() => setDraftDeck(deck.id)}
-                    style={({ pressed }) => [
-                      styles.deckOption,
-                      draftDeck === deck.id && styles.deckOptionActive,
-                      pressed && styles.interactivePressed,
-                    ]}
-                  >
-                    <DeckImage uri={deck.commander_image} alt={deck.commander} style={styles.deckImage} containerStyle={styles.deckImage} />
-                    <View style={styles.deckCopy}>
-                      <Text style={styles.deckName} numberOfLines={1}>{deck.commander}</Text>
-                      {deck.name !== deck.commander ? (
-                        <Text style={styles.deckCommander} numberOfLines={1}>{deck.name}</Text>
-                      ) : null}
-                    </View>
-                    <Ionicons
+                    accessibilityLabel={`${labels.chooseDeck}: ${deck.name}`}
+                    style={draftDeck === deck.id ? styles.deckOptionActive : undefined}
+                    trailing={<Ionicons
                       name={draftDeck === deck.id ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={21}
+                      size={23}
                       color={draftDeck === deck.id ? colors.primaryLight : colors.muted}
-                    />
-                  </Pressable>
+                    />}
+                  />
                 ))}
               </ScrollView>
             </View>
@@ -449,11 +442,11 @@ const styles = StyleSheet.create({
   root: { gap: spacing.md },
   wizardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   progressRow: { flex: 1, flexDirection: 'row', gap: 5 },
-  progressBar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.border },
-  progressBarActive: { backgroundColor: colors.primaryLight },
+  progressBar: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.border },
+  progressBarActive: { backgroundColor: colors.primaryLight, shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 5, elevation: 2 },
   interactivePressed: { opacity: 0.9, transform: [{ scale: 0.985 }] },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
-  stepBadge: { width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+  stepBadge: { width: 29, height: 29, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderWidth: 1, borderColor: colors.primaryLight, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 7, elevation: 4 },
   stepText: { color: '#fff', fontSize: 12, fontWeight: '900' },
   sectionTitle: { flex: 1, color: colors.foreground, fontSize: 15, fontWeight: '800' },
   resetButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.surfaceMuted },
@@ -462,18 +455,18 @@ const styles = StyleSheet.create({
   lifeStep: { gap: spacing.md },
   lifeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   lifeButton: { minWidth: 58, minHeight: 46, paddingHorizontal: spacing.md, borderRadius: 23, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardInset },
-  lifeButtonActive: { borderColor: '#67e8f9', backgroundColor: 'rgba(6,182,212,0.16)' },
+  lifeButtonActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTintStrong, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 7, elevation: 2 },
   customLifeInput: { minHeight: 48, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, color: colors.foreground, backgroundColor: colors.cardInset, fontWeight: '800' },
-  customLifeInputActive: { borderColor: '#67e8f9' },
+  customLifeInputActive: { borderColor: colors.primaryLight },
   countButton: { flex: 1, minHeight: 46, borderRadius: 23, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardInset },
-  countButtonActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTintStrong },
+  countButtonActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTintStrong, shadowColor: colors.primary, shadowOpacity: 0.22, shadowRadius: 7, elevation: 2 },
   countText: { color: colors.muted, fontSize: 16, fontWeight: '800' },
   countTextActive: { color: colors.foreground },
   layoutOptions: { flexDirection: 'row', gap: spacing.sm },
   layoutOption: { flex: 1, alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardInset },
-  layoutOptionActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTint },
+  layoutOptionActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTint, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3 },
   layoutPreview: { position: 'relative', backgroundColor: '#06060a', borderRadius: radii.md, overflow: 'hidden' },
-  layoutSeat: { position: 'absolute', borderRadius: 4, borderWidth: 1, borderColor: 'rgba(196,181,253,0.35)', backgroundColor: 'rgba(124,58,237,0.22)' },
+  layoutSeat: { position: 'absolute', borderRadius: 4, borderWidth: 1, borderColor: 'rgba(167, 227, 172,0.35)', backgroundColor: 'rgba(66, 159, 74,0.22)' },
   layoutToolbar: { position: 'absolute', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#12121a' },
   layoutToolbarVertical: { flexDirection: 'column' },
   layoutToolbarDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primaryMuted },
@@ -481,8 +474,8 @@ const styles = StyleSheet.create({
   layoutLabel: { color: colors.muted, fontSize: 12, fontWeight: '800' },
   layoutLabelActive: { color: colors.foreground },
   tablePreview: { position: 'relative', alignSelf: 'center', borderRadius: radii.lg, overflow: 'hidden', backgroundColor: '#050508', borderWidth: 1, borderColor: colors.border },
-  seatButton: { position: 'absolute', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', padding: 5, borderRadius: 7, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.selectionBorder, backgroundColor: 'rgba(124,58,237,0.08)' },
-  seatButtonAssigned: { borderStyle: 'solid', borderColor: 'rgba(196,181,253,0.58)' },
+  seatButton: { position: 'absolute', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', padding: 5, borderRadius: 7, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.selectionBorder, backgroundColor: 'rgba(66, 159, 74,0.08)' },
+  seatButtonAssigned: { borderStyle: 'solid', borderColor: 'rgba(167, 227, 172,0.62)', shadowColor: colors.primary, shadowOpacity: 0.24, shadowRadius: 6, elevation: 3 },
   seatButtonPressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },
   seatImage: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
   seatScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(3,3,8,0.52)' },
@@ -498,19 +491,14 @@ const styles = StyleSheet.create({
   playerListTablet: { flex: 1, maxHeight: 340 },
   optionListContent: { gap: spacing.xs },
   playerOption: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, backgroundColor: colors.cardInset, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
-  playerOptionActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTint },
+  playerOptionActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTint, shadowColor: colors.primary, shadowOpacity: 0.18, shadowRadius: 6, elevation: 2 },
   playerName: { flex: 1, color: colors.foreground, fontSize: 14, fontWeight: '800' },
   deckSection: { gap: spacing.sm },
   deckSectionTablet: { flex: 1, minWidth: 0 },
   deckSectionTitle: { color: colors.muted, fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
   deckList: { gap: spacing.xs, maxHeight: 245 },
   deckListTablet: { maxHeight: 310 },
-  deckOption: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardInset },
-  deckOptionActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTint },
-  deckImage: { width: 42, height: 48, borderRadius: 7 },
-  deckCopy: { flex: 1, minWidth: 0 },
-  deckName: { color: colors.foreground, fontSize: 13, fontWeight: '800' },
-  deckCommander: { color: colors.muted, fontSize: 11, marginTop: 2 },
+  deckOptionActive: { borderColor: colors.primaryLight },
   modalActions: { flexDirection: 'row', gap: spacing.sm },
   modalActionsStacked: { flexDirection: 'column' },
   actionButton: { flex: 1 },

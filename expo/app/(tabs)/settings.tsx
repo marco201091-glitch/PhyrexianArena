@@ -26,6 +26,7 @@ import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import { hapticSuccess } from '@/lib/haptics';
 import { APP_DISPLAY_VERSION } from '@/lib/app-version';
+import { FAN_CONTENT_NOTICE } from '@/lib/legal-site';
 import { apiPost } from '@/lib/api';
 import { colors, spacing } from '@/constants/theme';
 import {
@@ -322,6 +323,7 @@ export default function SettingsScreen() {
         <Link href={{ pathname: '/legal/[slug]', params: { slug: 'privacy' } }} style={styles.legalLink}>{copy('privacyPolicy')}</Link>
         <Link href={{ pathname: '/legal/[slug]', params: { slug: 'terms' } }} style={styles.legalLink}>{copy('termsOfUse')}</Link>
         <Link href={{ pathname: '/legal/[slug]', params: { slug: 'cookies' } }} style={styles.legalLink}>{copy('cookiePolicy')}</Link>
+        <Text style={styles.legalNotice}>{FAN_CONTENT_NOTICE}</Text>
       </PhyrexianPanel>
 
       <Button label={copy('logout')} variant="ghost" onPress={() => void signOut()} style={styles.logout} />
@@ -512,6 +514,12 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
     fontWeight: '600',
     fontSize: 15,
+  },
+  legalNotice: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: spacing.xs,
   },
   error: {
     color: colors.destructive,

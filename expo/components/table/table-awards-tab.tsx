@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CommanderArt } from '@/components/deck/commander-art';
+import { CompactDeckCard } from '@/components/deck/compact-deck-card';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
 import { formatGameDuration } from '@/lib/live-game-duration';
@@ -53,11 +53,15 @@ export function TableAwardsTab({ awards, labels }: Props) {
                       : { title: labels.junkMaster, value: `${award.value} ${labels.wins}` };
       const metaGames = award.kind === 'one_trick' ? award.gamesPlayed : award.trackedGames;
       const metaLabel = award.kind === 'one_trick' ? labels.games : labels.trackedGames;
-      return <PhyrexianPanel key={award.kind} variant="inset" style={styles.card}>
-        <CommanderArt uri={award.commanderImage} alt={award.commander} size="sm" />
-        <View style={styles.main}><Text style={styles.kicker}>{presentation.title}</Text><Text style={styles.name} numberOfLines={1}>{award.name}</Text><Text style={styles.commander} numberOfLines={1}>{award.commander}</Text><Text style={styles.meta}>{metaGames} {metaLabel}</Text></View>
-        <Text style={styles.value}>{presentation.value}</Text>
-      </PhyrexianPanel>;
+      return <CompactDeckCard
+        key={award.kind}
+        artUri={award.commanderImage}
+        eyebrow={presentation.title}
+        title={award.name}
+        commander={award.commander}
+        meta={`${metaGames} ${metaLabel}`}
+        trailing={<Text style={styles.value}>{presentation.value}</Text>}
+      />;
     })}
   </View>;
 }
@@ -65,13 +69,7 @@ export function TableAwardsTab({ awards, labels }: Props) {
 const styles = StyleSheet.create({
   section: { gap: spacing.sm },
   hint: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  main: { flex: 1, minWidth: 0 },
-  kicker: { color: colors.primaryMuted, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  name: { color: colors.foreground, fontSize: 14, fontWeight: '700', marginTop: 2 },
-  commander: { color: colors.muted, fontSize: 12 },
-  meta: { color: colors.muted, fontSize: 10, marginTop: 2 },
-  value: { color: colors.foreground, fontSize: 15, fontWeight: '800' },
+  value: { color: '#fff', fontSize: 16, fontWeight: '900' },
   empty: { alignItems: 'center', gap: spacing.sm },
   title: { color: colors.foreground, fontSize: 18, fontWeight: '700' },
   body: { color: colors.muted, fontSize: 13, textAlign: 'center' },

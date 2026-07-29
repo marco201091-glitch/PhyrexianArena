@@ -45,6 +45,11 @@ import { hapticSuccess } from '@/lib/haptics';
 import { computeArenaColorAnalytics } from '@/lib/arena-color-analytics';
 import { calculateCommanderStats, type DeckStatsSort } from '@/lib/arena-deck-stats';
 import {
+  buildArenaAnalyticsView,
+  fetchArenaAnalytics,
+  type ArenaAnalyticsPayload,
+} from '@/lib/arena-analytics-bundle';
+import {
   filterMatchesByDate,
   getArenaPeriodLabel,
   getBracketOptionsFromMatches,
@@ -99,10 +104,13 @@ export default function TableScreen() {
     group,
     members,
     matches,
+    hasMoreMatches,
+    loadingMoreMatches,
     guests,
     decks,
     loading,
     refresh,
+    loadMoreMatches,
     createMatch,
     updateGroup,
     updateMatch,
@@ -151,6 +159,34 @@ export default function TableScreen() {
   const [expandedDayKeys, setExpandedDayKeys] = useState<Set<string>>(new Set());
   const [sharePreview, setSharePreview] = useState<{ title: string; message: string } | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [analyticsPayload, setAnalyticsPayload] = useState<ArenaAnalyticsPayload | null>(null);
+  const [allTimeAnalyticsPayload, setAllTimeAnalyticsPayload] = useState<ArenaAnalyticsPayload | null>(null);
+
+  useEffect(() => {
+    if (!groupId || !user?.id) {
+      setAnalyticsPayload(null);
+      setAllTimeAnalyticsPayload(null);
+      return;
+    }
+    let active = true;
+    const currentRequest = fetchArenaAnalytics(supabase, groupId, dateFilter);
+    const allTimeRequest = dateFilter === 'all'
+      ? currentRequest
+      : fetchArenaAnalytics(supabase, groupId, 'all');
+    void Promise.all([currentRequest, allTimeRequest])
+      .then(([current, allTime]) => {
+        if (!active) return;
+        setAnalyticsPayload(current);
+        setAllTimeAnalyticsPayload(allTime);
+      })
+      .catch(() => {
+        if (!active) return;
+        // V6 backends without the aggregate RPC keep the client fallback.
+        setAnalyticsPayload(null);
+        setAllTimeAnalyticsPayload(null);
+      });
+    return () => { active = false; };
+  }, [dateFilter, groupId, user?.id]);
 
   useEffect(() => {
     if (!detailsMatch?.id || detailsMatch.tracking_version == null) {
@@ -208,26 +244,41 @@ export default function TableScreen() {
     [dateFilter, matches],
   );
 
+  const analyticsView = useMemo(
+    () => analyticsPayload
+      ? buildArenaAnalyticsView(analyticsPayload, bracketFilter, deckStatsSort)
+      : null,
+    [analyticsPayload, bracketFilter, deckStatsSort],
+  );
+
   const playerStats = useMemo(
-    () => calculatePlayerStats(filteredMatches),
-    [filteredMatches],
+    () => analyticsView?.players ?? calculatePlayerStats(filteredMatches),
+    [analyticsView?.players, filteredMatches],
   );
 
   const commanderStats = useMemo(
-    () => calculateCommanderStats(filteredMatches, bracketFilter, deckStatsSort),
-    [bracketFilter, deckStatsSort, filteredMatches],
+    () => analyticsView?.commanders
+      ?? calculateCommanderStats(filteredMatches, bracketFilter, deckStatsSort),
+    [analyticsView?.commanders, bracketFilter, deckStatsSort, filteredMatches],
   );
 
   const bracketOptions = useMemo(
-    () => getBracketOptionsFromMatches(filteredMatches),
-    [filteredMatches],
+    () => analyticsView?.brackets ?? getBracketOptionsFromMatches(filteredMatches),
+    [analyticsView?.brackets, filteredMatches],
   );
 
   const colorAnalytics = useMemo(
-    () => computeArenaColorAnalytics(filteredMatches, new Map(), bracketFilter),
-    [bracketFilter, filteredMatches],
+    () => analyticsView?.colors
+      ?? computeArenaColorAnalytics(filteredMatches, new Map(), bracketFilter),
+    [analyticsView?.colors, bracketFilter, filteredMatches],
   );
-  const arenaAwards = useMemo(() => calculateArenaAwards(matches), [matches]);
+  const arenaAwards = useMemo(
+    () => allTimeAnalyticsPayload
+      ? buildArenaAnalyticsView(allTimeAnalyticsPayload).awards
+      : calculateArenaAwards(matches),
+    [allTimeAnalyticsPayload, matches],
+  );
+  const reportedMatchCount = analyticsView?.totalMatches ?? filteredMatches.length;
 
   const matchDayGroups = useMemo(() => {
     const locale = language === 'it' ? 'it-IT' : 'en-US';
@@ -309,7 +360,7 @@ export default function TableScreen() {
     return buildArenaShareText({
       arenaName: group.name,
       periodLabel: getArenaPeriodLabel(dateFilter, language),
-      totalMatches: filteredMatches.length,
+      totalMatches: reportedMatchCount,
       topPlayers: playerStats.slice(0, 5).map((player) => ({
         displayName: player.displayName,
         gamesPlayed: player.gamesPlayed,
@@ -366,12 +417,13 @@ export default function TableScreen() {
     group,
     language,
     playerStats,
+    reportedMatchCount,
   ]);
 
   const shareArenaStats = useCallback(() => {
     if (!group) return;
     setSharePreview({
-      title: `${group.name} - Phyrexian Arena`,
+      title: `${group.name} - Tracker & Analytics`,
       message: buildArenaStatsShareMessage(),
     });
   }, [buildArenaStatsShareMessage, group]);
@@ -666,12 +718,17 @@ export default function TableScreen() {
             exportDayLabel={copy('exportDay')}
             drawLabel={copy('liveGameDraw')}
             onExportDay={openDayExportModal}
+            hasMore={hasMoreMatches}
+            loadingMore={loadingMoreMatches}
+            loadMoreLabel={copy('loadOlderMatches')}
+            loadingMoreLabel={copy('loadingOlderMatches')}
+            onLoadMore={loadMoreMatches}
           />
         ) : null}
 
         {activeTab === 'players' ? (
           <TablePlayersTab
-            filteredMatchCount={filteredMatches.length}
+            filteredMatchCount={reportedMatchCount}
             members={members}
             playerStats={playerStats}
             group={group}
@@ -750,7 +807,7 @@ export default function TableScreen() {
 
         {activeTab === 'meta' ? (
           <TableMetaTab
-            filteredMatchCount={filteredMatches.length}
+            filteredMatchCount={reportedMatchCount}
             colorAnalytics={colorAnalytics}
             language={language}
             labels={{
@@ -802,7 +859,7 @@ export default function TableScreen() {
 
         {isMember ? (
           <TableArenaManagement
-            showExportStats={filteredMatches.length > 0}
+            showExportStats={reportedMatchCount > 0}
             canManage={canManage}
             canLeave={canLeave}
             labels={{

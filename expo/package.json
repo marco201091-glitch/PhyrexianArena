@@ -54,6 +54,7 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "@expo-google-fonts/cinzel": "^0.4.2",
     "@expo/ui": "~57.0.7",
     "@expo/vector-icons": "^15.0.3",
     "@hookform/resolvers": "^3.10.0",

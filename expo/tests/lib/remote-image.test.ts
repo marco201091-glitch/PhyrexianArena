@@ -5,7 +5,7 @@ describe('remote image request headers', () => {
   it('identifies the app when loading Scryfall card images', () => {
     expect(getRemoteImageHeaders('https://cards.scryfall.io/large/front/a/b/card.jpg')).toEqual({
       Accept: 'image/*',
-      'User-Agent': 'Phyrexian Arena Mobile (https://phyrexianarena.app)',
+      'User-Agent': 'MTG Life Counter & Analytics: Commander (https://phyrexianarena.app)',
     });
   });
 

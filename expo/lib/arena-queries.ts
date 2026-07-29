@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ArenaGuest } from '@/lib/arena-participants';
-import { ARENA_MATCHES_FETCH_LIMIT } from '@/lib/arena-matches';
+import { ARENA_MATCHES_PAGE_SIZE } from '@/lib/arena-matches';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import type { ArenaDetail, ArenaMatch, MemberDeck } from '@/lib/types/arena';
 
@@ -66,20 +66,47 @@ const DECK_PICKER_COLUMNS = `
 const MEMBER_DECK_LIMIT = 120;
 const MEMBER_FETCH_CONCURRENCY = 4;
 
-export async function fetchArenaMatches(supabase: SupabaseClient, groupId: string) {
-  const { data, error } = await supabase
+export type ArenaMatchesPage = {
+  matches: ArenaMatch[];
+  hasMore: boolean;
+};
+
+export type ArenaMatchesCursor = {
+  playedAt: string;
+  id: string;
+};
+
+export async function fetchArenaMatches(
+  supabase: SupabaseClient,
+  groupId: string,
+  cursor?: ArenaMatchesCursor | null,
+): Promise<ArenaMatchesPage> {
+  let query = supabase
     .from('matches')
     .select(MATCHES_SELECT)
     .eq('group_id', groupId)
     .order('played_at', { ascending: false })
-    .limit(ARENA_MATCHES_FETCH_LIMIT);
+    .order('id', { ascending: false })
+    .limit(ARENA_MATCHES_PAGE_SIZE + 1);
+
+  if (cursor) {
+    query = query.or(
+      `played_at.lt.${cursor.playedAt},and(played_at.eq.${cursor.playedAt},id.lt.${cursor.id})`,
+    );
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching matches:', getSupabaseErrorMessage(error, 'Failed to fetch matches'));
-    return [] as ArenaMatch[];
+    return { matches: [], hasMore: false };
   }
 
-  return (data as ArenaMatch[]) || [];
+  const rows = (data as ArenaMatch[]) || [];
+  return {
+    matches: rows.slice(0, ARENA_MATCHES_PAGE_SIZE),
+    hasMore: rows.length > ARENA_MATCHES_PAGE_SIZE,
+  };
 }
 
 export async function fetchArenaGroup(supabase: SupabaseClient, groupId: string) {

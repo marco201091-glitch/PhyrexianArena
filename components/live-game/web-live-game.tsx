@@ -315,8 +315,8 @@ export function WebLiveGame({
     }
     toast({
       title: copy({
-        it: 'Per il vero schermo intero su iPad, aggiungi Phyrexian Arena alla schermata Home.',
-        en: 'For true fullscreen on iPad, add Phyrexian Arena to your Home Screen.',
+        it: 'Per il vero schermo intero su iPad, aggiungi MTG: Commander alla schermata Home.',
+        en: 'For true fullscreen on iPad, add MTG: Commander to your Home Screen.',
       }),
     });
   }, [copy, toast]);
@@ -1021,7 +1021,7 @@ export function WebLiveGame({
               <LiveGameRecapView
                 record={completedRecord}
                 labels={{
-                  timeline: copy({ it: 'Andamento vite', en: 'Life timeline' }),
+                  timeline: copy({ it: 'Stato finale', en: 'Final state' }),
                   highlights: copy({ it: 'Momenti chiave', en: 'Highlights' }),
                   empty: copy({ it: 'Nessun momento chiave registrato.', en: 'No highlights recorded.' }),
                 }}

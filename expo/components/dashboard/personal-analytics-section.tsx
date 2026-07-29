@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CommanderArt } from '@/components/deck/commander-art';
-import { ManaColorBadge, ManaColorPills } from '@/components/ui/mana-color-pills';
+import { CompactDeckCard } from '@/components/deck/compact-deck-card';
+import { ManaColorBadge } from '@/components/ui/mana-color-pills';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { StatCard } from '@/components/ui/stat-card';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -103,28 +103,15 @@ export function PersonalAnalyticsSection({
             <PhyrexianPanel>
               <Text style={styles.cardTitle}>{bestDeckTitle}</Text>
               <Text style={styles.cardSubtitle}>{bestDeckHint}</Text>
-              <View style={styles.deckRow}>
-                <View style={styles.deckArtWrap}>
-                  <CommanderArt
-                    uri={analytics.bestDeck.commanderImage}
-                    alt={analytics.bestDeck.commander}
-                    size="sm"
-                  />
-                </View>
-                <View style={styles.deckInfo}>
-                  <View style={styles.deckTitleRow}>
-                    <Text style={styles.deckName} numberOfLines={1}>{analytics.bestDeck.name}</Text>
-                    <ManaColorPills colors={analytics.bestDeck.colors} language={language} />
-                  </View>
-                  <Text style={styles.commander} numberOfLines={1}>{analytics.bestDeck.commander}</Text>
-                </View>
-                <View style={styles.deckStats}>
-                  <Text style={styles.deckStatsMain}>
-                    {analytics.bestDeck.gamesPlayed}G / {analytics.bestDeck.wins}W
-                  </Text>
-                  <Text style={styles.deckStatsSub}>{analytics.bestDeck.winRate}% {winLabel}</Text>
-                </View>
-              </View>
+              <CompactDeckCard
+                artUri={analytics.bestDeck.commanderImage}
+                title={analytics.bestDeck.name}
+                commander={analytics.bestDeck.commander}
+                meta={`${analytics.bestDeck.gamesPlayed}G · ${analytics.bestDeck.wins}W`}
+                gamesPlayed={analytics.bestDeck.gamesPlayed}
+                wins={analytics.bestDeck.wins}
+                trailing={<Text style={styles.deckWinRate}>{analytics.bestDeck.winRate}%</Text>}
+              />
             </PhyrexianPanel>
           ) : null}
 
@@ -133,25 +120,17 @@ export function PersonalAnalyticsSection({
             <Text style={styles.cardSubtitle}>{topDecksSubtitle}</Text>
             <View style={styles.deckList}>
               {analytics.topDecks.map((deck, index) => (
-                <View key={deck.id} style={styles.deckRow}>
-                  <View style={styles.deckArtWrap}>
-                    <CommanderArt uri={deck.commanderImage} alt={deck.commander} size="sm" />
-                    <View style={styles.rank}>
-                      <Text style={styles.rankText}>{index + 1}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.deckInfo}>
-                    <View style={styles.deckTitleRow}>
-                      <Text style={styles.deckName} numberOfLines={1}>{deck.name}</Text>
-                      <ManaColorPills colors={deck.colors} language={language} />
-                    </View>
-                    <Text style={styles.commander} numberOfLines={1}>{deck.commander}</Text>
-                  </View>
-                  <View style={styles.deckStats}>
-                    <Text style={styles.deckStatsMain}>{deck.gamesPlayed}G / {deck.wins}W</Text>
-                    <Text style={styles.deckStatsSub}>{deck.winRate}% {winLabel}</Text>
-                  </View>
-                </View>
+                <CompactDeckCard
+                  key={deck.id}
+                  artUri={deck.commanderImage}
+                  title={deck.name}
+                  commander={deck.commander}
+                  meta={`${deck.gamesPlayed}G · ${deck.wins}W`}
+                  badge={index + 1}
+                  gamesPlayed={deck.gamesPlayed}
+                  wins={deck.wins}
+                  trailing={<Text style={styles.deckWinRate}>{deck.winRate}%</Text>}
+                />
               ))}
             </View>
           </PhyrexianPanel>
@@ -272,68 +251,10 @@ const styles = StyleSheet.create({
   deckList: {
     gap: spacing.sm,
   },
-  deckRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm + 2,
-    backgroundColor: colors.cardInset,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    padding: spacing.sm + 2,
-  },
-  deckArtWrap: {
-    position: 'relative',
-  },
-  rank: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rankText: {
-    color: colors.primaryMuted,
-    fontWeight: '700',
-    fontSize: 10,
-  },
-  deckInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  deckTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  deckName: {
-    color: colors.foreground,
-    fontWeight: '600',
-    fontSize: 14,
-    flexShrink: 1,
-  },
-  commander: {
-    color: colors.primaryMuted,
-    fontSize: 12,
-  },
-  deckStats: {
-    alignItems: 'flex-end',
-  },
-  deckStatsMain: {
-    color: colors.foreground,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  deckStatsSub: {
-    color: colors.muted,
-    fontSize: 11,
+  deckWinRate: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
   },
   colorList: {
     gap: 10,

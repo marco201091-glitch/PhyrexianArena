@@ -1,10 +1,9 @@
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CommanderArt } from '@/components/deck/commander-art';
-import { EdhrecBadgeOnly } from '@/components/deck/edhrec-insights';
+import { CompactDeckCard } from '@/components/deck/compact-deck-card';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { StatCard } from '@/components/ui/stat-card';
-import { cardRowGap, colors, radii, spacing } from '@/constants/theme';
+import { cardRowGap, colors } from '@/constants/theme';
 import type { CommanderStats } from '@/lib/arena-deck-stats';
 
 type TableDecksTabProps = {
@@ -46,29 +45,16 @@ export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
         keyExtractor={(deck) => deck.key}
         scrollEnabled={false}
         renderItem={({ item: deck, index }) => (
-          <PhyrexianPanel variant="inset" padded={false} style={styles.deckRow}>
-            <View style={styles.deckArtWrap}>
-              <CommanderArt
-                uri={deck.commanderImageUrl}
-                alt={deck.commander}
-                size="sm"
-              />
-              <View style={styles.deckRankBadge}>
-                <Text style={styles.deckRankText}>{index + 1}</Text>
-              </View>
-            </View>
-            <View style={styles.deckInfo}>
-              <Text style={styles.deckCommander} numberOfLines={2}>{deck.commander}</Text>
-              <EdhrecBadgeOnly commander={deck.commander} />
-              {deck.bracket ? (
-                <Text style={styles.deckBracket}>{labels.bracket} {deck.bracket}</Text>
-              ) : null}
-              <Text style={styles.deckMeta}>
-                {deck.gamesPlayed} {labels.games} · {deck.wins}W
-              </Text>
-            </View>
-            <Text style={styles.deckWinRate}>{deck.winRate}%</Text>
-          </PhyrexianPanel>
+          <CompactDeckCard
+            artUri={deck.commanderImageUrl}
+            title={deck.commander}
+            eyebrow={deck.bracket ? `${labels.bracket} ${deck.bracket}` : labels.deckRankings}
+            meta={`${deck.gamesPlayed} ${labels.games} · ${deck.wins}W`}
+            badge={index + 1}
+            gamesPlayed={deck.gamesPlayed}
+            wins={deck.wins}
+            trailing={<Text style={styles.deckWinRate}>{deck.winRate}%</Text>}
+          />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
@@ -91,56 +77,10 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     gap: cardRowGap,
   },
-  deckRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 10,
-    overflow: 'hidden',
-  },
-  deckArtWrap: {
-    position: 'relative',
-  },
-  deckRankBadge: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deckRankText: {
-    color: colors.primaryMuted,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  deckInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  deckCommander: {
-    color: colors.foreground,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  deckBracket: {
-    color: colors.successBright,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  deckMeta: {
-    color: colors.muted,
-    fontSize: 12,
-  },
   deckWinRate: {
-    color: colors.primaryMuted,
-    fontWeight: '700',
-    fontSize: 14,
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 18,
   },
   separator: {
     height: 8,

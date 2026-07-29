@@ -87,7 +87,7 @@ export default function PublicArenaPage() {
       await navigator.clipboard.writeText(url);
       toast({
         title: t({ it: 'Link copiato', en: 'Link copied' }),
-        description: t({ it: 'Puoi condividere questa arena con chi vuoi.', en: 'You can share this arena with anyone.' }),
+        description: t({ it: 'Puoi condividere questo playgroup con chi vuoi.', en: 'You can share this playgroup with anyone.' }),
       });
     } catch {
       toast({
@@ -106,7 +106,7 @@ export default function PublicArenaPage() {
       .then(async (response) => {
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || 'Arena not found');
+          throw new Error(payload.error || 'Playgroup not found');
         }
         return response.json() as Promise<PublicArenaResponse>;
       })
@@ -116,7 +116,7 @@ export default function PublicArenaPage() {
       })
       .catch((fetchError: unknown) => {
         setData(null);
-        setError(fetchError instanceof Error ? fetchError.message : 'Arena not found');
+        setError(fetchError instanceof Error ? fetchError.message : 'Playgroup not found');
       })
       .finally(() => setLoading(false));
   }, [code]);
@@ -130,12 +130,12 @@ export default function PublicArenaPage() {
       <div className="min-h-screen bg-background px-4 py-16">
         <div className="mx-auto max-w-lg text-center">
           <h1 className="mb-2 text-2xl font-bold text-foreground">
-            {t({ it: 'Arena non disponibile', en: 'Arena unavailable' })}
+            {t({ it: 'Playgroup non disponibile', en: 'Playgroup unavailable' })}
           </h1>
           <p className="mb-6 text-muted-foreground">
             {t({
-              it: 'Questa arena non è pubblica o il codice non è valido.',
-              en: 'This arena is not public or the code is invalid.',
+              it: 'Questo playgroup non è pubblico o il codice non è valido.',
+              en: 'This playgroup is not public or the code is invalid.',
             })}
           </p>
           <Button asChild variant="outline">
@@ -168,7 +168,7 @@ export default function PublicArenaPage() {
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.2em] text-violet-300">
-                {t({ it: 'Arena pubblica', en: 'Public arena' })}
+                {t({ it: 'Playgroup pubblico', en: 'Public playgroup' })}
               </p>
               <h1 className="mt-2 text-3xl font-bold text-foreground sm:text-4xl">{data.arena.name}</h1>
               {data.arena.description && (
@@ -184,7 +184,7 @@ export default function PublicArenaPage() {
                 </span>
               </div>
             </div>
-            <Button variant="outline" className="border-violet-500/30 bg-background/40" onClick={copyArenaLink}>
+            <Button variant="outline" className="border-emerald-500/30 bg-background/40" onClick={copyArenaLink}>
               <Copy className="mr-2 h-4 w-4" />
               {t({ it: 'Copia link', en: 'Copy link' })}
             </Button>

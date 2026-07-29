@@ -3,7 +3,7 @@ import { buildLiveGameRecap } from '@/lib/live-game-recap';
 import type { LiveGameRecord } from '@/lib/live-game';
 import { colors, radii, spacing } from '@/constants/theme';
 
-const PLAYER_COLORS = ['#a78bfa', '#22d3ee', '#fb7185', '#fbbf24', '#4ade80', '#f472b6'];
+const PLAYER_COLORS = ['#72d17b', '#22d3ee', '#fb7185', '#fbbf24', '#4ade80', '#f472b6'];
 
 export function LiveGameRecapView({
   record,
@@ -20,19 +20,12 @@ export function LiveGameRecapView({
         <View style={styles.playerHeader}>
           <View style={[styles.dot, { backgroundColor: PLAYER_COLORS[index % PLAYER_COLORS.length] }]} />
           <Text style={styles.name} numberOfLines={1}>{player.displayName}</Text>
-          <Text style={[styles.finalLife, { color: PLAYER_COLORS[index % PLAYER_COLORS.length] }]}>{player.finalLife}</Text>
+          <View style={styles.finalMetrics}>
+            <Text style={[styles.finalLife, { color: PLAYER_COLORS[index % PLAYER_COLORS.length] }]}>{player.finalLife}</Text>
+            {player.finalInfect > 0 ? <Text style={styles.infect}>☠ {player.finalInfect}</Text> : null}
+          </View>
         </View>
         <Text style={styles.commander} numberOfLines={1}>{player.commander}</Text>
-        <View style={styles.timeline}>
-          {player.timeline.map((point, pointIndex) => (
-            <View key={`${point.occurredAt}:${pointIndex}`} style={styles.pointWrap}>
-              <View style={[styles.point, { borderColor: PLAYER_COLORS[index % PLAYER_COLORS.length] }]}>
-                <Text style={styles.pointText}>{point.life}</Text>
-              </View>
-              {pointIndex < player.timeline.length - 1 ? <Text style={styles.arrow}>→</Text> : null}
-            </View>
-          ))}
-        </View>
       </View>
     ))}
     <Text style={[styles.title, styles.highlightsTitle]}>{labels.highlights}</Text>
@@ -53,12 +46,9 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   name: { flex: 1, color: colors.foreground, fontSize: 12, fontWeight: '800' },
   finalLife: { fontSize: 17, fontWeight: '900' },
+  finalMetrics: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  infect: { color: colors.success, fontSize: 11, fontWeight: '800' },
   commander: { color: colors.muted, fontSize: 10 },
-  timeline: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 3, marginTop: 4 },
-  pointWrap: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  point: { minWidth: 28, height: 25, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 13, backgroundColor: colors.surfaceMuted, paddingHorizontal: 6 },
-  pointText: { color: colors.foreground, fontSize: 10, fontWeight: '800' },
-  arrow: { color: colors.muted, fontSize: 10 },
   highlightsTitle: { color: '#ddd6fe', marginTop: spacing.xs },
   highlights: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   highlight: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.sm, paddingVertical: 5 },

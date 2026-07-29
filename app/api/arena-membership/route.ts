@@ -15,10 +15,10 @@ export async function POST(request: Request) {
   const inviteCode = typeof body.inviteCode === 'string' ? body.inviteCode.trim().toUpperCase() : '';
   if (!inviteCode) return NextResponse.json({ error: 'Invalid invite code' }, { status: 400 });
   const { data: group } = await admin.from('groups').select('id, name').eq('invite_code', inviteCode).maybeSingle();
-  if (!group) return NextResponse.json({ error: 'Arena not found' }, { status: 404 });
+  if (!group) return NextResponse.json({ error: 'Playgroup not found' }, { status: 404 });
 
   const { error } = await admin.from('group_members').insert({ group_id: group.id, user_id: auth.user.id });
-  if (error && error.code !== '23505') return NextResponse.json({ error: 'Could not join Arena' }, { status: 500 });
+  if (error && error.code !== '23505') return NextResponse.json({ error: 'Could not join playgroup' }, { status: 500 });
   if (error?.code !== '23505') {
     const [{ data: members }, { data: profile }] = await Promise.all([
       admin.from('group_members').select('user_id').eq('group_id', group.id).neq('user_id', auth.user.id),
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const name = profile?.display_name || profile?.username || 'Un giocatore';
     await notifyUsers(admin, (members ?? []).map((row) => row.user_id), {
       type: 'arena_member_joined',
-      title: 'Nuovo membro nell’Arena',
+      title: 'Nuovo membro nel playgroup',
       body: `${name} si è unito a ${group.name}`,
       data: { groupId: group.id, memberId: auth.user.id },
     }, { persist: false });

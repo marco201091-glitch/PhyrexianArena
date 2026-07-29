@@ -238,7 +238,7 @@ export default function DashboardPage() {
       setNewGroupDescription('');
 
       toast({
-        title: t({ it: 'Arena creata!', en: 'Arena created!' }),
+        title: t({ it: 'Playgroup creato!', en: 'Playgroup created!' }),
         description: t({ it: 'Condividi il codice invito con il tuo gruppo', en: 'Share the invite code with your playgroup' }),
       });
 
@@ -250,7 +250,7 @@ export default function DashboardPage() {
           ? error.message
           : error && typeof error === 'object' && 'message' in error
           ? (error as { message: string }).message
-          : t({ it: 'Creazione arena non riuscita', en: 'Failed to create arena' });
+          : t({ it: 'Creazione playgroup non riuscita', en: 'Failed to create playgroup' });
 
       toast({
         title: t({ it: 'Errore', en: 'Error' }),
@@ -272,8 +272,8 @@ export default function DashboardPage() {
       toast({
         title: t({ it: 'Account demo', en: 'Demo account' }),
         description: t({
-          it: 'L\'account demo non puo unirsi ad arene reali. Crea la tua arena demo dalla dashboard.',
-          en: 'The demo account cannot join real arenas. Create your own demo arena from the dashboard.',
+          it: 'L\'account demo non può unirsi a playgroup reali. Crea il tuo playgroup demo dalla dashboard.',
+          en: 'The demo account cannot join real playgroups. Create your own demo playgroup from the dashboard.',
         }),
         variant: 'destructive',
       });
@@ -287,7 +287,7 @@ export default function DashboardPage() {
       if (!group) {
         toast({
           title: t({ it: 'Codice non valido', en: 'Invalid code' }),
-          description: t({ it: 'Nessuna arena trovata con questo codice', en: 'No arena found with that invite code' }),
+          description: t({ it: 'Nessun playgroup trovato con questo codice', en: 'No playgroup found with that invite code' }),
           variant: 'destructive',
         });
         return;
@@ -299,7 +299,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ inviteCode: joiningCode }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Failed to join Arena');
+      if (!response.ok) throw new Error(payload.error || 'Failed to join Playgroup');
       toast({
         title: t({ it: 'Entrato!', en: 'Joined!' }),
         description: t({ it: `Benvenuto in "${group.name}"`, en: `Welcome to "${group.name}"` }),
@@ -313,7 +313,7 @@ export default function DashboardPage() {
         title: t({ it: 'Errore', en: 'Error' }),
         description: getSupabaseErrorMessage(
           error,
-          t({ it: 'Ingresso nell\'arena non riuscito', en: 'Failed to join arena' }),
+          t({ it: 'Ingresso nel playgroup non riuscito', en: 'Failed to join playgroup' }),
         ),
         variant: 'destructive',
       });
@@ -394,27 +394,27 @@ export default function DashboardPage() {
                 className="flex-1 border-border text-foreground hover:bg-accent"
               >
                 <Hash className="mr-2 h-4 w-4" />
-                {t({ it: 'Entra in arena', en: 'Join Arena' })}
+                {t({ it: 'Entra nel playgroup', en: 'Join Playgroup' })}
               </Button>
               <Button
                 onClick={() => setShowCreateModal(true)}
                 className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                {t({ it: 'Crea arena', en: 'Create Arena' })}
+                {t({ it: 'Crea playgroup', en: 'Create Playgroup' })}
               </Button>
             </>
           )}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-bold text-foreground sm:text-2xl">{t({ it: 'Le tue arene', en: 'Your Arenas' })}</h2>
+            <h2 className="text-xl font-bold text-foreground sm:text-2xl">{t({ it: 'I tuoi playgroup', en: 'Your Playgroups' })}</h2>
             {adminMode && (
               <span className="rounded-full border border-violet-500/30 bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-300">
                 {t({ it: 'Vista amministratore', en: 'Admin view' })}
               </span>
             )}
           </div>
-          <p className="text-muted-foreground">{t({ it: 'Crea o entra in un\'arena per tracciare le partite', en: 'Create or join an arena to track your battles' })}</p>
+          <p className="text-muted-foreground">{t({ it: 'Crea o entra in un playgroup per tracciare le partite', en: 'Create or join a playgroup to track your battles' })}</p>
         </PanelWithActions>
 
         <PendingArenaInvitations onAccepted={() => void fetchGroups()} />
@@ -423,16 +423,16 @@ export default function DashboardPage() {
           <Card className="bg-card/50 border-border">
             <CardContent className="py-12 text-center">
               <Skull className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">{t({ it: 'Nessuna arena', en: 'No arenas yet' })}</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">{t({ it: 'Nessun playgroup', en: 'No playgroups yet' })}</h3>
               <p className="text-muted-foreground mb-4">
-                {t({ it: 'Crea un\'arena per iniziare a tracciare le partite del tuo gruppo', en: 'Create an arena to begin tracking battles with your playgroup' })}
+                {t({ it: 'Crea un playgroup per iniziare a tracciare le partite del tuo gruppo', en: 'Create a playgroup to begin tracking battles with your group' })}
               </p>
               <Button
                 onClick={() => setShowCreateModal(true)}
                 className="bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                {t({ it: 'Crea la prima arena', en: 'Create Your First Arena' })}
+                {t({ it: 'Crea il primo playgroup', en: 'Create Your First Playgroup' })}
               </Button>
             </CardContent>
           </Card>
@@ -452,7 +452,7 @@ export default function DashboardPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-violet-300/85">
-                          <span>{t({ it: 'Arena', en: 'Arena' })}</span>
+                          <span>{t({ it: 'Playgroup', en: 'Playgroup' })}</span>
                           <span className="h-1 w-1 rounded-full bg-violet-300/70" />
                           <span>{group.group_members?.length || 0} {t({ it: 'giocatori', en: 'players' })}</span>
                         </div>
@@ -781,12 +781,12 @@ export default function DashboardPage() {
             setShowJoinModal(open);
             if (!open) setJoiningCode('');
           }}
-          title={t({ it: 'Entra in un\'arena', en: 'Join an Arena' })}
+          title={t({ it: 'Entra in un playgroup', en: 'Join a Playgroup' })}
         >
             <CardHeader>
-              <CardTitle className="text-foreground">{t({ it: 'Entra in un\'arena', en: 'Join an Arena' })}</CardTitle>
+              <CardTitle className="text-foreground">{t({ it: 'Entra in un playgroup', en: 'Join a Playgroup' })}</CardTitle>
               <CardDescription className="text-muted-foreground">
-                {t({ it: 'Inserisci il codice invito che ti ha condiviso il creatore dell\'arena.', en: 'Enter the invite code shared by the arena creator.' })}
+                {t({ it: 'Inserisci il codice invito condiviso dal creatore del playgroup.', en: 'Enter the invite code shared by the playgroup creator.' })}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -831,10 +831,10 @@ export default function DashboardPage() {
         <AppModal
           open={showCreateModal}
           onOpenChange={setShowCreateModal}
-          title={t({ it: 'Crea nuova arena', en: 'Create New Arena' })}
+          title={t({ it: 'Crea nuovo playgroup', en: 'Create New Playgroup' })}
         >
             <CardHeader>
-              <CardTitle className="text-foreground">{t({ it: 'Crea nuova arena', en: 'Create New Arena' })}</CardTitle>
+              <CardTitle className="text-foreground">{t({ it: 'Crea nuovo playgroup', en: 'Create New Playgroup' })}</CardTitle>
               <CardDescription className="text-muted-foreground">
                 {t({ it: 'Crea uno spazio per il tuo gruppo di gioco', en: 'Create a battleground for your playgroup' })}
               </CardDescription>
@@ -842,7 +842,7 @@ export default function DashboardPage() {
             <CardContent>
               <form onSubmit={handleCreateGroup} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t({ it: 'Nome arena', en: 'Arena Name' })}</label>
+                  <label className="text-sm font-medium text-foreground">{t({ it: 'Nome playgroup', en: 'Playgroup Name' })}</label>
                   <Input
                     value={newGroupName}
                     onChange={(e) => setNewGroupName(e.target.value)}

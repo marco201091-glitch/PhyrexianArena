@@ -23,6 +23,7 @@
     "knip": "knip",
     "knip:dependencies": "knip --dependencies",
     "verify:security": "node scripts/verify-security.mjs",
+    "verify:obtainium": "node scripts/verify-obtainium-readiness.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",

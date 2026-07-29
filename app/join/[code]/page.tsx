@@ -54,8 +54,8 @@ export default function JoinPage() {
       toast({
         title: t({ it: 'Account demo', en: 'Demo account' }),
         description: t({
-          it: 'L\'account demo non puo unirsi ad arene reali. Crea la tua arena demo dalla dashboard.',
-          en: 'The demo account cannot join real arenas. Create your own demo arena from the dashboard.',
+          it: 'L\'account demo non può unirsi a playgroup reali. Crea il tuo playgroup demo dalla dashboard.',
+          en: 'The demo account cannot join real playgroups. Create your own demo playgroup from the dashboard.',
         }),
         variant: 'destructive',
       });
@@ -71,7 +71,7 @@ export default function JoinPage() {
         body: JSON.stringify({ inviteCode }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Failed to join Arena');
+      if (!response.ok) throw new Error(payload.error || 'Failed to join Playgroup');
       toast({
         title: t({ it: 'Benvenuto!', en: 'Welcome!' }),
         description: t({ it: `Sei entrato in "${group.name}"`, en: `You have entered "${group.name}"` }),
@@ -82,7 +82,7 @@ export default function JoinPage() {
       joinAttemptedRef.current = false;
       toast({
         title: t({ it: 'Errore', en: 'Error' }),
-        description: error instanceof Error ? error.message : t({ it: 'Ingresso nell\'arena non riuscito', en: 'Failed to join arena' }),
+        description: error instanceof Error ? error.message : t({ it: 'Ingresso nel playgroup non riuscito', en: 'Failed to join playgroup' }),
         variant: 'destructive',
       });
     } finally {
@@ -132,16 +132,16 @@ export default function JoinPage() {
             </div>
             <CardTitle className="text-xl font-bold text-foreground mt-2">{t({ it: 'Entra in', en: 'Join' })} {group.name}</CardTitle>
             <CardDescription className="text-muted-foreground">
-              {group.description || t({ it: 'Unisciti al tuo gruppo nell\'arena', en: 'Join your playgroup in the arena' })}
+              {group.description || t({ it: 'Unisciti al tuo playgroup', en: 'Join your playgroup' })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3 p-4 rounded-lg bg-background/50 border-border">
               <Users className="w-5 h-5 text-violet-400" />
-              <span className="text-foreground">{t({ it: 'Hai ricevuto un invito per entrare in un\'arena', en: 'You have been invited to join an arena' })}</span>
+              <span className="text-foreground">{t({ it: 'Hai ricevuto un invito per entrare in un playgroup', en: 'You have been invited to join a playgroup' })}</span>
             </div>
             <p className="text-sm text-muted-foreground text-center">
-              {t({ it: 'Accedi o crea un account per entrare', en: 'Sign in or create an account to join this arena' })}
+              {t({ it: 'Accedi o crea un account per entrare', en: 'Sign in or create an account to join this playgroup' })}
             </p>
             <div className="flex gap-3">
               <Link href={`/auth/login?redirect=/join/${inviteCode}`} className="flex-1">
@@ -170,7 +170,7 @@ export default function JoinPage() {
           </div>
           <CardTitle className="text-foreground mt-2">{t({ it: 'Ingresso in corso:', en: 'Joining' })} {group.name}</CardTitle>
           <CardDescription className="text-muted-foreground">
-            {group.description || t({ it: 'Ingresso nell\'arena', en: 'Enter the arena' })}
+            {group.description || t({ it: 'Ingresso nel playgroup', en: 'Enter the playgroup' })}
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center">

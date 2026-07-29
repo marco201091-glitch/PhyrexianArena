@@ -34,10 +34,15 @@ if errorlevel 1 goto :fail
 
 echo [2/6] Set production endpoints
 set "APP_VARIANT=production"
+set "NODE_ENV=production"
 set "EXPO_PUBLIC_API_BASE_URL=https://app.phyrexianarena.dpdns.org"
 set "EXPO_PUBLIC_SITE_URL=https://app.phyrexianarena.dpdns.org"
 set "EXPO_PUBLIC_SUPABASE_URL=https://phyrexianarena.dpdns.org"
 node "%~dp0verify-expo-build-env.mjs" production
+if errorlevel 1 goto :fail
+node "%~dp0verify-obtainium-readiness.mjs" --release
+if errorlevel 1 goto :fail
+node "%~dp0verify-android-signing-config.mjs"
 if errorlevel 1 goto :fail
 
 echo [3/6] Stop Gradle and clean native cache
@@ -65,11 +70,14 @@ popd
 
 set "ARTIFACT_DIR=%ROOT_DIR%\artifacts\apk"
 if not exist "%ARTIFACT_DIR%" mkdir "%ARTIFACT_DIR%"
-copy /Y "%EXPO_DIR%\android\app\build\outputs\apk\release\app-release.apk" "%ARTIFACT_DIR%\phyrexian-arena-production-v%VERSION%.apk" >nul
+copy /Y "%EXPO_DIR%\android\app\build\outputs\apk\release\app-release.apk" "%ARTIFACT_DIR%\mtg-commander-v%VERSION%.apk" >nul
+if errorlevel 1 goto :fail
+
+node "%~dp0verify-release-apk.mjs" "%ARTIFACT_DIR%\mtg-commander-v%VERSION%.apk" "%VERSION%"
 if errorlevel 1 goto :fail
 
 call :cleanup
-echo BUILD OK: %ARTIFACT_DIR%\phyrexian-arena-production-v%VERSION%.apk
+echo BUILD OK: %ARTIFACT_DIR%\mtg-commander-v%VERSION%.apk
 if "%NO_PAUSE%"=="0" pause
 exit /b 0
 

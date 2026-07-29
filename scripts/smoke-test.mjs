@@ -53,7 +53,7 @@ async function testRoutes() {
   const loginPage = await (await fetch(`${BASE_URL}/auth/login`)).text();
   const isClientRenderedLogin = /BAILOUT_TO_CLIENT_SIDE_RENDERING|app\/auth\/login\/page/i.test(loginPage);
   if (isClientRenderedLogin) {
-    assert.match(loginPage, /Phyrexian Arena - EDH Tracker/i, 'login route should render app shell');
+    assert.match(loginPage, /MTG Life Counter & Analytics: Commander/i, 'login route should render app shell');
   } else {
     assert.match(loginPage, /Ricordami|Remember me/i, 'login page should show remember-me');
     assert.match(loginPage, /Entra nell|Sign in/i, 'login page should show submit action');
@@ -95,7 +95,7 @@ async function testProtectedApis() {
 
 async function testPublicArenaApi() {
   const { status, response } = await fetchStatus('/api/public-arena/INVALID');
-  assert.ok(status === 404 || status === 400, `public arena invalid code should not be 500 (got ${status})`);
+  assert.ok(status === 404 || status === 400, `public playgroup invalid code should not be 500 (got ${status})`);
   if (status === 404) {
     const payload = await response.json();
     assert.equal(typeof payload.error, 'string');
@@ -162,7 +162,7 @@ async function testSupabaseInfra(env) {
   if (groups?.[0]?.invite_code) {
     const code = groups[0].invite_code;
     const { status, response } = await fetchStatus(`/api/public-arena/${code}`);
-    assert.equal(status, 200, `public arena API should work for public group ${code}`);
+    assert.equal(status, 200, `public playgroup API should work for public group ${code}`);
     const payload = await response.json();
     assert.equal(typeof payload.arena?.name, 'string');
   } else {

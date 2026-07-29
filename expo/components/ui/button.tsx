@@ -94,11 +94,13 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
     shadowColor: colors.primary,
-    shadowOpacity: 0.28,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowOpacity: 0.38,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 6,
   },
   ghost: {
     backgroundColor: colors.surfaceMuted,
@@ -106,9 +108,9 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
   },
   outline: {
-    backgroundColor: 'rgba(12, 12, 20, 0.4)',
+    backgroundColor: 'rgba(12, 18, 14, 0.72)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.selectionBorder,
   },
   destructive: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -119,8 +121,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   pressed: {
-    opacity: 0.94,
-    transform: [{ scale: 0.985 }, { translateY: 1 }],
+    opacity: 0.9,
+    transform: [{ scale: 0.975 }, { translateY: 1 }],
   },
   icon: {},
   label: {

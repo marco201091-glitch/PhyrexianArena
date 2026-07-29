@@ -43,7 +43,7 @@ export function AppNotificationListener() {
       if (!Notifications || !active) return;
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
-          name: 'Phyrexian Arena',
+          name: 'Tracker & Analytics',
           importance: Notifications.AndroidImportance.DEFAULT,
         });
       }

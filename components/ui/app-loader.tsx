@@ -22,7 +22,7 @@ export function AppLoader({ label, showText = false, className }: AppLoaderProps
           <div className="h-full w-1/2 animate-[phyrexian-loading_1.15s_ease-in-out_infinite] rounded-full bg-white" />
         </div>
         {label ? <p className="text-sm text-white/70">{label}</p> : null}
-        {!showText ? <span className="sr-only">Phyrexian Arena</span> : null}
+        {!showText ? <span className="sr-only">Tracker & Analytics</span> : null}
       </div>
     </div>
   );

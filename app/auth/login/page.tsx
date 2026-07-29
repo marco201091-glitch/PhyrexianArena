@@ -112,7 +112,7 @@ function LoginForm() {
       <Card className="w-full max-w-xl bg-card/80 border-border/50 backdrop-blur">
         <CardHeader className="pb-5 text-center">
           <div className="flex justify-center">
-            <ManaLogo size="xl" showText layout="stacked" subtitle="EDH Tracker" className="w-full" />
+            <ManaLogo size="xl" showText layout="stacked" subtitle="Tracker & Analytics" className="w-full" />
           </div>
         </CardHeader>
         <CardContent>
@@ -173,7 +173,7 @@ function LoginForm() {
             >
               {loading
                 ? t({ it: 'Accesso...', en: 'Signing in...' })
-                : t({ it: 'Entra nell’Arena', en: 'Enter Arena' })}
+                : t({ it: 'Entra nel Playgroup', en: 'Enter Playgroup' })}
             </Button>
           </form>
 

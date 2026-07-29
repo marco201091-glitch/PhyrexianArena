@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 
   await notifyUsers(admin, [invitedUserId], {
     type: 'arena_invite',
-    title: 'Invito Arena',
+    title: 'Invito al playgroup',
     body: `Sei stato invitato in ${group.name}`,
     data: { groupId, invitationId: invitation.id },
     dedupeKey: `arena_invite:${invitation.id}`,
@@ -105,7 +105,7 @@ export async function PATCH(request: Request) {
 
   if (action === 'accepted') {
     const inserted = await admin.from('group_members').insert({ group_id: invitation.group_id, user_id: auth.user.id });
-    if (inserted.error && inserted.error.code !== '23505') return NextResponse.json({ error: 'Could not join Arena' }, { status: 500 });
+    if (inserted.error && inserted.error.code !== '23505') return NextResponse.json({ error: 'Could not join playgroup' }, { status: 500 });
   }
   await admin.from('arena_invitations').update({ status: action, responded_at: new Date().toISOString() }).eq('id', invitation.id);
 
@@ -118,8 +118,8 @@ export async function PATCH(request: Request) {
     const name = profile?.display_name || profile?.username || 'Un giocatore';
     await notifyUsers(admin, (members ?? []).map((row) => row.user_id), {
       type: 'arena_member_joined',
-      title: 'Nuovo membro nell’Arena',
-      body: `${name} si è unito a ${group?.name ?? 'un’Arena'}`,
+      title: 'Nuovo membro nel playgroup',
+      body: `${name} si è unito a ${group?.name ?? 'un playgroup'}`,
       data: { groupId: invitation.group_id, memberId: auth.user.id },
     }, { persist: false });
   }

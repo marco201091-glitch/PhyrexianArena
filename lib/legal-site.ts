@@ -1,7 +1,10 @@
-export const LEGAL_SITE_NAME = 'Phyrexian Arena';
+export const LEGAL_SITE_NAME = 'MTG Life Counter & Analytics: Commander';
+export const LEGAL_BRAND_NAME = 'blackistoostrong';
+export const LEGAL_CONTROLLER_NAME = 'Marco Andreani';
 export const APP_VERSION = '7.0.0';
-export const LEGAL_LAST_UPDATED = '2026-07-27';
+export const LEGAL_LAST_UPDATED = '2026-07-29';
 export const OFFICIAL_SUPPORT_EMAIL = 'support@phyrexianarena.dpdns.org';
+export const FAN_CONTENT_NOTICE = `${LEGAL_SITE_NAME} is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.`;
 
 export function getLegalContactEmail() {
   const configured = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim().toLowerCase();

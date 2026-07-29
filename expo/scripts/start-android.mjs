@@ -13,6 +13,13 @@ const expoCli = fileURLToPath(new URL('../node_modules/expo/bin/cli', import.met
 const metro = spawn(process.execPath, [expoCli, 'start', '--localhost'], {
   stdio: 'inherit',
   windowsHide: true,
+  env: {
+    ...process.env,
+    NODE_OPTIONS: [
+      process.env.NODE_OPTIONS,
+      '--dns-result-order=ipv4first',
+    ].filter(Boolean).join(' '),
+  },
 });
 
 let metroExited = false;
@@ -79,7 +86,7 @@ async function openProject() {
     throw new Error(`Could not open Expo Go (adb exit ${result.status ?? 'unknown'})`);
   }
 
-  console.log(`Opened Phyrexian Arena at ${PROJECT_URL}`);
+  console.log(`Opened Tracker & Analytics at ${PROJECT_URL}`);
 }
 
 openProject().catch((error) => {

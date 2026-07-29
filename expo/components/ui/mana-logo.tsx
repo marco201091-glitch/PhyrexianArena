@@ -3,7 +3,6 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { layout as layoutMetrics, scaleForWidth } from '@/lib/layout';
 
 const logoImage = require('@/assets/logo.png');
-const wordmarkImage = require('@/assets/logo-wordmark.png');
 
 type ManaLogoSize = 'sm' | 'md' | 'lg' | 'xl';
 type ManaLogoLayout = 'horizontal' | 'stacked';
@@ -17,10 +16,10 @@ interface ManaLogoProps {
 }
 
 const sizes = {
-  sm: { plate: 80, logo: 64, wordmarkH: 36, wordmarkW: 112, subtitle: 10, gap: 8 },
-  md: { plate: 104, logo: 84, wordmarkH: 48, wordmarkW: 176, subtitle: 11, gap: 10 },
-  lg: { plate: 152, logo: 124, wordmarkH: 64, wordmarkW: 256, subtitle: 11, gap: 12 },
-  xl: { plate: 236, logo: 196, wordmarkH: 80, wordmarkW: 320, subtitle: 10, gap: 12 },
+  sm: { plate: 80, wordmark: 13, gap: 8 },
+  md: { plate: 104, wordmark: 17, gap: 10 },
+  lg: { plate: 152, wordmark: 22, gap: 12 },
+  xl: { plate: 236, wordmark: 27, gap: 12 },
 } as const;
 
 export function ManaLogo({
@@ -35,8 +34,6 @@ export function ManaLogo({
   const stacked = layout === 'stacked';
   const contentWidth = Math.max(0, screenWidth - 40);
   const plate = scaleForWidth(base.plate, contentWidth);
-  const wordmarkW = Math.min(scaleForWidth(base.wordmarkW, contentWidth), contentWidth);
-  const wordmarkH = scaleForWidth(base.wordmarkH, contentWidth);
   const gap = scaleForWidth(base.gap, contentWidth, layoutMetrics.compactWidth + 40);
 
   return (
@@ -62,34 +59,22 @@ export function ManaLogo({
             height: plate,
           }}
           contentFit="contain"
-          alt="Phyrexian Arena"
+          alt="Tracker & Analytics"
         />
       </View>
 
       {showText ? (
         <View style={[styles.textBlock, stacked && styles.textBlockStacked]}>
-          <Image
-            source={wordmarkImage}
-            style={{
-              width: stacked ? wordmarkW : wordmarkW,
-              height: wordmarkH,
-              maxWidth: '100%',
-            }}
-            contentFit="contain"
-            alt="Phyrexian Arena"
-          />
-          {subtitle ? (
-            <Text
-              style={[styles.subtitle, { fontSize: base.subtitle }]}
-              maxFontSizeMultiplier={layoutMetrics.maxFontSizeMultiplier}
-            >
-              {subtitle}
-            </Text>
-          ) : null}
+          <Text
+            style={[styles.wordmark, { fontSize: base.wordmark }]}
+            maxFontSizeMultiplier={layoutMetrics.maxFontSizeMultiplier}
+          >
+            {subtitle ?? 'Tracker & Analytics'}
+          </Text>
         </View>
       ) : subtitle ? (
         <Text
-          style={[styles.subtitle, { fontSize: base.subtitle }]}
+          style={[styles.wordmark, { fontSize: base.wordmark }]}
           maxFontSizeMultiplier={layoutMetrics.maxFontSizeMultiplier}
         >
           {subtitle}
@@ -127,10 +112,10 @@ const styles = StyleSheet.create({
   textBlockStacked: {
     alignItems: 'center',
   },
-  subtitle: {
-    color: 'rgba(244, 244, 245, 0.8)',
-    fontWeight: '700',
-    letterSpacing: 2.4,
+  wordmark: {
+    color: '#f4f4f5',
+    fontFamily: 'Cinzel_700Bold',
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
     textAlign: 'center',
   },
