@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -481,6 +482,7 @@ export function AddDeckModal({
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
           bottomOffset={16}
+          enabled={Platform.OS !== 'android'}
           showsVerticalScrollIndicator
           nestedScrollEnabled
         >

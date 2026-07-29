@@ -1,8 +1,6 @@
 import { PropsWithChildren, useMemo } from 'react';
 import {
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -65,21 +63,14 @@ export function Screen({
     [horizontalPadding, padded, resolvedMaxWidth],
   );
 
-  const scrollProps = {
-    contentContainerStyle: [styles.scrollContent, paddedStyle],
-    keyboardShouldPersistTaps: 'handled' as const,
-    keyboardDismissMode: 'on-drag' as const,
-    showsVerticalScrollIndicator: false,
-  };
-
-  const content = scroll && keyboardAvoiding ? (
-    <ScrollView {...scrollProps}>
-      {children}
-    </ScrollView>
-  ) : scroll ? (
+  const content = scroll ? (
     <KeyboardAwareScrollView
-      {...scrollProps}
+      contentContainerStyle={[styles.scrollContent, paddedStyle]}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       bottomOffset={spacing.lg}
+      enabled={Platform.OS !== 'android'}
+      showsVerticalScrollIndicator={false}
     >
       {children}
     </KeyboardAwareScrollView>
@@ -87,20 +78,13 @@ export function Screen({
     <View style={[styles.content, paddedStyle]}>{children}</View>
   );
 
-  const safeContent = (
+  const body = (
     <SafeAreaView style={styles.safe} edges={edges}>
       {content}
     </SafeAreaView>
   );
 
-  const wrappedBody = keyboardAvoiding ? (
-    <KeyboardAvoidingView
-      style={styles.keyboardAvoid}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      {safeContent}
-    </KeyboardAvoidingView>
-  ) : safeContent;
+  const wrappedBody = body;
 
   if (resolvedBackground === 'solid') {
     return <View style={styles.solid}>{wrappedBody}</View>;

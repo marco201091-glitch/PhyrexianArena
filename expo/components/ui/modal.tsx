@@ -1,6 +1,7 @@
 import { PropsWithChildren, type ReactNode } from 'react';
 import {
   Modal as RNModal,
+  Platform,
   Pressable,
   StyleSheet,
   useWindowDimensions,
@@ -49,6 +50,7 @@ export function Modal({
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="none"
             bottomOffset={spacing.lg}
+            enabled={Platform.OS !== 'android'}
             showsVerticalScrollIndicator
             nestedScrollEnabled
             bounces={false}
