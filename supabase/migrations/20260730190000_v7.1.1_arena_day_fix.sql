@@ -1,0 +1,67 @@
+-- v7.1.1: Fix get_arena_match_day_summaries search_path + schema qualification.
+-- The V7 function set search_path = '' but referenced "matches" without the
+-- public schema prefix, causing a silent error and falling back to the
+-- unconditional JS shift. This restores the deterministic arena-day logic:
+-- 00:00–07:59 UTC matches shift to the previous day ONLY when that day
+-- already contains a recorded match.
+
+CREATE OR REPLACE FUNCTION public.get_arena_match_day_summaries(
+  p_group_id uuid,
+  p_boundary_hour integer DEFAULT 8
+)
+RETURNS TABLE (
+  day_key text,
+  match_count bigint,
+  latest_played_at timestamptz
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  WITH authorized_matches AS (
+    SELECT
+      m.id,
+      m.played_at,
+      (m.played_at AT TIME ZONE 'UTC')::date AS calendar_day
+    FROM public.matches m
+    WHERE m.group_id = p_group_id
+      AND (
+        public.is_admin(auth.uid())
+        OR public.is_group_member(p_group_id, auth.uid())
+      )
+  ), arena_days AS (
+    SELECT
+      current_match.id,
+      current_match.played_at,
+      to_char(
+        CASE
+          WHEN EXTRACT(HOUR FROM current_match.played_at AT TIME ZONE 'UTC') < p_boundary_hour
+            AND EXISTS (
+              SELECT 1
+              FROM authorized_matches previous_match
+              WHERE previous_match.calendar_day = current_match.calendar_day - 1
+            )
+            THEN current_match.calendar_day - 1
+          ELSE current_match.calendar_day
+        END,
+        'YYYY-MM-DD'
+      ) AS day_key
+    FROM authorized_matches current_match
+  )
+  SELECT
+    day_key,
+    COUNT(*)::bigint AS match_count,
+    MAX(played_at) AS latest_played_at
+  FROM arena_days
+  GROUP BY day_key
+  ORDER BY day_key DESC;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_arena_match_day_summaries(uuid, integer)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_arena_match_day_summaries(uuid, integer)
+  TO authenticated;
+
+COMMENT ON FUNCTION public.get_arena_match_day_summaries(uuid, integer) IS
+  'Arena day summaries with late-night shift to previous day only when that day contains a match. v7.1.1: fixed schema-qualified table reference for search_path = ''''.';

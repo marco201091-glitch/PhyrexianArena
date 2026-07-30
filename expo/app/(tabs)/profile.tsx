@@ -34,10 +34,20 @@ import { useProfileDecks } from '@/hooks/use-profile-decks';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
 import type { CommanderMetadataOption } from '@/lib/deck-metadata';
 import { getDeckDisplayColors } from '@/lib/deck-metadata';
+import { getDeckMastery } from '@/lib/deck-mastery';
 import { MANA_COLOR_ORDER } from '@/lib/mana-colors';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import type { ProfileDeck } from '@/lib/types/profile';
+
+const MASTERY_TIER_RANK: Record<string, number> = {
+  diamond: 5,
+  platinum: 4,
+  gold: 3,
+  silver: 2,
+  bronze: 1,
+  unranked: 0,
+};
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -67,7 +77,7 @@ export default function ProfileScreen() {
   const { scrollContentStyle } = useScreenInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [deckColorFilter, setDeckColorFilter] = useState('all');
-  const [deckSort, setDeckSort] = useState<'alpha' | 'mastery' | 'games'>('alpha');
+  const [deckSort, setDeckSort] = useState<'alpha' | 'mastery'>('alpha');
   const [detailsDeck, setDetailsDeck] = useState<ProfileDeck | null>(null);
   const [refreshingAllDecks, setRefreshingAllDecks] = useState(false);
   const [showAddDeck, setShowAddDeck] = useState(false);
@@ -104,8 +114,13 @@ export default function ProfileScreen() {
       if (deckSort === 'alpha') return a.name.localeCompare(b.name, language, { sensitivity: 'base' });
       const left = performance[a.id];
       const right = performance[b.id];
-      if (deckSort === 'mastery') return (right?.masteryPoints || 0) - (left?.masteryPoints || 0);
-      if (deckSort === 'games') return (right?.gamesPlayed || 0) - (left?.gamesPlayed || 0);
+      if (deckSort === 'mastery') {
+        const leftM = getDeckMastery(left?.gamesPlayed ?? 0, left?.wins ?? 0);
+        const rightM = getDeckMastery(right?.gamesPlayed ?? 0, right?.wins ?? 0);
+        const tierDiff = (MASTERY_TIER_RANK[rightM.tier] ?? 0) - (MASTERY_TIER_RANK[leftM.tier] ?? 0);
+        if (tierDiff !== 0) return tierDiff;
+        return rightM.points - leftM.points;
+      }
       return a.name.localeCompare(b.name, language, { sensitivity: 'base' });
     });
   }, [deckColorFilter, deckSort, decks, language, performance, searchQuery]);
@@ -251,6 +266,79 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>{copy('deckArsenal')}</Text>
         </View>
 
+        {decks.length > 0 ? (
+          <FilterPanel
+            actions={(
+              <>
+                <Button
+                  label={copy('addDeck')}
+                  icon="add"
+                  size="sm"
+                  onPress={() => setShowAddDeck(true)}
+                  style={styles.panelActionButton}
+                />
+                <Button
+                  label={refreshingAllDecks ? copy('refreshingDecks') : copy('refreshDecks')}
+                  icon="refresh"
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => void handleRefreshAllDecks()}
+                  disabled={refreshingAllDecks}
+                  style={styles.panelActionButton}
+                />
+              </>
+            )}
+            groups={[
+              {
+                key: 'search',
+                title: copy('searchDecks'),
+                content: (
+                  <Input
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder={copy('searchDecksPlaceholder')}
+                  />
+                ),
+              },
+              {
+                key: 'sort',
+                title: copy('sortBy'),
+                content: (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+                    {([
+                      ['alpha', copy('alphabetical')],
+                      ['mastery', copy('mastery')],
+                    ] as const).map(([value, label]) => (
+                      <FilterChip key={value} label={label} active={deckSort === value} onPress={() => setDeckSort(value)} />
+                    ))}
+                  </ScrollView>
+                ),
+              },
+              {
+                key: 'color',
+                title: copy('filterByColor'),
+                content: (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+                    <ManaColorFilterChip
+                      label={copy('allColors')}
+                      active={deckColorFilter === 'all'}
+                      onPress={() => setDeckColorFilter('all')}
+                    />
+                    {MANA_COLOR_ORDER.map((color) => (
+                      <ManaColorFilterChip
+                        key={color}
+                        color={color}
+                        active={deckColorFilter === color}
+                        onPress={() => setDeckColorFilter(color)}
+                      />
+                    ))}
+                  </ScrollView>
+                ),
+              },
+            ]}
+          />
+        ) : null}
+
       {filteredDecks.length === 0 ? (
         <PhyrexianPanel style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>{copy('noDecksTitle')}</Text>
@@ -267,79 +355,6 @@ export default function ProfileScreen() {
 
   return (
     <Screen scroll={false} padded={false}>
-      {decks.length > 0 ? (
-        <FilterPanel
-          actions={(
-            <>
-              <Button
-                label={copy('addDeck')}
-                icon="add"
-                size="sm"
-                onPress={() => setShowAddDeck(true)}
-                style={styles.panelActionButton}
-              />
-              <Button
-                label={refreshingAllDecks ? copy('refreshingDecks') : copy('refreshDecks')}
-                icon="refresh"
-                variant="ghost"
-                size="sm"
-                onPress={() => void handleRefreshAllDecks()}
-                disabled={refreshingAllDecks}
-                style={styles.panelActionButton}
-              />
-            </>
-          )}
-          groups={[
-            {
-              key: 'search',
-              title: copy('searchDecks'),
-              content: (
-                <Input
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder={copy('searchDecksPlaceholder')}
-                />
-              ),
-            },
-            {
-              key: 'sort',
-              title: copy('sortBy'),
-              content: (
-                <View style={styles.filterRow}>
-                  {([
-                    ['alpha', copy('alphabetical')],
-                    ['mastery', copy('mastery')],
-                    ['games', copy('games')],
-                  ] as const).map(([value, label]) => (
-                    <FilterChip key={value} label={label} active={deckSort === value} onPress={() => setDeckSort(value)} />
-                  ))}
-                </View>
-              ),
-            },
-            {
-              key: 'color',
-              title: copy('filterByColor'),
-              content: (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-                  <ManaColorFilterChip
-                    label={copy('allColors')}
-                    active={deckColorFilter === 'all'}
-                    onPress={() => setDeckColorFilter('all')}
-                  />
-                  {MANA_COLOR_ORDER.map((color) => (
-                    <ManaColorFilterChip
-                      key={color}
-                      color={color}
-                      active={deckColorFilter === color}
-                      onPress={() => setDeckColorFilter(color)}
-                    />
-                  ))}
-                </ScrollView>
-              ),
-            },
-          ]}
-        />
-      ) : null}
       <FlashList
         data={filteredDecks}
         keyExtractor={(deck) => deck.id}

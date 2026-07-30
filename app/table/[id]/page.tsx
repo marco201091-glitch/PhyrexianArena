@@ -79,7 +79,7 @@ import { subscribeToArenaCatalog } from '@/lib/arena-catalog-realtime';
 import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
 import { buildArenaAwards } from '@/lib/deck-performance-analytics';
 
-import { groupMatchesByDay } from '@/lib/arena-session';
+import { formatDayGroupLabel, groupMatchesByDay } from '@/lib/arena-session';
 import {
   buildArenaSessionExportText,
   type ArenaSessionExportMatch,
@@ -955,18 +955,27 @@ export default function TablePage() {
 
   const matchDayGroups = useMemo(() => {
     const dateLocale = language === 'it' ? itLocale : enUS;
-    const formatLabel = (dayKey: string) => format(parse(dayKey, 'yyyy-MM-dd', new Date()), 'd MMM yyyy', { locale: dateLocale });
+    const singleLabel = (dayKey: string) =>
+      format(parse(dayKey, 'yyyy-MM-dd', new Date()), 'd MMM yyyy', { locale: dateLocale });
 
     if (dateFilter === 'all') {
-      return daySummaries.map((summary) => ({
-        dayKey: summary.dayKey,
-        label: formatLabel(summary.dayKey),
-        matchCount: summary.matchCount,
-        matches: matchesByDay[summary.dayKey] || [],
-      }));
+      return daySummaries.map((summary) => {
+        const groupMatches = matchesByDay[summary.dayKey] || [];
+        const calKeys = Array.from(new Set(groupMatches.map((m) => {
+          const d = new Date(m.played_at);
+          return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+        }))).sort();
+        return {
+          dayKey: summary.dayKey,
+          label: formatDayGroupLabel(singleLabel(summary.dayKey), calKeys),
+          matchCount: summary.matchCount,
+          matches: groupMatches,
+          calendarDayKeys: calKeys,
+        };
+      });
     }
 
-    return groupMatchesByDay(getFilteredMatches(), { formatLabel });
+    return groupMatchesByDay(getFilteredMatches(), { formatLabel: singleLabel });
   }, [dateFilter, daySummaries, getFilteredMatches, language, matchesByDay]);
 
   const latestDayKey = matchDayGroups[0]?.dayKey ?? null;
