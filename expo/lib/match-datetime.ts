@@ -24,9 +24,22 @@ export function parseMatchDateValue(value: string): Date | null {
   return parsed;
 }
 
-export function matchDateToIso(value: string): string | null {
+export function matchDateToIso(value: string, originalIso?: string): string | null {
   const parsed = parseMatchDateValue(value);
-  return parsed ? parsed.toISOString() : null;
+  if (!parsed) return null;
+
+  // When an original ISO is provided and the date portion is unchanged,
+  // return the original timestamp verbatim to avoid resetting the time.
+  if (originalIso) {
+    const originalDate = new Date(originalIso);
+    if (!Number.isNaN(originalDate.getTime())) {
+      if (toMatchDateValue(originalDate) === toMatchDateValue(parsed)) {
+        return originalIso;
+      }
+    }
+  }
+
+  return parsed.toISOString();
 }
 
 export function isoToMatchDateValue(iso: string): string {

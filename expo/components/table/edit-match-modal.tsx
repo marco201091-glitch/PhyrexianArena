@@ -189,7 +189,7 @@ export function EditMatchModal({
       return;
     }
 
-    const playedAtIso = matchDateToIso(matchPlayedAt);
+    const playedAtIso = matchDateToIso(matchPlayedAt, match.played_at);
     if (!playedAtIso) {
       onError(labels.dateError);
       return;

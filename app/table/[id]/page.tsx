@@ -2148,7 +2148,7 @@ export default function TablePage() {
       toast({ title: t({ it: 'Errore', en: 'Error' }), description: t({ it: 'Seleziona un vincitore o segna come patta', en: 'Select a winner or mark as draw' }), variant: 'destructive' });
       return;
     }
-    const playedAtIso = matchDateToIso(editMatchPlayedAt);
+    const playedAtIso = matchDateToIso(editMatchPlayedAt, editingMatch?.played_at);
     if (!playedAtIso) {
       toast({
         title: t({ it: 'Errore', en: 'Error' }),
