@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { MANA_CHART_COLORS, MANA_COLOR_LABELS } from '@/lib/mana-colors';
+import { Image, StyleSheet, View } from 'react-native';
+import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 import type { AppLanguage } from '@/lib/i18n/types';
 
 const SYMBOL_SIZES = {
@@ -32,23 +32,14 @@ export function ManaColorBadge({
       style={[
         styles.badge,
         muted && styles.muted,
-        {
-          width: symbolSize,
-          height: symbolSize,
-          borderRadius: symbolSize / 2,
-          backgroundColor: MANA_CHART_COLORS[color] || MANA_CHART_COLORS.C,
-        },
+        { width: symbolSize, height: symbolSize },
       ]}
     >
-      <Text style={[
-        styles.badgeText,
-        {
-          color: color === 'W' || color === 'C' ? '#111827' : '#f8fafc',
-          fontSize: Math.round(symbolSize * 0.45),
-        },
-      ]}>
-        {color}
-      </Text>
+      <Image
+        source={{ uri: `https://svgs.scryfall.io/card-symbols/${encodeURIComponent(color)}.svg` }}
+        style={{ width: symbolSize, height: symbolSize }}
+        resizeMode="contain"
+      />
     </View>
   );
 }
@@ -93,16 +84,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  badge: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
-  },
-  badgeText: {
-    fontWeight: '800',
-    lineHeight: 14,
-  },
+  badge: { alignItems: 'center', justifyContent: 'center' },
   muted: {
     opacity: 0.4,
   },

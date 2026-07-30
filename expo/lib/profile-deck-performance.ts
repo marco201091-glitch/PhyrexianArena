@@ -38,6 +38,7 @@ export function buildProfileDeckPerformanceMaps(
       gamesPlayed,
       wins,
       winRate,
+      masteryPoints: Number(row.mastery_points || (wins * 3 + Math.max(0, gamesPlayed - wins))),
       trackedGames,
       trackingCoverage: gamesPlayed > 0
         ? Math.round((trackedGames / gamesPlayed) * 100)

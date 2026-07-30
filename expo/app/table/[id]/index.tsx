@@ -67,6 +67,7 @@ import { buildArenaShareText } from '@/lib/arena-share';
 import { calculatePlayerStats, getMatchWinnerName } from '@/lib/arena-stats';
 import { calculateArenaAwards } from '@/lib/arena-awards';
 import { getSiteUrl } from '@/lib/env';
+import { apiPost } from '@/lib/api';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 
@@ -591,6 +592,16 @@ export default function TableScreen() {
     ]);
   };
 
+  const handleCreateGuestClaimLink = async (guestId: string) => {
+    const guest = guests.find((entry) => entry.id === guestId);
+    const { data, error, status } = await apiPost<{ url: string }>('/api/guest-claims', { guestId });
+    if (status !== 200 || !data?.url) {
+      showAppAlert(copy('error'), error || copy('createGuestLinkFailed'));
+      return;
+    }
+    await Share.share({ title: guest?.display_name || copy('guestBadge'), message: `${copy('joinInviteHint')}\n${data.url}`, url: data.url });
+  };
+
   const handleDeleteMatch = (matchId: string) => {
     showAppAlert(copy('deleteMatch'), copy('deleteMatchConfirm'), [
       { text: copy('cancel'), style: 'cancel' },
@@ -798,6 +809,11 @@ export default function TableScreen() {
               oneTrick: copy('awardOneTrick'),
               comboWinner: copy('awardComboWinner'),
               junkMaster: copy('awardJunkMaster'),
+              descriptions: {
+                fastest: copy('awardFastestHint'), group_slugger: copy('awardSluggerHint'), executioner: copy('awardExecutionerHint'),
+                runner_up: copy('awardRunnerUpHint'), archenemy: copy('awardArchenemyHint'), comebacker: copy('awardComebackerHint'),
+                one_trick: copy('awardOneTrickHint'), combo_winner: copy('awardComboWinnerHint'), junk_master: copy('awardJunkMasterHint'),
+              },
               trackedGames: copy('trackedGames'),
               games: copy('games'),
               wins: copy('wins'),
@@ -842,6 +858,7 @@ export default function TableScreen() {
               addGuest: copy('addGuest'),
               noGuestsBody: copy('noGuestsBody'),
               guestBadge: copy('guestBadge'),
+              upgradeGuest: copy('upgradeGuest'),
             }}
             onAddGuest={() => {
               setGuestModalMode(undefined);
@@ -854,6 +871,7 @@ export default function TableScreen() {
               setShowGuestModal(true);
             }}
             onDeleteGuest={handleDeleteGuest}
+            onUpgradeGuest={(guestId) => void handleCreateGuestClaimLink(guestId)}
           />
         ) : null}
 
@@ -1054,7 +1072,6 @@ export default function TableScreen() {
         labels={{
           title: copy('matchDetailsTitle'),
           duration: copy('matchDuration'),
-          events: copy('trackedEvents'),
           damageDealt: copy('damageDealt'),
           lifeLost: copy('lifeLost'),
           lifeGained: copy('lifeGained'),

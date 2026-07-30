@@ -67,7 +67,7 @@ export default function ProfileScreen() {
   const { scrollContentStyle } = useScreenInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [deckColorFilter, setDeckColorFilter] = useState('all');
-  const [deckSort, setDeckSort] = useState<'recent' | 'wr' | 'games' | 'damage' | 'eliminations' | 'fastest'>('recent');
+  const [deckSort, setDeckSort] = useState<'recent' | 'alpha' | 'mastery' | 'games' | 'wr' | 'damage' | 'eliminations' | 'fastest'>('recent');
   const [detailsDeck, setDetailsDeck] = useState<ProfileDeck | null>(null);
   const [refreshingAllDecks, setRefreshingAllDecks] = useState(false);
   const [showAddDeck, setShowAddDeck] = useState(false);
@@ -101,9 +101,11 @@ export default function ProfileScreen() {
     return filtered.sort((a, b) => {
       const favoriteOrder = Number(b.is_favorite) - Number(a.is_favorite);
       if (favoriteOrder !== 0) return favoriteOrder;
+      if (deckSort === 'alpha') return a.name.localeCompare(b.name, language, { sensitivity: 'base' });
       if (deckSort === 'recent') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       const left = performance[a.id];
       const right = performance[b.id];
+      if (deckSort === 'mastery') return (right?.masteryPoints || 0) - (left?.masteryPoints || 0);
       if (deckSort === 'wr') return (right?.winRate || 0) - (left?.winRate || 0);
       if (deckSort === 'games') return (right?.gamesPlayed || 0) - (left?.gamesPlayed || 0);
       if (deckSort === 'damage') return (right?.damageDealt || 0) - (left?.damageDealt || 0);
@@ -112,7 +114,7 @@ export default function ProfileScreen() {
       const rightDuration = right?.medianWinningDurationSeconds ?? Number.POSITIVE_INFINITY;
       return leftDuration - rightDuration;
     });
-  }, [deckColorFilter, deckSort, decks, performance, searchQuery]);
+  }, [deckColorFilter, deckSort, decks, language, performance, searchQuery]);
 
   const avatarUrl = getAvatarUrl(avatarVersion);
 
@@ -296,6 +298,8 @@ export default function ProfileScreen() {
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
                     {([
                       ['recent', copy('recent')],
+                      ['alpha', copy('alphabetical')],
+                      ['mastery', copy('mastery')],
                       ['wr', copy('winRate')],
                       ['games', copy('games')],
                       ['damage', copy('damageDealt')],

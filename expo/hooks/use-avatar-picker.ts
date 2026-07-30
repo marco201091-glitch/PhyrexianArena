@@ -11,6 +11,12 @@ type UseAvatarPickerOptions = {
   uploadAvatar: (uri: string, mimeType: string) => Promise<void>;
 };
 
+function inferMimeType(uri: string, reported?: string | null) {
+  const extension = uri.split('?')[0].split('.').pop()?.toLowerCase();
+  const byExtension: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
+  return byExtension[extension || ''] || (reported?.startsWith('image/') ? reported : 'image/jpeg');
+}
+
 export function useAvatarPicker({ uploadAvatar }: UseAvatarPickerOptions) {
   const { copy } = useLanguage();
   const { showToast } = useToast();
@@ -34,7 +40,7 @@ export function useAvatarPicker({ uploadAvatar }: UseAvatarPickerOptions) {
 
     const asset = result.assets[0];
     try {
-      await uploadAvatar(asset.uri, asset.mimeType || 'image/jpeg');
+      await uploadAvatar(asset.uri, inferMimeType(asset.uri, asset.mimeType));
       bumpAvatarVersion();
       void hapticSuccess();
       showToast(copy('avatarUpdated'));

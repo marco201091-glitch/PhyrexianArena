@@ -11,7 +11,7 @@ import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
 import type { ArenaMatch } from '@/lib/types/arena';
 import type { LiveGameRecord } from '@/lib/live-game';
 
-type Props = { visible: boolean; match: ArenaMatch | null; liveGame: LiveGameRecord | null; recapLoading: boolean; onClose: () => void; labels: Record<'title' | 'duration' | 'events' | 'damageDealt' | 'lifeLost' | 'lifeGained' | 'commander' | 'infect' | 'started' | 'timeline' | 'highlights' | 'empty' | 'recap', string> };
+type Props = { visible: boolean; match: ArenaMatch | null; liveGame: LiveGameRecord | null; recapLoading: boolean; onClose: () => void; labels: Record<'title' | 'duration' | 'damageDealt' | 'lifeLost' | 'lifeGained' | 'commander' | 'infect' | 'started' | 'timeline' | 'highlights' | 'empty' | 'recap', string> };
 
 export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onClose, labels }: Props) {
   const { width } = useWindowDimensions();
@@ -23,7 +23,6 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
   return <Modal visible={visible} onClose={onClose} presentation="dialog" maxWidth={620}>
     <ModalHeader title={labels.title} subtitle={match.duration_seconds != null ? `${labels.duration}: ${formatGameDuration(match.duration_seconds)}` : undefined} icon="stats-chart-outline" onClose={onClose} />
     <View style={styles.list}>
-      <PhyrexianPanel variant="inset" style={styles.summary}><Text style={styles.meta}>{labels.events}</Text><Text style={styles.summaryValue}>{match.match_participants.reduce((total, player) => total + (player.tracked_event_count || 0), 0)}</Text></PhyrexianPanel>
       {recapLoading ? <View style={styles.recapLoading}><ActivityIndicator color={colors.primaryMuted} /><Text style={styles.meta}>{labels.recap}</Text></View> : null}
       {recapRecord ? <LiveGameRecapView record={recapRecord} labels={{ timeline: labels.timeline, highlights: labels.highlights, empty: labels.empty }} /> : null}
       {match.match_participants.slice().sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99)).map((participant) => {

@@ -21,6 +21,7 @@ type Props = {
     oneTrick: string;
     comboWinner: string;
     junkMaster: string;
+    descriptions: Record<string, string>;
     trackedGames: string;
     games: string;
     wins: string;
@@ -59,7 +60,7 @@ export function TableAwardsTab({ awards, labels }: Props) {
         eyebrow={presentation.title}
         title={award.name}
         commander={award.commander}
-        meta={`${metaGames} ${metaLabel}`}
+        meta={`${labels.descriptions[award.kind]} · ${metaGames} ${metaLabel}`}
         trailing={<Text style={styles.value}>{presentation.value}</Text>}
       />;
     })}

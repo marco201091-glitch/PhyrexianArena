@@ -14,10 +14,12 @@ type TableGuestsSectionProps = {
     addGuest: string;
     noGuestsBody: string;
     guestBadge: string;
+    upgradeGuest: string;
   };
   onAddGuest: () => void;
   onAddDeckToGuest: (guestId: string) => void;
   onDeleteGuest: (guestId: string) => void;
+  onUpgradeGuest: (guestId: string) => void;
 };
 
 export function TableGuestsSection({
@@ -27,6 +29,7 @@ export function TableGuestsSection({
   onAddGuest,
   onAddDeckToGuest,
   onDeleteGuest,
+  onUpgradeGuest,
 }: TableGuestsSectionProps) {
   const guestMeta = guests.length > 0 ? `${guests.length}` : undefined;
 
@@ -61,6 +64,9 @@ export function TableGuestsSection({
             </View>
             {canManage ? (
               <View style={styles.guestActions}>
+                <Pressable onPress={() => onUpgradeGuest(guest.id)} hitSlop={4} accessibilityRole="button" accessibilityLabel={labels.upgradeGuest} style={({ pressed }) => [styles.guestActionButton, styles.upgradeActionButton, pressed && styles.guestActionButtonPressed]}>
+                  <Ionicons name="link-outline" size={24} color={colors.successBright} />
+                </Pressable>
                 <Pressable
                   onPress={() => onAddDeckToGuest(guest.id)}
                   hitSlop={4}
@@ -128,6 +134,7 @@ const styles = StyleSheet.create({
     opacity: 0.66,
     transform: [{ scale: 0.96 }],
   },
+  upgradeActionButton: { borderColor: colors.successBorder, backgroundColor: colors.tealMuted },
   guestInfo: {
     flex: 1,
     gap: 4,

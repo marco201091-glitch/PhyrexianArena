@@ -36,6 +36,7 @@ export interface DeckWinRate {
 }
 
 export interface DeckPerformance extends DeckWinRate {
+  masteryPoints: number;
   trackedGames: number;
   trackingCoverage: number;
   secondPlaces: number;
