@@ -139,6 +139,7 @@ export default function TableScreen() {
   const [guestModalTargetId, setGuestModalTargetId] = useState<string | null>(null);
   const [savingGuest, setSavingGuest] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showGuestsManager, setShowGuestsManager] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showInviteQr, setShowInviteQr] = useState(false);
@@ -883,12 +884,14 @@ export default function TableScreen() {
               shareInvite: copy('shareInvite'),
               exportArenaStats: copy('shareStats'),
               editArena: copy('editArena'),
+              guests: copy('guests'),
               leaveArena: copy('leaveArena'),
               deleteArena: copy('deleteArena'),
             }}
             onShareInvite={shareInvite}
             onExportStats={shareArenaStats}
             onEdit={openEditModal}
+            onGuests={() => setShowGuestsManager(true)}
             onLeave={() => {
               setLeaveConfirm('');
               setShowLeaveModal(true);
@@ -1190,17 +1193,6 @@ export default function TableScreen() {
             onMessage={(message, error) => error ? showAppAlert(copy('error'), message) : showToast(message)}
           />
         ) : null}
-        {(canManage || guests.length > 0) ? (
-          <TableGuestsSection
-            guests={guests}
-            canManage={canManage}
-            labels={{ guestManagement: copy('guestManagement'), addGuest: copy('addGuest'), noGuestsBody: copy('noGuestsBody'), guestBadge: copy('guestBadge'), upgradeGuest: copy('upgradeGuest') }}
-            onAddGuest={() => { setGuestModalMode(undefined); setGuestModalTargetId(null); setShowGuestModal(true); }}
-            onAddDeckToGuest={(guestId) => { setGuestModalMode('add-deck-to-guest'); setGuestModalTargetId(guestId); setShowGuestModal(true); }}
-            onDeleteGuest={handleDeleteGuest}
-            onUpgradeGuest={(guestId) => void handleCreateGuestClaimLink(guestId)}
-          />
-        ) : null}
         <View style={styles.modalActions}>
           <Button label={copy('cancel')} variant="ghost" onPress={() => setShowEditModal(false)} style={styles.modalButton} />
           <Button
@@ -1210,6 +1202,19 @@ export default function TableScreen() {
             style={styles.modalButton}
           />
         </View>
+      </Modal>
+
+      <Modal visible={showGuestsManager} onClose={() => setShowGuestsManager(false)}>
+        <Text style={styles.modalTitle}>{copy('guestManagement')}</Text>
+        <TableGuestsSection
+          guests={guests}
+          canManage={canManage}
+          labels={{ guestManagement: copy('guestManagement'), addGuest: copy('addGuest'), noGuestsBody: copy('noGuestsBody'), guestBadge: copy('guestBadge'), upgradeGuest: copy('upgradeGuest') }}
+          onAddGuest={() => { setGuestModalMode(undefined); setGuestModalTargetId(null); setShowGuestModal(true); }}
+          onAddDeckToGuest={(guestId) => { setGuestModalMode('add-deck-to-guest'); setGuestModalTargetId(guestId); setShowGuestModal(true); }}
+          onDeleteGuest={handleDeleteGuest}
+          onUpgradeGuest={(guestId) => void handleCreateGuestClaimLink(guestId)}
+        />
       </Modal>
 
       <Modal visible={showLeaveModal} onClose={() => setShowLeaveModal(false)}>

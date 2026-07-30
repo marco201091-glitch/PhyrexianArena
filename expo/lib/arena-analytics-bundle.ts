@@ -171,17 +171,29 @@ export function buildArenaAnalyticsView(
     || right.gamesPlayed - left.gamesPlayed
   ));
 
-  const commanders = (payload.commanders ?? [])
+  const commanderMap = new Map<string, CommanderStats>();
+  (payload.commanders ?? [])
     .filter((row) => bracketFilter === 'all' || row.bracket === bracketFilter)
-    .map<CommanderStats>((row) => ({
-      key: `${row.commander}::${row.bracket ?? 'none'}`,
-      commander: row.commander,
-      commanderImageUrl: row.commander_image,
-      bracket: row.bracket,
-      gamesPlayed: row.games_played,
-      wins: row.wins,
-      winRate: percentage(row.wins, row.games_played),
-    }))
+    .forEach((row) => {
+      const key = `${row.commander}::${row.bracket ?? 'none'}`;
+      const current = commanderMap.get(key);
+      if (current) {
+        current.gamesPlayed += row.games_played;
+        current.wins += row.wins;
+        current.winRate = percentage(current.wins, current.gamesPlayed);
+      } else {
+        commanderMap.set(key, {
+          key,
+          commander: row.commander,
+          commanderImageUrl: row.commander_image,
+          bracket: row.bracket,
+          gamesPlayed: row.games_played,
+          wins: row.wins,
+          winRate: percentage(row.wins, row.games_played),
+        });
+      }
+    });
+  const commanders = Array.from(commanderMap.values())
     .sort((left, right) => deckStatsSort === 'gamesPlayed'
       ? right.gamesPlayed - left.gamesPlayed || right.wins - left.wins
       : right.winRate - left.winRate || right.wins - left.wins);

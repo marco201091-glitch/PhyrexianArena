@@ -12,12 +12,14 @@ type TableArenaManagementProps = {
     shareInvite: string;
     exportArenaStats: string;
     editArena: string;
+    guests: string;
     leaveArena: string;
     deleteArena: string;
   };
   onShareInvite: () => void;
   onExportStats: () => void;
   onEdit: () => void;
+  onGuests: () => void;
   onLeave: () => void;
   onDelete: () => void;
 };
@@ -30,6 +32,7 @@ export function TableArenaManagement({
   onShareInvite,
   onExportStats,
   onEdit,
+  onGuests,
   onLeave,
   onDelete,
 }: TableArenaManagementProps) {
@@ -49,6 +52,9 @@ export function TableArenaManagement({
           icon="share-outline"
           onPress={onExportStats}
         />
+      ) : null}
+      {canManage ? (
+        <Button label={labels.guests} variant="outline" icon="people-outline" onPress={onGuests} />
       ) : null}
       {canManage ? (
         <Button
