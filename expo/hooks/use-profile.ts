@@ -81,6 +81,9 @@ export function useProfile(userId: string | undefined) {
 
   const uploadAvatar = useCallback(async (uri: string, mimeType: string) => {
     if (!userId) return;
+    const { data: authData } = await supabase.auth.getUser();
+    const ownerId = authData.user?.id;
+    if (!ownerId || ownerId !== userId) throw new Error('AUTH_REQUIRED');
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(mimeType)) {
@@ -95,7 +98,7 @@ export function useProfile(userId: string | undefined) {
       throw new Error('IMAGE_TOO_LARGE');
     }
 
-    const filePath = `${userId}/avatar`;
+    const filePath = `${ownerId}/avatar`;
     const { error } = await supabase.storage
       .from('avatars')
       .upload(filePath, arrayBuffer, {
