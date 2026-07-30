@@ -36,7 +36,8 @@ export function AppNotificationListener() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!user || Platform.OS === 'web') return;
+    // Expo Go cannot register remote push tokens; only development/release builds can.
+    if (!user || Platform.OS === 'web' || Constants.appOwnership === 'expo') return;
     let active = true;
     const register = async () => {
       const Notifications = await getNotificationsModule();
