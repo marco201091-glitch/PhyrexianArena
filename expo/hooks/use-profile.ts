@@ -88,16 +88,17 @@ export function useProfile(userId: string | undefined) {
     }
 
     const response = await fetch(uri);
-    const blob = await response.blob();
+    if (!response.ok) throw new Error('IMAGE_READ_FAILED');
+    const arrayBuffer = await response.arrayBuffer();
 
-    if (blob.size > 2 * 1024 * 1024) {
+    if (arrayBuffer.byteLength > 2 * 1024 * 1024) {
       throw new Error('IMAGE_TOO_LARGE');
     }
 
     const filePath = `${userId}/avatar`;
     const { error } = await supabase.storage
       .from('avatars')
-      .upload(filePath, blob, {
+      .upload(filePath, arrayBuffer, {
         cacheControl: '31536000',
         contentType: mimeType,
         upsert: true,

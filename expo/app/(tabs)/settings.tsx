@@ -164,31 +164,34 @@ export default function SettingsScreen() {
   const saveArchidektSettings = async () => {
     if (!user) return;
     const username = archidektUsername.trim();
-    if (archidektAutoImport && !username) {
-      showAppAlert(copy('error'), copy('archidektUsernameRequired'));
-      return;
-    }
     setSavingArchidektSettings(true);
     try {
       const { error } = await supabase.from('profiles').update({
         archidekt_username: username || null,
-        archidekt_auto_import: archidektAutoImport,
       }).eq('id', user.id);
       if (error) throw error;
-      const syncResult = archidektAutoImport
-        ? await runArchidektAutoSync(user.id, { force: true })
-        : null;
       await refreshProfile();
       void hapticSuccess();
-      showToast(syncResult
-        ? copy('archidektSyncComplete')
-            .replace('{inserted}', String(syncResult.inserted))
-            .replace('{updated}', String(syncResult.updated))
-        : copy('profileUpdated'));
+      showToast(copy('profileUpdated'));
     } catch (error) {
       showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('archidektSyncFailed')));
     } finally {
       setSavingArchidektSettings(false);
+    }
+  };
+
+  const handleArchidektAutoImportChange = async (enabled: boolean) => {
+    if (!user) return;
+    const previous = archidektAutoImport;
+    setArchidektAutoImport(enabled);
+    try {
+      const { error } = await supabase.from('profiles').update({ archidekt_auto_import: enabled }).eq('id', user.id);
+      if (error) throw error;
+      await refreshProfile();
+      if (enabled && archidektUsername.trim()) void runArchidektAutoSync(user.id, { force: true });
+    } catch (error) {
+      setArchidektAutoImport(previous);
+      showAppAlert(copy('error'), getSupabaseErrorMessage(error, copy('updateProfileFailed')));
     }
   };
 
@@ -292,7 +295,7 @@ export default function SettingsScreen() {
           </View>
           <Switch
             value={archidektAutoImport}
-            onValueChange={setArchidektAutoImport}
+            onValueChange={(value) => void handleArchidektAutoImportChange(value)}
             trackColor={{ true: colors.primary }}
           />
         </View>
