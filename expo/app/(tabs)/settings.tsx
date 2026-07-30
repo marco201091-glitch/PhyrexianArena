@@ -17,7 +17,6 @@ import { useLanguage } from '@/contexts/language-context';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { ManaLogo } from '@/components/ui/mana-logo';
 import { useAvatarVersion } from '@/contexts/avatar-version-context';
-import { useAvatarPicker } from '@/hooks/use-avatar-picker';
 import { useProfile } from '@/hooks/use-profile';
 import type { AppLanguage } from '@/lib/i18n/types';
 import { isGoogleAuthUser } from '@/lib/oauth-profile';
@@ -42,8 +41,7 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { version: avatarVersion } = useAvatarVersion();
-  const { profile, updateDisplayName, uploadAvatar, getAvatarUrl, refresh: refreshProfile } = useProfile(user?.id);
-  const { pickAvatar } = useAvatarPicker({ uploadAvatar });
+  const { profile, updateDisplayName, getAvatarUrl, refresh: refreshProfile } = useProfile(user?.id);
   const avatarUrl = getAvatarUrl(avatarVersion);
   const { showToast } = useToast();
 
@@ -240,12 +238,7 @@ export default function SettingsScreen() {
       <PhyrexianPanel style={styles.card}>
         <SectionHeader title={copy('profile')} />
         <View style={styles.profileHeader}>
-          <Pressable onPress={() => void pickAvatar()} style={styles.avatarButton}>
-            <ProfileAvatar uri={avatarUrl} size="md" />
-            <View style={styles.avatarBadge}>
-              <Ionicons name="camera" size={14} color={colors.foreground} />
-            </View>
-          </Pressable>
+          <ProfileAvatar uri={avatarUrl} size="md" />
           <Text style={styles.displayName}>{getProfileDisplayName(profile)}</Text>
           {profile?.username ? (
             <Text style={styles.username}>@{profile.username}</Text>
