@@ -1,22 +1,16 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { StatCard } from '@/components/ui/stat-card';
 import { cardRowGap, colors, radii, spacing } from '@/constants/theme';
 import { getPlayerRank } from '@/lib/arena-stats';
-import { getProfileDisplayName } from '@/lib/profile-display';
 import type { ArenaProfile, PlayerStats } from '@/lib/types/arena';
-import { DirectArenaInvite } from '@/components/table/direct-arena-invite';
 
 type TablePlayersTabProps = {
   filteredMatchCount: number;
   members: ArenaProfile[];
   playerStats: PlayerStats[];
-  group: { id: string; created_by: string };
-  userId?: string;
-  isCreator?: boolean;
   labels: {
     totalGames: string;
     players: string;
@@ -75,9 +69,6 @@ export function TablePlayersTab({
   filteredMatchCount,
   members,
   playerStats,
-  group,
-  userId,
-  isCreator = false,
   labels,
   canKickMember,
   onKickMember,
@@ -142,48 +133,6 @@ export function TablePlayersTab({
         )}
       </PhyrexianPanel>
 
-      {isCreator ? (
-        <CollapsiblePanel
-          title={labels.users}
-          meta={`${members.length}`}
-        >
-          {members.map((member) => {
-            const canKick = canKickMember(member.id);
-
-            return (
-              <View key={member.id} style={styles.memberRow}>
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{getProfileDisplayName(member)}</Text>
-                  <View style={styles.badgeRow}>
-                    {member.id === group.created_by ? (
-                      <Text style={styles.badge}>{labels.creator}</Text>
-                    ) : null}
-                    {member.id === userId ? (
-                      <Text style={styles.badge}>{labels.you}</Text>
-                    ) : null}
-                  </View>
-                </View>
-                {canKick ? (
-                  <Pressable onPress={() => onKickMember(member.id, getProfileDisplayName(member))}>
-                    <Ionicons name="person-remove-outline" size={18} color={colors.muted} />
-                  </Pressable>
-                ) : null}
-              </View>
-            );
-          })}
-          <DirectArenaInvite
-            groupId={group.id}
-            labels={{
-              title: labels.directInviteTitle,
-              hint: labels.directInviteHint,
-              search: labels.searchUser,
-              sent: labels.invitationSent,
-              failed: labels.invitationFailed,
-            }}
-            onMessage={onMessage}
-          />
-        </CollapsiblePanel>
-      ) : null}
     </View>
   );
 }

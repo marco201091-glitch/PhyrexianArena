@@ -253,7 +253,6 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.profileActions}>
-          <Button label={copy('uploadAvatar')} variant="ghost" onPress={() => void pickAvatar()} />
           <Button label={copy('editDisplayName')} variant="ghost" onPress={openEditName} />
           {!isGoogleAuthUser(user) ? (
             <Button

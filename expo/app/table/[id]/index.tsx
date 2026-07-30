@@ -26,6 +26,7 @@ import { TableMatchesList } from '@/components/table/table-matches-list';
 import { TableMetaTab } from '@/components/table/table-meta-tab';
 import { TableAwardsTab } from '@/components/table/table-awards-tab';
 import { TablePlayersTab } from '@/components/table/table-players-tab';
+import { TableUserManagement } from '@/components/table/table-user-management';
 import { RecordMatchModal } from '@/components/table/record-match-modal';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { Button } from '@/components/ui/button';
@@ -742,9 +743,6 @@ export default function TableScreen() {
             filteredMatchCount={reportedMatchCount}
             members={members}
             playerStats={playerStats}
-            group={group}
-            userId={user?.id}
-            isCreator={canManage}
             labels={{
               totalGames: copy('totalGames'),
               players: copy('players'),
@@ -849,7 +847,7 @@ export default function TableScreen() {
           />
         ) : null}
 
-        {(canManage || guests.length > 0) ? (
+        {false && (canManage || guests.length > 0) ? (
           <TableGuestsSection
             guests={guests}
             canManage={canManage}
@@ -875,7 +873,7 @@ export default function TableScreen() {
           />
         ) : null}
 
-        {isMember ? (
+        {false && isMember ? (
           <TableArenaManagement
             showExportStats={reportedMatchCount > 0}
             canManage={canManage}
@@ -1180,6 +1178,29 @@ export default function TableScreen() {
             thumbColor={colors.foreground}
           />
         </View>
+        {canManage ? (
+          <TableUserManagement
+            members={members}
+            groupId={group.id}
+            creatorId={group.created_by}
+            userId={user?.id}
+            canKick={(memberId) => canKickArenaMember({ actorId: user?.id || '', targetId: memberId, group, isPlatformAdmin: false })}
+            onKick={handleKickMember}
+            labels={{ title: copy('users'), creator: copy('creator'), you: copy('you'), inviteTitle: copy('directInviteTitle'), inviteHint: copy('directInviteHint'), search: copy('searchUser'), sent: copy('invitationSent'), failed: copy('invitationFailed') }}
+            onMessage={(message, error) => error ? showAppAlert(copy('error'), message) : showToast(message)}
+          />
+        ) : null}
+        {(canManage || guests.length > 0) ? (
+          <TableGuestsSection
+            guests={guests}
+            canManage={canManage}
+            labels={{ guestManagement: copy('guestManagement'), addGuest: copy('addGuest'), noGuestsBody: copy('noGuestsBody'), guestBadge: copy('guestBadge'), upgradeGuest: copy('upgradeGuest') }}
+            onAddGuest={() => { setGuestModalMode(undefined); setGuestModalTargetId(null); setShowGuestModal(true); }}
+            onAddDeckToGuest={(guestId) => { setGuestModalMode('add-deck-to-guest'); setGuestModalTargetId(guestId); setShowGuestModal(true); }}
+            onDeleteGuest={handleDeleteGuest}
+            onUpgradeGuest={(guestId) => void handleCreateGuestClaimLink(guestId)}
+          />
+        ) : null}
         <View style={styles.modalActions}>
           <Button label={copy('cancel')} variant="ghost" onPress={() => setShowEditModal(false)} style={styles.modalButton} />
           <Button

@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompactDeckCard } from '@/components/deck/compact-deck-card';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
@@ -40,12 +40,10 @@ export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
       </View>
 
       <Text style={styles.sectionTitle}>{labels.deckRankings}</Text>
-      <FlatList
-        data={commanderStats}
-        keyExtractor={(deck) => deck.key}
-        scrollEnabled={false}
-        renderItem={({ item: deck, index }) => (
+      <View>
+        {commanderStats.map((deck, index) => (
           <CompactDeckCard
+            key={deck.key}
             artUri={deck.commanderImageUrl}
             title={deck.commander}
             eyebrow={deck.bracket ? `${labels.bracket} ${deck.bracket}` : labels.deckRankings}
@@ -55,9 +53,9 @@ export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
             wins={deck.wins}
             trailing={<Text style={styles.deckWinRate}>{deck.winRate}%</Text>}
           />
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+          />
+        ))}
+      </View>
     </View>
   );
 }
