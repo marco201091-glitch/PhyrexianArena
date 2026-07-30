@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 95%;
-    --card: 240 8% 6%;
-    --card-foreground: 0 0% 95%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 126 41% 44%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 16%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 240 5% 16%;
-    --muted-foreground: 240 5% 55%;
-    --accent: 240 5% 20%;
-    --accent-foreground: 0 0% 95%;
-    --destructive: 0 60% 30%;
-    --destructive-foreground: 0 0% 95%;
-    --border: 240 5% 18%;
-    --input: 240 5% 18%;
-    --ring: 126 41% 44%;
+    --background: 240 20% 5%;
+    --foreground: 240 5% 96%;
+    --card: 240 18% 9%;
+    --card-foreground: 240 5% 96%;
+    --popover: 240 18% 9%;
+    --popover-foreground: 240 5% 96%;
+    --primary: 125 41% 44%;
+    --primary-foreground: 85 92% 95%;
+    --secondary: 240 23% 8%;
+    --secondary-foreground: 240 5% 96%;
+    --muted: 240 23% 8%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 20% 15%;
+    --accent-foreground: 240 5% 96%;
+    --destructive: 0 84% 53%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 16% 20%;
+    --input: 240 16% 20%;
+    --ring: 125 41% 44%;
     --radius: 0.875rem;
 
     /* MTG Colors */
@@ -33,7 +33,7 @@
     --mtg-green: 120 60% 40%;
 
     /* Brand accent */
-    --phyrexian: 126 41% 44%;
+    --phyrexian: 125 41% 44%;
   }
 }
 
