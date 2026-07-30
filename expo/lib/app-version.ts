@@ -4,4 +4,4 @@
  * - Bump the middle number for each push (minor).
  * - Bump the first number for major releases.
  */
-export const APP_DISPLAY_VERSION = '7.1.1';
+export const APP_DISPLAY_VERSION = '7.1.2';
