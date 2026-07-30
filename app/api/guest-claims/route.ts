@@ -65,11 +65,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only the Arena manager can create this link' }, { status: 403 });
   }
 
-  await admin
+  const { error: revokeError } = await admin
     .from('arena_guest_claim_links')
-    .update({ revoked_at: new Date().toISOString() })
-    .eq('guest_id', guest.id)
-    .is('revoked_at', null);
+    .delete()
+    .eq('guest_id', guest.id);
+  if (revokeError) return NextResponse.json({ error: 'Could not refresh guest link' }, { status: 500 });
 
   const token = randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -133,4 +133,3 @@ export async function PATCH(request: Request) {
   }
   return NextResponse.json(data);
 }
-

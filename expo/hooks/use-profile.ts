@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAvatarObjectState, resolveAvatarUrl } from '@/lib/avatar-storage';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
+import * as FileSystem from 'expo-file-system/legacy';
+import { apiPost } from '@/lib/api';
 import type { ProfileRow } from '@/lib/types/profile';
 
 type ProfileSnapshot = {
@@ -81,38 +83,18 @@ export function useProfile(userId: string | undefined) {
 
   const uploadAvatar = useCallback(async (uri: string, mimeType: string) => {
     if (!userId) return;
-    const { data: authData } = await supabase.auth.getUser();
-    const ownerId = authData.user?.id;
-    if (!ownerId || ownerId !== userId) throw new Error('AUTH_REQUIRED');
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(mimeType)) {
       throw new Error('INVALID_IMAGE_FORMAT');
     }
 
-    const response = await fetch(uri);
-    if (!response.ok) throw new Error('IMAGE_READ_FAILED');
-    const arrayBuffer = await response.arrayBuffer();
-
-    if (arrayBuffer.byteLength > 2 * 1024 * 1024) {
-      throw new Error('IMAGE_TOO_LARGE');
-    }
-
-    const filePath = `${ownerId}/avatar`;
-    const { error } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, arrayBuffer, {
-        cacheControl: '31536000',
-        contentType: mimeType,
-        upsert: true,
-      });
-
-    if (error) throw error;
-    const avatarRevision = new Date().toISOString();
-    await supabase
-      .from('profiles')
-      .update({ avatar_revision: avatarRevision })
-      .eq('id', userId);
+    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    const estimatedBytes = Math.floor((base64.length * 3) / 4);
+    if (estimatedBytes > 2 * 1024 * 1024) throw new Error('IMAGE_TOO_LARGE');
+    const { data, error, status } = await apiPost<{ avatarRevision: string }>('/api/profile/avatar', { base64, mimeType });
+    if (status !== 200 || !data?.avatarRevision) throw new Error(error || 'AVATAR_UPLOAD_FAILED');
+    const avatarRevision = data.avatarRevision;
     queryClient.setQueryData<ProfileSnapshot>(queryKey, (current) => current
       ? { ...current, hasAvatar: true, avatarRevision }
       : current);

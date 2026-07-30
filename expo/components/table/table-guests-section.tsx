@@ -2,7 +2,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CommanderArt } from '@/components/deck/commander-art';
 import { Button } from '@/components/ui/button';
-import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { colors } from '@/constants/theme';
 import type { ArenaGuest } from '@/lib/arena-participants';
 
@@ -31,14 +30,8 @@ export function TableGuestsSection({
   onDeleteGuest,
   onUpgradeGuest,
 }: TableGuestsSectionProps) {
-  const guestMeta = guests.length > 0 ? `${guests.length}` : undefined;
-
   return (
-    <CollapsiblePanel
-      title={labels.guestManagement}
-      meta={guestMeta}
-      variant="strong"
-    >
+    <View style={styles.section}>
       {canManage ? (
         <Button label={labels.addGuest} onPress={onAddGuest} />
       ) : null}
@@ -94,11 +87,12 @@ export function TableGuestsSection({
           </View>
         ))
       )}
-    </CollapsiblePanel>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  section: { gap: 12 },
   emptyBody: {
     color: colors.muted,
     fontSize: 13,
