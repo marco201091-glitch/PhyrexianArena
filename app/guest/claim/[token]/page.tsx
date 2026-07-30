@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.3 seconds
-Output:
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -129,4 +126,3 @@ export default function GuestClaimPage() {
     </main>
   );
 }
-

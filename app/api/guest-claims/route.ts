@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.3 seconds
-Output:
 import { createHash, randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { requireAuthOr401 } from '@/app/api/_lib/require-auth';
