@@ -410,7 +410,7 @@ const EN: Translations = {
   filterPeriod: 'Period',
   swipeDecksHint: 'Swipe to see all decks',
   exportMatches: 'Export matches',
-  games: 'games',
+  games: 'Games',
   arenaNotFound: 'Playgroup not found',
   guests: 'Guests',
   addGuest: 'Add guest',

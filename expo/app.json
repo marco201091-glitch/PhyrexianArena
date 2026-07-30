@@ -2,7 +2,7 @@
   "expo": {
     "name": "MTG: Commander",
     "slug": "phyrexian-arena",
-    "version": "7.1.0",
+    "version": "7.1.1",
     "platforms": ["android", "ios", "web"],
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "com.phyrexianarena.app",
-      "buildNumber": "70100",
+      "buildNumber": "70101",
       "icon": "./assets/icon.png",
       "backgroundColor": "#0a0a0f",
       "associatedDomains": [
@@ -41,7 +41,7 @@
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 70100,
+      "versionCode": 70101,
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
         "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE"

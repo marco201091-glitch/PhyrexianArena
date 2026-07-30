@@ -146,7 +146,7 @@ export function useProfileDecks(userId: string | undefined) {
         const match = (relation || {}) as { duration_seconds?: number | null; tracking_version?: number | null };
         const tracked = match.tracking_version != null || match.duration_seconds != null;
         const current = performanceMap[deckId] || {
-          gamesPlayed: 0, wins: 0, winRate: 0, trackedGames: 0, trackingCoverage: 0,
+          gamesPlayed: 0, wins: 0, winRate: 0, masteryPoints: 0, trackedGames: 0, trackingCoverage: 0,
           secondPlaces: 0, damageDealt: 0, damageTaken: 0, lifeGained: 0,
           commanderDamage: 0, infectDealt: 0, eliminations: 0,
           medianWinningDurationSeconds: null, winningDurations: [],
@@ -168,6 +168,7 @@ export function useProfileDecks(userId: string | undefined) {
       });
       Object.values(performanceMap).forEach((entry) => {
         entry.winRate = entry.gamesPlayed ? Math.round((entry.wins / entry.gamesPlayed) * 100) : 0;
+        entry.masteryPoints = entry.gamesPlayed + entry.wins * 2;
         entry.trackingCoverage = entry.gamesPlayed ? Math.round((entry.trackedGames / entry.gamesPlayed) * 100) : 0;
         const values = [...(entry.winningDurations || [])].sort((a, b) => a - b);
         if (values.length) {

@@ -35,7 +35,11 @@ const executable = (name) => path.join(
   process.platform === 'win32' ? `${name}.${name === 'apksigner' ? 'bat' : 'exe'}` : name,
 );
 const run = (command, args) => {
-  const result = spawnSync(command, args, { encoding: 'utf8', shell: false });
+  // Android SDK exposes apksigner as a .bat wrapper on Windows.
+  const result = spawnSync(command, args, {
+    encoding: 'utf8',
+    shell: process.platform === 'win32' && command.toLowerCase().endsWith('.bat'),
+  });
   if (result.status !== 0) {
     console.error(result.stderr || result.stdout || `${path.basename(command)} failed`);
     process.exit(1);

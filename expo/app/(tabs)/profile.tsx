@@ -251,80 +251,6 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>{copy('deckArsenal')}</Text>
         </View>
 
-        {decks.length > 0 ? (
-          <FilterPanel
-            actions={(
-              <>
-                <Button
-                  label={copy('addDeck')}
-                  icon="add"
-                  size="sm"
-                  onPress={() => setShowAddDeck(true)}
-                  style={styles.panelActionButton}
-                />
-                <Button
-                  label={refreshingAllDecks ? copy('refreshingDecks') : copy('refreshDecks')}
-                  icon="refresh"
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => void handleRefreshAllDecks()}
-                  disabled={refreshingAllDecks}
-                  style={styles.panelActionButton}
-                />
-              </>
-            )}
-            groups={[
-              {
-                key: 'search',
-                title: copy('searchDecks'),
-                content: (
-                  <Input
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder={copy('searchDecksPlaceholder')}
-                  />
-                ),
-              },
-              {
-                key: 'sort',
-                title: copy('sortBy'),
-                content: (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-                    {([
-                      ['alpha', copy('alphabetical')],
-                      ['mastery', copy('mastery')],
-                      ['games', copy('games')],
-                    ] as const).map(([value, label]) => (
-                      <FilterChip key={value} label={label} active={deckSort === value} onPress={() => setDeckSort(value)} />
-                    ))}
-                  </ScrollView>
-                ),
-              },
-              {
-                key: 'color',
-                title: copy('filterByColor'),
-                content: (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-                    <ManaColorFilterChip
-                      label={copy('allColors')}
-                      active={deckColorFilter === 'all'}
-                      onPress={() => setDeckColorFilter('all')}
-                    />
-                    {MANA_COLOR_ORDER.map((color) => (
-                      <ManaColorFilterChip
-                        key={color}
-                        color={color}
-                        active={deckColorFilter === color}
-                        onPress={() => setDeckColorFilter(color)}
-                      />
-                    ))}
-                  </ScrollView>
-                ),
-              },
-            ]}
-          />
-        ) : null}
-
       {filteredDecks.length === 0 ? (
         <PhyrexianPanel style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>{copy('noDecksTitle')}</Text>
@@ -341,6 +267,79 @@ export default function ProfileScreen() {
 
   return (
     <Screen scroll={false} padded={false}>
+      {decks.length > 0 ? (
+        <FilterPanel
+          actions={(
+            <>
+              <Button
+                label={copy('addDeck')}
+                icon="add"
+                size="sm"
+                onPress={() => setShowAddDeck(true)}
+                style={styles.panelActionButton}
+              />
+              <Button
+                label={refreshingAllDecks ? copy('refreshingDecks') : copy('refreshDecks')}
+                icon="refresh"
+                variant="ghost"
+                size="sm"
+                onPress={() => void handleRefreshAllDecks()}
+                disabled={refreshingAllDecks}
+                style={styles.panelActionButton}
+              />
+            </>
+          )}
+          groups={[
+            {
+              key: 'search',
+              title: copy('searchDecks'),
+              content: (
+                <Input
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder={copy('searchDecksPlaceholder')}
+                />
+              ),
+            },
+            {
+              key: 'sort',
+              title: copy('sortBy'),
+              content: (
+                <View style={styles.filterRow}>
+                  {([
+                    ['alpha', copy('alphabetical')],
+                    ['mastery', copy('mastery')],
+                    ['games', copy('games')],
+                  ] as const).map(([value, label]) => (
+                    <FilterChip key={value} label={label} active={deckSort === value} onPress={() => setDeckSort(value)} />
+                  ))}
+                </View>
+              ),
+            },
+            {
+              key: 'color',
+              title: copy('filterByColor'),
+              content: (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+                  <ManaColorFilterChip
+                    label={copy('allColors')}
+                    active={deckColorFilter === 'all'}
+                    onPress={() => setDeckColorFilter('all')}
+                  />
+                  {MANA_COLOR_ORDER.map((color) => (
+                    <ManaColorFilterChip
+                      key={color}
+                      color={color}
+                      active={deckColorFilter === color}
+                      onPress={() => setDeckColorFilter(color)}
+                    />
+                  ))}
+                </ScrollView>
+              ),
+            },
+          ]}
+        />
+      ) : null}
       <FlashList
         data={filteredDecks}
         keyExtractor={(deck) => deck.id}
