@@ -873,7 +873,7 @@ export default function TableScreen() {
           />
         ) : null}
 
-        {false && isMember ? (
+        {isMember ? (
           <TableArenaManagement
             showExportStats={reportedMatchCount > 0}
             canManage={canManage}
