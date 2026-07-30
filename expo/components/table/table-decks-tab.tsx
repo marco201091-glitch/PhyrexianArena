@@ -53,7 +53,6 @@ export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
             wins={deck.wins}
             trailing={<Text style={styles.deckWinRate}>{deck.winRate}%</Text>}
           />
-          />
         ))}
       </View>
     </View>
