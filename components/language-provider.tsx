@@ -15,7 +15,7 @@ interface LanguageContextValue {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('it');
+  const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
     const stored = window.localStorage.getItem('phyrexian-arena-language');
