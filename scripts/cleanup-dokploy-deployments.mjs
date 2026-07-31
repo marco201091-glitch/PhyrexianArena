@@ -55,23 +55,27 @@ function staleDeploymentIds(deployments, keepDone) {
 
 let removed = 0;
 for (const target of targets) {
-  const query = target.type === 'application'
-    ? `/api/application.one?applicationId=${encodeURIComponent(target.id)}`
-    : `/api/compose.one?composeId=${encodeURIComponent(target.id)}`;
-  const resource = await request(query);
-  const ids = staleDeploymentIds(resource.deployments ?? [], target.keepDone);
+  try {
+    const query = target.type === 'application'
+      ? `/api/application.one?applicationId=${encodeURIComponent(target.id)}`
+      : `/api/compose.one?composeId=${encodeURIComponent(target.id)}`;
+    const resource = await request(query);
+    const ids = staleDeploymentIds(resource.deployments ?? [], target.keepDone);
 
-  for (const deploymentId of ids) {
-    if (apply) {
-      await request('/api/deployment.removeDeployment', {
-        method: 'POST',
-        body: JSON.stringify({ deploymentId }),
-      });
+    for (const deploymentId of ids) {
+      if (apply) {
+        await request('/api/deployment.removeDeployment', {
+          method: 'POST',
+          body: JSON.stringify({ deploymentId }),
+        });
+      }
+      removed += 1;
     }
-    removed += 1;
-  }
 
-  console.log(`${target.name}: ${ids.length} ${apply ? 'removed' : 'would-remove'}`);
+    console.log(`${target.name}: ${ids.length} ${apply ? 'removed' : 'would-remove'}`);
+  } catch (err) {
+    console.error(`${target.name}: SKIPPED — ${err.message}`);
+  }
 }
 
 console.log(`total: ${removed} ${apply ? 'removed' : 'would-remove'}`);

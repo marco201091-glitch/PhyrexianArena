@@ -32,7 +32,6 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-        continue-on-error: true
 
   expo:
     runs-on: ubuntu-latest
@@ -48,5 +47,6 @@ jobs:
           cache: npm
           cache-dependency-path: expo/package-lock.json
       - run: npm ci
+      - run: npm i --no-save eslint
       - run: npm run quality
       - run: npx expo-doctor
