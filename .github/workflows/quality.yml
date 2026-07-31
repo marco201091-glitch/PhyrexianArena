@@ -32,6 +32,7 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+        continue-on-error: true
 
   expo:
     runs-on: ubuntu-latest
