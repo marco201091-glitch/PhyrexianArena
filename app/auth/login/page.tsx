@@ -139,7 +139,7 @@ function LoginForm() {
                 </label>
                 <Link
                   href="/auth/forgot-password"
-                  className="text-xs font-medium text-violet-400 hover:text-violet-300"
+                  className="text-xs font-medium text-emerald-400 hover:text-emerald-300"
                 >
                   {t({ it: 'Password dimenticata?', en: 'Forgot password?' })}
                 </Link>
@@ -162,13 +162,13 @@ function LoginForm() {
                 id="rememberMe"
                 checked={rememberMe}
                 onCheckedChange={(checked) => setRememberMe(checked === true)}
-                className="border-violet-400/70 data-[state=checked]:border-violet-400 data-[state=checked]:bg-violet-600"
+                className="border-emerald-400/70 data-[state=checked]:border-emerald-400 data-[state=checked]:bg-emerald-600"
               />
               <span>{t({ it: 'Ricordami su questo dispositivo', en: 'Remember me on this device' })}</span>
             </label>
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800 text-white font-semibold"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-semibold"
               disabled={loading}
             >
               {loading
@@ -201,7 +201,7 @@ function LoginForm() {
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             {t({ it: 'Non sei ancora registrato?', en: 'Not registered yet?' })}{' '}
-            <Link href={`/auth/register?redirect=${encodeURIComponent(redirectPath)}`} className="text-violet-400 hover:text-violet-300 font-medium">
+            <Link href={`/auth/register?redirect=${encodeURIComponent(redirectPath)}`} className="text-emerald-400 hover:text-emerald-300 font-medium">
               {t({ it: 'Crea un account', en: 'Create one' })}
             </Link>
           </div>

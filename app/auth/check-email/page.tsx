@@ -28,7 +28,7 @@ function CheckEmailContent() {
           </div>
         </CardHeader>
         <CardContent className="space-y-5 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-300">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300">
             <Mail className="h-7 w-7" />
           </div>
           <div className="space-y-2">
@@ -60,7 +60,7 @@ function CheckEmailContent() {
                   : t({ it: 'Reinvia conferma', en: 'Resend confirmation' })}
               </Link>
             </Button>
-            <Button asChild className="w-full bg-gradient-to-r from-violet-600 to-purple-700">
+            <Button asChild className="w-full bg-gradient-to-r from-emerald-600 to-teal-700">
               <Link href="/auth/login">{t({ it: 'Vai al login', en: 'Go to login' })}</Link>
             </Button>
           </div>

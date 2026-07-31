@@ -112,7 +112,7 @@ export default function JoinPage() {
           </CardHeader>
           <CardContent className="text-center">
             <Link href="/dashboard">
-              <Button className="bg-gradient-to-r from-violet-600 to-purple-700">
+              <Button className="bg-gradient-to-r from-emerald-600 to-teal-700">
                 {t({ it: 'Vai alla dashboard', en: 'Go to Dashboard' })}
               </Button>
             </Link>
@@ -137,7 +137,7 @@ export default function JoinPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3 p-4 rounded-lg bg-background/50 border-border">
-              <Users className="w-5 h-5 text-violet-400" />
+              <Users className="w-5 h-5 text-emerald-400" />
               <span className="text-foreground">{t({ it: 'Hai ricevuto un invito per entrare in un playgroup', en: 'You have been invited to join a playgroup' })}</span>
             </div>
             <p className="text-sm text-muted-foreground text-center">
@@ -150,7 +150,7 @@ export default function JoinPage() {
                 </Button>
               </Link>
               <Link href={`/auth/register?redirect=/join/${inviteCode}`} className="flex-1">
-                <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-700">
+                <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-700">
                   {t({ it: 'Crea account', en: 'Create Account' })}
                 </Button>
               </Link>
@@ -174,7 +174,7 @@ export default function JoinPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mx-auto mb-4" />
           <p className="text-muted-foreground">{t({ it: 'Ingresso in corso...', en: 'Joining...' })}</p>
         </CardContent>
       </Card>

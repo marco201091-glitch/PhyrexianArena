@@ -1,12 +1,12 @@
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type DeckExternalLinkTone = 'violet' | 'blue' | 'purple';
+type DeckExternalLinkTone = 'emerald' | 'blue' | 'teal';
 
 const toneStyles: Record<DeckExternalLinkTone, string> = {
-  violet: 'border-violet-500/25 bg-violet-500/10 text-violet-100 hover:border-violet-400/40 hover:bg-violet-500/15',
+  emerald: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/40 hover:bg-emerald-500/15',
   blue: 'border-blue-500/25 bg-blue-500/10 text-blue-100 hover:border-blue-400/40 hover:bg-blue-500/15',
-  purple: 'border-purple-500/25 bg-purple-500/10 text-purple-100 hover:border-purple-400/40 hover:bg-purple-500/15',
+  teal: 'border-teal-500/25 bg-teal-500/10 text-teal-100 hover:border-teal-400/40 hover:bg-teal-500/15',
 };
 
 interface DeckExternalLinkChipProps {
@@ -19,7 +19,7 @@ interface DeckExternalLinkChipProps {
 export function DeckExternalLinkChip({
   href,
   label,
-  tone = 'violet',
+  tone = 'emerald',
   className,
 }: DeckExternalLinkChipProps) {
   return (

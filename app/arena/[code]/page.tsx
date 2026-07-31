@@ -163,11 +163,11 @@ export default function PublicArenaPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <section className="relative mb-8 overflow-hidden rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/70 via-background to-background p-6 sm:p-8">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/20 blur-3xl" />
+        <section className="relative mb-8 overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/70 via-background to-background p-6 sm:p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.2em] text-violet-300">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
                 {t({ it: 'Playgroup pubblico', en: 'Public playgroup' })}
               </p>
               <h1 className="mt-2 text-3xl font-bold text-foreground sm:text-4xl">{data.arena.name}</h1>
@@ -208,7 +208,7 @@ export default function PublicArenaPage() {
               </Card>
             )}
             {data.topDecks[0] && (
-              <Card className="border-violet-500/25 bg-gradient-to-br from-violet-500/10 to-card/60">
+              <Card className="border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 to-card/60">
                 <CardContent className="flex gap-3 p-4">
                   <DeckImage
                     src={data.topDecks[0].commanderImage}
@@ -216,7 +216,7 @@ export default function PublicArenaPage() {
                     className="h-16 w-16 shrink-0 rounded object-cover object-top"
                   />
                   <div className="min-w-0">
-                    <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-violet-200/80">
+                    <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-emerald-200/80">
                       <Swords className="h-4 w-4" />
                       {t({ it: 'Mazzo top', en: 'Top deck' })}
                     </div>
@@ -292,7 +292,7 @@ export default function PublicArenaPage() {
               {data.topPlayers.map((player, index) => (
                 <div key={`${player.displayName}-${index}`} className="flex items-center justify-between rounded-md border border-border/60 bg-background/30 p-3">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/15 text-sm font-bold text-violet-200">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-sm font-bold text-emerald-200">
                       {index + 1}
                     </span>
                     <span className="font-medium text-foreground">{player.displayName}</span>
@@ -330,7 +330,7 @@ export default function PublicArenaPage() {
                           </span>
                         )}
                       </div>
-                      <span className="shrink-0 text-sm text-violet-300">{deck.winRate}%</span>
+                      <span className="shrink-0 text-sm text-emerald-300">{deck.winRate}%</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {deck.wins}W / {deck.gamesPlayed}G
@@ -387,7 +387,7 @@ export default function PublicArenaPage() {
                 </div>
                 <p className="mb-3 text-sm">
                   <span className="text-muted-foreground">{t({ it: 'Vincitore', en: 'Winner' })}: </span>
-                  <span className="font-medium text-violet-300">{match.winnerName}</span>
+                  <span className="font-medium text-emerald-300">{match.winnerName}</span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {match.participants.map((participant, index) => (
@@ -395,7 +395,7 @@ export default function PublicArenaPage() {
                       key={`${match.id}-${participant.displayName}-${index}`}
                       className={`rounded px-2 py-1 text-xs ${
                         participant.isWinner
-                          ? 'border border-violet-500/30 bg-violet-500/15 text-violet-200'
+                          ? 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-200'
                           : 'bg-secondary/70 text-secondary-foreground'
                       }`}
                     >

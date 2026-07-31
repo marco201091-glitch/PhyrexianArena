@@ -62,7 +62,7 @@ export function RichTextEditor({
   }, [onChange, selection, value]);
 
   const toolbarButtonClass =
-    'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/80 bg-background/60 text-muted-foreground transition-colors hover:border-violet-500/40 hover:text-foreground';
+    'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/80 bg-background/60 text-muted-foreground transition-colors hover:border-emerald-500/40 hover:text-foreground';
 
   return (
     <div className={cn('space-y-2', className)}>

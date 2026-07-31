@@ -128,7 +128,7 @@ function ResendConfirmationForm() {
             />
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800"
               disabled={loading || !isEmailValid}
             >
               {loading
@@ -137,7 +137,7 @@ function ResendConfirmationForm() {
             </Button>
           </form>
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <Link href="/auth/login" className="font-medium text-violet-400 hover:text-violet-300">
+            <Link href="/auth/login" className="font-medium text-emerald-400 hover:text-emerald-300">
               {t({ it: 'Torna al login', en: 'Back to login' })}
             </Link>
           </div>

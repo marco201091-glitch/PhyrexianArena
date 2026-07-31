@@ -34,7 +34,7 @@ export function LiveGameRecapView({
         </div>
       </div>
       <div>
-        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-violet-200">{labels.highlights}</h3>
+        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-emerald-200">{labels.highlights}</h3>
         {recap.highlights.length ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {recap.highlights.map((event) => {

@@ -398,7 +398,7 @@ export default function DashboardPage() {
               </Button>
               <Button
                 onClick={() => setShowCreateModal(true)}
-                className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+                className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 {t({ it: 'Crea playgroup', en: 'Create Playgroup' })}
@@ -409,7 +409,7 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-bold text-foreground sm:text-2xl">{t({ it: 'I tuoi playgroup', en: 'Your Playgroups' })}</h2>
             {adminMode && (
-              <span className="rounded-full border border-violet-500/30 bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-300">
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
                 {t({ it: 'Vista amministratore', en: 'Admin view' })}
               </span>
             )}
@@ -429,7 +429,7 @@ export default function DashboardPage() {
               </p>
               <Button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+                className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 {t({ it: 'Crea il primo playgroup', en: 'Create Your First Playgroup' })}
@@ -443,20 +443,20 @@ export default function DashboardPage() {
                 key={group.id}
               >
                 <Card
-                  className="group relative h-full cursor-pointer overflow-hidden border-border/70 bg-card/70 shadow-xl shadow-black/25 transition-all hover:border-violet-400/60 hover:bg-card/85 hover:shadow-violet-950/30"
+                  className="group relative h-full cursor-pointer overflow-hidden border-border/70 bg-card/70 shadow-xl shadow-black/25 transition-all hover:border-emerald-400/60 hover:bg-card/85 hover:shadow-emerald-950/30"
                   onClick={() => router.push(`/table/${group.id}`)}
                 >
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-300/70 to-transparent" />
-                  <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl transition-opacity group-hover:opacity-90" />
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/70 to-transparent" />
+                  <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl transition-opacity group-hover:opacity-90" />
                   <CardHeader className="space-y-4 p-5 sm:p-6">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-violet-300/85">
+                        <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-emerald-300/85">
                           <span>{t({ it: 'Playgroup', en: 'Playgroup' })}</span>
-                          <span className="h-1 w-1 rounded-full bg-violet-300/70" />
+                          <span className="h-1 w-1 rounded-full bg-emerald-300/70" />
                           <span>{group.group_members?.length || 0} {t({ it: 'giocatori', en: 'players' })}</span>
                         </div>
-                        <CardTitle className="text-2xl font-bold leading-tight text-foreground transition-colors group-hover:text-violet-200 sm:text-3xl">
+                        <CardTitle className="text-2xl font-bold leading-tight text-foreground transition-colors group-hover:text-emerald-200 sm:text-3xl">
                         {group.name}
                         </CardTitle>
                       </div>
@@ -464,7 +464,7 @@ export default function DashboardPage() {
                         variant="ghost"
                         size="icon"
                         aria-label={t({ it: 'Copia link invito', en: 'Copy invite link' })}
-                        className="shrink-0 text-muted-foreground hover:bg-violet-500/10 hover:text-violet-200"
+                        className="shrink-0 text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-200"
                         onClick={(e) => {
                           e.stopPropagation();
                           copyInviteCode(group.invite_code);
@@ -496,7 +496,7 @@ export default function DashboardPage() {
                           <Hash className="h-3.5 w-3.5" />
                           {t({ it: 'Invito', en: 'Invite' })}
                         </div>
-                        <div className="truncate font-mono text-xs font-semibold text-violet-200 sm:text-lg">
+                        <div className="truncate font-mono text-xs font-semibold text-emerald-200 sm:text-lg">
                           {group.invite_code}
                         </div>
                       </div>
@@ -516,7 +516,7 @@ export default function DashboardPage() {
                       </span>
                       <Button
                         type="button"
-                        className="w-full shrink-0 bg-gradient-to-r from-violet-600 to-purple-700 text-white hover:from-violet-700 hover:to-purple-800 sm:w-auto"
+                        className="w-full shrink-0 bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:from-emerald-700 hover:to-teal-800 sm:w-auto"
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(`/table/${group.id}`);
@@ -573,7 +573,7 @@ export default function DashboardPage() {
               <Card className="min-w-0 max-w-full overflow-hidden border-border/70 bg-card/60">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
-                    <Trophy className="h-5 w-5 text-violet-300" />
+                    <Trophy className="h-5 w-5 text-emerald-300" />
                     {t({ it: 'Top 10 mazzi', en: 'Top 10 Decks' })}
                   </CardTitle>
                   <CardDescription>
@@ -585,7 +585,7 @@ export default function DashboardPage() {
                     {personalAnalytics.topDecks.map((deck, index) => (
                       <div key={deck.id} className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/35 p-3 sm:grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-3">
                         <div className="flex w-full min-w-0 items-center gap-3 sm:block sm:w-auto">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-sm font-bold text-violet-200">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-sm font-bold text-emerald-200">
                             {index + 1}
                           </div>
                           <div className="min-w-0 flex-1 sm:hidden">
@@ -593,7 +593,7 @@ export default function DashboardPage() {
                             {adminMode && deck.ownerUsername ? (
                               <p className="truncate text-xs text-muted-foreground">@{deck.ownerUsername}</p>
                             ) : null}
-                            <p className="truncate text-sm text-violet-300">{deck.commander}</p>
+                            <p className="truncate text-sm text-emerald-300">{deck.commander}</p>
                           </div>
                           <div className="ml-auto shrink-0 text-right text-sm sm:hidden">
                             <p className="font-semibold text-foreground">{deck.gamesPlayed}G / {deck.wins}W</p>
@@ -608,7 +608,7 @@ export default function DashboardPage() {
                           {adminMode && deck.ownerUsername ? (
                             <p className="truncate text-xs text-muted-foreground">@{deck.ownerUsername}</p>
                           ) : null}
-                          <p className="truncate text-sm text-violet-300">{deck.commander}</p>
+                          <p className="truncate text-sm text-emerald-300">{deck.commander}</p>
                         </div>
                         <ManaColorPills colors={deck.colors} size="xs" gap="tight" className="sm:hidden" />
                         <div className="hidden text-right sm:block">
@@ -668,7 +668,7 @@ export default function DashboardPage() {
                 </div>
 
                 {personalAnalytics.bestDeck ? (
-                  <Card className="border-violet-500/25 bg-gradient-to-br from-violet-500/10 to-card/60">
+                  <Card className="border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 to-card/60">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base text-foreground">
                         {t({ it: 'Miglior mazzo', en: 'Best deck' })}
@@ -689,7 +689,7 @@ export default function DashboardPage() {
                             <p className="truncate font-semibold text-foreground">{personalAnalytics.bestDeck.name}</p>
                             <ManaColorPills colors={personalAnalytics.bestDeck.colors} size="xs" gap="tight" />
                           </div>
-                          <p className="truncate text-sm text-violet-300">{personalAnalytics.bestDeck.commander}</p>
+                          <p className="truncate text-sm text-emerald-300">{personalAnalytics.bestDeck.commander}</p>
                         </div>
                         <div className="shrink-0 text-right">
                           <p className="text-sm font-semibold text-foreground">
@@ -740,7 +740,7 @@ export default function DashboardPage() {
                 <Card className="border-border/70 bg-card/60">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-foreground">
-                      <Palette className="h-5 w-5 text-violet-300" />
+                      <Palette className="h-5 w-5 text-emerald-300" />
                       {t({ it: 'Colori più giocati', en: 'Most Played Colors' })}
                     </CardTitle>
                   </CardHeader>
@@ -760,7 +760,7 @@ export default function DashboardPage() {
                               <span className="text-muted-foreground">{stat.gamesPlayed} / {stat.percentage}%</span>
                             </div>
                             <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                              <div className="h-full rounded-full bg-violet-400" style={{ width: `${stat.percentage}%` }} />
+                              <div className="h-full rounded-full bg-emerald-400" style={{ width: `${stat.percentage}%` }} />
                             </div>
                           </div>
                         );
@@ -817,7 +817,7 @@ export default function DashboardPage() {
                   <Button
                     type="submit"
                     disabled={joining || !joiningCode.trim()}
-                    className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800"
                   >
                     {joining ? t({ it: 'Accesso...', en: 'Joining...' }) : t({ it: 'Entra', en: 'Join' })}
                   </Button>
@@ -872,7 +872,7 @@ export default function DashboardPage() {
                   <Button
                     type="submit"
                     disabled={creating}
-                    className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800"
                   >
                     {creating ? t({ it: 'Creazione...', en: 'Creating...' }) : t({ it: 'Crea', en: 'Create' })}
                   </Button>

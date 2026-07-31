@@ -231,7 +231,7 @@ export function ManaColorReport({
               onClick={() => toggleSort(key)}
               className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                 sortKey === key
-                  ? 'border-violet-500/50 bg-violet-500/15 text-foreground'
+                  ? 'border-emerald-500/50 bg-emerald-500/15 text-foreground'
                   : 'border-border/60 text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -377,7 +377,7 @@ export function ManaColorPairs({ pairs, emptyLabel }: ManaColorPairsProps) {
         >
           <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-xs font-bold text-violet-200">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-200">
                 {index + 1}
               </span>
               <div className="flex shrink-0 items-center gap-1.5">

@@ -48,7 +48,7 @@ export function AccessLogsPanel({ embedded = false }: AccessLogsPanelProps) {
   const renderSourceBadge = useCallback((source: AccessLogSource) => {
     if (source === 'app') {
       return (
-        <Badge className="border-violet-400/30 bg-violet-500/15 text-violet-200">
+        <Badge className="border-emerald-400/30 bg-emerald-500/15 text-emerald-200">
           <Smartphone className="mr-1 h-3 w-3" />
           {t({ it: 'App', en: 'App' })}
         </Badge>
@@ -129,7 +129,7 @@ export function AccessLogsPanel({ embedded = false }: AccessLogsPanelProps) {
           ) : (
             <div>
               <CardTitle className="flex items-center gap-2 text-foreground">
-                <Activity className="h-5 w-5 text-violet-300" />
+                <Activity className="h-5 w-5 text-emerald-300" />
                 {t({ it: 'Log accessi', en: 'Access Logs' })}
               </CardTitle>
               <CardDescription>

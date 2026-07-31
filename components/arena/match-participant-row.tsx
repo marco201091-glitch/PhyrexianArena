@@ -58,8 +58,8 @@ export function MatchParticipantRow({
     <div
       className={`rounded-lg border p-3 transition-colors ${
         selected
-          ? 'border-violet-500 bg-violet-500/10'
-          : 'border-border hover:border-violet-500/50 cursor-pointer'
+          ? 'border-emerald-500 bg-emerald-500/10'
+          : 'border-border hover:border-emerald-500/50 cursor-pointer'
       }`}
       onClick={() => !selected && onToggle()}
     >
@@ -67,7 +67,7 @@ export function MatchParticipantRow({
         <div className="flex min-w-0 items-center gap-3">
           <div
             className={`h-4 w-4 shrink-0 rounded border cursor-pointer ${
-              selected ? 'bg-violet-500 border-violet-500' : 'border-border'
+              selected ? 'bg-emerald-500 border-emerald-500' : 'border-border'
             }`}
             onClick={(event) => {
               event.stopPropagation();
@@ -89,7 +89,7 @@ export function MatchParticipantRow({
               )}
             </div>
             {selectedDeck && (
-              <p className="mt-1 truncate text-xs text-violet-300">
+              <p className="mt-1 truncate text-xs text-emerald-300">
                 {selectedDeck.name} - {selectedDeck.commander}
               </p>
             )}
@@ -150,8 +150,8 @@ export function MatchParticipantRow({
                       }}
                       className={`min-h-[7.5rem] rounded-lg border p-3 text-left transition-colors ${
                         selectedDeckId === deck.id
-                          ? 'border-violet-500 bg-violet-500/10'
-                          : 'border-border bg-background/25 hover:border-violet-500/50'
+                          ? 'border-emerald-500 bg-emerald-500/10'
+                          : 'border-border bg-background/25 hover:border-emerald-500/50'
                       }`}
                     >
                       <div className="flex h-full items-start gap-3">
@@ -162,14 +162,14 @@ export function MatchParticipantRow({
                         />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                           <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{deck.name}</p>
-                          <p className="line-clamp-2 text-xs leading-snug text-violet-400">{deck.commander}</p>
+                          <p className="line-clamp-2 text-xs leading-snug text-emerald-400">{deck.commander}</p>
                           <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1.5">
                             {deck.source_type && (
                               <span className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs ${
                                 deck.source_type === 'archidekt'
                                   ? 'bg-blue-500/20 text-blue-400'
                                   : deck.source_type === 'moxfield'
-                                    ? 'bg-purple-500/20 text-purple-300'
+                                    ? 'bg-teal-500/20 text-teal-300'
                                     : 'bg-muted text-muted-foreground'
                               }`}>
                                 {deck.source_type}

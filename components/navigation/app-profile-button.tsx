@@ -19,7 +19,7 @@ export function AppProfileButton() {
         size="icon"
         className={cn(
           'text-muted-foreground hover:text-foreground',
-          active && 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/30',
+          active && 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/30',
         )}
         aria-label={t({ it: 'Profilo', en: 'Profile' })}
         aria-current={active ? 'page' : undefined}

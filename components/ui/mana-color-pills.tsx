@@ -1,6 +1,6 @@
 'use client';
 
-import { MANA_CHART_COLORS, MANA_COLOR_LABELS } from '@/lib/mana-colors';
+import { MANA_COLOR_LABELS, getManaSymbolSvgUrl } from '@/lib/mana-colors';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/components/language-provider';
 
@@ -29,6 +29,7 @@ export function ManaColorBadge({
 }: ManaColorBadgeProps) {
   const label = MANA_COLOR_LABELS[color] || MANA_COLOR_LABELS.C;
   const symbolSize = SYMBOL_SIZES[size];
+  const svgUrl = getManaSymbolSvgUrl(color);
 
   return (
     <span
@@ -36,19 +37,20 @@ export function ManaColorBadge({
       role="img"
       aria-label={title}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full border border-white/25 font-extrabold leading-none shadow-sm',
+        'inline-flex shrink-0 items-center justify-center',
         muted && 'opacity-40 grayscale',
         className,
       )}
-      style={{
-        width: symbolSize,
-        height: symbolSize,
-        color: color === 'W' || color === 'C' ? '#111827' : '#f8fafc',
-        backgroundColor: MANA_CHART_COLORS[color] || MANA_CHART_COLORS.C,
-        fontSize: Math.round(symbolSize * 0.45),
-      }}
+      style={{ width: symbolSize, height: symbolSize }}
     >
-      <span aria-hidden="true">{color}</span>
+      <img
+        src={svgUrl}
+        alt={color}
+        width={symbolSize}
+        height={symbolSize}
+        className="block"
+        loading="lazy"
+      />
       <span className="sr-only">{label.en}</span>
     </span>
   );

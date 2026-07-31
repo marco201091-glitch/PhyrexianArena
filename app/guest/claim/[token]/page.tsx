@@ -80,7 +80,7 @@ export default function GuestClaimPage() {
 
   if (result) {
     return (
-      <main className="grid min-h-dvh place-items-center bg-[radial-gradient(circle_at_top,#25133f,#050509_62%)] p-4">
+      <main className="grid min-h-dvh place-items-center bg-[radial-gradient(circle_at_top,#0a150c,#050509_62%)] p-4">
         <Card className="w-full max-w-lg border-emerald-400/25 bg-card/95 text-center shadow-2xl">
           <CardContent className="space-y-5 p-8">
             <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-300" />
@@ -101,10 +101,10 @@ export default function GuestClaimPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-[radial-gradient(circle_at_top,#25133f,#050509_62%)] px-4 py-10">
-      <Card className="mx-auto w-full max-w-xl overflow-hidden border-violet-400/25 bg-card/95 shadow-2xl">
-        <CardHeader className="border-b border-border bg-violet-500/10">
-          <p className="text-xs font-black uppercase tracking-[.2em] text-violet-300">Phyrexian Arena</p>
+    <main className="min-h-dvh bg-[radial-gradient(circle_at_top,#0a150c,#050509_62%)] px-4 py-10">
+      <Card className="mx-auto w-full max-w-xl overflow-hidden border-emerald-400/25 bg-card/95 shadow-2xl">
+        <CardHeader className="border-b border-border bg-emerald-500/10">
+          <p className="text-xs font-black uppercase tracking-[.2em] text-emerald-300">Phyrexian Arena</p>
           <CardTitle className="text-2xl">{preview.guest.displayName}, {copy({ it: 'evolvi il tuo profilo', en: 'upgrade your profile' })}</CardTitle>
           <p className="text-sm text-muted-foreground">{copy({ it: 'Il manager ti ha invitato a trasformare il guest in un account reale.', en: 'The manager invited you to turn this guest into a real account.' })}</p>
         </CardHeader>
@@ -114,7 +114,7 @@ export default function GuestClaimPage() {
           <p className="flex items-center gap-2 text-xs text-muted-foreground"><Clock3 className="h-4 w-4" />{copy({ it: 'Link monouso, valido fino al', en: 'One-time link, valid until' })} {new Date(preview.expiresAt).toLocaleDateString()}</p>
           {error ? <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p> : null}
           {user ? (
-            <Button className="h-12 w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 font-black" onClick={() => void claim()} disabled={claiming}>{claiming ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}{copy({ it: 'Trasferisci al mio account', en: 'Transfer to my account' })}</Button>
+            <Button className="h-12 w-full bg-gradient-to-r from-emerald-600 to-teal-600 font-black" onClick={() => void claim()} disabled={claiming}>{claiming ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}{copy({ it: 'Trasferisci al mio account', en: 'Transfer to my account' })}</Button>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               <Button asChild><Link href={`/auth/register?redirect=${encodeURIComponent(returnPath)}`}>{copy({ it: 'Crea account', en: 'Create account' })}</Link></Button>

@@ -174,8 +174,8 @@ export function GuestCommanderPicker({
                 onClick={() => handleSelectCommander(commander)}
                 className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors ${
                   selected
-                    ? 'border-violet-500 bg-violet-500/10'
-                    : 'border-border bg-background/30 hover:border-violet-500/50'
+                    ? 'border-emerald-500 bg-emerald-500/10'
+                    : 'border-border bg-background/30 hover:border-emerald-500/50'
                 }`}
               >
                 <DeckImage
@@ -195,8 +195,8 @@ export function GuestCommanderPicker({
       )}
 
       {selectedCommander && (
-        <div className="rounded-lg border border-violet-500/30 bg-violet-500/10 p-3">
-          <p className="text-xs uppercase tracking-wide text-violet-200">
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+          <p className="text-xs uppercase tracking-wide text-emerald-200">
             {t({ it: 'Comandante selezionato', en: 'Selected commander' })}
           </p>
           <div className="mt-2 flex items-center gap-3">
@@ -223,7 +223,7 @@ export function GuestCommanderPicker({
           </div>
 
           {selectedPartnerCommander && (
-            <div className="flex items-center gap-3 rounded-lg border border-violet-500/40 bg-violet-500/10 p-2">
+            <div className="flex items-center gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-2">
               <DeckImage
                 src={selectedPartnerCommander.imageUrl}
                 alt={selectedPartnerCommander.name}

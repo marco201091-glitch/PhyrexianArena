@@ -131,7 +131,7 @@ function ResetPasswordForm() {
                 en: 'This link is invalid or expired. Request a new one.',
               })}
             </p>
-            <Button asChild className="w-full bg-gradient-to-r from-violet-600 to-purple-700">
+            <Button asChild className="w-full bg-gradient-to-r from-emerald-600 to-teal-700">
               <Link href="/auth/forgot-password">
                 {t({ it: 'Richiedi nuovo link', en: 'Request a new link' })}
               </Link>
@@ -199,7 +199,7 @@ function ResetPasswordForm() {
             </div>
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800"
               disabled={loading || !isPasswordValid || !passwordsMatch}
             >
               {loading

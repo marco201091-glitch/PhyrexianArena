@@ -64,7 +64,7 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
               .filter((entry) => entry.slug !== document.slug)
               .map((entry, index, list) => (
                 <span key={entry.slug}>
-                  <Link href={entry.href} className="font-medium text-violet-400 hover:text-violet-300">
+                  <Link href={entry.href} className="font-medium text-emerald-400 hover:text-emerald-300">
                     {entry.label[language]}
                   </Link>
                   {index < list.length - 1 ? ', ' : ''}
@@ -72,7 +72,7 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
               ))}
           </p>
           {contactEmail ? (
-            <a href={`mailto:${contactEmail}`} className="font-medium text-violet-400 hover:text-violet-300">
+            <a href={`mailto:${contactEmail}`} className="font-medium text-emerald-400 hover:text-emerald-300">
               {contactEmail}
             </a>
           ) : null}

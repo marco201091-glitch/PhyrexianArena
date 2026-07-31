@@ -2352,7 +2352,7 @@ export default function ProfilePage() {
     }
     if (sourceType === 'moxfield') {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/20 px-2 py-0.5 text-xs text-purple-300">
+        <span className="inline-flex items-center gap-1 rounded-full border border-teal-500/30 bg-teal-500/20 px-2 py-0.5 text-xs text-teal-300">
           Moxfield
         </span>
       );
@@ -2376,7 +2376,7 @@ export default function ProfilePage() {
           it: `${stats.wins} vittorie su ${stats.gamesPlayed} partite`,
           en: `${stats.wins} wins in ${stats.gamesPlayed} games`,
         })}
-        className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-xs text-violet-200"
+        className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-200"
       >
         <Trophy className="h-3 w-3" />
         {stats.winRate}%
@@ -2411,7 +2411,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => onSelect(art)}
                   className={`rounded-lg border p-2 text-left transition-colors ${
-                    selected ? 'border-violet-500 bg-violet-500/10' : 'border-border bg-background/25 hover:border-violet-500/50'
+                    selected ? 'border-emerald-500 bg-emerald-500/10' : 'border-border bg-background/25 hover:border-emerald-500/50'
                   }`}
                 >
                   <DeckImage
@@ -2454,11 +2454,11 @@ export default function ProfilePage() {
 
   const accountActionButtonClass = (active: boolean) => (
     active
-      ? 'flex w-full items-center gap-2.5 rounded-lg bg-violet-500/25 px-3 py-2.5 text-sm font-medium text-violet-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-violet-400/40 transition-all'
-      : 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-violet-200/80 transition-all hover:bg-violet-500/12 hover:text-violet-50'
+      ? 'flex w-full items-center gap-2.5 rounded-lg bg-emerald-500/25 px-3 py-2.5 text-sm font-medium text-emerald-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-emerald-400/40 transition-all'
+      : 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-emerald-200/80 transition-all hover:bg-emerald-500/12 hover:text-emerald-50'
   );
 
-  const accountPanelInputClass = 'border-violet-500/25 bg-violet-950/35 text-foreground placeholder:text-violet-300/35 focus-visible:ring-violet-400/35';
+  const accountPanelInputClass = 'border-emerald-500/25 bg-emerald-950/35 text-foreground placeholder:text-emerald-300/35 focus-visible:ring-emerald-400/35';
 
   return (
     <div className="min-h-screen">
@@ -2484,14 +2484,14 @@ export default function ProfilePage() {
         <MotionPanel>
           <Card className="phyrexian-panel-strong mb-8 overflow-hidden">
             <CardContent className="relative pt-6">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-teal-400 to-red-700" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-red-700" />
               <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-teal-400/10 blur-3xl" />
               <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-              <div className="flex shrink-0 flex-col items-center gap-4 sm:w-48 sm:items-stretch sm:border-r sm:border-violet-400/15 sm:pr-6">
+              <div className="flex shrink-0 flex-col items-center gap-4 sm:w-48 sm:items-stretch sm:border-r sm:border-emerald-400/15 sm:pr-6">
                 <div className="flex flex-col items-center gap-2">
                   <button
                     type="button"
-                    className="group relative rounded-2xl p-0.5 ring-1 ring-violet-400/35 shadow-[0_0_28px_rgba(139,92,246,0.22)] transition-all hover:ring-violet-300/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:opacity-60"
+                    className="group relative rounded-2xl p-0.5 ring-1 ring-emerald-400/35 shadow-[0_0_28px_rgba(139,92,246,0.22)] transition-all hover:ring-emerald-300/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 disabled:opacity-60"
                     onClick={() => avatarInputRef.current?.click()}
                     disabled={uploadingAvatar}
                     aria-label={t({ it: 'Carica avatar', en: 'Upload avatar' })}
@@ -2508,7 +2508,7 @@ export default function ProfilePage() {
                         <UserIcon className="h-10 w-10 sm:h-12 sm:w-12" />
                       </AvatarFallback>
                     </Avatar>
-                    <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-violet-950/70 text-violet-50 opacity-0 backdrop-blur-[2px] transition-opacity group-hover:opacity-100">
+                    <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-emerald-950/70 text-emerald-50 opacity-0 backdrop-blur-[2px] transition-opacity group-hover:opacity-100">
                       {uploadingAvatar ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
                     </span>
                   </button>
@@ -2521,7 +2521,7 @@ export default function ProfilePage() {
                   />
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-300/85 transition-colors hover:text-violet-100 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300/85 transition-colors hover:text-emerald-100 disabled:opacity-50"
                     onClick={() => avatarInputRef.current?.click()}
                     disabled={uploadingAvatar}
                   >
@@ -2532,8 +2532,8 @@ export default function ProfilePage() {
                   </button>
                 </div>
 
-                <div className="w-full space-y-1 rounded-xl border border-violet-400/20 bg-violet-950/20 p-1.5 backdrop-blur-sm">
-                  <p className="px-2 pb-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300/45">
+                <div className="w-full space-y-1 rounded-xl border border-emerald-400/20 bg-emerald-950/20 p-1.5 backdrop-blur-sm">
+                  <p className="px-2 pb-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300/45">
                     {t({ it: 'Account', en: 'Account' })}
                   </p>
                   <button
@@ -2541,7 +2541,7 @@ export default function ProfilePage() {
                     className={accountActionButtonClass(activeAccountPanel === 'nickname')}
                     onClick={() => toggleAccountPanel('nickname')}
                   >
-                    <UserIcon className="h-4 w-4 shrink-0 text-violet-300/90" />
+                    <UserIcon className="h-4 w-4 shrink-0 text-emerald-300/90" />
                     {t({ it: 'Nick', en: 'Nickname' })}
                   </button>
                   {canChangePassword ? (
@@ -2550,7 +2550,7 @@ export default function ProfilePage() {
                       className={accountActionButtonClass(activeAccountPanel === 'password')}
                       onClick={() => toggleAccountPanel('password')}
                     >
-                      <Lock className="h-4 w-4 shrink-0 text-violet-300/90" />
+                      <Lock className="h-4 w-4 shrink-0 text-emerald-300/90" />
                       {t({ it: 'Password', en: 'Password' })}
                     </button>
                   ) : null}
@@ -2586,8 +2586,8 @@ export default function ProfilePage() {
               </div>
 
               {activeAccountPanel === 'nickname' ? (
-                <div className="mt-6 overflow-hidden rounded-xl border border-violet-400/20 bg-violet-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
-                  <p className="mb-3 text-sm text-violet-200/70">
+                <div className="mt-6 overflow-hidden rounded-xl border border-emerald-400/20 bg-emerald-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
+                  <p className="mb-3 text-sm text-emerald-200/70">
                     {t({
                       it: 'Questo nome viene mostrato nelle classifiche e nelle partite. Lo username resta invariato.',
                       en: 'This name is shown in rankings and battles. Your username stays unchanged.',
@@ -2603,7 +2603,7 @@ export default function ProfilePage() {
                     <Button
                       onClick={handleSaveOwnDisplayName}
                       disabled={savingDisplayName || !currentProfile || displayNameDraft.trim() === (currentProfile.display_name || '')}
-                      className="bg-gradient-to-r from-violet-600 to-purple-700 shadow-[0_8px_24px_rgba(124,58,237,0.28)] hover:from-violet-500 hover:to-purple-600"
+                      className="bg-gradient-to-r from-emerald-600 to-teal-700 shadow-[0_8px_24px_rgba(124,58,237,0.28)] hover:from-emerald-500 hover:to-teal-600"
                     >
                       <Save className="mr-2 h-4 w-4" />
                       {savingDisplayName ? t({ it: 'Salvataggio...', en: 'Saving...' }) : t({ it: 'Salva nick', en: 'Save nickname' })}
@@ -2613,8 +2613,8 @@ export default function ProfilePage() {
               ) : null}
 
               {activeAccountPanel === 'password' && canChangePassword ? (
-                <div className="mt-6 overflow-hidden rounded-xl border border-violet-400/20 bg-violet-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
-                  <p className="mb-3 text-sm text-violet-200/70">
+                <div className="mt-6 overflow-hidden rounded-xl border border-emerald-400/20 bg-emerald-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
+                  <p className="mb-3 text-sm text-emerald-200/70">
                     {t({
                       it: 'Aggiorna la password del tuo account senza usare la email.',
                       en: 'Update your account password without using email.',
@@ -2622,7 +2622,7 @@ export default function ProfilePage() {
                   </p>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label htmlFor="currentPassword" className="text-sm font-medium text-violet-100/90">
+                      <label htmlFor="currentPassword" className="text-sm font-medium text-emerald-100/90">
                         {t({ it: 'Password attuale', en: 'Current password' })}
                       </label>
                       <Input
@@ -2635,7 +2635,7 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="newPassword" className="text-sm font-medium text-violet-100/90">
+                      <label htmlFor="newPassword" className="text-sm font-medium text-emerald-100/90">
                         {t({ it: 'Nuova password', en: 'New password' })}
                       </label>
                       <Input
@@ -2649,7 +2649,7 @@ export default function ProfilePage() {
                       <PasswordRequirements password={newPassword} />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="confirmNewPassword" className="text-sm font-medium text-violet-100/90">
+                      <label htmlFor="confirmNewPassword" className="text-sm font-medium text-emerald-100/90">
                         {t({ it: 'Conferma nuova password', en: 'Confirm new password' })}
                       </label>
                       <Input
@@ -2674,7 +2674,7 @@ export default function ProfilePage() {
                         || !isPasswordPolicyValid(newPassword)
                         || newPassword !== confirmNewPassword
                       }
-                      className="bg-gradient-to-r from-violet-600 to-purple-700 shadow-[0_8px_24px_rgba(124,58,237,0.28)] hover:from-violet-500 hover:to-purple-600"
+                      className="bg-gradient-to-r from-emerald-600 to-teal-700 shadow-[0_8px_24px_rgba(124,58,237,0.28)] hover:from-emerald-500 hover:to-teal-600"
                     >
                       <Lock className="mr-2 h-4 w-4" />
                       {savingPassword
@@ -2685,19 +2685,19 @@ export default function ProfilePage() {
                 </div>
               ) : null}
 
-              <div className="mt-6 overflow-hidden rounded-xl border border-violet-400/30 bg-violet-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
+              <div className="mt-6 overflow-hidden rounded-xl border border-emerald-400/30 bg-emerald-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
                   <div className="mb-2 flex items-center gap-2">
-                    <Link2 className="h-4 w-4 text-violet-300" />
-                    <h3 className="font-semibold text-violet-50">Archidekt sync</h3>
+                    <Link2 className="h-4 w-4 text-emerald-300" />
+                    <h3 className="font-semibold text-emerald-50">Archidekt sync</h3>
                   </div>
-                  <p className="mb-3 text-sm text-violet-200/70">
+                  <p className="mb-3 text-sm text-emerald-200/70">
                     {t({
                       it: 'Collega il tuo profilo pubblico Archidekt. Se attivi il controllo automatico, i nuovi mazzi Commander pubblici vengono aggiunti in background senza modificare quelli esistenti.',
                       en: 'Connect your public Archidekt profile. When automatic checks are enabled, new public Commander decks are added in the background without changing existing decks.',
                     })}
                   </p>
                   <div className="space-y-3">
-                    <label className="block text-sm font-medium text-violet-100/90">
+                    <label className="block text-sm font-medium text-emerald-100/90">
                       {t({ it: 'Il tuo username Archidekt', en: 'Your Archidekt username' })}
                     </label>
                     <Input
@@ -2706,22 +2706,22 @@ export default function ProfilePage() {
                       placeholder={t({ it: 'Username Archidekt', en: 'Archidekt username' })}
                       className={accountPanelInputClass}
                     />
-                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-violet-400/15 bg-black/15 p-3 text-sm text-violet-100/90">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-emerald-400/15 bg-black/15 p-3 text-sm text-emerald-100/90">
                       <input
                         type="checkbox"
                         checked={archidektAutoImport}
                         onChange={(event) => setArchidektAutoImport(event.target.checked)}
-                        className="mt-0.5 h-4 w-4 accent-violet-500"
+                        className="mt-0.5 h-4 w-4 accent-emerald-500"
                       />
                       <span>
                         <span className="block font-medium">{t({ it: 'Importa automaticamente nuovi mazzi', en: 'Automatically import new decks' })}</span>
-                        <span className="block text-xs text-violet-200/65">{t({ it: 'Controllo una volta per apertura profilo, con limite API.', en: 'Checked once per profile opening, with API rate limiting.' })}</span>
+                        <span className="block text-xs text-emerald-200/65">{t({ it: 'Controllo una volta per apertura profilo, con limite API.', en: 'Checked once per profile opening, with API rate limiting.' })}</span>
                       </span>
                     </label>
                     <Button
                       onClick={handleSaveArchidektSettings}
                       disabled={savingArchidektSettings}
-                      className="bg-gradient-to-r from-violet-600 to-purple-700 shadow-[0_8px_24px_rgba(124,58,237,0.28)] hover:from-violet-500 hover:to-purple-600"
+                      className="bg-gradient-to-r from-emerald-600 to-teal-700 shadow-[0_8px_24px_rgba(124,58,237,0.28)] hover:from-emerald-500 hover:to-teal-600"
                     >
                       <Save className="mr-2 h-4 w-4" />
                       {savingArchidektSettings ? t({ it: 'Salvataggio...', en: 'Saving...' }) : t({ it: 'Salva Archidekt', en: 'Save Archidekt' })}
@@ -2805,7 +2805,7 @@ export default function ProfilePage() {
             </Button>
             <Button
               onClick={() => setShowAddModal(true)}
-              className="bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800"
+              className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800"
             >
               <Plus className="w-4 h-4 mr-2" />
               {t({ it: 'Aggiungi mazzo', en: 'Add Deck' })}
@@ -2903,7 +2903,7 @@ export default function ProfilePage() {
                   </p>
                   <Button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-gradient-to-r from-violet-600 to-purple-700"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-700"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     {t({ it: 'Aggiungi il primo mazzo', en: 'Add Your First Deck' })}
@@ -2983,7 +2983,7 @@ export default function ProfilePage() {
                           <DeckExternalLinkChip
                             href={deck.source_url}
                             label={getSourceLinkLabel(deck.source_type)}
-                            tone={deck.source_type === 'moxfield' ? 'purple' : deck.source_type === 'archidekt' ? 'blue' : 'violet'}
+                            tone={deck.source_type === 'moxfield' ? 'blue' : deck.source_type === 'archidekt' ? 'teal' : 'emerald'}
                           />
                         ) : null}
                         <EdhrecDeckInsights
@@ -3023,13 +3023,13 @@ export default function ProfilePage() {
                               <Star className={`h-4 w-4 ${deck.is_favorite ? 'fill-current' : ''}`} />
                             </Button>
                           ) : null}
-                          <Button variant="ghost" size="sm" className="min-h-11 gap-1 px-3 text-violet-200" onClick={() => setDetailsDeck(deck)}>
+                          <Button variant="ghost" size="sm" className="min-h-11 gap-1 px-3 text-emerald-200" onClick={() => setDetailsDeck(deck)}>
                             {t({ it: 'Dettagli', en: 'Details' })} <ChevronRight className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-11 w-11 text-white/60 hover:text-violet-300"
+                            className="h-11 w-11 text-white/60 hover:text-emerald-300"
                             onClick={() => {
                               setLinkingDeck(deck);
                               setLinkDeckUrl(deck.source_url || '');
@@ -3042,7 +3042,7 @@ export default function ProfilePage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-11 w-11 text-white/60 hover:text-violet-300"
+                              className="h-11 w-11 text-white/60 hover:text-emerald-300"
                               onClick={() => handleRefreshImportedDeck(deck)}
                               disabled={refreshingDeckIds.includes(deck.id)}
                               title={t({ it: 'Aggiorna da sorgente', en: 'Refresh from source' })}
@@ -3090,7 +3090,7 @@ export default function ProfilePage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-card via-card/65 to-transparent" />
                   <SheetHeader className="absolute inset-x-0 bottom-0 p-5 text-left">
                     <SheetTitle className="pr-8 text-2xl">{detailsDeck.name}</SheetTitle>
-                    <SheetDescription className="text-violet-200">{detailsDeck.commander}</SheetDescription>
+                    <SheetDescription className="text-emerald-200">{detailsDeck.commander}</SheetDescription>
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <BracketBadge bracket={detailsDeck.bracket} />
                       <ManaColorPills colors={getDeckDisplayColors(detailsDeck)} size="xs" gap="tight" />
@@ -3099,7 +3099,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="space-y-6 p-5">
                   <section>
-                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground"><BarChart3 className="h-4 w-4 text-violet-300" />Overview</h3>
+                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground"><BarChart3 className="h-4 w-4 text-emerald-300" />Overview</h3>
                     <div className="grid grid-cols-3 gap-2">
                       {[
                         [t({ it: 'Partite', en: 'Games' }), performance?.gamesPlayed ?? 0],
@@ -3152,7 +3152,7 @@ export default function ProfilePage() {
                         <span>{performance.trackedGames}/{performance.gamesPlayed} · {performance.trackingCoverage}%</span>
                       </div>
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
-                        <div className="h-full rounded-full bg-violet-500" style={{ width: `${performance.trackingCoverage}%` }} />
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${performance.trackingCoverage}%` }} />
                       </div>
                     </div>
                   ) : null}
@@ -3210,7 +3210,7 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <Button
                     variant="outline"
-                    className="w-full h-24 flex flex-col items-center justify-center gap-2 border-border hover:border-violet-500 hover:bg-violet-500/10"
+                    className="w-full h-24 flex flex-col items-center justify-center gap-2 border-border hover:border-emerald-500 hover:bg-emerald-500/10"
                     onClick={() => setAddMode('import-url')}
                   >
                     <ExternalLink className="w-6 h-6" />
@@ -3219,7 +3219,7 @@ export default function ProfilePage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full h-24 flex flex-col items-center justify-center gap-2 border-border hover:border-violet-500 hover:bg-violet-500/10"
+                    className="w-full h-24 flex flex-col items-center justify-center gap-2 border-border hover:border-emerald-500 hover:bg-emerald-500/10"
                     onClick={() => setAddMode('manual')}
                   >
                     <Search className="w-6 h-6" />
@@ -3228,7 +3228,7 @@ export default function ProfilePage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full h-24 flex flex-col items-center justify-center gap-2 border-border hover:border-violet-500 hover:bg-violet-500/10"
+                    className="w-full h-24 flex flex-col items-center justify-center gap-2 border-border hover:border-emerald-500 hover:bg-emerald-500/10"
                     onClick={() => {
                       setArchidektUsername(currentProfile?.archidekt_username || '');
                       setAddMode('archidekt-user');
@@ -3271,7 +3271,7 @@ export default function ProfilePage() {
                       {t({ it: 'Indietro', en: 'Back' })}
                     </Button>
                     <Button
-                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                       onClick={handleArchidektUserImport}
                       disabled={importingUserDecks || !archidektUsername.trim()}
                     >
@@ -3341,7 +3341,7 @@ export default function ProfilePage() {
                               type="button"
                               className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
                                 selectedForImport
-                                  ? 'border-violet-500 bg-violet-500 text-white'
+                                  ? 'border-emerald-500 bg-emerald-500 text-white'
                                   : 'border-border bg-background'
                               }`}
                               onClick={() => setSelectedUserDeckUrls((current) =>
@@ -3374,7 +3374,7 @@ export default function ProfilePage() {
                                 )}
                               </div>
                               <p className="font-semibold text-foreground truncate">{deck.name}</p>
-                              <p className="text-sm text-violet-400 truncate">{selectedCommander.name}</p>
+                              <p className="text-sm text-emerald-400 truncate">{selectedCommander.name}</p>
                             </div>
                           </div>
                           {(deck.commanderOptions?.length || 0) > 1 && (
@@ -3391,8 +3391,8 @@ export default function ProfilePage() {
                                     }))}
                                     className={`flex items-center gap-2 rounded-lg border p-2 text-left transition-colors ${
                                       selected
-                                        ? 'border-violet-500 bg-violet-500/10'
-                                        : 'border-border hover:border-violet-500/50'
+                                        ? 'border-emerald-500 bg-emerald-500/10'
+                                        : 'border-border hover:border-emerald-500/50'
                                     }`}
                                   >
                                     <DeckImage
@@ -3423,7 +3423,7 @@ export default function ProfilePage() {
                       {t({ it: 'Indietro', en: 'Back' })}
                     </Button>
                     <Button
-                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                       onClick={saveArchidektUserDecks}
                       disabled={savingUserDecks || selectedUserDeckUrls.length === 0 || !getTargetProfileId()}
                     >
@@ -3456,7 +3456,7 @@ export default function ProfilePage() {
                       {t({ it: 'Indietro', en: 'Back' })}
                     </Button>
                     <Button
-                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                       onClick={handleUrlImport}
                       disabled={importingDeck || !importDeckUrl.trim()}
                     >
@@ -3492,7 +3492,7 @@ export default function ProfilePage() {
                       <h4 className="font-semibold text-foreground line-clamp-1">
                         {importedDeck.name}
                       </h4>
-                      <p className="text-sm text-violet-400">{selectedImportedCommander?.name || importedDeck.commander}</p>
+                      <p className="text-sm text-emerald-400">{selectedImportedCommander?.name || importedDeck.commander}</p>
                       <EdhrecDeckInsights
                         commander={selectedImportedCommander?.name || importedDeck.commander}
                         localBracket={importedDeck.bracket}
@@ -3522,8 +3522,8 @@ export default function ProfilePage() {
                               }}
                               className={`flex items-center gap-3 rounded-lg border p-2 text-left transition-colors ${
                                 selected
-                                  ? 'border-violet-500 bg-violet-500/10'
-                                  : 'border-border hover:border-violet-500/50'
+                                  ? 'border-emerald-500 bg-emerald-500/10'
+                                  : 'border-border hover:border-emerald-500/50'
                               }`}
                             >
                               <DeckImage
@@ -3557,7 +3557,7 @@ export default function ProfilePage() {
                       {t({ it: 'Annulla', en: 'Cancel' })}
                     </Button>
                     <Button
-                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                       onClick={saveArchidektDeck}
                       disabled={savingDeck || !getTargetProfileId()}
                     >
@@ -3668,7 +3668,7 @@ export default function ProfilePage() {
                       </div>
 
                       {selectedPartnerCommander && (
-                        <div className="flex items-center gap-3 rounded-lg border border-violet-500/40 bg-violet-500/10 p-2">
+                        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-2">
                           {selectedPartnerCommander.imageUrl ? (
                             <DeckImage
                               src={selectedPartnerCommander.imageUrl}
@@ -3783,7 +3783,7 @@ export default function ProfilePage() {
                       {t({ it: 'Indietro', en: 'Back' })}
                     </Button>
                     <Button
-                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                       onClick={saveManualDeck}
                       disabled={savingDeck || !getTargetProfileId()}
                     >
@@ -3820,7 +3820,7 @@ export default function ProfilePage() {
                           key={commander.name}
                           type="button"
                           className={`flex min-w-0 items-center gap-3 rounded-lg border p-2 text-left transition-colors ${
-                            selected ? 'border-violet-500 bg-violet-500/10' : 'border-border bg-background/30 hover:border-violet-500/50'
+                            selected ? 'border-emerald-500 bg-emerald-500/10' : 'border-border bg-background/30 hover:border-emerald-500/50'
                           }`}
                           onClick={() => {
                             setSelectedDeckCommander(commander);
@@ -3834,7 +3834,7 @@ export default function ProfilePage() {
                             fallbackClassName="h-14 w-14 shrink-0 rounded-md"
                           />
                           <span className="min-w-0 flex-1 text-sm font-medium text-foreground">{commander.name}</span>
-                          {selected && <Check className="h-4 w-4 shrink-0 text-violet-300" />}
+                          {selected && <Check className="h-4 w-4 shrink-0 text-emerald-300" />}
                         </button>
                       );
                     })}
@@ -3928,7 +3928,7 @@ export default function ProfilePage() {
                 <Button
                   type="button"
                   disabled={savingDeckLink || !linkDeckUrl.trim()}
-                  className="bg-gradient-to-r from-violet-600 to-purple-700"
+                  className="bg-gradient-to-r from-emerald-600 to-teal-700"
                   onClick={() => void handleLinkDeckToExternalSource()}
                 >
                   <Link2 className="mr-2 h-4 w-4" />

@@ -70,7 +70,7 @@ export function DeckCollectionInsights({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mb-6">
-      <div className="overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-black/30 via-black/20 to-violet-950/10">
+      <div className="overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-black/30 via-black/20 to-emerald-950/10">
         <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-end sm:justify-between sm:p-4">
           <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:max-w-md">
             <StatHighlight
@@ -81,7 +81,7 @@ export function DeckCollectionInsights({
             <StatHighlight
               label={t({ it: 'CMC medio comandanti', en: 'Avg commander CMC' })}
               value={averageCmc}
-              valueClassName="text-violet-300"
+              valueClassName="text-emerald-300"
               loading={commanderCmcSyncInProgress && averageCmc == null}
             />
           </div>
@@ -131,7 +131,7 @@ export function DeckCollectionInsights({
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-secondary/80">
                         <div
-                          className="h-full rounded-full bg-violet-400/90"
+                          className="h-full rounded-full bg-emerald-400/90"
                           style={{ width: `${Math.max(stat.percentage, stat.count > 0 ? 8 : 0)}%` }}
                         />
                       </div>

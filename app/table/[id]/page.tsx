@@ -2224,7 +2224,7 @@ export default function TablePage() {
                 <ManaLogo size="sm" />
               </div>
               <div className="hidden min-w-0 items-center gap-2 border-l border-border pl-2 sm:flex">
-                <span className="rounded border border-violet-500/30 bg-violet-500/15 px-2 py-0.5 text-xs uppercase tracking-[0.16em] text-violet-200">
+                <span className="rounded border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-xs uppercase tracking-[0.16em] text-emerald-200">
                   Playgroup
                 </span>
                 <span className="truncate font-semibold text-foreground">{group.name}</span>
@@ -2251,7 +2251,7 @@ export default function TablePage() {
             <>
               <Button
                 onClick={() => router.push(`/table/${groupId}/play`)}
-                className="flex-1 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 font-bold shadow-lg shadow-violet-950/30 hover:from-violet-500 hover:to-fuchsia-500"
+                className="flex-1 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-600 font-bold shadow-lg shadow-emerald-950/30 hover:from-emerald-500 hover:to-teal-500"
               >
                 <Swords className="mr-2 h-4 w-4" />
                 {activeLiveGameId
@@ -2265,7 +2265,7 @@ export default function TablePage() {
                   setShowMatchModal(true);
                 }}
                 variant="outline"
-                className="flex-1 border-violet-500/35 bg-violet-500/5 font-semibold text-foreground hover:bg-violet-500/15"
+                className="flex-1 border-emerald-500/35 bg-emerald-500/5 font-semibold text-foreground hover:bg-emerald-500/15"
               >
                 <Target className="mr-2 h-4 w-4" />
                 {t({ it: 'Registra partita', en: 'Record Battle' })}
@@ -2333,7 +2333,7 @@ export default function TablePage() {
               )}
             </div>
           )}
-          <p className="text-xs uppercase tracking-[0.24em] text-violet-200">{t({ it: 'Sala operativa', en: 'Command room' })}</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-emerald-200">{t({ it: 'Sala operativa', en: 'Command room' })}</p>
           <div className="mt-1 flex min-w-0 items-center gap-2 lg:pr-24">
             <div className="flex min-w-0 items-center gap-2">
               <h1 className="truncate text-2xl font-bold text-foreground">{group.name}</h1>
@@ -2345,7 +2345,7 @@ export default function TablePage() {
             </div>
           </div>
           {group.description ? <p className="text-sm text-muted-foreground">{group.description}</p> : null}
-          <p className="font-mono text-xs font-semibold text-violet-300">
+          <p className="font-mono text-xs font-semibold text-emerald-300">
             {t({ it: 'Invito', en: 'Invite' })}: {group.invite_code}
           </p>
         </PanelWithActions>
@@ -2357,7 +2357,7 @@ export default function TablePage() {
                 value="matches"
                 aria-label={t({ it: 'Partite', en: 'Battles' })}
                 title={t({ it: 'Partite', en: 'Battles' })}
-                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400 md:px-3 md:text-sm"
+                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 md:px-3 md:text-sm"
               >
                 <Calendar className="h-4 w-4 shrink-0 md:mr-2" />
                 <span className="hidden whitespace-nowrap md:inline">{t({ it: 'Partite', en: 'Battles' })}</span>
@@ -2366,7 +2366,7 @@ export default function TablePage() {
                 value="players"
                 aria-label={t({ it: 'Giocatori', en: 'Players' })}
                 title={t({ it: 'Giocatori', en: 'Players' })}
-                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400 md:px-3 md:text-sm"
+                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 md:px-3 md:text-sm"
               >
                 <Users className="h-4 w-4 shrink-0 md:mr-2" />
                 <span className="hidden whitespace-nowrap md:inline">{t({ it: 'Giocatori', en: 'Players' })}</span>
@@ -2375,7 +2375,7 @@ export default function TablePage() {
                 value="commanders"
                 aria-label={t({ it: 'Mazzi', en: 'Decks' })}
                 title={t({ it: 'Mazzi', en: 'Decks' })}
-                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400 md:px-3 md:text-sm"
+                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 md:px-3 md:text-sm"
               >
                 <Swords className="h-4 w-4 shrink-0 md:mr-2" />
                 <span className="hidden whitespace-nowrap md:inline">{t({ it: 'Mazzi', en: 'Decks' })}</span>
@@ -2384,7 +2384,7 @@ export default function TablePage() {
                 value="awards"
                 aria-label="Awards"
                 title="Awards"
-                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400 md:px-3 md:text-sm"
+                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 md:px-3 md:text-sm"
               >
                 <Award className="h-4 w-4 shrink-0 md:mr-2" />
                 <span className="hidden whitespace-nowrap md:inline">Awards</span>
@@ -2393,7 +2393,7 @@ export default function TablePage() {
                 value="meta"
                 aria-label={t({ it: 'Meta', en: 'Meta' })}
                 title={t({ it: 'Meta', en: 'Meta' })}
-                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400 md:px-3 md:text-sm"
+                className="h-9 min-w-0 px-1.5 text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 md:px-3 md:text-sm"
               >
                 <Palette className="h-4 w-4 shrink-0 md:mr-2" />
                 <span className="hidden whitespace-nowrap md:inline">{t({ it: 'Meta', en: 'Meta' })}</span>
@@ -2457,7 +2457,7 @@ export default function TablePage() {
                       ensureArenaMemberDecksLoaded();
                       setShowMatchModal(true);
                     }}
-                    className="bg-gradient-to-r from-violet-600 to-purple-700"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-700"
                   >
                     <Target className="w-4 h-4 mr-2" /> {t({ it: 'Registra la prima partita', en: 'Record First Battle' })}
                   </Button>
@@ -2510,7 +2510,7 @@ export default function TablePage() {
                               </p>
                             ) : null}
                             {dayGroup.matches.map((match) => (
-                              <Card key={match.id} className="border-border/70 bg-background/20 transition-colors hover:border-violet-500/40">
+                              <Card key={match.id} className="border-border/70 bg-background/20 transition-colors hover:border-emerald-500/40">
                                 <CardContent className="py-4">
                                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="min-w-0 flex-1">
@@ -2523,7 +2523,7 @@ export default function TablePage() {
                                               key={p.id}
                                               className={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm ${
                                                 p.is_winner
-                                                  ? 'border border-violet-500/30 bg-violet-500/20 text-violet-300'
+                                                  ? 'border border-emerald-500/30 bg-emerald-500/20 text-emerald-300'
                                                   : 'bg-secondary/80 text-secondary-foreground'
                                               }`}
                                             >
@@ -2573,7 +2573,7 @@ export default function TablePage() {
                                           <span className="hidden lg:inline">Details</span>
                                         </Button>
                                       ) : null}
-                                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-violet-300" onClick={() => handleShareMatch(match)} title={t({ it: 'Condividi log', en: 'Share log' })}>
+                                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-emerald-300" onClick={() => handleShareMatch(match)} title={t({ it: 'Condividi log', en: 'Share log' })}>
                                         <Share2 className="h-4 w-4" />
                                       </Button>
                                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => openEditMatch(match)}>
@@ -2601,7 +2601,7 @@ export default function TablePage() {
             <div className="space-y-5">
               <div>
                 <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
-                  <Award className="h-5 w-5 text-violet-300" /> Awards
+                  <Award className="h-5 w-5 text-emerald-300" /> Awards
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {t({
@@ -2640,7 +2640,7 @@ export default function TablePage() {
                                 : award.kind === 'one_trick'
                                   ? { icon: Target, title: 'The one-trick', value: `${award.value} ${t({ it: 'partite', en: 'games' })}`, tone: 'text-blue-300' }
                                   : award.kind === 'combo_winner'
-                                    ? { icon: Flame, title: 'I think I won', value: `${award.value} ${t({ it: 'vittorie', en: 'wins' })}`, tone: 'text-fuchsia-300' }
+                                    ? { icon: Flame, title: 'I think I won', value: `${award.value} ${t({ it: 'vittorie', en: 'wins' })}`, tone: 'text-teal-300' }
                                     : { icon: Trophy, title: 'Junk Master', value: `${award.value} ${t({ it: 'vittorie', en: 'wins' })}`, tone: 'text-lime-300' };
                     const Icon = presentation.icon;
                     return (
@@ -2657,7 +2657,7 @@ export default function TablePage() {
                             <DeckImage src={award.deck.commanderImage} alt={award.deck.commander} className="h-16 w-12 shrink-0 rounded object-cover object-top" />
                             <div className="min-w-0">
                               <p className="line-clamp-1 font-semibold text-foreground">{award.deck.name}</p>
-                              <p className="line-clamp-2 text-xs text-violet-300">{award.deck.commander}</p>
+                              <p className="line-clamp-2 text-xs text-emerald-300">{award.deck.commander}</p>
                               <p className="mt-1 text-[11px] text-muted-foreground">
                                 {award.kind === 'one_trick' ? award.deck.gamesPlayed : award.deck.trackedGames}{' '}
                                 {award.kind === 'one_trick'
@@ -2699,9 +2699,9 @@ export default function TablePage() {
                 {playerStats.length > 0 && (
                 <>
                 <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <Card className="bg-gradient-to-br from-violet-500/20 to-purple-600/20 border-violet-500/30">
+                  <Card className="bg-gradient-to-br from-emerald-500/20 to-teal-600/20 border-emerald-500/30">
                     <CardContent className="pt-6">
-                      <div className="flex items-center gap-2 text-violet-400 mb-2">
+                      <div className="flex items-center gap-2 text-emerald-400 mb-2">
                         <Trophy className="w-5 h-5" />
                         <span className="text-sm font-medium">{t({ it: 'Miglior giocatore', en: 'Top Player' })}</span>
                       </div>
@@ -2759,14 +2759,14 @@ export default function TablePage() {
                         <div
                           key={player.key}
                           className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-lg ${
-                            rank === 1 ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30' :
+                            rank === 1 ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30' :
                             rank === 2 ? 'bg-gradient-to-r from-slate-400/10 to-slate-500/10 border border-slate-400/20' :
                             rank === 3 ? 'bg-gradient-to-r from-amber-600/10 to-amber-700/10 border border-amber-600/20' :
                             'bg-secondary/50'
                           }`}
                         >
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
-                            rank === 1 ? 'bg-gradient-to-br from-violet-400 to-purple-600 text-white' :
+                            rank === 1 ? 'bg-gradient-to-br from-emerald-400 to-teal-600 text-white' :
                             rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-slate-800' :
                             rank === 3 ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white' :
                             'bg-secondary text-secondary-foreground'
@@ -2789,7 +2789,7 @@ export default function TablePage() {
                           </div>
                           <div className="flex items-center gap-2 sm:justify-end">
                             <div className="text-left sm:text-right">
-                              <p className="text-2xl font-bold text-violet-400">{player.winRate}%</p>
+                              <p className="text-2xl font-bold text-emerald-400">{player.winRate}%</p>
                               <p className="text-xs text-muted-foreground">{t({ it: 'win rate', en: 'win rate' })}</p>
                             </div>
                             {canManageGroup && player.isGuest && (
@@ -2845,7 +2845,7 @@ export default function TablePage() {
                                 <p className="font-medium text-foreground">{getProfileDisplayName(member)}</p>
                                 <span className="text-xs text-muted-foreground">@{member.username}</span>
                                 {isCreator && (
-                                  <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-violet-200">
+                                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-emerald-200">
                                     {t({ it: 'Creatore', en: 'Creator' })}
                                   </span>
                                 )}
@@ -2922,7 +2922,7 @@ export default function TablePage() {
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-9 w-9 text-muted-foreground hover:text-violet-300"
+                                  className="h-9 w-9 text-muted-foreground hover:text-emerald-300"
                                   onClick={() => openAddGuestDeckModal(guest)}
                                   title={t({ it: 'Aggiungi mazzo', en: 'Add deck' })}
                                 >
@@ -2963,9 +2963,9 @@ export default function TablePage() {
             ) : (
               <div className="space-y-6">
                 <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <Card className="bg-gradient-to-br from-violet-500/20 to-purple-600/20 border-violet-500/30">
+                  <Card className="bg-gradient-to-br from-emerald-500/20 to-teal-600/20 border-emerald-500/30">
                     <CardContent className="pt-6">
-                      <div className="flex items-center gap-2 text-violet-400 mb-2">
+                      <div className="flex items-center gap-2 text-emerald-400 mb-2">
                         <Trophy className="w-5 h-5" />
                         <span className="text-sm font-medium">{t({ it: 'Miglior mazzo', en: 'Best Deck' })}</span>
                       </div>
@@ -3041,13 +3041,13 @@ export default function TablePage() {
                           <div
                             key={deck.key}
                             className={`flex flex-col gap-3 rounded-lg p-3 sm:flex-row sm:items-start sm:gap-4 ${
-                              isRanked && rank === 1 ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30' :
+                              isRanked && rank === 1 ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30' :
                               'bg-secondary/50'
                             }`}
                           >
                             <div className="flex items-start gap-3 sm:contents">
                             <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                              rank === 1 ? 'bg-gradient-to-br from-violet-400 to-purple-600 text-white' :
+                              rank === 1 ? 'bg-gradient-to-br from-emerald-400 to-teal-600 text-white' :
                               rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-slate-800' :
                               rank === 3 ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white' :
                               'bg-secondary text-secondary-foreground'
@@ -3062,7 +3062,7 @@ export default function TablePage() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2 mb-1">
-                                {isRanked && rank === 1 && <Trophy className="w-4 h-4 text-violet-400" />}
+                                {isRanked && rank === 1 && <Trophy className="w-4 h-4 text-emerald-400" />}
                                 <p className="font-semibold text-foreground break-words">{deck.commander}</p>
                                 {deck.bracket && <BracketBadge bracket={deck.bracket} />}
                                 <EdhrecBadge commander={deck.commander} />
@@ -3073,7 +3073,7 @@ export default function TablePage() {
                               </div>
                               <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full"
+                                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full"
                                   style={{ width: `${deck.winRate}%` }}
                                 />
                               </div>
@@ -3081,7 +3081,7 @@ export default function TablePage() {
                             <div className="flex shrink-0 items-center justify-between gap-2 sm:block sm:text-right">
                               <p className="text-xs text-muted-foreground sm:hidden">{t({ it: 'win rate', en: 'win rate' })}</p>
                               <div>
-                                <p className="text-2xl font-bold text-violet-400">{deck.winRate}%</p>
+                                <p className="text-2xl font-bold text-emerald-400">{deck.winRate}%</p>
                                 <p className="hidden text-xs text-muted-foreground sm:block">{t({ it: 'win rate', en: 'win rate' })}</p>
                               </div>
                             </div>
@@ -3114,7 +3114,7 @@ export default function TablePage() {
                   <Card className="border-border/70 bg-card/50">
                     <CardContent className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {syncingDeckColors && <Loader2 className="h-4 w-4 animate-spin text-violet-300" />}
+                        {syncingDeckColors && <Loader2 className="h-4 w-4 animate-spin text-emerald-300" />}
                         <span>
                           {syncingDeckColors
                             ? t({ it: 'Sto aggiornando i colori dei mazzi mancanti...', en: 'Updating missing deck colors...' })
@@ -3131,7 +3131,7 @@ export default function TablePage() {
                 <Card className="phyrexian-panel">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-foreground">
-                      <Palette className="h-5 w-5 text-violet-300" />
+                      <Palette className="h-5 w-5 text-emerald-300" />
                       {t({ it: 'Meta colori', en: 'Color meta' })}
                     </CardTitle>
                     <CardDescription>
@@ -3399,7 +3399,7 @@ export default function TablePage() {
             <div className="shrink-0 border-t border-border/70 bg-card px-6 py-4">
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={resetMatchForm} className="flex-1 border-border text-foreground">{t({ it: 'Annulla', en: 'Cancel' })}</Button>
-                <Button onClick={handleCreateMatch} disabled={savingMatch} className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700">
+                <Button onClick={handleCreateMatch} disabled={savingMatch} className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700">
                   {savingMatch ? t({ it: 'Registrazione...', en: 'Recording...' }) : t({ it: 'Registra partita', en: 'Record Battle' })}
                 </Button>
               </div>
@@ -3449,7 +3449,7 @@ export default function TablePage() {
                 <Button
                   type="button"
                   onClick={() => void handleExportDayMatches()}
-                  className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                  className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                 >
                   {t({ it: 'Genera export', en: 'Generate export' })}
                 </Button>
@@ -3511,7 +3511,7 @@ export default function TablePage() {
                         href={`/arena/${group.invite_code}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-violet-300 hover:text-violet-200"
+                        className="inline-flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-200"
                       >
                         {t({ it: 'Apri pagina pubblica', en: 'Open public page' })}
                         <ExternalLink className="h-3 w-3" />
@@ -3524,7 +3524,7 @@ export default function TablePage() {
                     {t({ it: 'Annulla', en: 'Cancel' })}
                   </Button>
                   <Button
-                    className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                     onClick={handleSaveArena}
                     disabled={savingArena || !editArenaName.trim()}
                   >
@@ -3585,7 +3585,7 @@ export default function TablePage() {
                     {t({ it: 'Annulla', en: 'Cancel' })}
                   </Button>
                   <Button
-                    className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                     onClick={handleLeaveArena}
                     disabled={leavingArena || !isLeaveArenaConfirmationValid(leaveArenaConfirmation)}
                   >
@@ -3701,7 +3701,7 @@ export default function TablePage() {
                   .map((participant) => {
                     const deck = getParticipantDeckSnapshot(participant);
                     return (
-                      <div key={participant.id} className={`rounded-xl border p-3 ${participant.is_winner ? 'border-violet-500/40 bg-violet-500/10' : 'border-border/70 bg-background/25'}`}>
+                      <div key={participant.id} className={`rounded-xl border p-3 ${participant.is_winner ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/70 bg-background/25'}`}>
                         <div className="mb-3 flex items-center gap-3">
                           <DeckImage src={deck?.commander_image} alt={deck?.commander || ''} className="h-14 w-10 shrink-0 rounded object-cover object-top" />
                           <div className="min-w-0 flex-1">
@@ -3710,7 +3710,7 @@ export default function TablePage() {
                               {participant.placement ? <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">#{participant.placement}</span> : null}
                               {participant.was_starting_player ? <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-200">{t({ it: 'Ha iniziato', en: 'Started' })}</span> : null}
                             </div>
-                            <p className="line-clamp-1 text-xs text-violet-300">{deck?.name || deck?.commander}</p>
+                            <p className="line-clamp-1 text-xs text-emerald-300">{deck?.name || deck?.commander}</p>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
@@ -3806,7 +3806,7 @@ export default function TablePage() {
                                 )}
                               </div>
                               {selectedDeck && (
-                                <p className="mt-1 truncate text-xs text-violet-300">
+                                <p className="mt-1 truncate text-xs text-emerald-300">
                                   {selectedDeck.name} - {selectedDeck.commander}
                                 </p>
                               )}
@@ -3851,7 +3851,7 @@ export default function TablePage() {
                                     type="button"
                                     onClick={() => setEditMatchPlayerDecks((prev) => ({ ...prev, [participantKey]: '' }))}
                                     className={`h-28 rounded-lg border p-3 text-left text-xs transition-colors ${
-                                      !editMatchPlayerDecks[participantKey] ? 'border-violet-500 bg-violet-500/10' : 'border-border bg-background/25 hover:border-violet-500/50'
+                                      !editMatchPlayerDecks[participantKey] ? 'border-emerald-500 bg-emerald-500/10' : 'border-border bg-background/25 hover:border-emerald-500/50'
                                     }`}
                                   >
                                     <div className="flex h-full items-center justify-center rounded-md border border-dashed border-border/70 bg-background/25 px-3 text-center">
@@ -3865,8 +3865,8 @@ export default function TablePage() {
                                       onClick={() => setEditMatchPlayerDecks((prev) => ({ ...prev, [participantKey]: deck.id }))}
                                       className={`min-h-[7.5rem] rounded-lg border p-3 text-left transition-colors ${
                                         editMatchPlayerDecks[participantKey] === deck.id
-                                          ? 'border-violet-500 bg-violet-500/10'
-                                          : 'border-border bg-background/25 hover:border-violet-500/50'
+                                          ? 'border-emerald-500 bg-emerald-500/10'
+                                          : 'border-border bg-background/25 hover:border-emerald-500/50'
                                       }`}
                                     >
                                       <div className="flex h-full items-start gap-3">
@@ -3877,14 +3877,14 @@ export default function TablePage() {
                                         />
                                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                                           <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{deck.name}</p>
-                                          <p className="line-clamp-2 text-xs leading-snug text-violet-400">{deck.commander}</p>
+                                          <p className="line-clamp-2 text-xs leading-snug text-emerald-400">{deck.commander}</p>
                                           <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1.5">
                                             {deck.source_type && (
                                               <span className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs ${
                                                 deck.source_type === 'archidekt'
                                                   ? 'bg-blue-500/20 text-blue-400'
                                                   : deck.source_type === 'moxfield'
-                                                    ? 'bg-purple-500/20 text-purple-300'
+                                                    ? 'bg-teal-500/20 text-teal-300'
                                                     : 'bg-muted text-muted-foreground'
                                               }`}>
                                                 {deck.source_type}
@@ -3995,7 +3995,7 @@ export default function TablePage() {
                 <Button
                   onClick={handleSaveEditMatch}
                   disabled={savingEditMatch || (!editMatchIsDraw && !editMatchWinnerKey)}
-                  className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                  className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                 >
                   {savingEditMatch ? t({ it: 'Salvataggio...', en: 'Saving...' }) : t({ it: 'Salva modifiche', en: 'Save Changes' })}
                 </Button>
@@ -4033,7 +4033,7 @@ export default function TablePage() {
                     {guests.map((guest) => (
                       <div
                         key={guest.id}
-                        className="flex items-center gap-2 rounded-lg border border-border bg-background/30 px-2 py-2 transition-colors hover:border-violet-500/50"
+                        className="flex items-center gap-2 rounded-lg border border-border bg-background/30 px-2 py-2 transition-colors hover:border-emerald-500/50"
                       >
                         <button
                           type="button"
@@ -4049,7 +4049,7 @@ export default function TablePage() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-violet-300"
+                          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-emerald-300"
                           onClick={() => openAddGuestDeckModal(guest)}
                           title={t({ it: 'Aggiungi mazzo', en: 'Add deck' })}
                         >
@@ -4133,7 +4133,7 @@ export default function TablePage() {
                     {t({ it: 'Annulla', en: 'Cancel' })}
                   </Button>
                   <Button
-                    className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700"
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-700"
                     onClick={handleSaveGuestModal}
                     disabled={
                       savingGuest ||

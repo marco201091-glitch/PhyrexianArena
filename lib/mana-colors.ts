@@ -16,6 +16,19 @@ export const MANA_CHART_COLORS: Record<string, string> = {
   C: '#cbd5e1',
 };
 
+export const MANA_SYMBOL_SVG_URLS: Record<string, string> = {
+  W: 'https://svgs.scryfall.io/card-symbols/W.svg',
+  U: 'https://svgs.scryfall.io/card-symbols/U.svg',
+  B: 'https://svgs.scryfall.io/card-symbols/B.svg',
+  R: 'https://svgs.scryfall.io/card-symbols/R.svg',
+  G: 'https://svgs.scryfall.io/card-symbols/G.svg',
+  C: 'https://svgs.scryfall.io/card-symbols/C.svg',
+};
+
+export function getManaSymbolSvgUrl(color: string) {
+  return MANA_SYMBOL_SVG_URLS[color] || MANA_SYMBOL_SVG_URLS.C;
+}
+
 export const MANA_COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C'] as const;
 
 const TWO_COLOR_GUILD_NAMES: Record<string, { it: string; en: string }> = {

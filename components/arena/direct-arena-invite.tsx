@@ -52,7 +52,7 @@ export function DirectArenaInvite({ groupId }: { groupId: string }) {
   };
 
   return (
-    <div className="mt-4 rounded-2xl border border-violet-400/20 bg-violet-500/5 p-4">
+    <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4">
       <div className="mb-3"><b>{copy({ it: 'Invita un utente registrato', en: 'Invite a registered user' })}</b><p className="text-xs text-muted-foreground">{copy({ it: 'Riceverà una notifica push e potrà accettare dalla dashboard.', en: 'They will receive a push notification and can accept from the dashboard.' })}</p></div>
       <div className="relative">
         <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
