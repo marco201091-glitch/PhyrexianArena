@@ -80,11 +80,15 @@ for (const marker of [
   'pod install',
   "generic/platform=iOS",
   'CODE_SIGNING_ALLOWED=NO',
+  'SENTRY_DISABLE_AUTO_UPLOAD=true',
+  'main.jsbundle',
   'PhyrexianArena-unsigned.ipa',
   'eas/upload_artifact',
 ]) {
   assert(workflow.includes(marker), `Unsigned IPA workflow is missing: ${marker}`);
 }
+
+assert(!workflow.includes('SENTRY_ALLOW_FAILURE'), 'Unsigned IPA workflow must not bypass React Native bundling');
 
 for (const asset of ['assets/icon.png', 'assets/splash-icon.png']) {
   assert(fs.existsSync(path.join(expoDir, asset)), `Missing iOS asset: ${asset}`);

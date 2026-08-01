@@ -28,9 +28,10 @@ build:
           SCHEME="$(basename "$PROJECT_PATH" .xcodeproj)"
           ARCHIVE_PATH="$PWD/ios/build/${SCHEME}Unsigned.xcarchive"
 
-          # An unsigned preview IPA has no release-upload credentials.  Keep the
-          # archive buildable when Sentry cannot publish source maps remotely.
-          export SENTRY_ALLOW_FAILURE=true
+          # The unsigned preview environment has no Sentry upload credentials.
+          # Disabling upload still runs React Native's bundling script; allowing
+          # upload failure would skip it and produce an IPA without main.jsbundle.
+          export SENTRY_DISABLE_AUTO_UPLOAD=true
 
           xcodebuild \
             -workspace "ios/${SCHEME}.xcworkspace" \
@@ -52,6 +53,12 @@ build:
           APP_PATH="$(find ios/build -path '*.xcarchive/Products/Applications/*.app' -print -quit)"
           if [ -z "$APP_PATH" ]; then
             echo "Unsigned .app was not produced"
+            exit 1
+          fi
+
+          BUNDLE_PATH="$APP_PATH/main.jsbundle"
+          if [ ! -s "$BUNDLE_PATH" ]; then
+            echo "Embedded React Native bundle is missing or empty: $BUNDLE_PATH"
             exit 1
           fi
 
