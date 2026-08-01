@@ -16,6 +16,9 @@ test('public landing is accessible and visually stable', async ({ page }) => {
   await expect(page).toHaveScreenshot('landing.png', {
     fullPage: true,
     animations: 'disabled',
+    // Baselines are authored on Windows and verified on Ubuntu CI; font rasterization
+    // causes a small, stable cross-platform pixel delta.
+    maxDiffPixelRatio: 0.04,
   });
 });
 
