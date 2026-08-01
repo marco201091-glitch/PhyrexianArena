@@ -28,6 +28,10 @@ build:
           SCHEME="$(basename "$PROJECT_PATH" .xcodeproj)"
           ARCHIVE_PATH="$PWD/ios/build/${SCHEME}Unsigned.xcarchive"
 
+          # An unsigned preview IPA has no release-upload credentials.  Keep the
+          # archive buildable when Sentry cannot publish source maps remotely.
+          export SENTRY_ALLOW_FAILURE=true
+
           xcodebuild \
             -workspace "ios/${SCHEME}.xcworkspace" \
             -scheme "$SCHEME" \
