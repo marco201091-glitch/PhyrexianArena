@@ -27,7 +27,12 @@ jobs:
         with:
           node-version: 24.18.0
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            expo/package-lock.json
       - run: npm ci
+      # Web unit tests intentionally reuse shared game logic from expo/lib.
+      - run: npm --prefix expo ci
       - run: npm run quality
       - run: npm run build
       - run: npx playwright install --with-deps chromium
