@@ -2,7 +2,7 @@ import type { AppLanguage, TranslationKey, Translations } from '@/lib/i18n/types
 
 const EN: Translations = {
   confirm: 'Confirm',
-  appName: 'Tracker & Analytics',
+  appName: 'Magic The Gathering',
   appSubtitle: 'Tracker & Analytics',
   login: 'Sign in',
   register: 'Create account',
@@ -629,7 +629,7 @@ const EN: Translations = {
 
 const IT: Translations = {
   confirm: 'Conferma',
-  appName: 'Tracker & Analytics',
+  appName: 'Magic The Gathering',
   appSubtitle: 'Tracker & Analytics',
   login: 'Accedi',
   register: 'Registrati',

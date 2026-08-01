@@ -1,7 +1,7 @@
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -60,13 +60,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <View style={styles.authLoadingSurface}>
         <ManaLogo
-          size="md"
-          showText
-          layout="stacked"
-          subtitle="Tracker & Analytics"
+          size="lg"
           centered
         />
-        <ActivityIndicator color={colors.primaryLight} size="small" />
       </View>
     );
   }
@@ -135,7 +131,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 14,
     backgroundColor: colors.black,
   },
 });

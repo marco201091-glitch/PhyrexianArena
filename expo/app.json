@@ -105,6 +105,15 @@
       "expo-secure-store",
       "expo-notifications",
       "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0a0a0f",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
       "./plugins/with-release-signing",
       [
         "expo-image-picker",

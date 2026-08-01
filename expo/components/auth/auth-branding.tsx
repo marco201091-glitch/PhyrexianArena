@@ -11,6 +11,7 @@ export function AuthBranding() {
         size="xl"
         showText
         layout="stacked"
+        title={copy('appName')}
         subtitle={copy('appSubtitle')}
       />
     </View>

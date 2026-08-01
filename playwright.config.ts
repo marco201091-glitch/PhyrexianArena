@@ -15,8 +15,12 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: externalBaseUrl ? undefined : {
-    command: 'npm start',
+    command: 'npm run start:standalone',
     url: 'http://127.0.0.1:3000',
+    env: {
+      DEMO_MODE_ENABLED: 'false',
+      NEXT_PUBLIC_DEMO_MODE: 'false',
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

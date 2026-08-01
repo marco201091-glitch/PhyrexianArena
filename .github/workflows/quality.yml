@@ -2,9 +2,9 @@ name: Quality
 
 on:
   pull_request:
-    branches: [Dev, main]
+    branches: [Dev, Release]
   push:
-    branches: [Dev, main]
+    branches: [Dev, Release]
 
 concurrency:
   group: quality-${{ github.ref }}
@@ -47,6 +47,5 @@ jobs:
           cache: npm
           cache-dependency-path: expo/package-lock.json
       - run: npm ci
-      - run: npm i --no-save eslint
       - run: npm run quality
       - run: npx expo-doctor

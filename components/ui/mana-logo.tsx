@@ -6,10 +6,11 @@ interface ManaLogoProps {
   className?: string;
   showText?: boolean;
   layout?: 'horizontal' | 'stacked';
+  title?: string;
   subtitle?: string;
 }
 
-export function ManaLogo({ size = 'md', className, showText = false, layout = 'horizontal', subtitle }: ManaLogoProps) {
+export function ManaLogo({ size = 'md', className, showText = false, layout = 'horizontal', title, subtitle }: ManaLogoProps) {
   const sizes = {
     sm: { img: 'h-9 w-9', stackedImg: 'h-16 w-16', gap: 'gap-2', title: 'text-sm', stackedTitle: 'text-lg', subtitle: 'text-[0.52rem]' },
     md: { img: 'h-11 w-11', stackedImg: 'h-20 w-20', gap: 'gap-3', title: 'text-base', stackedTitle: 'text-xl', subtitle: 'text-[0.6rem]' },
@@ -19,13 +20,15 @@ export function ManaLogo({ size = 'md', className, showText = false, layout = 'h
 
   const s = sizes[size];
   const isStacked = layout === 'stacked';
+  const primaryText = title ?? subtitle ?? 'Tracker & Analytics';
+  const secondaryText = title ? subtitle : undefined;
 
   return (
     <div className={cn('flex items-center', isStacked ? 'flex-col gap-3 text-center' : s.gap, className)}>
       <div className={cn('relative flex-shrink-0', isStacked ? s.stackedImg : s.img)}>
         <Image
           src="/logo-transparent.png"
-          alt="Tracker & Analytics"
+          alt={showText ? '' : primaryText}
           fill
           className="object-contain drop-shadow-lg"
           sizes="80px"
@@ -37,12 +40,21 @@ export function ManaLogo({ size = 'md', className, showText = false, layout = 'h
           <span
             style={{ fontFamily: 'var(--font-cinzel)' }}
             className={cn(
-              'font-bold uppercase tracking-[0.13em] text-white drop-shadow-[0_0_18px_rgba(66,159,74,0.22)]',
+              'font-bold tracking-[0.11em] text-white drop-shadow-[0_0_18px_rgba(66,159,74,0.28)]',
+              !title && 'uppercase',
               isStacked ? s.stackedTitle : s.title,
             )}
           >
-            {subtitle || 'Tracker & Analytics'}
+            {primaryText}
           </span>
+          {secondaryText ? (
+            <span className={cn(
+              'font-semibold uppercase tracking-[0.32em] text-emerald-300/90',
+              s.subtitle,
+            )}>
+              {secondaryText}
+            </span>
+          ) : null}
         </div>
       )}
     </div>

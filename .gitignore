@@ -73,3 +73,4 @@ artifacts/
 claude.md
 .supabase-staging/
 .env*
+docs/CLAUDE_IPA_BUILD_GUIDE.md

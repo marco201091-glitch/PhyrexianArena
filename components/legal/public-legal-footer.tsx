@@ -44,7 +44,7 @@ export function PublicLegalFooter() {
             </a>
           </nav>
         </div>
-        <p className="max-w-3xl text-[10px] leading-4 text-muted-foreground/70">
+        <p className="max-w-3xl text-[10px] leading-4 text-muted-foreground">
           {FAN_CONTENT_NOTICE}
         </p>
       </div>

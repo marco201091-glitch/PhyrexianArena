@@ -2626,28 +2626,31 @@ export default function TablePage() {
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {arenaAwards.map((award) => {
                     const presentation = award.kind === 'fastest'
-                      ? { icon: Gauge, title: t({ it: 'Fastest Deck', en: 'Fastest Deck' }), value: formatGameDuration(award.value), tone: 'text-cyan-300' }
+                      ? { icon: Gauge, title: t({ it: 'Fastest Deck', en: 'Fastest Deck' }), value: formatGameDuration(award.value), tone: 'text-cyan-300', badge: 'border-cyan-300/40 bg-cyan-400/10 shadow-cyan-400/20' }
                       : award.kind === 'group_slugger'
-                        ? { icon: Flame, title: 'Group Slugger', value: `${award.value} dmg`, tone: 'text-orange-300' }
+                        ? { icon: Flame, title: 'Group Slugger', value: String(award.value), tone: 'text-orange-300', badge: 'border-orange-300/40 bg-orange-400/10 shadow-orange-400/20' }
                         : award.kind === 'executioner'
-                          ? { icon: Crosshair, title: t({ it: 'Executioner', en: 'Executioner' }), value: `${award.value} KO`, tone: 'text-rose-300' }
+                          ? { icon: Crosshair, title: t({ it: 'Executioner', en: 'Executioner' }), value: String(award.value), tone: 'text-rose-300', badge: 'border-rose-300/40 bg-rose-400/10 shadow-rose-400/20' }
                           : award.kind === 'runner_up'
-                            ? { icon: Crown, title: t({ it: 'Eterno Secondo', en: 'Runner-up' }), value: `${award.value}× #2`, tone: 'text-amber-300' }
+                            ? { icon: Crown, title: t({ it: 'Eterno Secondo', en: 'Runner-up' }), value: String(award.value), tone: 'text-amber-300', badge: 'border-amber-300/50 bg-amber-400/15 shadow-amber-400/25' }
                             : award.kind === 'archenemy'
-                              ? { icon: Skull, title: 'Archenemy', value: `×${award.value}`, tone: 'text-red-300' }
+                              ? { icon: Skull, title: 'Archenemy', value: String(award.value), tone: 'text-red-300', badge: 'border-red-300/40 bg-red-400/10 shadow-red-400/20' }
                               : award.kind === 'comebacker'
-                                ? { icon: TrendingUp, title: 'Comebacker', value: `×${award.value} <10 PF`, tone: 'text-emerald-300' }
+                                ? { icon: TrendingUp, title: 'Comebacker', value: String(award.value), tone: 'text-emerald-300', badge: 'border-emerald-300/40 bg-emerald-400/10 shadow-emerald-400/20' }
                                 : award.kind === 'one_trick'
-                                  ? { icon: Target, title: 'The one-trick', value: `${award.value} ${t({ it: 'partite', en: 'games' })}`, tone: 'text-blue-300' }
+                                  ? { icon: Target, title: 'The one-trick', value: String(award.value), tone: 'text-blue-300', badge: 'border-blue-300/40 bg-blue-400/10 shadow-blue-400/20' }
                                   : award.kind === 'combo_winner'
-                                    ? { icon: Flame, title: 'I think I won', value: `${award.value} ${t({ it: 'vittorie', en: 'wins' })}`, tone: 'text-teal-300' }
-                                    : { icon: Trophy, title: 'Junk Master', value: `${award.value} ${t({ it: 'vittorie', en: 'wins' })}`, tone: 'text-lime-300' };
+                                    ? { icon: Flame, title: 'I think I won', value: String(award.value), tone: 'text-teal-300', badge: 'border-teal-300/40 bg-teal-400/10 shadow-teal-400/20' }
+                                    : { icon: Trophy, title: 'Junk Master', value: String(award.value), tone: 'text-lime-300', badge: 'border-lime-300/40 bg-lime-400/10 shadow-lime-400/20' };
                     const Icon = presentation.icon;
                     return (
                       <Card key={award.kind} className="phyrexian-panel overflow-hidden">
                         <CardContent className="p-4">
                           <div className="mb-3 flex items-center gap-2">
-                            <span className="rounded-lg border border-border/70 bg-background/50 p-2"><Icon className={`h-4 w-4 ${presentation.tone}`} /></span>
+                            <span className={`relative grid h-10 w-10 place-items-center overflow-hidden rounded-xl border shadow-lg ${presentation.badge}`}>
+                              <Trophy aria-hidden="true" className="absolute -right-1 -top-1 h-5 w-5 text-white/10" />
+                              <Icon className={`relative h-5 w-5 ${presentation.tone}`} />
+                            </span>
                             <div className="min-w-0">
                               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{presentation.title}</p>
                               <p className={`font-bold ${presentation.tone}`}>{presentation.value}</p>

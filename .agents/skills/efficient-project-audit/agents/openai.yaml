@@ -1,0 +1,4 @@
+interface:
+  display_name: "Efficient Project Audit"
+  short_description: "Audit branches with minimal token usage"
+  default_prompt: "Use $efficient-project-audit to audit this repository and its release branches concisely."

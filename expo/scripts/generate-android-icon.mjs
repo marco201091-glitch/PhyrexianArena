@@ -112,7 +112,7 @@ await sharp({
     width: size,
     height: size,
     channels: 4,
-    background: { r: 0, g: 0, b: 0, alpha: 1 },
+    background: TRANSPARENT,
   },
 })
   .composite([

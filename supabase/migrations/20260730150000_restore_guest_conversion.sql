@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION public.claim_arena_guest(p_token_hash text)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 SET row_security = off
 AS $$
 DECLARE
@@ -188,8 +188,6 @@ BEGIN
   );
 END;
 $$;
-
 REVOKE ALL ON FUNCTION public.claim_arena_guest(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.claim_arena_guest(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_arena_guest(text) TO service_role;
-

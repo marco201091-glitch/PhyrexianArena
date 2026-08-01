@@ -109,13 +109,22 @@ function LoginForm() {
 
   return (
     <AuthPageShell>
-      <Card className="w-full max-w-xl bg-card/80 border-border/50 backdrop-blur">
-        <CardHeader className="pb-5 text-center">
+      <Card className="relative w-full max-w-xl overflow-hidden border-emerald-400/20 bg-[linear-gradient(155deg,rgba(24,24,33,0.96),rgba(10,10,15,0.94))] shadow-[0_30px_100px_rgba(0,0,0,0.58),0_0_80px_rgba(34,197,94,0.07)] backdrop-blur-xl">
+        <div aria-hidden="true" className="absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/70 to-transparent" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-emerald-500/[0.08] blur-3xl" />
+        <CardHeader className="relative pb-6 pt-8 text-center sm:pt-9">
           <div className="flex justify-center">
-            <ManaLogo size="xl" showText layout="stacked" subtitle="Tracker & Analytics" className="w-full" />
+            <ManaLogo
+              size="xl"
+              showText
+              layout="stacked"
+              title="Magic The Gathering"
+              subtitle="TRACKER & ANALYTICS"
+              className="w-full"
+            />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative px-5 pb-7 sm:px-6 sm:pb-8">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="loginIdentifier" className="text-sm font-medium text-foreground">
@@ -129,7 +138,7 @@ function LoginForm() {
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
                 required
-                className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
+                className="h-11 rounded-xl border-border/80 bg-black/25 text-foreground placeholder:text-muted-foreground focus-visible:border-emerald-400/60"
               />
             </div>
             <div className="space-y-2">
@@ -151,12 +160,12 @@ function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
+                className="h-11 rounded-xl border-border/80 bg-black/25 text-foreground placeholder:text-muted-foreground focus-visible:border-emerald-400/60"
               />
             </div>
             <label
               htmlFor="rememberMe"
-              className="flex cursor-pointer items-center gap-2.5 rounded-md border border-border/60 bg-background/35 px-3 py-2.5 text-sm text-foreground"
+              className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border/70 bg-black/20 px-3 py-2.5 text-sm text-foreground transition-colors hover:border-emerald-400/30 hover:bg-emerald-500/5"
             >
               <Checkbox
                 id="rememberMe"
@@ -168,7 +177,7 @@ function LoginForm() {
             </label>
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-semibold"
+              className="h-11 w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 font-semibold text-white shadow-[0_10px_28px_rgba(5,150,105,0.2)] hover:from-emerald-500 hover:to-teal-600"
               disabled={loading}
             >
               {loading

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { MANA_COLOR_LABELS, getManaSymbolSvgUrl } from '@/lib/mana-colors';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/components/language-provider';
@@ -43,13 +44,13 @@ export function ManaColorBadge({
       )}
       style={{ width: symbolSize, height: symbolSize }}
     >
-      <img
+      <Image
         src={svgUrl}
-        alt={color}
+        alt=""
+        aria-hidden="true"
         width={symbolSize}
         height={symbolSize}
         className="block"
-        loading="lazy"
       />
       <span className="sr-only">{label.en}</span>
     </span>
