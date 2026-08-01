@@ -14,7 +14,7 @@ import { AccessLogger } from '@/components/access-logger';
 import { AppAlertHost } from '@/components/ui/app-alert-host';
 import { ImageCacheWarmer } from '@/components/deck/image-cache-warmer';
 import { colors } from '@/constants/theme';
-import { Sentry } from '@/lib/sentry';
+import { Sentry, sentryEnabled } from '@/lib/sentry';
 import { QueryProvider } from '@/components/query-provider';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { AppNotificationListener } from '@/components/app-notification-listener';
@@ -124,7 +124,7 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+export default sentryEnabled ? Sentry.wrap(RootLayout) : RootLayout;
 
 const styles = StyleSheet.create({
   authLoadingSurface: {
