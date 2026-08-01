@@ -53,7 +53,7 @@ async function testRoutes() {
   const loginPage = await (await fetch(`${BASE_URL}/auth/login`)).text();
   const isClientRenderedLogin = /BAILOUT_TO_CLIENT_SIDE_RENDERING|app\/auth\/login\/page/i.test(loginPage);
   if (isClientRenderedLogin) {
-    assert.match(loginPage, /MTG Life Counter & Analytics: Commander/i, 'login route should render app shell');
+    assert.match(loginPage, /MTG Life Counter &amp; Analytics: Commander/i, 'login route should render app shell');
   } else {
     assert.match(loginPage, /Ricordami|Remember me/i, 'login page should show remember-me');
     assert.match(loginPage, /Entra nell|Sign in/i, 'login page should show submit action');
