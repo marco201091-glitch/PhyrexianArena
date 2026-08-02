@@ -10,6 +10,7 @@ type ConfirmAction = {
   label: string;
   variant?: 'primary' | 'ghost' | 'outline' | 'destructive';
   onPress: () => void;
+  disabled?: boolean;
 };
 
 type ConfirmModalProps = {
@@ -49,6 +50,7 @@ export function ConfirmModal({
             label={action.label}
             variant={action.variant ?? (index === actions.length - 1 ? 'primary' : 'ghost')}
             onPress={action.onPress}
+            disabled={action.disabled}
             style={styles.actionButton}
           />
         ))}

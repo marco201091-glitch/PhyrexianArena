@@ -58,6 +58,8 @@ import {
   type LiveGameSeatSetup,
 } from '@/lib/live-game-setup';
 import { formatGameDuration, getGameDurationSeconds } from '@/lib/live-game-duration';
+import { withLiveGameTimeout } from '@/lib/live-game-async';
+import { getDiscardConfirmationVisibility } from '@/lib/live-game-modal-state';
 import {
   applyQueuedLiveGameMutations,
   cancelLiveGame,
@@ -74,6 +76,7 @@ import {
 import {
   archiveAndClearLiveGameSession,
   clearLiveGameOfflineSession,
+  clearLiveGameOfflineSessionIfMatches,
   loadLiveGameOutbox,
   loadLiveGameOfflineSession,
   saveLiveGameOutbox,
@@ -176,6 +179,7 @@ export default function LiveGameScreen() {
   const needsCreateRef = useRef(false);
   const pendingFinalizationRef = useRef<PendingLiveGameFinalization | null>(null);
   const pendingCancelRef = useRef(false);
+  const sessionClosedRef = useRef(false);
   const syncRunningRef = useRef(false);
   const syncPromiseRef = useRef<Promise<void> | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -196,6 +200,16 @@ export default function LiveGameScreen() {
     setEndIsDraw(false);
     setEndWinCondition(getDefaultWinCondition(state));
     setShowEndGame(true);
+  }, []);
+
+  const openDiscardConfirm = useCallback(() => {
+    // React Native must never keep two native modals stacked here. The flag
+    // flow used to leave the end-game modal mounted below the confirmation,
+    // trapping all touches on iOS after the destructive action.
+    const next = getDiscardConfirmationVisibility();
+    setShowExitChoice(next.showExitChoice);
+    setShowEndGame(next.showEndGame);
+    setShowDiscardConfirm(next.showDiscardConfirm);
   }, []);
 
   useEffect(() => {
@@ -346,7 +360,10 @@ export default function LiveGameScreen() {
     };
     journalWriteRef.current = journalWriteRef.current
       .catch(() => undefined)
-      .then(() => saveLiveGameOfflineSession(groupId, snapshot));
+      .then(() => {
+        if (sessionClosedRef.current) return;
+        return saveLiveGameOfflineSession(groupId, snapshot);
+      });
     return journalWriteRef.current;
   }, [groupId]);
 
@@ -398,10 +415,12 @@ export default function LiveGameScreen() {
       let failed = false;
       try {
         await flushOutbox();
+        if (sessionClosedRef.current) return;
         let serverRecord = serverRecordRef.current;
         if (!serverRecord) return;
         if (needsCreateRef.current) {
           serverRecord = await ensureLiveGameCreated(supabase, serverRecord);
+          if (sessionClosedRef.current) return;
           serverRecordRef.current = serverRecord;
           needsCreateRef.current = false;
           await saveJournal();
@@ -410,6 +429,7 @@ export default function LiveGameScreen() {
         while (mutationQueueRef.current.length > 0) {
           const batch = mutationQueueRef.current.slice(0, LIVE_GAME_SYNC_BATCH_SIZE);
           serverRecord = await applyQueuedLiveGameMutations(supabase, serverRecord, batch);
+          if (sessionClosedRef.current) return;
           serverRecordRef.current = serverRecord;
           mutationQueueRef.current = mutationQueueRef.current.slice(batch.length);
           if (mutationQueueRef.current.length === 0) syncBatchStartedAtRef.current = null;
@@ -430,7 +450,7 @@ export default function LiveGameScreen() {
         // Offline, timeout or a transient Realtime gap: the durable journal retries later.
       } finally {
         syncRunningRef.current = false;
-        if (!failed) {
+        if (!failed && !sessionClosedRef.current) {
           setSyncStatus(mutationQueueRef.current.length ? 'pending' : 'synced');
         }
         if (user) {
@@ -449,6 +469,15 @@ export default function LiveGameScreen() {
     syncPromiseRef.current = tracked;
     return tracked;
   }, [flushOutbox, groupId, saveJournal, setOptimisticRecord, user]);
+
+  const flushArchivedOutbox = useCallback(() => {
+    const pendingSync = syncPromiseRef.current;
+    void (pendingSync ?? Promise.resolve())
+      .catch(() => undefined)
+      .finally(() => {
+        void syncJournal();
+      });
+  }, [syncJournal]);
 
   const scheduleSync = useCallback(() => {
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
@@ -487,7 +516,10 @@ export default function LiveGameScreen() {
     if (!groupId || !user) return;
     let mounted = true;
     void (async () => {
-      let cached = await loadLiveGameOfflineSession(groupId);
+      let cached = await withLiveGameTimeout(
+        loadLiveGameOfflineSession(groupId),
+        3_000,
+      ).catch(() => null);
       if (!mounted) return;
       const participantKey = toUserParticipantKey(user.id);
       if (cached && !cached.record.state.players.some(
@@ -497,6 +529,7 @@ export default function LiveGameScreen() {
         cached = null;
       }
       if (cached) {
+        sessionClosedRef.current = false;
         serverRecordRef.current = cached.serverRecord;
         mutationQueueRef.current = cached.mutations;
         syncBatchStartedAtRef.current = cached.mutations.length ? Date.now() : null;
@@ -512,9 +545,12 @@ export default function LiveGameScreen() {
       }
 
       try {
-        const remote = await fetchActiveLiveGame(supabase, groupId, participantKey);
+        const remote = await withLiveGameTimeout(
+          fetchActiveLiveGame(supabase, groupId, participantKey),
+        );
         if (!mounted) return;
         if (remote && (!cached || !cached.needsCreate || remote.id === cached.record.id)) {
+          sessionClosedRef.current = false;
           serverRecordRef.current = remote;
           const queue = cached?.record.id === remote.id ? mutationQueueRef.current : [];
           mutationQueueRef.current = queue;
@@ -559,6 +595,7 @@ export default function LiveGameScreen() {
   useEffect(() => {
     if (!liveGame?.id || needsCreateRef.current) return undefined;
     return subscribeToLiveGame(supabase, liveGame.id, (remote) => {
+      if (sessionClosedRef.current) return;
       if (remote.status !== 'active') {
         if (pendingFinalizationRef.current || pendingCancelRef.current) return;
         serverRecordRef.current = null;
@@ -696,6 +733,7 @@ export default function LiveGameScreen() {
     inverse?: LiveGameMutation,
     historyMode: 'record' | 'skip' = 'record',
   ) => {
+    if (sessionClosedRef.current) return;
     const current = liveGameRef.current;
     if (!current) return;
     const id = Crypto.randomUUID();
@@ -838,7 +876,9 @@ export default function LiveGameScreen() {
     setStarting(true);
     try {
       try {
-        const busyKeys = await fetchBusyLiveGameParticipantKeys(supabase, groupId, selectedKeys);
+        const busyKeys = await withLiveGameTimeout(
+          fetchBusyLiveGameParticipantKeys(supabase, groupId, selectedKeys),
+        );
         if (busyKeys.length > 0) {
           showToast(copy('liveGamePlayersBusy'));
           return;
@@ -882,6 +922,7 @@ export default function LiveGameScreen() {
         created_at: now,
         updated_at: now,
       };
+      sessionClosedRef.current = false;
       serverRecordRef.current = created;
       mutationQueueRef.current = [];
       syncBatchStartedAtRef.current = null;
@@ -1002,12 +1043,17 @@ export default function LiveGameScreen() {
   };
 
   const handleDiscardGame = async () => {
-    if (!liveGame) return;
+    if (!liveGame || discardingGame || sessionClosedRef.current) return;
 
     setDiscardingGame(true);
+    sessionClosedRef.current = true;
+    pendingCancelRef.current = true;
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
     try {
-      await syncPromiseRef.current;
-      await journalWriteRef.current.catch(() => undefined);
+      const pendingJournal = journalWriteRef.current;
       const serverRecord = serverRecordRef.current ?? liveGame;
       await archiveAndClearLiveGameSession(groupId, {
         id: liveGame.id,
@@ -1017,6 +1063,10 @@ export default function LiveGameScreen() {
         finalization: null,
         cancel: true,
       });
+      void pendingJournal
+        .catch(() => undefined)
+        .finally(() => clearLiveGameOfflineSessionIfMatches(groupId, liveGame.id))
+        .catch(() => undefined);
       serverRecordRef.current = null;
       mutationQueueRef.current = [];
       syncBatchStartedAtRef.current = null;
@@ -1024,12 +1074,17 @@ export default function LiveGameScreen() {
       historyRef.current = createLiveGameHistory();
       setUndoDepth(0);
       setRedoDepth(0);
+      needsCreateRef.current = false;
+      pendingCancelRef.current = false;
       setOptimisticRecord(null);
-      await syncJournal();
+      flushArchivedOutbox();
       hapticSuccess();
       showToast(copy('liveGameDiscarded'));
       router.replace(`/table/${groupId}`);
     } catch {
+      sessionClosedRef.current = false;
+      pendingCancelRef.current = false;
+      void saveJournal();
       showToast(copy('liveGameDiscardFailed'));
     } finally {
       setDiscardingGame(false);
@@ -1039,7 +1094,7 @@ export default function LiveGameScreen() {
   };
 
   const handleEndGame = async () => {
-    if (!user || !liveGame) return;
+    if (!user || !liveGame || endingGame || sessionClosedRef.current) return;
     if (!endIsDraw && !endWinnerKey) {
       showToast(copy('liveGameWinnerError'));
       return;
@@ -1079,13 +1134,18 @@ export default function LiveGameScreen() {
         endedAt: new Date().toISOString(),
         players,
       };
+      sessionClosedRef.current = true;
+      pendingFinalizationRef.current = pending;
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
 
       const durationSeconds = getGameDurationSeconds(liveGame.started_at, pending.endedAt);
       setCompletedDurationSeconds(durationSeconds);
 
       setCompletedGame(liveGame);
-      await syncPromiseRef.current;
-      await journalWriteRef.current.catch(() => undefined);
+      const pendingJournal = journalWriteRef.current;
       await archiveAndClearLiveGameSession(groupId, {
         id: liveGame.id,
         serverRecord: serverRecordRef.current ?? liveGame,
@@ -1094,6 +1154,10 @@ export default function LiveGameScreen() {
         finalization: pending,
         cancel: false,
       });
+      void pendingJournal
+        .catch(() => undefined)
+        .finally(() => clearLiveGameOfflineSessionIfMatches(groupId, liveGame.id))
+        .catch(() => undefined);
       serverRecordRef.current = null;
       mutationQueueRef.current = [];
       syncBatchStartedAtRef.current = null;
@@ -1102,13 +1166,17 @@ export default function LiveGameScreen() {
       setUndoDepth(0);
       setRedoDepth(0);
       needsCreateRef.current = false;
+      pendingFinalizationRef.current = null;
       setOptimisticRecord(null);
-      await syncJournal();
+      flushArchivedOutbox();
 
       hapticSuccess();
       showToast(`${endIsDraw ? copy('liveGameSavedDraw') : copy('liveGameSaved')} · ${formatGameDuration(durationSeconds)}`);
       setShowRematch(true);
     } catch {
+      sessionClosedRef.current = false;
+      pendingFinalizationRef.current = null;
+      void saveJournal();
       showToast(copy('liveGameSaveFailed'));
     } finally {
       setEndingGame(false);
@@ -1169,6 +1237,7 @@ export default function LiveGameScreen() {
       created_at: now,
       updated_at: now,
     };
+    sessionClosedRef.current = false;
     serverRecordRef.current = record;
     mutationQueueRef.current = [];
     syncBatchStartedAtRef.current = null;
@@ -1328,10 +1397,7 @@ export default function LiveGameScreen() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.exitChoice, styles.discardChoice, pressed && styles.choicePressed]}
-              onPress={() => {
-                setShowExitChoice(false);
-                setShowDiscardConfirm(true);
-              }}
+              onPress={openDiscardConfirm}
             >
               <View style={[styles.exitChoiceIcon, styles.discardChoiceIcon]}>
                 <Ionicons name="trash-outline" size={21} color="#fca5a5" />
@@ -1531,7 +1597,7 @@ export default function LiveGameScreen() {
             </View>
           ) : null}
           <Pressable
-            onPress={() => setShowDiscardConfirm(true)}
+            onPress={openDiscardConfirm}
             disabled={endingGame || discardingGame}
             style={styles.discardButton}
           >
@@ -1555,6 +1621,7 @@ export default function LiveGameScreen() {
               label: discardingGame ? copy('liveGameDiscarding') : copy('liveGameDiscard'),
               variant: 'destructive',
               onPress: handleDiscardGame,
+              disabled: discardingGame,
             },
           ]}
         />

@@ -17,6 +17,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 import {
   archiveAndClearLiveGameSession,
   clearLiveGameOfflineSession,
+  clearLiveGameOfflineSessionIfMatches,
   loadLiveGameOfflineSession,
   loadLiveGameOutbox,
   saveLiveGameOfflineSession,
@@ -90,5 +91,20 @@ describe('live game offline persistence', () => {
     expect(storage.get(sessionKey)).toBe('null');
     await clearLiveGameOfflineSession('group-1');
     expect(storage.has(sessionKey)).toBe(false);
+  });
+
+  it('clears a stale late journal without deleting a newer rematch', async () => {
+    const session = (game: LiveGameRecord) => ({
+      record: game, serverRecord: game, needsCreate: false, mutations: [],
+      pendingFinalization: null, pendingCancel: false, history: { undo: [], redo: [] },
+    });
+
+    await saveLiveGameOfflineSession('group-1', session(record('old')));
+    await clearLiveGameOfflineSessionIfMatches('group-1', 'old');
+    expect(await loadLiveGameOfflineSession('group-1')).toBeNull();
+
+    await saveLiveGameOfflineSession('group-1', session(record('new')));
+    await clearLiveGameOfflineSessionIfMatches('group-1', 'old');
+    expect((await loadLiveGameOfflineSession('group-1'))?.record.id).toBe('new');
   });
 });

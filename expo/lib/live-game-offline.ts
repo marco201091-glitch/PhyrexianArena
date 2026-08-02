@@ -91,6 +91,16 @@ export async function clearLiveGameOfflineSession(groupId: string): Promise<void
   await AsyncStorage.removeItem(storageKey(groupId));
 }
 
+export async function clearLiveGameOfflineSessionIfMatches(
+  groupId: string,
+  liveGameId: string,
+): Promise<void> {
+  const current = await loadLiveGameOfflineSession(groupId);
+  if (current?.record.id === liveGameId) {
+    await clearLiveGameOfflineSession(groupId);
+  }
+}
+
 export async function loadLiveGameOutbox(): Promise<ArchivedLiveGameOperation[]> {
   try {
     const raw = await AsyncStorage.getItem(OUTBOX_KEY);
