@@ -1,5 +1,37 @@
 # Project audit — 2026-08-01
 
+## Release branch update — 2026-08-02
+
+The current Release branch documentation has been refreshed for version `7.1.2`.
+The active branch workflow is `Dev` -> `Release`, with `main` frozen for the
+current Production service until a deliberate store/Production cutover.
+
+Current local Release gate status:
+
+| Check | Result |
+|---|---|
+| `npm run verify:security` | Pass |
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass |
+| `npm test` | Pass: 184 web tests |
+| `npm run build` | Pass |
+| `npm --prefix expo run typecheck` | Pass |
+| `npm --prefix expo run lint` | Pass with 24 warnings |
+| `npm --prefix expo test` | Pass: 228 Expo tests |
+| `npx expo-doctor` | Pass: 20/20 |
+| `npm run test:e2e` | Pass: 4 public tests; 4 authenticated tests skipped without `E2E_USERNAME`/`E2E_PASSWORD` |
+| `npm --prefix expo run android:bundle:check` | Pass |
+| `npm --prefix expo run ios:bundle:check` | Pass |
+| `npm audit --omit=dev` and `npm --prefix expo audit --omit=dev` | Pass: 0 runtime vulnerabilities |
+
+Open follow-ups from the 2026-08-02 audit:
+
+- Replace or remove `supabase db query --linked` scripts because the linked CLI metadata still points to the retired Supabase Cloud archive.
+- Add a rate limit and bounded query strategy to `/api/public-arena/[code]`.
+- Decide whether API rate limiting should fail closed for auth/account scopes when the database-backed limiter is unavailable.
+- Protect `Dev`, `Release`, and frozen `main` in GitHub branch settings.
+- Resolve or explicitly accept the dev-only `brace-expansion` advisory in the root tooling chain.
+
 ## Verdict
 
 `Dev` and `Release` point to the same commit (`5efd17b`). The original audit found a red release gate and Dev schema drift; recent Claude-assisted changes contained reproducible regressions in the Android icon and web accessibility.

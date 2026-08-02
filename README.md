@@ -2,7 +2,7 @@
 
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://app.phyrexianarena.dpdns.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/badge/release-v6.0.1-7c3aed?style=flat-square)](https://app.phyrexianarena.dpdns.org)
+[![Release](https://img.shields.io/badge/release-v7.1.2-7c3aed?style=flat-square)](https://app.phyrexianarena.dpdns.org)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 
@@ -20,18 +20,16 @@ A **Playgroup** works for a weekly table, a single evening with friends, or a sh
 
 ---
 
-## What's new in v6
+## What's new in v7.1.2
 
-Version 6 makes setting up and playing a game faster, especially on phones and tablets:
+Version 7.1.2 prepares the Release branch for the next store-ready cut with stronger mobile parity, faster deck/art workflows, and a hardened self-hosted backend:
 
-- A new table wizard guides you through player count, starting life, layout, and seat assignment
-- Playgroup managers can invite an existing player directly
-- Temporary guests can later claim their place through a link and keep their decks and match history
-- Optional automatic Archidekt import runs from the username saved in Settings
-- Favorite decks are easier to find
-- Playgroup notifications cover invitations, new members, and completed matches
-- Five new Playgroup awards highlight first eliminations, comebacks, most-played decks, combo wins, and alternate wins
-- Live games have smoother gestures, faster controls, improved responsive layouts, and a more modern interface
+- Deck mastery is derived from match history, so existing games immediately contribute to each commander's progression.
+- Public Playgroup pages show rankings, commanders, color trends, and recent matches for arenas explicitly marked public.
+- Arena catalog updates use private Supabase Realtime broadcasts, keeping Web and Expo pickers synchronized without manual reloads.
+- Commander and deck art loading is faster through server-side Scryfall/Archidekt/Moxfield caching and Expo persistent image cache limits.
+- Guest conversion, avatar storage policies, and arena-day summaries are reconciled for the self-hosted Supabase staging path.
+- Web, Android, and iOS versions are synchronized at `7.1.2` with mobile build code `70102`.
 
 ---
 
