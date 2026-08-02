@@ -103,48 +103,46 @@ export function getAnalyticsSince(dateFilter: ArenaDateFilter): string | null {
 function buildAwards(decks: DeckRollup[]): ArenaAward[] {
   const eligible = decks.filter((deck) => deck.tracked_games >= 3);
   const awards: ArenaAward[] = [];
-  const add = (kind: ArenaAwardKind, deck: DeckRollup | undefined, value: number | null) => {
-    if (!deck || value == null || value <= 0) return;
-    awards.push({
-      kind,
-      deckId: deck.deck_id,
-      name: deck.deck_name,
-      commander: deck.commander,
-      commanderImage: deck.commander_image,
-      gamesPlayed: deck.games_played,
-      trackedGames: deck.tracked_games,
-      value,
+  const addRanked = (kind: ArenaAwardKind, ranked: DeckRollup[], selector: (deck: DeckRollup) => number | null) => {
+    ranked.slice(0, 3).forEach((deck, index) => {
+      const value = selector(deck);
+      if (value == null || value <= 0) return;
+      awards.push({
+        kind,
+        rank: index + 1,
+        deckId: deck.deck_id,
+        name: deck.deck_name,
+        commander: deck.commander,
+        commanderImage: deck.commander_image,
+        gamesPlayed: deck.games_played,
+        trackedGames: deck.tracked_games,
+        value,
+      });
     });
   };
   const top = (rows: DeckRollup[], selector: (deck: DeckRollup) => number, ascending = false) =>
-    [...rows].sort((left, right) => (
-      ascending
-        ? selector(left) - selector(right)
-        : selector(right) - selector(left)
-    ) || right.tracked_games - left.tracked_games)[0];
+    [...rows]
+      .filter((deck) => selector(deck) > 0)
+      .sort((left, right) => (
+        ascending
+          ? selector(left) - selector(right)
+          : selector(right) - selector(left)
+      ) || right.tracked_games - left.tracked_games || left.deck_id.localeCompare(right.deck_id));
 
   const fastest = top(
     eligible.filter((deck) => deck.median_winning_duration_seconds != null),
     (deck) => deck.median_winning_duration_seconds ?? Number.MAX_SAFE_INTEGER,
     true,
   );
-  add('fastest', fastest, fastest?.median_winning_duration_seconds ?? null);
-  const slugger = top(eligible, (deck) => deck.group_damage_dealt);
-  add('group_slugger', slugger, slugger?.group_damage_dealt ?? null);
-  const executioner = top(eligible, (deck) => deck.eliminations);
-  add('executioner', executioner, executioner?.eliminations ?? null);
-  const runnerUp = top(eligible, (deck) => deck.second_places);
-  add('runner_up', runnerUp, runnerUp?.second_places ?? null);
-  const archenemy = top(eligible, (deck) => deck.first_eliminations);
-  add('archenemy', archenemy, archenemy?.first_eliminations ?? null);
-  const comebacker = top(eligible, (deck) => deck.comeback_wins);
-  add('comebacker', comebacker, comebacker?.comeback_wins ?? null);
-  const oneTrick = top(decks, (deck) => deck.games_played);
-  add('one_trick', oneTrick, oneTrick?.games_played ?? null);
-  const comboWinner = top(decks, (deck) => deck.combo_wins);
-  add('combo_winner', comboWinner, comboWinner?.combo_wins ?? null);
-  const junkMaster = top(decks, (deck) => deck.alternate_wins);
-  add('junk_master', junkMaster, junkMaster?.alternate_wins ?? null);
+  addRanked('fastest', fastest, (deck) => deck.median_winning_duration_seconds);
+  addRanked('group_slugger', top(eligible, (deck) => deck.group_damage_dealt), (deck) => deck.group_damage_dealt);
+  addRanked('executioner', top(eligible, (deck) => deck.eliminations), (deck) => deck.eliminations);
+  addRanked('runner_up', top(eligible, (deck) => deck.second_places), (deck) => deck.second_places);
+  addRanked('archenemy', top(eligible, (deck) => deck.first_eliminations), (deck) => deck.first_eliminations);
+  addRanked('comebacker', top(eligible, (deck) => deck.comeback_wins), (deck) => deck.comeback_wins);
+  addRanked('one_trick', top(decks, (deck) => deck.games_played), (deck) => deck.games_played);
+  addRanked('combo_winner', top(decks, (deck) => deck.combo_wins), (deck) => deck.combo_wins);
+  addRanked('junk_master', top(decks, (deck) => deck.alternate_wins), (deck) => deck.alternate_wins);
   return awards;
 }
 

@@ -14,6 +14,7 @@ export type ArenaAwardKind =
 
 export interface ArenaAward {
   kind: ArenaAwardKind;
+  rank: number;
   deckId: string;
   name: string;
   commander: string;
@@ -100,35 +101,37 @@ export function calculateArenaAwards(matches: ArenaMatch[]): ArenaAward[] {
 
   const eligible = Array.from(byDeck.values()).filter((deck) => deck.trackedGames >= 3);
   const awards: ArenaAward[] = [];
-  const add = (kind: ArenaAwardKind, deck: typeof eligible[number] | undefined, value: number | null) => {
-    if (!deck || value == null || value <= 0) return;
-    awards.push({ kind, ...deck, value });
+  const addRanked = (
+    kind: ArenaAwardKind,
+    entries: { deck: typeof eligible[number]; value: number }[],
+  ) => {
+    entries.slice(0, 3).forEach(({ deck, value }, index) => {
+      if (value > 0) awards.push({ kind, rank: index + 1, ...deck, value });
+    });
   };
   const fastest = eligible
     .map((deck) => ({ deck, value: median(deck.winningDurations) }))
     .filter((entry): entry is { deck: typeof eligible[number]; value: number } => entry.value != null)
-    .sort((a, b) => a.value - b.value)[0];
-  add('fastest', fastest?.deck, fastest?.value ?? null);
+    .sort((a, b) => a.value - b.value || b.deck.winningDurations.length - a.deck.winningDurations.length || a.deck.deckId.localeCompare(b.deck.deckId));
+  addRanked('fastest', fastest);
   const top = (selector: (deck: typeof eligible[number]) => number) =>
-    [...eligible].sort((a, b) => selector(b) - selector(a) || b.trackedGames - a.trackedGames)[0];
-  const slugger = top((deck) => deck.groupDamage);
-  add('group_slugger', slugger, slugger?.groupDamage ?? null);
-  const executioner = top((deck) => deck.eliminations);
-  add('executioner', executioner, executioner?.eliminations ?? null);
-  const runnerUp = top((deck) => deck.secondPlaces);
-  add('runner_up', runnerUp, runnerUp?.secondPlaces ?? null);
-  const archenemy = top((deck) => deck.firstEliminations);
-  add('archenemy', archenemy, archenemy?.firstEliminations ?? null);
-  const comebacker = top((deck) => deck.comebackWins);
-  add('comebacker', comebacker, comebacker?.comebackWins ?? null);
+    [...eligible]
+      .filter((deck) => selector(deck) > 0)
+      .sort((a, b) => selector(b) - selector(a) || b.trackedGames - a.trackedGames || a.deckId.localeCompare(b.deckId))
+      .map((deck) => ({ deck, value: selector(deck) }));
+  addRanked('group_slugger', top((deck) => deck.groupDamage));
+  addRanked('executioner', top((deck) => deck.eliminations));
+  addRanked('runner_up', top((deck) => deck.secondPlaces));
+  addRanked('archenemy', top((deck) => deck.firstEliminations));
+  addRanked('comebacker', top((deck) => deck.comebackWins));
   const allDecks = Array.from(byDeck.values());
   const topAll = (selector: (deck: typeof allDecks[number]) => number) =>
-    [...allDecks].sort((a, b) => selector(b) - selector(a) || b.gamesPlayed - a.gamesPlayed)[0];
-  const oneTrick = topAll((deck) => deck.gamesPlayed);
-  add('one_trick', oneTrick, oneTrick?.gamesPlayed ?? null);
-  const comboWinner = topAll((deck) => deck.comboWins);
-  add('combo_winner', comboWinner, comboWinner?.comboWins ?? null);
-  const junkMaster = topAll((deck) => deck.alternateWins);
-  add('junk_master', junkMaster, junkMaster?.alternateWins ?? null);
+    [...allDecks]
+      .filter((deck) => selector(deck) > 0)
+      .sort((a, b) => selector(b) - selector(a) || b.gamesPlayed - a.gamesPlayed || a.deckId.localeCompare(b.deckId))
+      .map((deck) => ({ deck, value: selector(deck) }));
+  addRanked('one_trick', topAll((deck) => deck.gamesPlayed));
+  addRanked('combo_winner', topAll((deck) => deck.comboWins));
+  addRanked('junk_master', topAll((deck) => deck.alternateWins));
   return awards;
 }

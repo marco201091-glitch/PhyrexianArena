@@ -48,6 +48,35 @@ describe('arena analytics bundle', () => {
     expect(view.awards.map((award) => award.kind)).toContain('fastest');
   });
 
+  it('builds a three-place podium from aggregate deck data', () => {
+    const decks = [60, 45, 30, 15].map((damage, index) => ({
+      key: `deck:${index}`,
+      deck_id: `deck-${index}`,
+      deck_name: `Deck ${index}`,
+      commander: `Commander ${index}`,
+      commander_image: null,
+      games_played: 3,
+      tracked_games: 3,
+      wins: 0,
+      second_places: 0,
+      first_eliminations: 0,
+      comeback_wins: 0,
+      combo_wins: 0,
+      alternate_wins: 0,
+      eliminations: 0,
+      group_damage_dealt: damage,
+      median_winning_duration_seconds: null,
+    }));
+    const podium = buildArenaAnalyticsView({ totalMatches: 3, decks })
+      .awards.filter((award) => award.kind === 'group_slugger');
+
+    expect(podium.map((award) => ({ rank: award.rank, deckId: award.deckId, value: award.value }))).toEqual([
+      { rank: 1, deckId: 'deck-0', value: 60 },
+      { rank: 2, deckId: 'deck-1', value: 45 },
+      { rank: 3, deckId: 'deck-2', value: 30 },
+    ]);
+  });
+
   it('sends a nullable all-time boundary to the aggregate RPC', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { totalMatches: 7 }, error: null });
     await expect(fetchArenaAnalytics({ rpc } as never, 'group-1', 'all'))

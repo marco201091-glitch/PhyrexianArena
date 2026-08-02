@@ -86,4 +86,32 @@ describe('arena awards', () => {
       value: 3,
     });
   });
+
+  it('returns gold, silver, and bronze for each award', () => {
+    const matches = ['1', '2', '3'].map((id) => match(id, {
+      match_participants: [40, 30, 20, 10].map((damage, index) => ({
+        id: `participant-${id}-${index}`,
+        user_id: `user-${index}`,
+        guest_id: null,
+        deck_id: `deck-${index}`,
+        guest_deck_id: null,
+        is_winner: index === 0,
+        group_damage_dealt: damage,
+        decks: {
+          id: `deck-${index}`,
+          name: `Deck ${index}`,
+          commander: `Commander ${index}`,
+          commander_image: null,
+          bracket: null,
+        },
+      })),
+    }));
+
+    const podium = calculateArenaAwards(matches).filter((award) => award.kind === 'group_slugger');
+    expect(podium.map((award) => ({ rank: award.rank, deckId: award.deckId, value: award.value }))).toEqual([
+      { rank: 1, deckId: 'deck-0', value: 120 },
+      { rank: 2, deckId: 'deck-1', value: 90 },
+      { rank: 3, deckId: 'deck-2', value: 60 },
+    ]);
+  });
 });

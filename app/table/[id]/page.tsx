@@ -2605,8 +2605,8 @@ export default function TablePage() {
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {t({
-                    it: 'I primati usano tutte le partite registrate; quelli realtime richiedono almeno 3 partite tracciate.',
-                    en: 'Records use every saved match; realtime awards require at least 3 tracked games.',
+                    it: 'Top 3 per ogni premio. I primati usano tutte le partite registrate; quelli realtime richiedono almeno 3 partite tracciate.',
+                    en: 'Top 3 for each award. Records use every saved match; realtime awards require at least 3 tracked games.',
                   })}
                 </p>
               </div>
@@ -2643,13 +2643,21 @@ export default function TablePage() {
                                     ? { icon: Flame, title: 'I think I won', value: String(award.value), tone: 'text-teal-300', badge: 'border-teal-300/40 bg-teal-400/10 shadow-teal-400/20' }
                                     : { icon: Trophy, title: 'Junk Master', value: String(award.value), tone: 'text-lime-300', badge: 'border-lime-300/40 bg-lime-400/10 shadow-lime-400/20' };
                     const Icon = presentation.icon;
+                    const podium = award.rank === 1
+                      ? { label: t({ it: 'Oro', en: 'Gold' }), tone: 'border-yellow-300 bg-yellow-300 text-yellow-950' }
+                      : award.rank === 2
+                        ? { label: t({ it: 'Argento', en: 'Silver' }), tone: 'border-slate-200 bg-slate-200 text-slate-950' }
+                        : { label: t({ it: 'Bronzo', en: 'Bronze' }), tone: 'border-orange-500 bg-orange-600 text-white' };
                     return (
-                      <Card key={award.kind} className="phyrexian-panel overflow-hidden">
+                      <Card key={`${award.kind}:${award.rank}:${award.deck.key}`} className="phyrexian-panel overflow-hidden">
                         <CardContent className="p-4">
                           <div className="mb-3 flex items-center gap-2">
                             <span className={`relative grid h-10 w-10 place-items-center overflow-hidden rounded-xl border shadow-lg ${presentation.badge}`}>
                               <Trophy aria-hidden="true" className="absolute -right-1 -top-1 h-5 w-5 text-white/10" />
                               <Icon className={`relative h-5 w-5 ${presentation.tone}`} />
+                              <span aria-label={`${podium.label}, ${award.rank}`} className={`absolute bottom-0 right-0 grid h-4 min-w-4 place-items-center rounded-full border px-1 text-[9px] font-black leading-none ${podium.tone}`}>
+                                {award.rank}
+                              </span>
                             </span>
                             <div className="min-w-0">
                               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{presentation.title}</p>

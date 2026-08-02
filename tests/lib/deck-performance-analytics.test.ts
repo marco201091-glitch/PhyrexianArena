@@ -71,4 +71,20 @@ describe('deck performance analytics', () => {
       'junk_master',
     ]);
   });
+
+  it('returns a deterministic top-three podium for each award', () => {
+    const decks = buildDeckPerformanceStats([
+      ...Array.from({ length: 3 }, () => row({ deck_id: 'deck-a', deck_name: 'A', group_damage_dealt: 40 })),
+      ...Array.from({ length: 3 }, () => row({ deck_id: 'deck-b', deck_name: 'B', group_damage_dealt: 30 })),
+      ...Array.from({ length: 3 }, () => row({ deck_id: 'deck-c', deck_name: 'C', group_damage_dealt: 20 })),
+      ...Array.from({ length: 3 }, () => row({ deck_id: 'deck-d', deck_name: 'D', group_damage_dealt: 10 })),
+    ]);
+
+    const podium = buildArenaAwards(decks).filter((award) => award.kind === 'group_slugger');
+    expect(podium.map((award) => ({ rank: award.rank, deckId: award.deck.deckId, value: award.value }))).toEqual([
+      { rank: 1, deckId: 'deck-a', value: 120 },
+      { rank: 2, deckId: 'deck-b', value: 90 },
+      { rank: 3, deckId: 'deck-c', value: 60 },
+    ]);
+  });
 });

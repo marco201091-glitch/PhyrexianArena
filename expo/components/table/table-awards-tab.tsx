@@ -42,6 +42,8 @@ function getAwardVisual(kind: ArenaAward['kind']) {
   }
 }
 
+const podiumColors = ['#f4c95d', '#c5ced8', '#c8874a'] as const;
+
 export function TableAwardsTab({ awards, labels }: Props) {
   if (!awards.length) {
     return <PhyrexianPanel style={styles.empty}><Ionicons name="ribbon-outline" size={36} color={colors.muted} /><Text style={styles.title}>{labels.emptyTitle}</Text><Text style={styles.body}>{labels.emptyBody}</Text></PhyrexianPanel>;
@@ -69,14 +71,16 @@ export function TableAwardsTab({ awards, labels }: Props) {
       const metaGames = award.kind === 'one_trick' ? award.gamesPlayed : award.trackedGames;
       const metaLabel = award.kind === 'one_trick' ? labels.games : labels.trackedGames;
       const visual = getAwardVisual(award.kind);
+      const podiumColor = podiumColors[award.rank - 1] ?? podiumColors[2];
       return <CompactDeckCard
-        key={award.kind}
+        key={`${award.kind}:${award.rank}:${award.deckId}`}
         artUri={award.commanderImage}
+        badge={award.rank}
         eyebrow={presentation.title}
         title={award.name}
         commander={award.commander}
         meta={`${labels.descriptions[award.kind]} · ${metaGames} ${metaLabel}`}
-        trailing={<View style={styles.trailing}><View style={[styles.trophy, { backgroundColor: visual.backgroundColor, borderColor: visual.color }]}><Ionicons name={visual.icon} size={16} color={visual.color} /></View><Text style={[styles.value, { color: visual.color }]}>{presentation.value}</Text></View>}
+        trailing={<View style={styles.trailing}><View style={[styles.trophy, { backgroundColor: visual.backgroundColor, borderColor: podiumColor }]}><Ionicons name={visual.icon} size={16} color={podiumColor} /><View style={[styles.medalDot, { backgroundColor: podiumColor }]}><Text style={styles.medalRank}>{award.rank}</Text></View></View><Text style={[styles.value, { color: visual.color }]}>{presentation.value}</Text></View>}
       />;
     })}
   </View>;
@@ -87,6 +91,8 @@ const styles = StyleSheet.create({
   hint: { color: colors.muted, fontSize: 12, lineHeight: 17 },
   trailing: { alignItems: 'center', gap: 4 },
   trophy: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  medalDot: { position: 'absolute', right: -5, bottom: -4, width: 15, height: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  medalRank: { color: '#111', fontSize: 9, fontWeight: '900' },
   value: { fontSize: 16, fontWeight: '900', fontVariant: ['tabular-nums'] },
   empty: { alignItems: 'center', gap: spacing.sm },
   title: { color: colors.foreground, fontSize: 18, fontWeight: '700' },
