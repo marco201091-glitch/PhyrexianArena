@@ -48,6 +48,7 @@
     "eas:build:preview": "npm --prefix expo run eas:build:preview",
     "eas:build:ios:preview": "npm --prefix expo run eas:build:ios:preview",
     "eas:build:ios:unsigned": "npm --prefix expo run eas:build:ios:unsigned",
+    "eas:build:ios:release-unsigned": "npm --prefix expo run eas:build:ios:release-unsigned",
     "eas:build:ios:production": "npm --prefix expo run eas:build:ios:production",
     "eas:env:push": "npm --prefix expo run eas:env:push",
     "eas:build:preview:nowait": "npm --prefix expo run eas:build:preview:nowait"

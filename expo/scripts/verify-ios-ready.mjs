@@ -72,6 +72,10 @@ for (const dependency of [
 assert(eas.build?.['ios-simulator']?.ios?.simulator === true, 'iOS simulator profile is invalid');
 assert(eas.build?.['ios-unsigned']?.ios?.withoutCredentials === true, 'Unsigned IPA profile must not require credentials');
 assert(eas.build?.['ios-unsigned']?.ios?.config === 'unsigned-ios.yml', 'Unsigned IPA workflow is not connected');
+assert(eas.build?.['ios-release-unsigned']?.environment === 'production', 'Release IPA must use the Production EAS environment');
+assert(eas.build?.['ios-release-unsigned']?.env?.APP_VARIANT === 'production', 'Release IPA must use the Production app variant');
+assert(eas.build?.['ios-release-unsigned']?.ios?.withoutCredentials === true, 'Unsigned Release IPA must not require credentials');
+assert(eas.build?.['ios-release-unsigned']?.ios?.config === 'unsigned-ios.yml', 'Unsigned Release IPA workflow is not connected');
 assert(eas.build?.preview?.ios, 'Signed preview iOS profile is missing');
 assert(eas.build?.production?.ios, 'Production iOS profile is missing');
 

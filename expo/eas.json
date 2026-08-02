@@ -36,6 +36,17 @@
         "config": "unsigned-ios.yml"
       }
     },
+    "ios-release-unsigned": {
+      "environment": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      },
+      "ios": {
+        "withoutCredentials": true,
+        "resourceClass": "m-medium",
+        "config": "unsigned-ios.yml"
+      }
+    },
     "preview": {
       "environment": "preview",
       "distribution": "internal",
