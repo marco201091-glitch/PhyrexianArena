@@ -8,6 +8,25 @@ import {
   validateDeckImageCacheEntry,
 } from '@/lib/deck-image-cache';
 
+const IMAGE_RESOLVE_TIMEOUT_MS = 12_000;
+
+async function resolveDeckImageUriWithTimeout(
+  remoteUrl: string | null | undefined,
+  commanderName: string,
+): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      resolveDeckImageUri(remoteUrl, commanderName),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), IMAGE_RESOLVE_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function withRetryToken(uri: string | null, retryVersion: number): string | null {
   if (!uri || retryVersion === 0 || !/^https?:\/\//i.test(uri)) return uri;
   return `${uri}${uri.includes('?') ? '&' : '?'}pa_retry=${retryVersion}`;
@@ -17,10 +36,11 @@ export function useDeckImageUri(
   remoteUrl: string | null | undefined,
   commanderName: string,
 ) {
+  const directRemoteUri = remoteUrl?.trim() || null;
   const [resolvedUri, setResolvedUri] = useState<string | null>(() =>
-    peekDeckImageUri(remoteUrl, commanderName),
+    peekDeckImageUri(remoteUrl, commanderName) || directRemoteUri,
   );
-  const [loading, setLoading] = useState(() => !peekDeckImageUri(remoteUrl, commanderName));
+  const [loading, setLoading] = useState(() => !peekDeckImageUri(remoteUrl, commanderName) && !directRemoteUri);
   const [failed, setFailed] = useState(false);
   const [retryVersion, setRetryVersion] = useState(0);
   const [forceNameFallback, setForceNameFallback] = useState(false);
@@ -30,7 +50,11 @@ export function useDeckImageUri(
     retryCountRef.current = 0;
     setRetryVersion(0);
     setForceNameFallback(false);
-  }, [commanderName, remoteUrl]);
+    const immediateUri = peekDeckImageUri(remoteUrl, commanderName) || directRemoteUri;
+    setResolvedUri(immediateUri);
+    setLoading(!immediateUri);
+    setFailed(false);
+  }, [commanderName, directRemoteUri, remoteUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,12 +96,22 @@ export function useDeckImageUri(
         return;
       }
 
+      // A valid remote URL must render immediately. Persistent caching is an
+      // optimization and must never block the UI on native filesystem/image decoding.
+      if (effectiveRemoteUrl?.trim()) {
+        setResolvedUri(withRetryToken(effectiveRemoteUrl.trim(), retryVersion));
+        setLoading(false);
+        setFailed(false);
+        void resolveDeckImageUri(effectiveRemoteUrl, commanderName).catch(() => null);
+        return;
+      }
+
       setFailed(false);
       setLoading(true);
 
       void (async () => {
         try {
-          const uri = await resolveDeckImageUri(effectiveRemoteUrl, commanderName);
+          const uri = await resolveDeckImageUriWithTimeout(effectiveRemoteUrl, commanderName);
           if (cancelled) return;
           setResolvedUri(withRetryToken(uri, retryVersion));
           setFailed(!uri);
@@ -105,8 +139,8 @@ export function useDeckImageUri(
 
     retryCountRef.current += 1;
     const failedUri = resolvedUri;
-    setFailed(false);
-    setLoading(true);
+    setFailed(true);
+    setLoading(false);
     setResolvedUri(null);
     setForceNameFallback(true);
     void invalidateDeckImageCacheEntry(remoteUrl, commanderName, failedUri)

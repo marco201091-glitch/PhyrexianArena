@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getInfoAsync = vi.hoisted(() => vi.fn());
 const loadAsync = vi.hoisted(() => vi.fn());
@@ -20,6 +20,10 @@ describe('deck image cache validation', () => {
   beforeEach(() => {
     getInfoAsync.mockReset();
     loadAsync.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('splits partner labels and ignores empty or one-character fragments', () => {
@@ -47,5 +51,19 @@ describe('deck image cache validation', () => {
     loadAsync.mockResolvedValue({ width: 100, height: 100, release });
     expect(await validateDeckImageCacheEntry('https://remote/a.jpg', 'file:///cache/a.jpg')).toBe('valid');
     expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a local image when the native decoder stalls', async () => {
+    vi.useFakeTimers();
+    getInfoAsync.mockResolvedValue({ exists: true, size: 1000 });
+    loadAsync.mockReturnValue(new Promise(() => undefined));
+
+    const validation = validateDeckImageCacheEntry(
+      'https://remote/stalled.jpg',
+      'file:///cache/stalled.jpg',
+    );
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    await expect(validation).resolves.toBe('cache-invalid');
   });
 });

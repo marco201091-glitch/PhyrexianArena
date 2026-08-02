@@ -18,6 +18,7 @@ const MANIFEST_PATH = `${CACHE_DIR}manifest.json`;
 const ON_DEMAND_CONCURRENCY = 6;
 const BACKGROUND_CONCURRENCY = 12;
 const MIN_CACHED_FILE_BYTES = 512;
+const IMAGE_DECODE_TIMEOUT_MS = 3_000;
 const ARTS_PER_COMMANDER_PREFETCH = 8;
 
 type CacheManifest = {
@@ -78,6 +79,7 @@ function isLocalUri(uri: string): boolean {
 async function isUsableLocalCacheFile(uri: string): Promise<boolean> {
   if (!isLocalUri(uri)) return true;
   if (validatedLocalUris.has(uri)) return true;
+  let validationTimer: ReturnType<typeof setTimeout> | undefined;
   try {
     const info = await FileSystem.getInfoAsync(uri);
     const hasUsableSize = Boolean(
@@ -85,7 +87,17 @@ async function isUsableLocalCacheFile(uri: string): Promise<boolean> {
       (typeof info.size !== 'number' || info.size > MIN_CACHED_FILE_BYTES),
     );
     if (!hasUsableSize) return false;
-    const imageRef = await Image.loadAsync(uri);
+    const loadPromise = Image.loadAsync(uri);
+    const imageRef = await Promise.race([
+      loadPromise,
+      new Promise<null>((resolve) => {
+        validationTimer = setTimeout(() => resolve(null), IMAGE_DECODE_TIMEOUT_MS);
+      }),
+    ]);
+    if (!imageRef) {
+      void loadPromise.then((lateImageRef) => lateImageRef.release()).catch(() => undefined);
+      return false;
+    }
     try {
       const valid = imageRef.width > 8 && imageRef.height > 8;
       if (valid) validatedLocalUris.add(uri);
@@ -95,6 +107,8 @@ async function isUsableLocalCacheFile(uri: string): Promise<boolean> {
     }
   } catch {
     return false;
+  } finally {
+    if (validationTimer) clearTimeout(validationTimer);
   }
 }
 
