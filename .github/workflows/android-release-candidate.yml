@@ -34,7 +34,8 @@ jobs:
             if (-not $env:GITHUB_REF_NAME.StartsWith("v")) { throw "Release tag must start with v" }
             $version = $env:GITHUB_REF_NAME.Substring(1)
 
-            if ((git cat-file -t $env:GITHUB_REF_NAME) -ne "tag") {
+            $remoteTagRefs = (git ls-remote --tags origin "refs/tags/$env:GITHUB_REF_NAME*") -join "`n"
+            if ($remoteTagRefs -notmatch '\^\{\}') {
               throw "Release tag must be annotated"
             }
 
@@ -128,23 +129,23 @@ jobs:
         run: |
           $apk = "artifacts/apk/mtg-commander-v$env:RELEASE_VERSION.apk"
           $checksum = "$apk.sha256"
-          @"
-          ## MTG Tracker & Analytics $env:GITHUB_REF_NAME
-
-          First public release of the Android app.
-
-          ### Main features
-
-          - Commander game and life tracking
-          - Player, deck and match statistics
-          - Awards and performance analytics
-          - Shared tables and multiplayer sessions
-          - Optional Google login and notifications
-
-          Install or update with Obtainium from this repository's GitHub Releases.
-
-          The attached checksum can be used to verify the APK before installation.
-          "@ | Set-Content -LiteralPath "$env:RUNNER_TEMP/release-notes.md" -Encoding utf8
+          @(
+            "## MTG Tracker & Analytics $env:GITHUB_REF_NAME",
+            "",
+            "First public release of the Android app.",
+            "",
+            "### Main features",
+            "",
+            "- Commander game and life tracking",
+            "- Player, deck and match statistics",
+            "- Awards and performance analytics",
+            "- Shared tables and multiplayer sessions",
+            "- Optional Google login and notifications",
+            "",
+            "Install or update with Obtainium from this repository's GitHub Releases.",
+            "",
+            "The attached checksum can be used to verify the APK before installation."
+          ) | Set-Content -LiteralPath "$env:RUNNER_TEMP/release-notes.md" -Encoding utf8
 
           gh release create $env:GITHUB_REF_NAME $apk $checksum `
             --repo $env:GITHUB_REPOSITORY `
