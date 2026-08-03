@@ -182,7 +182,7 @@ function LoginForm() {
             >
               {loading
                 ? t({ it: 'Accesso...', en: 'Signing in...' })
-                : t({ it: 'Entra nel Playgroup', en: 'Enter Playgroup' })}
+                : t({ it: 'Entra', en: 'Enter' })}
             </Button>
           </form>
 

@@ -118,7 +118,7 @@ export default function LoginScreen() {
             </Pressable>
           </Link>
           <Button
-            label={loading ? copy('signingIn') : copy('enterArena')}
+            label={loading ? copy('signingIn') : copy('login')}
             onPress={handleLogin}
             testID="login-submit"
             disabled={loading}
