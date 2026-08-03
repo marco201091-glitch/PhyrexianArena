@@ -46,6 +46,7 @@ Builds:
     init:
       - cd .. && npm ci
       - cd expo && npm ci
+      - node scripts/patch-fdroid-java-toolchains.mjs
     output: android/app/build/outputs/apk/release/app-release-unsigned.apk
     prebuild:
       - export APP_VARIANT=fdroid
