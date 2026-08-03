@@ -75,15 +75,13 @@ REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA
 with the exact full commit SHA of the public release commit. F-Droid metadata
 requires commit hashes rather than branch names.
 
-## Remaining external validation
+## Official submission
 
-Run in an F-Droid buildserver/container:
+Merge request:
 
-```bash
-fdroid readmeta
-fdroid rewritemeta com.phyrexianarena.app
-fdroid lint com.phyrexianarena.app
-fdroid build com.phyrexianarena.app
-```
+<https://gitlab.com/fdroid/fdroiddata/-/merge_requests/44721>
 
-Then submit a merge request to `fdroiddata`.
+The F-Droid pipeline has completed `fdroid readmeta`, metadata linting, source
+build, scanner, signed-APK generation, and APK checks successfully. The merge
+request follows the App Inclusion template and the React Native build template.
+Only F-Droid maintainer review remains external to this repository.

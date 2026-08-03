@@ -1,16 +1,16 @@
 # F-Droid-style release readiness
 
-This project is not yet ready for submission to the official F-Droid main
-repository without a final maintainer/legal decision. It can be prepared for a
-separate F-Droid-compatible repository or for future upstream review.
+Version 8.0.0 has been submitted to the official F-Droid `fdroiddata`
+repository. The source build and validation pipeline pass; inclusion is now
+waiting for F-Droid maintainer review.
 
 ## Current assessment
 
 - Source and license: repository source is public-facing and the project has an
   MIT license.
-- Build model: Expo/React Native can produce Android artifacts from source, but
-  an F-Droid maintainer would still need a reproducible command-line recipe from
-  a tagged commit.
+- Build model: Expo/React Native produces an unsigned Android APK entirely from
+  source. Expo modules are built from source and Gradle/JVM targets are aligned
+  for the F-Droid build environment.
 - Network services: the app depends on a self-hosted Supabase backend, Scryfall,
   Archidekt, Moxfield, EDHREC, Resend, Turnstile, optional Google OAuth, optional
   Expo Push, and optional Sentry diagnostics. These may require F-Droid
@@ -71,16 +71,12 @@ Operational checklist:
 docs/FDROID_OFFICIAL_SUBMISSION.md
 ```
 
-## Recommended pre-submission work
+## Submission status
 
-1. Add a reproducible build recipe from a signed/tagged source commit.
-2. Decide whether to target official F-Droid or a separate F-Droid-compatible
-   repository. A separate repository is more realistic while the app depends on
-   a fixed hosted backend.
-3. Document Anti-Features explicitly: `Non-Free Network Services` may apply for
-   third-party card/deck services; `Tethered Network Services` may apply if the
-   hosted backend cannot be replaced by user configuration.
-4. Verify generated native Android output with `fdroid scanner` or equivalent
-   before submission.
-5. Keep a neutral-identity fallback plan ready if store review rejects the
-   current name/domain/symbol set.
+- Official merge request: <https://gitlab.com/fdroid/fdroiddata/-/merge_requests/44721>
+- `fdroid build`, APK checks, lint, scanner, and pipeline validation pass.
+- `NonFreeNet` is declared for the fixed hosted and third-party network services.
+- Store text and changelog live upstream under `fastlane/metadata/android/en-US`.
+- Remaining work is external maintainer review and any requested follow-up.
+- Keep the neutral-identity fallback plan only if store review rejects the
+  current name, domain, or symbols.
