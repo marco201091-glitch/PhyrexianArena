@@ -38,9 +38,7 @@ Builds:
       - cd expo
       - npm run typecheck
     scanignore:
-      - expo/node_modules/react-native/sdks/hermesc/linux64-bin/hermesc
       - expo/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
-      - expo/node_modules/expo-modules-autolinking/scripts/android/autolinking_implementation.gradle
     scandelete:
       - node_modules
       - expo/node_modules
