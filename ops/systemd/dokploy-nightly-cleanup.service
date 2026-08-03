@@ -1,0 +1,16 @@
+[Unit]
+Description=Prune old Dokploy deployments and unused Docker build cache
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/dokploy-cleanup.env
+ExecStart=/usr/bin/node /usr/local/sbin/cleanup-dokploy-deployments.mjs --apply
+ExecStart=/usr/bin/docker image prune -f
+ExecStart=/usr/bin/docker builder prune -af
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
