@@ -62,7 +62,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Install mobile dependencies
         working-directory: expo
