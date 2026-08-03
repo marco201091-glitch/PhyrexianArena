@@ -229,7 +229,9 @@ function RegisterForm() {
               className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-semibold"
               disabled={loading || !isValid || !isCaptchaReady}
             >
-              {loading ? 'Compleating...' : t({ it: 'Inizia la Compleation', en: 'Begin Compleation' })}
+              {loading
+                ? t({ it: 'Creazione account...', en: 'Creating account...' })
+                : t({ it: 'Crea account', en: 'Create account' })}
             </Button>
           </form>
 
@@ -253,7 +255,7 @@ function RegisterForm() {
           <div className="mt-6 text-center text-sm text-muted-foreground">
             {t({ it: 'Hai gia un account?', en: 'Already have an account?' })}{' '}
             <Link href={`/auth/login?redirect=${encodeURIComponent(redirectPath)}`} className="text-emerald-400 hover:text-emerald-300 font-medium">
-              {t({ it: 'Accedi', en: 'Sign in' })}
+              {t({ it: 'Entra', en: 'Enter' })}
             </Link>
           </div>
 
