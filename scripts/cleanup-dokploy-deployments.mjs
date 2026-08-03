@@ -27,7 +27,7 @@ if (!baseUrl || !apiKey) {
 const targets = [
   { name: 'main', type: 'application', id: '-luoc-a5Mx9QJnAHuBiRV', keepDone: 2 },
   { name: 'dev', type: 'application', id: '0y9Dk8lwDTwkeBuM0hEJt', keepDone: 1 },
-  { name: 'supabase-production', type: 'compose', id: 'zvgvfKmFaDK3SZXu2sNPj', keepDone: null },
+  { name: 'supabase-production', type: 'compose', id: 'zvgvfKmFaDK3SZXu2sNPj', keepDone: 2 },
   // Dokploy still exposes the legacy compose label "supabase-staging".
   // This ID is exclusively the isolated Supabase Test stack.
   { name: 'supabase-test', type: 'compose', id: '5VlzcL_rCdZmzqkravyE6', keepDone: 1 },

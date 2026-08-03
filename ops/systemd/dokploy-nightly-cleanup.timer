@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Dokploy and Docker cleanup every night
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Europe/Rome
+Persistent=true
+RandomizedDelaySec=15m
+Unit=dokploy-nightly-cleanup.service
+
+[Install]
+WantedBy=timers.target
