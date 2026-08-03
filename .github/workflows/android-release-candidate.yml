@@ -7,17 +7,49 @@ on:
         description: SemVer version to build
         required: true
         type: string
+  push:
+    tags:
+      - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate release version
+        id: release
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ inputs.version }}"
+          } else {
+            if (-not $env:GITHUB_REF_NAME.StartsWith("v")) { throw "Release tag must start with v" }
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+
+            if ((git cat-file -t $env:GITHUB_REF_NAME) -ne "tag") {
+              throw "Release tag must be annotated"
+            }
+
+            git fetch origin main --no-tags
+            git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+            if ($LASTEXITCODE -ne 0) { throw "Release tag is not based on main" }
+          }
+
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Version must use SemVer (X.Y.Z)" }
+          $appVersion = (Get-Content -Raw "expo/app.json" | ConvertFrom-Json).expo.version
+          if ($appVersion -ne $version) {
+            throw "Tag/input version $version does not match expo/app.json version $appVersion"
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - uses: actions/setup-node@v4
         with:
@@ -74,15 +106,48 @@ jobs:
           ) | Set-Content -LiteralPath "expo/.env.production.local"
 
           $env:PHYREXIAN_SIGNING_PROPERTIES = $signingPath
-          cmd /c "scripts\build-apk-production.bat ${{ inputs.version }} --no-pause"
+          cmd /c "scripts\build-apk-production.bat ${{ steps.release.outputs.version }} --no-pause"
           if ($LASTEXITCODE -ne 0) { throw "Android release candidate build failed" }
 
       - name: Upload private release candidate
         uses: actions/upload-artifact@v4
         with:
-          name: mtg-commander-${{ inputs.version }}
+          name: mtg-tracker-analytics-${{ steps.release.outputs.version }}
           path: |
-            artifacts/apk/mtg-commander-v${{ inputs.version }}.apk
-            artifacts/apk/mtg-commander-v${{ inputs.version }}.apk.sha256
+            artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk
+            artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk.sha256
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish GitHub release for Obtainium
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          $apk = "artifacts/apk/mtg-commander-v$env:RELEASE_VERSION.apk"
+          $checksum = "$apk.sha256"
+          @"
+          ## MTG Tracker & Analytics $env:GITHUB_REF_NAME
+
+          First public release of the Android app.
+
+          ### Main features
+
+          - Commander game and life tracking
+          - Player, deck and match statistics
+          - Awards and performance analytics
+          - Shared tables and multiplayer sessions
+          - Optional Google login and notifications
+
+          Install or update with Obtainium from this repository's GitHub Releases.
+
+          The attached checksum can be used to verify the APK before installation.
+          "@ | Set-Content -LiteralPath "$env:RUNNER_TEMP/release-notes.md" -Encoding utf8
+
+          gh release create $env:GITHUB_REF_NAME $apk $checksum `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "MTG Tracker & Analytics $env:GITHUB_REF_NAME" `
+            --notes-file "$env:RUNNER_TEMP/release-notes.md" `
+            --verify-tag
