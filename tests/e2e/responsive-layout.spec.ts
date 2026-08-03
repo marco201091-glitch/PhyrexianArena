@@ -19,7 +19,7 @@ test('public screens fit legacy iPad and Android viewports', async ({ page }) =>
     await page.setViewportSize(device.viewport);
 
     await page.goto('/auth/login');
-    await expect(page.getByRole('button', { name: 'Enter Playgroup' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Enter' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     await page.goto('/counter');
