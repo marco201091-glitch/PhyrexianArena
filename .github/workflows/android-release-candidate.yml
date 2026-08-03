@@ -62,6 +62,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
 
       - name: Install mobile dependencies
         working-directory: expo
@@ -96,10 +97,11 @@ jobs:
           }
           $keystorePath = Join-Path $env:RUNNER_TEMP "phyrexian-arena-release.jks"
           [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:RELEASE_KEYSTORE_BASE64))
+          $gradleKeystorePath = $keystorePath -replace '\\', '/'
 
           $signingPath = Join-Path $env:RUNNER_TEMP "android-signing.properties"
           @(
-            "storeFile=$keystorePath"
+            "storeFile=$gradleKeystorePath"
             "storePassword=$env:RELEASE_STORE_PASSWORD"
             "keyAlias=$env:RELEASE_KEY_ALIAS"
             "keyPassword=$env:RELEASE_KEY_PASSWORD"
