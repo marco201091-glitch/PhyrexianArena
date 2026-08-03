@@ -3,6 +3,10 @@ AntiFeatures:
     en-US: Depends on hosted Supabase, Scryfall, Archidekt, Moxfield, EDHREC, Resend,
       Turnstile, and other fixed network services that are not user-configurable in
       this release.
+Categories:
+  - Card Game
+License: MIT
+SourceCode: https://github.com/marco201091-glitch/PhyrexianArena
 RepoType: git
 Repo: https://github.com/marco201091-glitch/PhyrexianArena.git
 
