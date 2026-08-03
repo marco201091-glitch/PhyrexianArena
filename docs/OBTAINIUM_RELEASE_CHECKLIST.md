@@ -20,7 +20,7 @@ For F-Droid-style publication, also follow `docs/FDROID_RELEASE_READINESS.md`.
 
 ## Every release
 
-- [ ] Promote the approved version from `Dev` into `Release`.
+- [ ] Promote the approved version from `Dev` into `main`.
 - [ ] Create an annotated version tag matching the app version.
 - [ ] Build from the tagged clean worktree with the production environment.
 - [ ] Confirm package `com.phyrexianarena.app`, version name, and version code.
