@@ -6,28 +6,7 @@ AntiFeatures:
 Categories:
   - Card Game
 License: MIT
-AuthorName: blackistoostrong
-WebSite: https://app.phyrexianarena.dpdns.org
 SourceCode: https://github.com/marco201091-glitch/PhyrexianArena
-IssueTracker: https://github.com/marco201091-glitch/PhyrexianArena/issues
-Changelog: https://github.com/marco201091-glitch/PhyrexianArena/releases
-
-AutoName: MTG Tracker & Analytics
-Description: |-
-  Track Commander games without spreadsheets.
-
-  Features:
-
-  * realtime life, commander damage, infect, eliminations, and match finalization
-  * playgroup history with players, decks, commanders, rankings, and awards
-  * deck import from Archidekt and Moxfield
-  * optional public playgroup pages for rankings and color trends
-  * offline recovery for active live games
-  * Italian and English interface
-
-  This app is unofficial fan content. It is not affiliated with, endorsed by, or
-  sponsored by Wizards of the Coast, Scryfall, EDHREC, Archidekt, Moxfield, or
-  other mentioned services.
 
 RepoType: git
 Repo: https://github.com/marco201091-glitch/PhyrexianArena.git
@@ -54,11 +33,25 @@ Builds:
       - export EXPO_PUBLIC_SENTRY_ENABLED=false
       - export EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
       - npx --no-install expo prebuild --platform android --clean --no-install
+      - sed -i 's/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties
       - cd ..
       - npm run verify:fdroid
       - cd expo
       - npm run typecheck
     scanignore:
+      - expo/node_modules/hermes-compiler/hermesc/linux64-bin/hermesc
+      - expo/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+      - expo/node_modules/@react-native-async-storage/async-storage/android/build.gradle
+      - expo/node_modules/@react-native-community/netinfo/android/build.gradle
+      - expo/node_modules/@react-native-masked-view/masked-view/android/build.gradle
+      - expo/node_modules/react-native-get-random-values/android/build.gradle
+      - expo/node_modules/react-native-keyboard-controller/android/build.gradle
+      - expo/node_modules/react-native-safe-area-context/android/build.gradle
+      - expo/node_modules/react-native-screens/android/build.gradle
+      - expo/node_modules/react-native-svg/android/build.gradle
+      - expo/node_modules/react-native-webview/android/build.gradle
+      - expo/node_modules/react-native/ReactAndroid/publish.gradle
+    scandelete:
       - node_modules
       - expo/node_modules
     build:
