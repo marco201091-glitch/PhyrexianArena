@@ -2,8 +2,8 @@
 
 ## Branch
 
-Use `fdroid-prep` for official F-Droid work. Use `Dev`/`Release` for standard
-APK, Obtainium, and direct distribution.
+Use `fdroid-prep` for official F-Droid work. Use `Dev` for development and
+`main` for standard APK, Obtainium, and direct distribution.
 
 ## Local build intent
 

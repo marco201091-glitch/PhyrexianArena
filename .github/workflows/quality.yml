@@ -2,9 +2,9 @@ name: Quality
 
 on:
   pull_request:
-    branches: [Dev, Release]
+    branches: [Dev, main]
   push:
-    branches: [Dev, Release]
+    branches: [Dev, main]
 
 concurrency:
   group: quality-${{ github.ref }}
