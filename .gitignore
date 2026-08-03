@@ -42,6 +42,7 @@ yarn-error.log*
 
 # agent/debug scratch scripts
 scripts/_tmp-*.mjs
+.cleanup-trash-*/
 
 # local Codex plugins and marketplace cache
 /.agents/plugins/
@@ -68,6 +69,7 @@ keystore.properties
 # expo native prebuild output
 /.expo/
 expo/.expo/
+expo/.qa-*/
 expo/node_modules/
 artifacts/
 claude.md

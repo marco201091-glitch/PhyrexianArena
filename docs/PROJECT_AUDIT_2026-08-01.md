@@ -124,6 +124,18 @@ No production database preflight/postflight SQL, destructive QA SQL, signed APK 
 4. Re-run the complete store-release gate from a clean `Release` worktree.
 5. Plan the deliberate `Release` → `main` replacement only for the future store-launch cutover.
 
+## Delta audit — 2026-08-03
+
+F-Droid-style publication adds a distinct release-readiness track beyond Obtainium/private APK distribution:
+
+- F-Droid requires FLOSS source, redistributable assets, reproducible build metadata, no proprietary tracking libraries, and no trademark/copyright infringement.
+- The app already uses an MIT license and has a working Android export path, but the Expo/F-Droid recipe still needs final scanner validation from generated native sources.
+- A dedicated F-Droid build mode was added with `APP_VARIANT=fdroid`, `EXPO_PUBLIC_FDROID_BUILD=true`, and `EXPO_PUBLIC_SENTRY_ENABLED=false`; this removes the Sentry Expo plugin from the native config and hides Google sign-in in the Android login UI.
+- Auth-sensitive API rate limits now fail closed if the rate-limit backend is unavailable, and the public arena endpoint is IP-rate-limited.
+- Direct `supabase db query --linked` package scripts are blocked because the linked CLI target still points to the retired Cloud archive; destructive/QA SQL must use the approved self-hosted VM procedure.
+- Initial Fastlane metadata was added for Android listing preparation.
+- The `dpdns.org` provider is not the critical issue. The `phyrexianarena` label and original mana symbols remain the public-release review risk, but the maintainer decision on 2026-08-03 is to keep them for the first submission attempt and prepare a neutral fallback only if review rejects the app.
+
 ## Audit-created files
 
 - `.agents/skills/efficient-project-audit/SKILL.md`: requires maximal token minimization, cache reuse, batched inspection, preservation of user changes, and the requested strict `OK`/`fatto` completion protocol.

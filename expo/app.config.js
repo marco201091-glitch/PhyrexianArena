@@ -19,7 +19,7 @@ module.exports = ({ config: base }) => {
 
   return {
     ...base,
-    name: isDevVariant ? 'MTG: Commander Dev' : base.name,
+    name: isDevVariant ? 'MTG Tracker Dev' : base.name,
     scheme: isDevVariant ? devScheme : base.scheme,
     plugins: [
       ...base.plugins,
@@ -33,13 +33,9 @@ module.exports = ({ config: base }) => {
       }],
       'expo-status-bar',
       'expo-web-browser',
-      ['@sentry/react-native/expo', {
-        organization: process.env.SENTRY_ORG,
-        project: process.env.SENTRY_MOBILE_PROJECT || process.env.SENTRY_PROJECT,
-        url: process.env.SENTRY_URL,
-        disableAutoUpload: isDevVariant || !process.env.SENTRY_AUTH_TOKEN,
-      }],
       './plugins/with-clean-intent-filter-markers',
+      './plugins/with-fdroid-blocked-permissions',
+      './plugins/with-fdroid-release-build',
       './plugins/with-release-signing',
     ],
     android: {

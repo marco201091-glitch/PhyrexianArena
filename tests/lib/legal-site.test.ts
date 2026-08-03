@@ -21,7 +21,7 @@ describe('legal-site', () => {
   });
 
   it('exposes the current app version', () => {
-    expect(APP_VERSION).toBe('7.1.2');
+    expect(APP_VERSION).toBe('8.0.0');
     expect(LEGAL_SITE_NAME).toBe('MTG Life Counter & Analytics: Commander');
     expect(LEGAL_BRAND_NAME).toBe('blackistoostrong');
   });

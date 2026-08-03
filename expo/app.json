@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "MTG: Commander",
+    "name": "MTG Tracker & Analytics",
     "slug": "phyrexian-arena",
-    "version": "7.1.2",
+    "version": "8.0.0",
     "platforms": ["android", "ios", "web"],
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "com.phyrexianarena.app",
-      "buildNumber": "70102",
+      "buildNumber": "80000",
       "icon": "./assets/icon.png",
       "backgroundColor": "#0a0a0f",
       "associatedDomains": [
@@ -41,8 +41,10 @@
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 70102,
+      "versionCode": 80000,
       "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE"
       ],
@@ -103,7 +105,6 @@
       "expo-router",
       "expo-screen-orientation",
       "expo-secure-store",
-      "expo-notifications",
       "expo-asset",
       [
         "expo-splash-screen",
@@ -114,14 +115,7 @@
           "resizeMode": "contain"
         }
       ],
-      "./plugins/with-release-signing",
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow MTG: Commander to access your photos to set your profile avatar.",
-          "microphonePermission": false
-        }
-      ]
+      "./plugins/with-release-signing"
     ],
     "experiments": {
       "typedRoutes": true

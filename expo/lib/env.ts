@@ -22,6 +22,10 @@ export function getSupportEmail() {
   return process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'support@phyrexianarena.dpdns.org';
 }
 
+export function isFdroidBuild() {
+  return process.env.EXPO_PUBLIC_FDROID_BUILD === 'true';
+}
+
 export function assertExpoEnv() {
   if (!getSupabaseUrl() || !getSupabaseAnonKey()) {
     throw new Error('Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Copy expo/.env.example to expo/.env');

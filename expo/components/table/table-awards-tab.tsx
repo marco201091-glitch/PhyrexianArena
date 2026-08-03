@@ -48,47 +48,79 @@ export function TableAwardsTab({ awards, labels }: Props) {
   if (!awards.length) {
     return <PhyrexianPanel style={styles.empty}><Ionicons name="ribbon-outline" size={36} color={colors.muted} /><Text style={styles.title}>{labels.emptyTitle}</Text><Text style={styles.body}>{labels.emptyBody}</Text></PhyrexianPanel>;
   }
+  const awardGroups = Array.from(awards.reduce((groups, award) => {
+    const entries = groups.get(award.kind) ?? [];
+    entries.push(award);
+    groups.set(award.kind, entries);
+    return groups;
+  }, new Map<ArenaAward['kind'], ArenaAward[]>()).values());
+
   return <View style={styles.section}>
     <Text style={styles.hint}>{labels.hint}</Text>
-    {awards.map((award) => {
-      const presentation = award.kind === 'fastest'
-        ? { title: labels.fastest, value: formatGameDuration(award.value) }
-        : award.kind === 'group_slugger'
-          ? { title: labels.slugger, value: String(award.value) }
-          : award.kind === 'executioner'
-            ? { title: labels.executioner, value: String(award.value) }
-            : award.kind === 'runner_up'
-              ? { title: labels.runnerUp, value: String(award.value) }
-              : award.kind === 'archenemy'
-                ? { title: labels.archenemy, value: String(award.value) }
-                : award.kind === 'comebacker'
-                  ? { title: labels.comebacker, value: String(award.value) }
-                  : award.kind === 'one_trick'
-                    ? { title: labels.oneTrick, value: String(award.value) }
-                    : award.kind === 'combo_winner'
-                      ? { title: labels.comboWinner, value: String(award.value) }
-                      : { title: labels.junkMaster, value: String(award.value) };
-      const metaGames = award.kind === 'one_trick' ? award.gamesPlayed : award.trackedGames;
-      const metaLabel = award.kind === 'one_trick' ? labels.games : labels.trackedGames;
-      const visual = getAwardVisual(award.kind);
-      const podiumColor = podiumColors[award.rank - 1] ?? podiumColors[2];
-      return <CompactDeckCard
-        key={`${award.kind}:${award.rank}:${award.deckId}`}
-        artUri={award.commanderImage}
-        badge={award.rank}
-        eyebrow={presentation.title}
-        title={award.name}
-        commander={award.commander}
-        meta={`${labels.descriptions[award.kind]} · ${metaGames} ${metaLabel}`}
-        trailing={<View style={styles.trailing}><View style={[styles.trophy, { backgroundColor: visual.backgroundColor, borderColor: podiumColor }]}><Ionicons name={visual.icon} size={16} color={podiumColor} /><View style={[styles.medalDot, { backgroundColor: podiumColor }]}><Text style={styles.medalRank}>{award.rank}</Text></View></View><Text style={[styles.value, { color: visual.color }]}>{presentation.value}</Text></View>}
-      />;
+    {awardGroups.map((group) => {
+      const leadAward = group[0];
+      const visual = getAwardVisual(leadAward.kind);
+      const title = leadAward.kind === 'fastest'
+        ? labels.fastest
+        : leadAward.kind === 'group_slugger'
+          ? labels.slugger
+          : leadAward.kind === 'executioner'
+            ? labels.executioner
+            : leadAward.kind === 'runner_up'
+              ? labels.runnerUp
+              : leadAward.kind === 'archenemy'
+                ? labels.archenemy
+                : leadAward.kind === 'comebacker'
+                  ? labels.comebacker
+                  : leadAward.kind === 'one_trick'
+                    ? labels.oneTrick
+                    : leadAward.kind === 'combo_winner'
+                      ? labels.comboWinner
+                      : labels.junkMaster;
+
+      return <PhyrexianPanel key={leadAward.kind} style={styles.awardGroup}>
+        <View style={styles.groupHeader}>
+          <View style={[styles.groupIcon, { backgroundColor: visual.backgroundColor, borderColor: visual.color }]}>
+            <Ionicons name={visual.icon} size={17} color={visual.color} />
+          </View>
+          <View style={styles.groupTitleBlock}>
+            <Text style={styles.groupEyebrow}>Top {group.length}/3</Text>
+            <Text style={[styles.groupTitle, { color: visual.color }]}>{title}</Text>
+          </View>
+        </View>
+        <View style={styles.groupCards}>
+          {group.map((award) => {
+            const metaGames = award.kind === 'one_trick' ? award.gamesPlayed : award.trackedGames;
+            const metaLabel = award.kind === 'one_trick' ? labels.games : labels.trackedGames;
+            const podiumColor = podiumColors[award.rank - 1] ?? podiumColors[2];
+            const value = award.kind === 'fastest' ? formatGameDuration(award.value) : String(award.value);
+
+            return <CompactDeckCard
+              key={`${award.kind}:${award.rank}:${award.deckId}`}
+              artUri={award.commanderImage}
+              badge={award.rank}
+              title={award.name}
+              commander={award.commander}
+              meta={`${labels.descriptions[award.kind]} · ${metaGames} ${metaLabel}`}
+              trailing={<View style={styles.trailing}><View style={[styles.trophy, { backgroundColor: visual.backgroundColor, borderColor: podiumColor }]}><Ionicons name={visual.icon} size={16} color={podiumColor} /><View style={[styles.medalDot, { backgroundColor: podiumColor }]}><Text style={styles.medalRank}>{award.rank}</Text></View></View><Text style={[styles.value, { color: visual.color }]}>{value}</Text></View>}
+            />;
+          })}
+        </View>
+      </PhyrexianPanel>;
     })}
   </View>;
 }
 
 const styles = StyleSheet.create({
-  section: { gap: spacing.sm },
+  section: { gap: spacing.md },
   hint: { color: colors.muted, fontSize: 12, lineHeight: 17 },
+  awardGroup: { gap: spacing.sm, padding: spacing.md },
+  groupHeader: { alignItems: 'center', borderBottomColor: colors.borderSoft, borderBottomWidth: 1, flexDirection: 'row', gap: spacing.sm, paddingBottom: spacing.sm },
+  groupIcon: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  groupTitleBlock: { flex: 1 },
+  groupEyebrow: { color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase' },
+  groupTitle: { fontSize: 15, fontWeight: '900' },
+  groupCards: { gap: spacing.sm },
   trailing: { alignItems: 'center', gap: 4 },
   trophy: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   medalDot: { position: 'absolute', right: -5, bottom: -4, width: 15, height: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },

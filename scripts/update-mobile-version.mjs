@@ -56,4 +56,19 @@ update('expo/app.json', [
 update('expo/lib/app-version.ts', [
   [/APP_DISPLAY_VERSION\s*=\s*'[^']+'/, `APP_DISPLAY_VERSION = '${version}'`],
 ]);
+update('lib/legal-site.ts', [
+  [/APP_VERSION\s*=\s*'[^']+'/, `APP_VERSION = '${version}'`],
+]);
+update('expo/lib/legal-site.ts', [
+  [/APP_VERSION\s*=\s*'[^']+'/, `APP_VERSION = '${version}'`],
+]);
+for (const relativePath of [
+  'expo/lib/remote-image.ts',
+  'expo/lib/scryfall-search.ts',
+  'expo/tests/lib/remote-image.test.ts',
+]) {
+  update(relativePath, [
+    [/MTGCommander\/\d+\.\d+\.\d+/, `MTGCommander/${version}`],
+  ]);
+}
 console.log(`Version ${version} (code ${versionCode}) synchronized.`);

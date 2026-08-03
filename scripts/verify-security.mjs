@@ -22,6 +22,13 @@ assert.equal(reserved.has('administrator'), true);
 assert.equal(reserved.has('Marco'), false);
 
 const root = process.cwd();
+const packageJson = readFileSync(join(root, 'package.json'), 'utf8');
+assert.doesNotMatch(
+  packageJson,
+  /supabase\s+db\s+query\s+--linked/,
+  'Repository scripts must not use Supabase CLI --linked against the retired Cloud archive',
+);
+
 const protectedRoutes = [
   'app/api/deck-import/route.ts',
   'app/api/archidekt-user-decks/route.ts',
@@ -129,6 +136,12 @@ assert.match(
   'Password verification must remain server-side',
 );
 assert.doesNotMatch(loginRoute, /email:\s*data/, 'The login API must never disclose resolved emails');
+const rateLimitSource = readFileSync(join(root, 'lib/api-rate-limit.ts'), 'utf8');
+assert.match(rateLimitSource, /authLogin:[\s\S]*?failClosed:\s*true/, 'Password login rate limiting must fail closed');
+assert.match(rateLimitSource, /authRegister:[\s\S]*?failClosed:\s*true/, 'Registration rate limiting must fail closed');
+assert.match(rateLimitSource, /publicArena:[\s\S]*?failClosed:\s*true/, 'Public arena rate limiting must fail closed');
+const publicArenaRoute = readFileSync(join(root, 'app/api/public-arena/[code]/route.ts'), 'utf8');
+assert.match(publicArenaRoute, /applyIpRateLimit\(request,\s*'publicArena'\)/, 'Public arena endpoint must be rate limited');
 const loginSources = [
   'app/auth/login/page.tsx',
   'expo/app/(auth)/login.tsx',

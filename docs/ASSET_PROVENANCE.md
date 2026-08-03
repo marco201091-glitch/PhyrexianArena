@@ -13,3 +13,7 @@ All distributed assets have a documented origin and redistribution right.
 Store/repository screenshots must be added here before publication, including
 their capture source and confirmation that every visible third-party asset is
 permitted.
+
+For F-Droid-style distribution, screenshots must avoid showing runtime-fetched
+third-party card art unless the source and permission are documented for that
+specific screenshot.

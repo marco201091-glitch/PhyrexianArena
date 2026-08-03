@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { computeArenaColorAnalytics, type ArenaColorMatch } from '@/lib/arena-color-analytics';
+import { applyIpRateLimit } from '@/app/api/_lib/with-rate-limit';
 import { getDeckDisplayColors } from '@/lib/deck-metadata';
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 
@@ -17,9 +18,12 @@ function unwrapRelation<T>(value: T | T[] | null | undefined): T | null {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ code: string }> }
 ) {
+  const rateLimited = await applyIpRateLimit(request, 'publicArena');
+  if (rateLimited) return rateLimited;
+
   const { code } = await context.params;
   const supabase = getServiceClient();
 
