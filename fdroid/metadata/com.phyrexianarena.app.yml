@@ -38,7 +38,18 @@ Builds:
       - cd expo
       - npm run typecheck
     scanignore:
+      - expo/node_modules/hermes-compiler/hermesc/linux64-bin/hermesc
       - expo/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+      - expo/node_modules/@react-native-async-storage/async-storage/android/build.gradle
+      - expo/node_modules/@react-native-community/netinfo/android/build.gradle
+      - expo/node_modules/@react-native-masked-view/masked-view/android/build.gradle
+      - expo/node_modules/react-native-get-random-values/android/build.gradle
+      - expo/node_modules/react-native-keyboard-controller/android/build.gradle
+      - expo/node_modules/react-native-safe-area-context/android/build.gradle
+      - expo/node_modules/react-native-screens/android/build.gradle
+      - expo/node_modules/react-native-svg/android/build.gradle
+      - expo/node_modules/react-native-webview/android/build.gradle
+      - expo/node_modules/react-native/ReactAndroid/publish.gradle
     scandelete:
       - node_modules
       - expo/node_modules
