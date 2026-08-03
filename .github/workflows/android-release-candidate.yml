@@ -84,8 +84,16 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
           PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_MOBILE_PROJECT: ${{ secrets.SENTRY_MOBILE_PROJECT }}
+          SENTRY_URL: ${{ secrets.SENTRY_URL }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
           if (-not $env:RELEASE_KEYSTORE_BASE64) { throw "Missing release keystore secret" }
+          if (-not $env:SENTRY_AUTH_TOKEN -or -not $env:SENTRY_ORG -or -not $env:SENTRY_MOBILE_PROJECT -or -not $env:SENTRY_DSN) {
+            throw "Missing Sentry release configuration"
+          }
           $keystorePath = Join-Path $env:RUNNER_TEMP "phyrexian-arena-release.jks"
           [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:RELEASE_KEYSTORE_BASE64))
 
@@ -103,7 +111,8 @@ jobs:
             "EXPO_PUBLIC_API_BASE_URL=https://app.phyrexianarena.dpdns.org"
             "EXPO_PUBLIC_SITE_URL=https://app.phyrexianarena.dpdns.org"
             "EXPO_PUBLIC_SUPPORT_EMAIL=support@phyrexianarena.dpdns.org"
-            "EXPO_PUBLIC_SENTRY_ENABLED=false"
+            "EXPO_PUBLIC_SENTRY_ENABLED=true"
+            "EXPO_PUBLIC_SENTRY_DSN=$env:SENTRY_DSN"
           ) | Set-Content -LiteralPath "expo/.env.production.local"
 
           $env:PHYREXIAN_SIGNING_PROPERTIES = $signingPath
