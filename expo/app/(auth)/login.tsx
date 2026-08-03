@@ -13,6 +13,7 @@ import { colors } from '@/constants/theme';
 import { signInWithGoogleOnAndroid } from '@/lib/google-auth';
 import { apiPost } from '@/lib/api';
 import { useLanguage } from '@/contexts/language-context';
+import { isFdroidBuild } from '@/lib/env';
 
 function resolveRedirectPath(redirect: string | string[] | undefined): Href {
   const value = Array.isArray(redirect) ? redirect[0] : redirect;
@@ -122,7 +123,7 @@ export default function LoginScreen() {
             testID="login-submit"
             disabled={loading}
           />
-          {Platform.OS === 'android' ? (
+          {Platform.OS === 'android' && !isFdroidBuild() ? (
             <Button
               label={copy('continueWithGoogle')}
               icon="logo-google"

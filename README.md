@@ -2,7 +2,7 @@
 
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://app.phyrexianarena.dpdns.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/badge/release-v7.1.2-7c3aed?style=flat-square)](https://app.phyrexianarena.dpdns.org)
+[![Release](https://img.shields.io/badge/release-v8.0.0-7c3aed?style=flat-square)](https://app.phyrexianarena.dpdns.org)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 
@@ -12,24 +12,25 @@
 
 ---
 
-## What is MTG: Commander?
+## What is MTG Tracker & Analytics?
 
-MTG: Commander is a web, Android, and iOS app for Commander playgroups. Create a private space for your pod, invite friends, import decks, play with the live tracker, and keep a complete history without spreadsheets.
+MTG Tracker & Analytics is a web, Android, and iOS app for Commander playgroups. Create a private space for your pod, invite friends, import decks, play with the live tracker, and keep a complete history without spreadsheets.
 
 A **Playgroup** works for a weekly table, a single evening with friends, or a short league over a few weeks. Everyone joins with their profile and decks; stats stay scoped to that group.
 
 ---
 
-## What's new in v7.1.2
+## What's new in v8.0.0
 
-Version 7.1.2 prepares the Release branch for the next store-ready cut with stronger mobile parity, faster deck/art workflows, and a hardened self-hosted backend:
+Version 8.0.0 prepares the app for public Android distribution through Obtainium and F-Droid while preserving the complete production feature set in standard builds:
 
 - Deck mastery is derived from match history, so existing games immediately contribute to each commander's progression.
 - Public Playgroup pages show rankings, commanders, color trends, and recent matches for arenas explicitly marked public.
 - Arena catalog updates use private Supabase Realtime broadcasts, keeping Web and Expo pickers synchronized without manual reloads.
 - Commander and deck art loading is faster through server-side Scryfall/Archidekt/Moxfield caching and Expo persistent image cache limits.
 - Guest conversion, avatar storage policies, and arena-day summaries are reconciled for the self-hosted Supabase staging path.
-- Web, Android, and iOS versions are synchronized at `7.1.2` with mobile build code `70102`.
+- Standard builds retain Google OAuth, push notifications, avatar selection, and optional Sentry diagnostics; the F-Droid build omits those integrations.
+- Web, Android, and iOS versions are synchronized at `8.0.0` with mobile build code `80000`.
 
 ---
 

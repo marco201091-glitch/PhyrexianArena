@@ -12,7 +12,7 @@ function wrapEmailHtml(content: string) {
       <div style="max-width:560px; margin:0 auto; background:#101713; border:1px solid #24592b; border-radius:16px; padding:28px;">
         <p style="margin:0 0 8px; font-size:12px; letter-spacing:0.24em; text-transform:uppercase; color:#72d17b;">Tracker &amp; Analytics</p>
         ${content}
-        <p style="margin:24px 0 0; font-size:12px; color:#8ca993;">MTG Life Counter &amp; Analytics: Commander · blackistoostrong</p>
+        <p style="margin:24px 0 0; font-size:12px; color:#8ca993;">MTG Tracker &amp; Analytics · blackistoostrong</p>
       </div>
     </div>
   `.trim();
@@ -31,51 +31,51 @@ function buttonHtml(href: string, label: string) {
 export function buildSignupConfirmationEmail(locale: AppLocale, actionLink: string): EmailTemplate {
   if (locale === 'en') {
     return {
-      subject: 'Confirm your MTG: Commander account',
+      subject: 'Confirm your MTG Tracker & Analytics account',
       html: wrapEmailHtml(`
         <h1 style="margin:0 0 12px; font-size:24px;">Confirm your email</h1>
         <p style="margin:0 0 12px; line-height:1.6; color:#d8e6da;">Thanks for joining Tracker &amp; Analytics. Confirm your email to activate your account and start logging Commander games.</p>
         ${buttonHtml(actionLink, 'Confirm email')}
         <p style="margin:0; font-size:13px; line-height:1.6; color:#8ca993;">If you did not create this account, you can ignore this message.</p>
       `),
-      text: `Confirm your MTG: Commander account:\n${actionLink}`,
+      text: `Confirm your MTG Tracker & Analytics account:\n${actionLink}`,
     };
   }
 
   return {
-    subject: 'Conferma il tuo account MTG: Commander',
+    subject: 'Conferma il tuo account MTG Tracker & Analytics',
     html: wrapEmailHtml(`
       <h1 style="margin:0 0 12px; font-size:24px;">Conferma la tua email</h1>
       <p style="margin:0 0 12px; line-height:1.6; color:#d8e6da;">Grazie per esserti unito a Tracker &amp; Analytics. Conferma la tua email per attivare l'account e iniziare a registrare le partite Commander.</p>
       ${buttonHtml(actionLink, 'Conferma email')}
       <p style="margin:0; font-size:13px; line-height:1.6; color:#8ca993;">Se non hai creato questo account, puoi ignorare questo messaggio.</p>
     `),
-    text: `Conferma il tuo account MTG: Commander:\n${actionLink}`,
+    text: `Conferma il tuo account MTG Tracker & Analytics:\n${actionLink}`,
   };
 }
 
 export function buildPasswordResetEmail(locale: AppLocale, actionLink: string): EmailTemplate {
   if (locale === 'en') {
     return {
-      subject: 'Reset your MTG: Commander password',
+      subject: 'Reset your MTG Tracker & Analytics password',
       html: wrapEmailHtml(`
         <h1 style="margin:0 0 12px; font-size:24px;">Reset your password</h1>
         <p style="margin:0 0 12px; line-height:1.6; color:#d8e6da;">We received a request to reset your password. Use the button below to choose a new one.</p>
         ${buttonHtml(actionLink, 'Reset password')}
         <p style="margin:0; font-size:13px; line-height:1.6; color:#8ca993;">If you did not request this, you can ignore this message.</p>
       `),
-      text: `Reset your MTG: Commander password:\n${actionLink}`,
+      text: `Reset your MTG Tracker & Analytics password:\n${actionLink}`,
     };
   }
 
   return {
-    subject: 'Reimposta la password di MTG: Commander',
+    subject: 'Reimposta la password di MTG Tracker & Analytics',
     html: wrapEmailHtml(`
       <h1 style="margin:0 0 12px; font-size:24px;">Reimposta la password</h1>
       <p style="margin:0 0 12px; line-height:1.6; color:#d8e6da;">Abbiamo ricevuto una richiesta di reimpostazione password. Usa il pulsante qui sotto per sceglierne una nuova.</p>
       ${buttonHtml(actionLink, 'Reimposta password')}
       <p style="margin:0; font-size:13px; line-height:1.6; color:#8ca993;">Se non hai richiesto questa operazione, puoi ignorare questo messaggio.</p>
     `),
-    text: `Reimposta la password di MTG: Commander:\n${actionLink}`,
+    text: `Reimposta la password di MTG Tracker & Analytics:\n${actionLink}`,
   };
 }

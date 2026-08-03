@@ -1,0 +1,89 @@
+# F-Droid official submission checklist
+
+## Branch
+
+Use `fdroid-prep` for official F-Droid work. Use `Dev`/`Release` for standard
+APK, Obtainium, and direct distribution.
+
+## Local build intent
+
+F-Droid flavor:
+
+```bash
+APP_VARIANT=fdroid
+EXPO_PUBLIC_FDROID_BUILD=true
+EXPO_PUBLIC_SENTRY_ENABLED=false
+EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
+```
+
+Expected differences from standard APK:
+
+- Google sign-in hidden.
+- Sentry removed from the mobile dependency graph and native Gradle project.
+- Expo Push disabled and `expo-notifications` removed from the mobile dependency
+  graph.
+- `expo-image-picker` removed from the mobile dependency graph; avatar upload is
+  omitted in the F-Droid branch to avoid Android Photo Picker Play-services
+  metadata.
+- Release build can be produced unsigned with Gradle property
+  `-PfdroidBuild=true`, so F-Droid can sign the APK itself.
+
+## Local verification
+
+```bash
+npm ci
+npm --prefix expo ci
+npm run verify:fdroid
+npm run verify:security
+npm run typecheck
+npm --prefix expo run typecheck
+npm --prefix expo run android:bundle:check
+```
+
+Gradle unsigned release check:
+
+```bash
+cd expo/android
+APP_VARIANT=fdroid EXPO_PUBLIC_FDROID_BUILD=true EXPO_PUBLIC_SENTRY_ENABLED=false EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true ./gradlew :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
+```
+
+On Windows PowerShell:
+
+```powershell
+cd expo/android
+$env:APP_VARIANT='fdroid'
+$env:EXPO_PUBLIC_FDROID_BUILD='true'
+$env:EXPO_PUBLIC_SENTRY_ENABLED='false'
+$env:EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS='true'
+.\gradlew.bat :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
+```
+
+## F-Droid metadata
+
+Draft metadata lives in:
+
+```text
+fdroid/metadata/com.phyrexianarena.app.yml
+```
+
+Before submitting to `fdroiddata`, replace:
+
+```text
+REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA
+```
+
+with the exact full commit SHA of the public release commit. F-Droid metadata
+requires commit hashes rather than branch names.
+
+## Remaining external validation
+
+Run in an F-Droid buildserver/container:
+
+```bash
+fdroid readmeta
+fdroid rewritemeta com.phyrexianarena.app
+fdroid lint com.phyrexianarena.app
+fdroid build com.phyrexianarena.app
+```
+
+Then submit a merge request to `fdroiddata`.

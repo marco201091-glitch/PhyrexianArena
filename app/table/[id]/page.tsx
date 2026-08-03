@@ -77,7 +77,7 @@ import type { LiveGameRecord } from '@/lib/live-game';
 import { formatGameDuration } from '@/lib/live-game-duration';
 import { subscribeToArenaCatalog } from '@/lib/arena-catalog-realtime';
 import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
-import { buildArenaAwards } from '@/lib/deck-performance-analytics';
+import { buildArenaAwards, type ArenaAward as DeckArenaAward } from '@/lib/deck-performance-analytics';
 
 import { formatDayGroupLabel, groupMatchesByDay } from '@/lib/arena-session';
 import {
@@ -1055,6 +1055,15 @@ export default function TablePage() {
     () => buildArenaAwards(allTimeAwardsDeckPerformance),
     [allTimeAwardsDeckPerformance],
   );
+  const arenaAwardGroups = useMemo(() => {
+    const groups = new Map<DeckArenaAward['kind'], DeckArenaAward[]>();
+    arenaAwards.forEach((award) => {
+      const entries = groups.get(award.kind) ?? [];
+      entries.push(award);
+      groups.set(award.kind, entries);
+    });
+    return Array.from(groups.values());
+  }, [arenaAwards]);
 
   const copyInviteLink = () => {
     if (!group) return;
@@ -2623,59 +2632,74 @@ export default function TablePage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {arenaAwards.map((award) => {
-                    const presentation = award.kind === 'fastest'
-                      ? { icon: Gauge, title: t({ it: 'Fastest Deck', en: 'Fastest Deck' }), value: formatGameDuration(award.value), tone: 'text-cyan-300', badge: 'border-cyan-300/40 bg-cyan-400/10 shadow-cyan-400/20' }
-                      : award.kind === 'group_slugger'
-                        ? { icon: Flame, title: 'Group Slugger', value: String(award.value), tone: 'text-orange-300', badge: 'border-orange-300/40 bg-orange-400/10 shadow-orange-400/20' }
-                        : award.kind === 'executioner'
-                          ? { icon: Crosshair, title: t({ it: 'Executioner', en: 'Executioner' }), value: String(award.value), tone: 'text-rose-300', badge: 'border-rose-300/40 bg-rose-400/10 shadow-rose-400/20' }
-                          : award.kind === 'runner_up'
-                            ? { icon: Crown, title: t({ it: 'Eterno Secondo', en: 'Runner-up' }), value: String(award.value), tone: 'text-amber-300', badge: 'border-amber-300/50 bg-amber-400/15 shadow-amber-400/25' }
-                            : award.kind === 'archenemy'
-                              ? { icon: Skull, title: 'Archenemy', value: String(award.value), tone: 'text-red-300', badge: 'border-red-300/40 bg-red-400/10 shadow-red-400/20' }
-                              : award.kind === 'comebacker'
-                                ? { icon: TrendingUp, title: 'Comebacker', value: String(award.value), tone: 'text-emerald-300', badge: 'border-emerald-300/40 bg-emerald-400/10 shadow-emerald-400/20' }
-                                : award.kind === 'one_trick'
-                                  ? { icon: Target, title: 'The one-trick', value: String(award.value), tone: 'text-blue-300', badge: 'border-blue-300/40 bg-blue-400/10 shadow-blue-400/20' }
-                                  : award.kind === 'combo_winner'
-                                    ? { icon: Flame, title: 'I think I won', value: String(award.value), tone: 'text-teal-300', badge: 'border-teal-300/40 bg-teal-400/10 shadow-teal-400/20' }
-                                    : { icon: Trophy, title: 'Junk Master', value: String(award.value), tone: 'text-lime-300', badge: 'border-lime-300/40 bg-lime-400/10 shadow-lime-400/20' };
+                <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+                  {arenaAwardGroups.map((awards) => {
+                    const leadAward = awards[0];
+                    const presentation = leadAward.kind === 'fastest'
+                      ? { icon: Gauge, title: t({ it: 'Fastest Deck', en: 'Fastest Deck' }), tone: 'text-cyan-300', badge: 'border-cyan-300/40 bg-cyan-400/10 shadow-cyan-400/20' }
+                      : leadAward.kind === 'group_slugger'
+                        ? { icon: Flame, title: 'Group Slugger', tone: 'text-orange-300', badge: 'border-orange-300/40 bg-orange-400/10 shadow-orange-400/20' }
+                        : leadAward.kind === 'executioner'
+                          ? { icon: Crosshair, title: t({ it: 'Executioner', en: 'Executioner' }), tone: 'text-rose-300', badge: 'border-rose-300/40 bg-rose-400/10 shadow-rose-400/20' }
+                          : leadAward.kind === 'runner_up'
+                            ? { icon: Crown, title: t({ it: 'Eterno Secondo', en: 'Runner-up' }), tone: 'text-amber-300', badge: 'border-amber-300/50 bg-amber-400/15 shadow-amber-400/25' }
+                            : leadAward.kind === 'archenemy'
+                              ? { icon: Skull, title: 'Archenemy', tone: 'text-red-300', badge: 'border-red-300/40 bg-red-400/10 shadow-red-400/20' }
+                              : leadAward.kind === 'comebacker'
+                                ? { icon: TrendingUp, title: 'Comebacker', tone: 'text-emerald-300', badge: 'border-emerald-300/40 bg-emerald-400/10 shadow-emerald-400/20' }
+                                : leadAward.kind === 'one_trick'
+                                  ? { icon: Target, title: 'The one-trick', tone: 'text-blue-300', badge: 'border-blue-300/40 bg-blue-400/10 shadow-blue-400/20' }
+                                  : leadAward.kind === 'combo_winner'
+                                    ? { icon: Flame, title: 'I think I won', tone: 'text-teal-300', badge: 'border-teal-300/40 bg-teal-400/10 shadow-teal-400/20' }
+                                    : { icon: Trophy, title: 'Junk Master', tone: 'text-lime-300', badge: 'border-lime-300/40 bg-lime-400/10 shadow-lime-400/20' };
                     const Icon = presentation.icon;
-                    const podium = award.rank === 1
-                      ? { label: t({ it: 'Oro', en: 'Gold' }), tone: 'border-yellow-300 bg-yellow-300 text-yellow-950' }
-                      : award.rank === 2
-                        ? { label: t({ it: 'Argento', en: 'Silver' }), tone: 'border-slate-200 bg-slate-200 text-slate-950' }
-                        : { label: t({ it: 'Bronzo', en: 'Bronze' }), tone: 'border-orange-500 bg-orange-600 text-white' };
                     return (
-                      <Card key={`${award.kind}:${award.rank}:${award.deck.key}`} className="phyrexian-panel overflow-hidden">
+                      <Card key={leadAward.kind} className="phyrexian-panel overflow-hidden border-white/10 bg-card/70">
                         <CardContent className="p-4">
-                          <div className="mb-3 flex items-center gap-2">
+                          <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
                             <span className={`relative grid h-10 w-10 place-items-center overflow-hidden rounded-xl border shadow-lg ${presentation.badge}`}>
                               <Trophy aria-hidden="true" className="absolute -right-1 -top-1 h-5 w-5 text-white/10" />
                               <Icon className={`relative h-5 w-5 ${presentation.tone}`} />
-                              <span aria-label={`${podium.label}, ${award.rank}`} className={`absolute bottom-0 right-0 grid h-4 min-w-4 place-items-center rounded-full border px-1 text-[9px] font-black leading-none ${podium.tone}`}>
-                                {award.rank}
-                              </span>
                             </span>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{presentation.title}</p>
-                              <p className={`font-bold ${presentation.tone}`}>{presentation.value}</p>
+                              <p className={`text-sm font-bold ${presentation.tone}`}>{t({ it: 'Top 3 mazzi', en: 'Top 3 decks' })}</p>
                             </div>
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                              {awards.length}/3
+                            </span>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <DeckImage src={award.deck.commanderImage} alt={award.deck.commander} className="h-16 w-12 shrink-0 rounded object-cover object-top" />
-                            <div className="min-w-0">
-                              <p className="line-clamp-1 font-semibold text-foreground">{award.deck.name}</p>
-                              <p className="line-clamp-2 text-xs text-emerald-300">{award.deck.commander}</p>
-                              <p className="mt-1 text-[11px] text-muted-foreground">
-                                {award.kind === 'one_trick' ? award.deck.gamesPlayed : award.deck.trackedGames}{' '}
-                                {award.kind === 'one_trick'
-                                  ? t({ it: 'partite', en: 'games' })
-                                  : t({ it: 'partite tracciate', en: 'tracked games' })}
-                              </p>
-                            </div>
+                          <div className="space-y-3">
+                            {awards.map((award) => {
+                              const podium = award.rank === 1
+                                ? { label: t({ it: 'Oro', en: 'Gold' }), tone: 'border-yellow-300 bg-yellow-300 text-yellow-950' }
+                                : award.rank === 2
+                                  ? { label: t({ it: 'Argento', en: 'Silver' }), tone: 'border-slate-200 bg-slate-200 text-slate-950' }
+                                  : { label: t({ it: 'Bronzo', en: 'Bronze' }), tone: 'border-orange-500 bg-orange-600 text-white' };
+                              const value = award.kind === 'fastest' ? formatGameDuration(award.value) : String(award.value);
+
+                              return (
+                                <div key={`${award.kind}:${award.rank}:${award.deck.key}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-background/35 p-2.5">
+                                  <span aria-label={`${podium.label}, ${award.rank}`} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-black ${podium.tone}`}>
+                                    {award.rank}
+                                  </span>
+                                  <DeckImage src={award.deck.commanderImage} alt={award.deck.commander} className="h-14 w-10 shrink-0 rounded object-cover object-top" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="line-clamp-1 font-semibold text-foreground">{award.deck.name}</p>
+                                    <p className="line-clamp-1 text-xs text-emerald-300">{award.deck.commander}</p>
+                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                      {award.kind === 'one_trick' ? award.deck.gamesPlayed : award.deck.trackedGames}{' '}
+                                      {award.kind === 'one_trick'
+                                        ? t({ it: 'partite', en: 'games' })
+                                        : t({ it: 'partite tracciate', en: 'tracked games' })}
+                                    </p>
+                                  </div>
+                                  <span className={`shrink-0 text-sm font-black tabular-nums ${presentation.tone}`}>
+                                    {value}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </CardContent>
                       </Card>

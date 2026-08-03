@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'MTG Life Counter & Analytics: Commander',
-    short_name: 'MTG: Commander',
+    name: 'MTG Tracker & Analytics',
+    short_name: 'MTG Tracker',
     description: 'Life counter, deck analytics, match history, and playgroup tools for Commander.',
     start_url: '/dashboard',
     display: 'standalone',

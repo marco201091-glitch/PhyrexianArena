@@ -1,0 +1,1 @@
+Release-readiness update for version 7.1.2: synchronized web/Android/iOS versioning, deck mastery from match history, realtime arena catalog sync, faster commander/deck art caching, public playgroup pages, and self-hosted Supabase policy reconciliation.
