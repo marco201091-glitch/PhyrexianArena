@@ -11,6 +11,7 @@ describe('F-Droid release build plugin', () => {
     const generated = injectFdroidJvmTargets('apply plugin: "expo-root-project"\n');
 
     expect(generated).toContain('KotlinJvmCompile');
+    expect(generated).toContain('replaceFirst(/^kaptGenerateStubs/, "compile")');
     expect(generated).toContain('javaTask?.targetCompatibility');
     expect(generated).toContain('JvmTarget.fromTarget(bytecodeTarget)');
     expect(injectFdroidJvmTargets(generated)).toBe(generated);

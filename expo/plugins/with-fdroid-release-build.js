@@ -47,7 +47,10 @@ ${PROJECT_MARKER}
 gradle.projectsEvaluated {
   subprojects { subproject ->
     subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile).configureEach { kotlinTask ->
-      def javaTaskName = kotlinTask.name.replaceFirst(/Kotlin$/, "JavaWithJavac")
+      def javaTaskName = kotlinTask.name
+        .replaceFirst(/^kaptGenerateStubs/, "compile")
+        .replaceFirst(/^kapt/, "compile")
+        .replaceFirst(/Kotlin$/, "JavaWithJavac")
       def javaTask = subproject.tasks.findByName(javaTaskName)
       def bytecodeTarget = javaTask?.targetCompatibility ?: JavaVersion.VERSION_17.toString()
       compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(bytecodeTarget))
