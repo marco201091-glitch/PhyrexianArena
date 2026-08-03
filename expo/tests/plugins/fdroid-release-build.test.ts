@@ -32,6 +32,9 @@ describe('F-Droid release build plugin', () => {
     const generated = injectFdroidReleaseBuild(`
 android {
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             signingConfig signingConfigs.debug
         }
