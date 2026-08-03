@@ -3,32 +3,6 @@ AntiFeatures:
     en-US: Depends on hosted Supabase, Scryfall, Archidekt, Moxfield, EDHREC, Resend,
       Turnstile, and other fixed network services that are not user-configurable in
       this release.
-Categories:
-  - Card Game
-License: MIT
-AuthorName: blackistoostrong
-WebSite: https://app.phyrexianarena.dpdns.org
-SourceCode: https://github.com/marco201091-glitch/PhyrexianArena
-IssueTracker: https://github.com/marco201091-glitch/PhyrexianArena/issues
-Changelog: https://github.com/marco201091-glitch/PhyrexianArena/releases
-
-AutoName: MTG Tracker & Analytics
-Description: |-
-  Track Commander games without spreadsheets.
-
-  Features:
-
-  * realtime life, commander damage, infect, eliminations, and match finalization
-  * playgroup history with players, decks, commanders, rankings, and awards
-  * deck import from Archidekt and Moxfield
-  * optional public playgroup pages for rankings and color trends
-  * offline recovery for active live games
-  * Italian and English interface
-
-  This app is unofficial fan content. It is not affiliated with, endorsed by, or
-  sponsored by Wizards of the Coast, Scryfall, EDHREC, Archidekt, Moxfield, or
-  other mentioned services.
-
 RepoType: git
 Repo: https://github.com/marco201091-glitch/PhyrexianArena.git
 
@@ -59,6 +33,10 @@ Builds:
       - cd expo
       - npm run typecheck
     scanignore:
+      - expo/node_modules/react-native/sdks/hermesc/linux64-bin/hermesc
+      - expo/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+      - expo/node_modules/expo-modules-autolinking/scripts/android/autolinking_implementation.gradle
+    scandelete:
       - node_modules
       - expo/node_modules
     build:
