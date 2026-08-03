@@ -3,6 +3,8 @@
 This document prepares distribution through GitHub Releases and Obtainium. It
 does not authorize or trigger a publication.
 
+For F-Droid-style publication, also follow `docs/FDROID_RELEASE_READINESS.md`.
+
 ## One-time setup
 
 - [ ] Replace every launcher, splash, favicon, and wordmark asset with the
@@ -18,7 +20,7 @@ does not authorize or trigger a publication.
 
 ## Every release
 
-- [ ] Merge the approved version into `main`.
+- [ ] Promote the approved version from `Dev` into `Release`.
 - [ ] Create an annotated version tag matching the app version.
 - [ ] Build from the tagged clean worktree with the production environment.
 - [ ] Confirm package `com.phyrexianarena.app`, version name, and version code.
@@ -37,3 +39,5 @@ does not authorize or trigger a publication.
 - Production environment pointing to Dev/Test services.
 - Missing legal pages or inaccessible account deletion.
 - APK signature different from the previous public release.
+- Store listing, package ID, domain, or app name using third-party trademarks in
+  a way that could imply official Wizards endorsement.

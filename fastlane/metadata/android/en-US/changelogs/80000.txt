@@ -1,0 +1,1 @@
+Version 8.0.0 prepares MTG Tracker & Analytics for public Android distribution, improves Awards grouping, and hardens release, privacy, and build checks.

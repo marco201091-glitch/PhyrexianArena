@@ -1,0 +1,14 @@
+MTG Tracker & Analytics helps Commander playgroups track games without spreadsheets.
+
+Features:
+
+- Real-time life, commander damage, infect, eliminations, and match finalization
+- Playgroup history with players, decks, commanders, rankings, and awards
+- Deck import from Archidekt and Moxfield
+- Optional public playgroup pages for rankings and color trends
+- Offline recovery for active live games
+- Italian and English interface
+
+This app is unofficial fan content. It is not affiliated with, endorsed by, or sponsored by Wizards of the Coast, Scryfall, EDHREC, Archidekt, Moxfield, or other mentioned services.
+
+The app depends on hosted network services for account sync, playgroup history, deck import, card imagery, anti-abuse protection, and optional sign-in/diagnostics features.

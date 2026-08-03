@@ -4,6 +4,7 @@ const eslintConfig = [
   {
     ignores: [
       '.next/**',
+      '.cleanup-trash-*/**',
       'artifacts/**',
       'expo/.expo/**',
       'expo/dist/**',

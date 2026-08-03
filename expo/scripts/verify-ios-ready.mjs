@@ -55,12 +55,11 @@ assert(productionConfig.ios?.bundleIdentifier === app.ios.bundleIdentifier, 'Pro
 assert(productionConfig.scheme === app.scheme, 'Production iOS URL scheme diverges from app.json');
 
 const plugins = app.plugins.map((plugin) => Array.isArray(plugin) ? plugin[0] : plugin);
-for (const plugin of ['expo-router', 'expo-screen-orientation', 'expo-notifications', 'expo-secure-store']) {
+for (const plugin of ['expo-router', 'expo-screen-orientation', 'expo-secure-store']) {
   assert(plugins.includes(plugin), `Required iOS config plugin is missing: ${plugin}`);
 }
 
 for (const dependency of [
-  'expo-notifications',
   'react-native-gesture-handler',
   'react-native-reanimated',
   'react-native-worklets',

@@ -15,6 +15,7 @@ import { AppAlertHost } from '@/components/ui/app-alert-host';
 import { ImageCacheWarmer } from '@/components/deck/image-cache-warmer';
 import { colors } from '@/constants/theme';
 import { Sentry, sentryEnabled } from '@/lib/sentry';
+import { isFdroidBuild } from '@/lib/env';
 import { QueryProvider } from '@/components/query-provider';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { AppNotificationListener } from '@/components/app-notification-listener';
@@ -23,7 +24,8 @@ import { ManaLogo } from '@/components/ui/mana-logo';
 import { Cinzel_700Bold, useFonts } from '@expo-google-fonts/cinzel';
 
 const pushNotificationsEnabled =
-  process.env.EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS !== 'true';
+  !isFdroidBuild()
+  && process.env.EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS !== 'true';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
