@@ -1,6 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 
+try {
+  const local = readFileSync('.env.local', 'utf8');
+  for (const line of local.split(/\r?\n/)) {
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+    const index = line.indexOf('=');
+    const key = line.slice(0, index);
+    if (!(key in process.env)) process.env[key] = line.slice(index + 1).replace(/^"|"$/g, '');
+  }
+} catch {
+  // CI and callers may supply the variables directly instead.
+}
+
 const [action, environment, sqlPath] = process.argv.slice(2);
 if (action !== 'apply' || !['dev', 'production'].includes(environment) || !sqlPath) {
   throw new Error('Usage: node scripts/selfhosted-db.mjs apply <dev|production> <migration.sql>');
