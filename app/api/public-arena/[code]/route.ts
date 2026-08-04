@@ -60,7 +60,7 @@ export async function GET(
         is_winner,
         profiles (id, username, display_name),
         arena_guests (id, display_name),
-        decks (name, commander, commander_image, bracket, color_identity),
+        decks (name, commander, commander_image, bracket, color_identity, owner:profiles!decks_user_id_fkey (username, display_name)),
         arena_guest_decks (name, commander, commander_image, bracket, color_identity)
       )
     `)
@@ -73,9 +73,11 @@ export async function GET(
 
   const playerMap = new Map<string, { displayName: string; gamesPlayed: number; wins: number }>();
   const deckMap = new Map<string, {
+    name: string;
     commander: string;
     commanderImage: string | null;
     bracket: string | null;
+    ownerDisplayName: string;
     gamesPlayed: number;
     wins: number;
   }>();
@@ -101,11 +103,14 @@ export async function GET(
       const deckRecord = unwrapRelation(participant.decks) || unwrapRelation(participant.arena_guest_decks);
       const deckId = participant.deck_id || participant.guest_deck_id;
       if (deckRecord && deckId) {
-        const deckKey = `${deckRecord.commander}::${deckRecord.bracket || 'none'}`;
+        const deckKey = `${participant.guest_deck_id ? 'guest' : 'deck'}:${deckId}`;
+        const deckOwner = unwrapRelation((deckRecord as typeof deckRecord & { owner?: { username?: string; display_name?: string | null } }).owner);
         const deckStats = deckMap.get(deckKey) || {
+          name: deckRecord.name,
           commander: deckRecord.commander,
           commanderImage: deckRecord.commander_image || null,
           bracket: deckRecord.bracket,
+          ownerDisplayName: guestProfile?.display_name || deckOwner?.display_name?.trim() || deckOwner?.username || displayName,
           gamesPlayed: 0,
           wins: 0,
         };
