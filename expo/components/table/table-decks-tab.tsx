@@ -46,6 +46,7 @@ export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
             key={deck.key}
             artUri={deck.commanderImageUrl}
             title={deck.commander}
+            commander={deck.ownerDisplayName}
             eyebrow={deck.bracket ? `${labels.bracket} ${deck.bracket}` : labels.deckRankings}
             meta={`${deck.gamesPlayed} ${labels.games} · ${deck.wins}W`}
             badge={index + 1}

@@ -22,6 +22,7 @@ export interface ArenaSharePlayerStat {
 
 export interface ArenaShareCommanderStat {
   commander: string;
+  ownerDisplayName?: string | null;
   gamesPlayed: number;
   wins: number;
   winRate: number;
@@ -83,7 +84,8 @@ export function buildArenaShareText(payload: ArenaSharePayload, labels: ArenaSha
   lines.push('', labels.topDecks);
   payload.topDecks.slice(0, 5).forEach((deck, index) => {
     const bracket = deck.bracket ? ` [B${deck.bracket}]` : '';
-    lines.push(`${index + 1}. ${deck.commander}${bracket} - ${deck.winRate}% (${deck.wins}W / ${deck.gamesPlayed}G)`);
+    const owner = deck.ownerDisplayName?.trim() ? ` — ${deck.ownerDisplayName.trim()}` : '';
+    lines.push(`${index + 1}. ${deck.commander}${owner}${bracket} - ${deck.winRate}% (${deck.wins}W / ${deck.gamesPlayed}G)`);
   });
 
   if (payload.topColors.length > 0) {

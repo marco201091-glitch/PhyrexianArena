@@ -99,8 +99,8 @@ export function TableAwardsTab({ awards, labels }: Props) {
               key={`${award.kind}:${award.rank}:${award.deckId}`}
               artUri={award.commanderImage}
               badge={award.rank}
-              title={award.name}
-              commander={award.commander}
+              title={award.commander}
+              commander={award.ownerDisplayName}
               meta={`${labels.descriptions[award.kind]} · ${metaGames} ${metaLabel}`}
               trailing={<View style={styles.trailing}><View style={[styles.trophy, { backgroundColor: visual.backgroundColor, borderColor: podiumColor }]}><Ionicons name={visual.icon} size={16} color={podiumColor} /><View style={[styles.medalDot, { backgroundColor: podiumColor }]}><Text style={styles.medalRank}>{award.rank}</Text></View></View><Text style={[styles.value, { color: visual.color }]}>{value}</Text></View>}
             />;
