@@ -61,7 +61,6 @@ export default function ForgotPasswordScreen() {
           languageCode={language}
           onVerify={setCaptchaToken}
           onExpire={() => setCaptchaToken('')}
-          unavailableLabel={copy('captchaRequired')}
           verifyLabel={copy('captchaTapToVerify')}
           verifiedLabel={copy('captchaVerified')}
           errorLabel={copy('captchaFailed')}

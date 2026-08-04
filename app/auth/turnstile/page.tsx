@@ -15,7 +15,7 @@ export default function TurnstileMobilePage() {
     fetch('/api/auth/turnstile/config', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() as Promise<{ siteKey?: string }> : Promise.reject(new Error('Turnstile unavailable')))
       .then((config) => { if (!cancelled && config.siteKey) setSiteKey(config.siteKey); })
-      .catch(() => undefined);
+      .catch(() => window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'error' })));
     return () => { cancelled = true; };
   }, []);
 
