@@ -37,7 +37,7 @@ function collectSourceFiles(path: string): string[] {
 }
 
 describe('self-hosted runtime independence', () => {
-  it('contains no Vercel or Supabase Cloud runtime dependency', () => {
+  it('contains no retired-host runtime dependency', () => {
     const source = [...sourceRoots, ...rootFiles]
       .flatMap(collectSourceFiles)
       .map((file) => readFileSync(file, 'utf8'))

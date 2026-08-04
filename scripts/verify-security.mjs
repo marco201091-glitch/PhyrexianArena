@@ -26,7 +26,7 @@ const packageJson = readFileSync(join(root, 'package.json'), 'utf8');
 assert.doesNotMatch(
   packageJson,
   /supabase\s+db\s+query\s+--linked/,
-  'Repository scripts must not use Supabase CLI --linked against the retired Cloud archive',
+  'Repository scripts must not use Supabase CLI --linked',
 );
 
 const protectedRoutes = [
