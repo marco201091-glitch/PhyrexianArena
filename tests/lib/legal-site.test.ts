@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   APP_VERSION,
   FAN_CONTENT_NOTICE,
@@ -21,7 +23,8 @@ describe('legal-site', () => {
   });
 
   it('exposes the current app version', () => {
-    expect(APP_VERSION).toBe('8.0.0');
+    const packageVersion = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8')).version;
+    expect(APP_VERSION).toBe(packageVersion);
     expect(LEGAL_SITE_NAME).toBe('MTG Life Counter & Analytics: Commander');
     expect(LEGAL_BRAND_NAME).toBe('blackistoostrong');
   });

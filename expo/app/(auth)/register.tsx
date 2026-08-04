@@ -101,7 +101,6 @@ export default function RegisterScreen() {
             onVerify={setCaptchaToken}
             onExpire={() => setCaptchaToken('')}
             onError={resetCaptcha}
-            unavailableLabel={copy('captchaRequired')}
             verifyLabel={copy('captchaTapToVerify')}
             verifiedLabel={copy('captchaVerified')}
             errorLabel={copy('captchaFailed')}
