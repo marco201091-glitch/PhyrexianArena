@@ -76,11 +76,11 @@ type EditMatchModalProps = {
     matchPlayedAtIso: string;
     matchNotes: string;
     winCondition: ArenaMatch['win_condition'];
-    participants: Array<{
+    participants: {
       id: string;
       participantKey: string | null;
       isGuest: boolean;
-    }>;
+    }[];
   }) => Promise<void>;
 };
 

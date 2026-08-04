@@ -187,7 +187,7 @@ export function ManaColorReport({
     );
   }
 
-  const sortOptions: Array<{ key: ColorReportSortKey; label: string }> = [
+  const sortOptions: { key: ColorReportSortKey; label: string }[] = [
     { key: 'color', label: labels.color },
     { key: 'appearances', label: labels.appearances },
     { key: 'wins', label: labels.wins },

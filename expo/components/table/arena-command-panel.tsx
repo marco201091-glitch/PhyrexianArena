@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { PanelWithActions } from '@/components/ui/panel-with-actions';
 import { colors } from '@/constants/theme';

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Development Workflow"
+  short_description: "Run this project with PM-led specs and persistent task tracking"
+  default_prompt: "Apply the project workflow, read the active checklist, and implement the PM's specification."

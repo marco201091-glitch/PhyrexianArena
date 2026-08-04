@@ -34,47 +34,47 @@ interface PublicArenaResponse {
     totalMatches: number;
     totalPlayers: number;
   };
-  topPlayers: Array<{
+  topPlayers: {
     displayName: string;
     gamesPlayed: number;
     wins: number;
     winRate: number;
-  }>;
-  topDecks: Array<{
+  }[];
+  topDecks: {
     commander: string;
     commanderImage: string | null;
     bracket: string | null;
     gamesPlayed: number;
     wins: number;
     winRate: number;
-  }>;
-  topColors: Array<{
+  }[];
+  topColors: {
     color: string;
     label: { it: string; en: string };
     gamesPlayed: number;
     percentage: number;
     winRate: number;
-  }>;
+  }[];
   colorMeta: {
-    played: Array<{ color: string; appearances: number; wins: number; percentage: number; winRate: number }>;
-    won: Array<{ color: string; appearances: number; wins: number; percentage: number; winRate: number }>;
-    winRates: Array<{ color: string; appearances: number; wins: number; percentage: number; winRate: number }>;
-    pairs: Array<{ key: string; colors: string[]; guildName: { it: string; en: string } | null; appearances: number; wins: number; winRate: number }>;
+    played: { color: string; appearances: number; wins: number; percentage: number; winRate: number }[];
+    won: { color: string; appearances: number; wins: number; percentage: number; winRate: number }[];
+    winRates: { color: string; appearances: number; wins: number; percentage: number; winRate: number }[];
+    pairs: { key: string; colors: string[]; guildName: { it: string; en: string } | null; appearances: number; wins: number; winRate: number }[];
     missingColorGames: number;
   };
-  recentMatches: Array<{
+  recentMatches: {
     id: string;
     playedAt: string;
     notes: string | null;
     winnerName: string;
-    participants: Array<{
+    participants: {
       displayName: string;
       commander: string | null;
       deckName: string | null;
       isWinner: boolean;
       bracket: string | null;
-    }>;
-  }>;
+    }[];
+  }[];
 }
 
 function formatDate(value: string, language: 'en' | 'it') {
