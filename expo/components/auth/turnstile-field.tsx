@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Modal } from '@/components/ui/modal';
-import { getApiBaseUrl, getTurnstileSiteKey } from '@/lib/env';
+import { getApiBaseUrl } from '@/lib/env';
 import { colors, spacing } from '@/constants/theme';
 
 type TurnstileFieldProps = {
@@ -10,16 +10,14 @@ type TurnstileFieldProps = {
   onExpire: () => void;
   onError?: () => void;
   resetSignal?: number;
-  unavailableLabel: string;
   verifyLabel: string;
   verifiedLabel: string;
   errorLabel: string;
   languageCode?: string;
 };
 
-export function TurnstileField({ onVerify, onExpire, onError, resetSignal = 0, unavailableLabel, verifyLabel, verifiedLabel, errorLabel }: TurnstileFieldProps) {
+export function TurnstileField({ onVerify, onExpire, onError, resetSignal = 0, verifyLabel, verifiedLabel, errorLabel }: TurnstileFieldProps) {
   const { height } = useWindowDimensions();
-  const siteKey = getTurnstileSiteKey();
   const [visible, setVisible] = useState(false);
   const [verified, setVerified] = useState(false);
   const [sessionKey, setSessionKey] = useState(0);
@@ -29,8 +27,6 @@ export function TurnstileField({ onVerify, onExpire, onError, resetSignal = 0, u
   useEffect(() => { setVerified(false); setErrorMessage(null); setVisible(false); setSessionKey((value) => value + 1); }, [resetSignal]);
   const close = useCallback(() => setVisible(false), []);
   const open = useCallback(() => { setErrorMessage(null); setSessionKey((value) => value + 1); setVisible(true); }, []);
-  if (!siteKey) return <Text style={styles.unavailable}>{unavailableLabel}</Text>;
-
   return <View style={styles.wrapper}>
     {verified ? <Text style={styles.verified}>✓ {verifiedLabel}</Text> : <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={verifyLabel} style={styles.button}><Text style={styles.buttonText}>🛡 {verifyLabel}</Text><Text style={styles.buttonHint}>Richiesto per continuare</Text></Pressable>}
     {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
@@ -50,7 +46,6 @@ const styles = StyleSheet.create({
   buttonHint: { color: colors.muted, fontSize: 12, marginTop: 3 },
   verified: { color: colors.successBright, fontSize: 16, fontWeight: '700', paddingVertical: spacing.sm },
   error: { color: colors.destructive, fontSize: 12, lineHeight: 16 },
-  unavailable: { color: colors.muted, fontSize: 13 },
   modalTitle: { color: colors.foreground, fontSize: 18, fontWeight: '700', marginBottom: spacing.sm },
   challengeHost: { width: '100%', overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: colors.borderSoft, backgroundColor: colors.cardInset },
 });
