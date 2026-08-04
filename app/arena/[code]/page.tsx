@@ -34,9 +34,11 @@ interface PublicArenaResponse {
     winRate: number;
   }>;
   topDecks: Array<{
+    name: string;
     commander: string;
     commanderImage: string | null;
     bracket: string | null;
+    ownerDisplayName: string;
     gamesPlayed: number;
     wins: number;
     winRate: number;
@@ -220,7 +222,8 @@ export default function PublicArenaPage() {
                       <Swords className="h-4 w-4" />
                       {t({ it: 'Mazzo top', en: 'Top deck' })}
                     </div>
-                    <p className="truncate font-semibold text-foreground">{data.topDecks[0].commander}</p>
+                    <p className="truncate font-semibold text-foreground">{data.topDecks[0].name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{data.topDecks[0].ownerDisplayName}</p>
                     <p className="text-sm text-muted-foreground">
                       {data.topDecks[0].winRate}% · {data.topDecks[0].wins}W / {data.topDecks[0].gamesPlayed}G
                     </p>
@@ -323,7 +326,8 @@ export default function PublicArenaPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">{deck.commander}</p>
+                        <p className="truncate font-medium text-foreground">{deck.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{deck.ownerDisplayName}</p>
                         {deck.bracket && (
                           <span className="mt-1 inline-block rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs text-emerald-300">
                             B{deck.bracket}

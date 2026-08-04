@@ -30,6 +30,8 @@ export interface DeckPerformanceStats {
   name: string;
   commander: string;
   commanderImage: string | null;
+  bracket: string | null;
+  ownerDisplayName: string;
   gamesPlayed: number;
   trackedGames: number;
   trackingCoverage: number;
@@ -98,6 +100,8 @@ export function buildDeckPerformanceStats(rows: DeckPerformanceInputRow[]) {
       name: row.deck_name || row.guest_deck_name || row.deck_commander || row.guest_deck_commander || 'Deck',
       commander: row.deck_commander || row.guest_deck_commander || 'Unknown commander',
       commanderImage: row.deck_commander_image || row.guest_deck_commander_image,
+      bracket: null,
+      ownerDisplayName: 'Player',
       gamesPlayed: 0,
       trackedGames: 0,
       trackingCoverage: 0,

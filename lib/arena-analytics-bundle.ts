@@ -41,6 +41,8 @@ type DeckRollup = {
   deck_name: string;
   commander: string;
   commander_image: string | null;
+  bracket: string | null;
+  owner_display_name: string;
   games_played: number;
   tracked_games: number;
   wins: number;
@@ -181,6 +183,8 @@ export function buildArenaAnalyticsBundle(
     name: row.deck_name,
     commander: row.commander,
     commanderImage: row.commander_image,
+    bracket: row.bracket,
+    ownerDisplayName: row.owner_display_name,
     gamesPlayed: row.games_played,
     trackedGames: row.tracked_games,
     trackingCoverage: percentage(row.tracked_games, row.games_played),
@@ -212,7 +216,13 @@ export function buildArenaAnalyticsBundle(
     (left, right) => left.localeCompare(right, undefined, { numeric: true }),
   );
 
-  return { players, commanders, colors, decks, brackets };
+  const filteredDecks = decks
+    .filter((deck) => bracketFilter === 'all' || deck.bracket === bracketFilter)
+    .sort((left, right) => commanderSort === 'gamesPlayed'
+      ? right.gamesPlayed - left.gamesPlayed || right.wins - left.wins || right.winRate - left.winRate || left.key.localeCompare(right.key)
+      : right.winRate - left.winRate || right.wins - left.wins || right.gamesPlayed - left.gamesPlayed || left.key.localeCompare(right.key));
+
+  return { players, commanders, colors, decks: filteredDecks, brackets };
 }
 
 export async function fetchArenaAnalyticsPayload(

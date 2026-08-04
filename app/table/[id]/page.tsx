@@ -77,7 +77,7 @@ import type { LiveGameRecord } from '@/lib/live-game';
 import { formatGameDuration } from '@/lib/live-game-duration';
 import { subscribeToArenaCatalog } from '@/lib/arena-catalog-realtime';
 import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
-import { buildArenaAwards, type ArenaAward as DeckArenaAward } from '@/lib/deck-performance-analytics';
+import { buildArenaAwards, type ArenaAward as DeckArenaAward, type DeckPerformanceStats } from '@/lib/deck-performance-analytics';
 
 import { formatDayGroupLabel, groupMatchesByDay } from '@/lib/arena-session';
 import {
@@ -319,16 +319,6 @@ interface PlayerStats {
   winRate: number;
 }
 
-interface CommanderStats {
-  key: string;
-  commander: string;
-  commanderImageUrl: string | null;
-  bracket: string | null;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
-}
-
 function getPlayerRank(stats: PlayerStats[], index: number) {
   const entry = stats[index];
   if (!entry) return index + 1;
@@ -348,8 +338,8 @@ function getPlayerRank(stats: PlayerStats[], index: number) {
 }
 
 function hasSameCommanderRank(
-  a: CommanderStats,
-  b: CommanderStats,
+  a: DeckPerformanceStats,
+  b: DeckPerformanceStats,
   deckStatsSort: 'winRate' | 'gamesPlayed'
 ) {
   if (deckStatsSort === 'gamesPlayed') {
@@ -359,7 +349,7 @@ function hasSameCommanderRank(
 }
 
 function getCommanderRank(
-  stats: CommanderStats[],
+  stats: DeckPerformanceStats[],
   index: number,
   deckStatsSort: 'winRate' | 'gamesPlayed'
 ) {
@@ -442,7 +432,7 @@ export default function TablePage() {
     [analyticsPayload, bracketFilter, deckStatsSort],
   );
   const playerStats = analyticsBundle.players as PlayerStats[];
-  const commanderStats = analyticsBundle.commanders as CommanderStats[];
+  const deckStats = analyticsBundle.decks;
 
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [detailsMatch, setDetailsMatch] = useState<Match | null>(null);
@@ -509,8 +499,8 @@ export default function TablePage() {
   );
 
   const commanderRanksByIndex = useMemo(
-    () => commanderStats.map((_, index) => getCommanderRank(commanderStats, index, deckStatsSort)),
-    [commanderStats, deckStatsSort]
+    () => deckStats.map((_, index) => getCommanderRank(deckStats, index, deckStatsSort)),
+    [deckStats, deckStatsSort]
   );
 
   const syncArenaDeckMetadata = useCallback(async (loadedDecks: Deck[]) => {
@@ -1890,8 +1880,10 @@ export default function TablePage() {
         wins: player.wins,
         winRate: player.winRate,
       })),
-      topDecks: commanderStats.slice(0, 5).map((deck) => ({
+      topDecks: deckStats.slice(0, 5).map((deck) => ({
+        name: deck.name,
         commander: deck.commander,
+        ownerDisplayName: deck.ownerDisplayName,
         gamesPlayed: deck.gamesPlayed,
         wins: deck.wins,
         winRate: deck.winRate,
@@ -2687,6 +2679,7 @@ export default function TablePage() {
                                   <div className="min-w-0 flex-1">
                                     <p className="line-clamp-1 font-semibold text-foreground">{award.deck.name}</p>
                                     <p className="line-clamp-1 text-xs text-emerald-300">{award.deck.commander}</p>
+                                    <p className="line-clamp-1 text-[11px] text-muted-foreground">{t({ it: 'Proprietario', en: 'Owner' })}: {award.deck.ownerDisplayName}</p>
                                     <p className="mt-1 text-[11px] text-muted-foreground">
                                       {award.kind === 'one_trick' ? award.deck.gamesPlayed : award.deck.trackedGames}{' '}
                                       {award.kind === 'one_trick'
@@ -2987,7 +2980,7 @@ export default function TablePage() {
           </TabsContent>
 
           <TabsContent value="commanders">
-            {commanderStats.length === 0 ? (
+            {deckStats.length === 0 ? (
               <Card className="bg-card/50 border-border">
                 <CardContent className="py-12 text-center">
                   <Swords className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -3004,13 +2997,14 @@ export default function TablePage() {
                         <Trophy className="w-5 h-5" />
                         <span className="text-sm font-medium">{t({ it: 'Miglior mazzo', en: 'Best Deck' })}</span>
                       </div>
-                      <p className="text-xl font-bold text-foreground truncate">{commanderStats[0]?.commander || '-'}</p>
-                      {commanderStats[0]?.bracket && (
+                      <p className="text-xl font-bold text-foreground truncate">{deckStats[0]?.name || '-'}</p>
+                      <p className="text-xs text-muted-foreground">{deckStats[0]?.ownerDisplayName || '-'}</p>
+                      {deckStats[0]?.bracket && (
                         <p className="text-xs text-emerald-300">
-                          {t({ it: 'Bracket', en: 'Bracket' })} {commanderStats[0].bracket}
+                          {t({ it: 'Bracket', en: 'Bracket' })} {deckStats[0].bracket}
                         </p>
                       )}
-                      <p className="text-sm text-muted-foreground">{commanderStats[0]?.winRate}% {t({ it: 'win rate', en: 'win rate' })}</p>
+                      <p className="text-sm text-muted-foreground">{deckStats[0]?.winRate}% {t({ it: 'win rate', en: 'win rate' })}</p>
                     </CardContent>
                   </Card>
                   <Card className="bg-card/50 border-border">
@@ -3019,7 +3013,7 @@ export default function TablePage() {
                         <Swords className="w-5 h-5" />
                         <span className="text-sm font-medium">{t({ it: 'Mazzi unici', en: 'Unique Decks' })}</span>
                       </div>
-                      <p className="text-2xl font-bold text-foreground">{commanderStats.length}</p>
+                      <p className="text-2xl font-bold text-foreground">{deckStats.length}</p>
                       <p className="text-sm text-muted-foreground">{t({ it: 'mazzi tracciati', en: 'tracked decks' })}</p>
                     </CardContent>
                   </Card>
@@ -3030,15 +3024,15 @@ export default function TablePage() {
                         <span className="text-sm font-medium">{t({ it: 'Piu giocato', en: 'Most Played' })}</span>
                       </div>
                       <p className="text-xl font-bold text-foreground truncate">
-                        {[...commanderStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.commander || '-'}
+                        {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.name || '-'}
                       </p>
-                      {[...commanderStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.bracket && (
+                      {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.bracket && (
                         <p className="text-xs text-emerald-300">
-                          {t({ it: 'Bracket', en: 'Bracket' })} {[...commanderStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0].bracket}
+                          {t({ it: 'Bracket', en: 'Bracket' })} {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0].bracket}
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground">
-                        {[...commanderStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.gamesPlayed || 0} {t({ it: 'partite', en: 'games' })}
+                        {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.gamesPlayed || 0} {t({ it: 'partite', en: 'games' })}
                       </p>
                     </CardContent>
                   </Card>
@@ -3049,7 +3043,7 @@ export default function TablePage() {
                         <span className="text-sm font-medium">{t({ it: 'Win rate medio', en: 'Avg Win Rate' })}</span>
                       </div>
                       <p className="text-2xl font-bold text-foreground">
-                        {commanderStats.length > 0 ? Math.round(commanderStats.reduce((a, b) => a + b.winRate, 0) / commanderStats.length) : 0}%
+                        {deckStats.length > 0 ? Math.round(deckStats.reduce((a, b) => a + b.winRate, 0) / deckStats.length) : 0}%
                       </p>
                       <p className="text-sm text-muted-foreground">{t({ it: 'su tutti i mazzi', en: 'across all decks' })}</p>
                     </CardContent>
@@ -3069,7 +3063,7 @@ export default function TablePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {commanderStats.map((deck, index) => {
+                      {deckStats.map((deck, index) => {
                         const isRanked = deck.gamesPlayed >= 3;
                         const rank = commanderRanksByIndex[index] ?? index + 1;
                         return (
@@ -3090,7 +3084,7 @@ export default function TablePage() {
                               {rank}
                             </div>
                             <DeckImage
-                              src={deck.commanderImageUrl}
+                              src={deck.commanderImage}
                               alt={deck.commander}
                               className="h-14 w-20 shrink-0 rounded object-cover object-top"
                             />
@@ -3098,7 +3092,8 @@ export default function TablePage() {
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2 mb-1">
                                 {isRanked && rank === 1 && <Trophy className="w-4 h-4 text-emerald-400" />}
-                                <p className="font-semibold text-foreground break-words">{deck.commander}</p>
+                              <p className="font-semibold text-foreground break-words">{deck.commander}</p>
+                              <p className="w-full text-xs text-muted-foreground">{t({ it: 'Proprietario', en: 'Owner' })}: {deck.ownerDisplayName}</p>
                                 {deck.bracket && <BracketBadge bracket={deck.bracket} />}
                                 <EdhrecBadge commander={deck.commander} />
                               </div>
