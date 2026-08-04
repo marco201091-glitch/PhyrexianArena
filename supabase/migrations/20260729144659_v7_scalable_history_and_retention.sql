@@ -203,7 +203,7 @@ BEGIN
 END;
 $$;
 
--- Supabase Cron runs maintenance even when the Dev Vercel deployment sleeps.
+-- Supabase Cron runs maintenance independently from the web deployment.
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
 
 DO $$

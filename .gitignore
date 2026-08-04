@@ -36,10 +36,6 @@ yarn-error.log*
 !.env.example
 !expo/.env.production.example
 
-# vercel
-.vercel
-.env.vercel.*
-
 # agent/debug scratch scripts
 scripts/_tmp-*.mjs
 .cleanup-trash-*/

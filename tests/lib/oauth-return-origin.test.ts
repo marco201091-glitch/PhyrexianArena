@@ -22,7 +22,7 @@ describe('oauth-return-origin', () => {
 
   it('rejects external, malformed and legacy hosting origins', () => {
     expect(getSafeOAuthReturnOrigin('https://example.com')).toBeNull();
-    expect(getSafeOAuthReturnOrigin('https://phyrexian-arena.vercel.app')).toBeNull();
+    expect(getSafeOAuthReturnOrigin('https://untrusted.example')).toBeNull();
     expect(getSafeOAuthReturnOrigin('not-a-url')).toBeNull();
     expect(getSafeOAuthReturnOrigin(null)).toBeNull();
   });
