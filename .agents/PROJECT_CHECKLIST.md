@@ -7,6 +7,7 @@
 ## External follow-up
 
 - [ ] Monitor the official F-Droid merge request until approval.
+- [ ] PM verification of the Dokploy production build.
 
 ## Completed
 
@@ -16,3 +17,4 @@
 - [x] Correct the responsive login-logo rendering.
 - [x] Remove confirmed obsolete code, assets, documentation, and dependencies.
 - [x] Validate web, mobile, release, and dependency quality gates.
+- [x] Start the `main` web application deployment on Dokploy production.

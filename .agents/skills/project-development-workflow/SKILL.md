@@ -25,6 +25,12 @@ description: Apply the PM-led, specification-driven workflow for MTG Tracker & A
 - Update the code map below whenever a substantial change alters architecture, ownership, major directories, release flow, or branch responsibilities.
 - Finish only after the requested outcome is verified. Respond with `fatto` followed by an extremely concise checklist of completed items. Include remaining blockers only when any exist.
 
+## Builds and deployments
+
+- Trigger the requested build or deployment and verify only that the platform accepted and started it.
+- Do not monitor GitHub, Dokploy, store, or other remote builds unless the PM explicitly asks. The PM will report failures for diagnosis.
+- After launch, respond only `Build <target> in corso`, using a clear target such as `github`, `dokploy-production`, or `dokploy-dev`. This is the exception to the normal `fatto` response.
+
 ## Current code map
 
 - `app/`: Next.js 16 App Router pages, layouts, and API routes for the web application.
