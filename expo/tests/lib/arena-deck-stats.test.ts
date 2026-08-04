@@ -26,16 +26,16 @@ describe('arena commander stats', () => {
     match('3', [participant('Atraxa', '4', true)]),
   ];
 
-  it('separates the same commander by bracket and includes guest decks', () => {
+  it('keeps physical decks separate and includes guest decks', () => {
     expect(calculateCommanderStats(matches).map((entry) => [entry.key, entry.gamesPlayed, entry.wins, entry.winRate])).toEqual([
-      ['Atraxa::4', 1, 1, 100], ['Atraxa::3', 2, 1, 50], ['Krenko::2', 2, 1, 50],
+      ['guest-deck-Krenko', 1, 1, 100], ['deck-Atraxa', 3, 2, 67], ['deck-Krenko', 1, 0, 0],
     ]);
   });
 
   it('filters brackets and supports every sort order without mutating results', () => {
-    expect(calculateCommanderStats(matches, '2').map((entry) => entry.commander)).toEqual(['Krenko']);
+    expect(calculateCommanderStats(matches, '2').map((entry) => entry.commander)).toEqual(['Krenko', 'Krenko']);
     expect(calculateCommanderStats(matches, 'all', 'gamesPlayed').map((entry) => entry.key)).toEqual([
-      'Atraxa::3', 'Krenko::2', 'Atraxa::4',
+      'deck-Atraxa', 'guest-deck-Krenko', 'deck-Krenko',
     ]);
     expect(calculateCommanderStats(matches, 'all', 'winRate')).toHaveLength(3);
   });

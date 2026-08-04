@@ -41,9 +41,11 @@ interface PublicArenaResponse {
     winRate: number;
   }[];
   topDecks: {
+    name: string;
     commander: string;
     commanderImage: string | null;
     bracket: string | null;
+    ownerDisplayName: string;
     gamesPlayed: number;
     wins: number;
     winRate: number;
@@ -228,6 +230,7 @@ export default function PublicArenaScreen() {
                   />
                   <View style={styles.deckInfo}>
                     <Text style={styles.highlightValue}>{data.topDecks[0].commander}</Text>
+                    <Text style={styles.highlightHint}>{data.topDecks[0].ownerDisplayName}</Text>
                     <Text style={styles.highlightHint}>
                       {data.topDecks[0].winRate}% · {data.topDecks[0].wins}W / {data.topDecks[0].gamesPlayed}G
                     </Text>
@@ -266,7 +269,7 @@ export default function PublicArenaScreen() {
         <PhyrexianPanel style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>{copy('topDecks')}</Text>
           {data.topDecks.map((deck, index) => (
-            <View key={`${deck.commander}-${index}`} style={styles.deckListRow}>
+            <View key={`${deck.commander}-${deck.ownerDisplayName}-${index}`} style={styles.deckListRow}>
               <DeckImage
                 uri={deck.commanderImage}
                 alt={deck.commander}
@@ -275,6 +278,7 @@ export default function PublicArenaScreen() {
               />
               <View style={styles.deckInfo}>
                 <Text style={styles.listPrimary}>{deck.commander}</Text>
+                <Text style={styles.listSecondary}>{deck.ownerDisplayName}</Text>
                 <Text style={styles.listSecondary}>
                   {deck.winRate}% · {deck.wins}W / {deck.gamesPlayed}G
                 </Text>
