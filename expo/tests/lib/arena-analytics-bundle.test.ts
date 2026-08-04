@@ -26,6 +26,8 @@ describe('arena analytics bundle', () => {
           deck_name: 'Counters',
           commander: 'Atraxa',
           commander_image: 'https://img.test/a.jpg',
+          bracket: '4',
+          owner_display_name: 'Alice',
           games_played: 10,
           tracked_games: 10,
           wins: 7,
@@ -43,7 +45,7 @@ describe('arena analytics bundle', () => {
 
     expect(view.totalMatches).toBe(1200);
     expect(view.players[0]).toMatchObject({ displayName: 'Alice', winRate: 70 });
-    expect(view.commanders[0]).toMatchObject({ commander: 'Atraxa', winRate: 70 });
+    expect(view.commanders[0]).toMatchObject({ commander: 'Atraxa', ownerDisplayName: 'Alice', winRate: 70 });
     expect(view.brackets).toEqual(['4']);
     expect(view.awards.map((award) => award.kind)).toContain('fastest');
   });
@@ -55,6 +57,8 @@ describe('arena analytics bundle', () => {
       deck_name: `Deck ${index}`,
       commander: `Commander ${index}`,
       commander_image: null,
+      bracket: '3',
+      owner_display_name: `Owner ${index}`,
       games_played: 3,
       tracked_games: 3,
       wins: 0,
@@ -74,6 +78,19 @@ describe('arena analytics bundle', () => {
       { rank: 1, deckId: 'deck-0', value: 60 },
       { rank: 2, deckId: 'deck-1', value: 45 },
       { rank: 3, deckId: 'deck-2', value: 30 },
+    ]);
+  });
+
+  it('keeps identical commanders separate by physical deck and owner', () => {
+    const view = buildArenaAnalyticsView({
+      decks: [
+        { key: 'deck:a', deck_id: 'a', deck_name: 'A', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Alice', games_played: 4, tracked_games: 4, wins: 3, second_places: 0, first_eliminations: 0, comeback_wins: 0, combo_wins: 0, alternate_wins: 0, eliminations: 0, group_damage_dealt: 0, median_winning_duration_seconds: null },
+        { key: 'deck:b', deck_id: 'b', deck_name: 'B', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Bob', games_played: 5, tracked_games: 5, wins: 2, second_places: 0, first_eliminations: 0, comeback_wins: 0, combo_wins: 0, alternate_wins: 0, eliminations: 0, group_damage_dealt: 0, median_winning_duration_seconds: null },
+      ],
+    }, '4', 'gamesPlayed');
+
+    expect(view.commanders.map(({ commander, ownerDisplayName, gamesPlayed }) => [commander, ownerDisplayName, gamesPlayed])).toEqual([
+      ['Atraxa', 'Bob', 5], ['Atraxa', 'Alice', 4],
     ]);
   });
 

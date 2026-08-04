@@ -372,6 +372,7 @@ export default function TableScreen() {
       })),
       topDecks: commanderStats.slice(0, 5).map((deck) => ({
         commander: deck.commander,
+        ownerDisplayName: deck.ownerDisplayName,
         gamesPlayed: deck.gamesPlayed,
         wins: deck.wins,
         winRate: deck.winRate,

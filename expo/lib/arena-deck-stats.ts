@@ -1,9 +1,10 @@
-import { getParticipantDeckSnapshot } from '@/lib/arena-participants';
+import { getParticipantDeckId, getParticipantDeckSnapshot, getParticipantDisplayName } from '@/lib/arena-participants';
 import type { ArenaMatch } from '@/lib/types/arena';
 
 export interface CommanderStats {
   key: string;
   commander: string;
+  ownerDisplayName: string;
   commanderImageUrl: string | null;
   bracket: string | null;
   gamesPlayed: number;
@@ -27,37 +28,37 @@ export function calculateCommanderStats(
   bracketFilter = 'all',
   deckStatsSort: DeckStatsSort = 'winRate',
 ): CommanderStats[] {
-  const commanderMap = new Map<string, CommanderStats>();
+  const deckMap = new Map<string, CommanderStats>();
 
   matches.forEach((match) => {
     match.match_participants.forEach((participant) => {
       const deck = getParticipantDeckSnapshot(participant);
-      if (!deck) return;
+      const deckId = getParticipantDeckId(participant);
+      if (!deck || !deckId) return;
       if (bracketFilter !== 'all' && deck.bracket !== bracketFilter) return;
 
-      const commander = deck.commander;
-      const bracket = deck.bracket;
-      const key = `${commander}::${bracket || 'none'}`;
+      const key = deckId;
 
-      if (!commanderMap.has(key)) {
-        commanderMap.set(key, {
+      if (!deckMap.has(key)) {
+        deckMap.set(key, {
           key,
-          commander,
+          commander: deck.commander,
+          ownerDisplayName: getParticipantDisplayName(participant),
           commanderImageUrl: deck.commander_image,
-          bracket,
+          bracket: deck.bracket,
           gamesPlayed: 0,
           wins: 0,
           winRate: 0,
         });
       }
 
-      const stats = commanderMap.get(key)!;
+      const stats = deckMap.get(key)!;
       stats.gamesPlayed += 1;
       if (participant.is_winner) stats.wins += 1;
     });
   });
 
-  const withRates = Array.from(commanderMap.values()).map((stats) => ({
+  const withRates = Array.from(deckMap.values()).map((stats) => ({
     ...stats,
     winRate: stats.gamesPlayed > 0 ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0,
   }));

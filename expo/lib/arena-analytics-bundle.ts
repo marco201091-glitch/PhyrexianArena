@@ -41,6 +41,8 @@ type DeckRollup = {
   deck_name: string;
   commander: string;
   commander_image: string | null;
+  bracket: string | null;
+  owner_display_name: string;
   games_played: number;
   tracked_games: number;
   wins: number;
@@ -113,6 +115,7 @@ function buildAwards(decks: DeckRollup[]): ArenaAward[] {
         deckId: deck.deck_id,
         name: deck.deck_name,
         commander: deck.commander,
+        ownerDisplayName: deck.owner_display_name,
         commanderImage: deck.commander_image,
         gamesPlayed: deck.games_played,
         trackedGames: deck.tracked_games,
@@ -169,32 +172,21 @@ export function buildArenaAnalyticsView(
     || right.gamesPlayed - left.gamesPlayed
   ));
 
-  const commanderMap = new Map<string, CommanderStats>();
-  (payload.commanders ?? [])
+  const commanders = (payload.decks ?? [])
     .filter((row) => bracketFilter === 'all' || row.bracket === bracketFilter)
-    .forEach((row) => {
-      const key = `${row.commander}::${row.bracket ?? 'none'}`;
-      const current = commanderMap.get(key);
-      if (current) {
-        current.gamesPlayed += row.games_played;
-        current.wins += row.wins;
-        current.winRate = percentage(current.wins, current.gamesPlayed);
-      } else {
-        commanderMap.set(key, {
-          key,
-          commander: row.commander,
-          commanderImageUrl: row.commander_image,
-          bracket: row.bracket,
-          gamesPlayed: row.games_played,
-          wins: row.wins,
-          winRate: percentage(row.wins, row.games_played),
-        });
-      }
-    });
-  const commanders = Array.from(commanderMap.values())
+    .map<CommanderStats>((row) => ({
+      key: row.key,
+      commander: row.commander,
+      ownerDisplayName: row.owner_display_name,
+      commanderImageUrl: row.commander_image,
+      bracket: row.bracket,
+      gamesPlayed: row.games_played,
+      wins: row.wins,
+      winRate: percentage(row.wins, row.games_played),
+    }))
     .sort((left, right) => deckStatsSort === 'gamesPlayed'
-      ? right.gamesPlayed - left.gamesPlayed || right.wins - left.wins
-      : right.winRate - left.winRate || right.wins - left.wins);
+      ? right.gamesPlayed - left.gamesPlayed || right.wins - left.wins || left.key.localeCompare(right.key)
+      : right.winRate - left.winRate || right.wins - left.wins || right.gamesPlayed - left.gamesPlayed || left.key.localeCompare(right.key));
 
   const filteredColors = (payload.colors ?? []).filter(
     (row) => bracketFilter === 'all' || row.bracket === bracketFilter,
@@ -260,7 +252,9 @@ export function buildArenaAnalyticsView(
     players,
     commanders,
     colors,
-    awards: buildAwards(payload.decks ?? []),
+    awards: buildAwards((payload.decks ?? []).filter(
+      (row) => bracketFilter === 'all' || row.bracket === bracketFilter,
+    )),
     brackets: Array.from(new Set([
       ...(payload.commanders ?? []).map((row) => row.bracket),
       ...(payload.colors ?? []).map((row) => row.bracket),

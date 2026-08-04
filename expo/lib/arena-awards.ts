@@ -1,4 +1,4 @@
-import { getParticipantDeckId, getParticipantDeckSnapshot } from '@/lib/arena-participants';
+import { getParticipantDeckId, getParticipantDeckSnapshot, getParticipantDisplayName } from '@/lib/arena-participants';
 import type { ArenaMatch } from '@/lib/types/arena';
 
 export type ArenaAwardKind =
@@ -18,6 +18,7 @@ export interface ArenaAward {
   deckId: string;
   name: string;
   commander: string;
+  ownerDisplayName: string;
   commanderImage: string | null;
   gamesPlayed: number;
   trackedGames: number;
@@ -38,6 +39,7 @@ export function calculateArenaAwards(matches: ArenaMatch[]): ArenaAward[] {
     deckId: string;
     name: string;
     commander: string;
+    ownerDisplayName: string;
     commanderImage: string | null;
     gamesPlayed: number;
     trackedGames: number;
@@ -65,6 +67,7 @@ export function calculateArenaAwards(matches: ArenaMatch[]): ArenaAward[] {
         deckId,
         name: deck.name,
         commander: deck.commander,
+        ownerDisplayName: getParticipantDisplayName(participant),
         commanderImage: deck.commander_image,
         gamesPlayed: 0,
         trackedGames: 0,
