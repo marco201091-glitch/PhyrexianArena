@@ -17,7 +17,7 @@ describe('arena analytics bundle', () => {
       }],
       decks: [{
         key: 'deck:d', deck_id: 'd', is_guest_deck: false, deck_name: 'Counters',
-        commander: 'Atraxa', commander_image: null, games_played: 4, tracked_games: 3,
+        commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Alice', games_played: 4, tracked_games: 3,
         wins: 2, second_places: 1, total_damage_dealt: 90, total_damage_taken: 70,
         total_life_gained: 20, commander_damage_dealt: 12, infect_dealt: 4,
         eliminations: 3, group_damage_dealt: 30, group_damage_events: 2,
@@ -30,10 +30,27 @@ describe('arena analytics bundle', () => {
     expect(bundle.colors.played.map((row) => [row.color, row.appearances]))
       .toEqual([['W', 4], ['U', 4]]);
     expect(bundle.decks[0]).toMatchObject({
+      ownerDisplayName: 'Alice',
       trackingCoverage: 75,
       averageDamageDealt: 30,
       medianWinningDurationSeconds: 1800,
     });
     expect(bundle.brackets).toEqual(['4']);
+  });
+
+  it('keeps similarly named decks distinct and applies both bracket and sort filters', () => {
+    const payload = {
+      decks: [
+        { key: 'deck:a', deck_id: 'a', is_guest_deck: false, deck_name: 'Shared Name', commander: 'Atraxa', commander_image: null, bracket: '3', owner_display_name: 'Alice', games_played: 2, tracked_games: 0, wins: 2, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
+        { key: 'deck:b', deck_id: 'b', is_guest_deck: false, deck_name: 'Shared Name', commander: 'Atraxa', commander_image: null, bracket: '3', owner_display_name: 'Bob', games_played: 5, tracked_games: 0, wins: 2, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
+        { key: 'deck:c', deck_id: 'c', is_guest_deck: false, deck_name: 'Other', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Cara', games_played: 9, tracked_games: 0, wins: 9, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
+      ],
+    };
+
+    const bundle = buildArenaAnalyticsBundle(payload, '3', 'gamesPlayed');
+    expect(bundle.decks.map((deck) => [deck.deckId, deck.ownerDisplayName])).toEqual([
+      ['b', 'Bob'],
+      ['a', 'Alice'],
+    ]);
   });
 });

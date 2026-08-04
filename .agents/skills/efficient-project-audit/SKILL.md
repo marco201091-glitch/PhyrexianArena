@@ -14,4 +14,4 @@ Minimize token usage aggressively while preserving audit coverage and accuracy.
 - Treat user changes as immutable unless explicitly authorized to fix them.
 - Audit branch topology, worktree state, committed secrets, dependency integrity, static checks, tests, builds, CI/release configuration, database migrations, authentication, authorization, and destructive operational scripts.
 - Record evidence, commands, limitations, and prioritized findings in a concise repository artifact when the user requests an audit but restricts the chat response.
-- If the user explicitly requests the strict completion protocol, reply `OK` after understanding and reply only `fatto` after all work and verification finish. Emit no other user-facing words.
+- Use the completion protocol by default unless the user explicitly disables it for the current request: reply `OK` after understanding, then conclude with `fatto` followed by a concise report of the completed work, verification, findings, and any limitations. Do not emit other user-facing messages unless a necessary clarification or progress update is requested.
