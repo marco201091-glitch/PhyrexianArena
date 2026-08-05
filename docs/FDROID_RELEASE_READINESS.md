@@ -87,6 +87,9 @@ docs/FDROID_OFFICIAL_SUBMISSION.md
   enables tag-based update checks and automatic build recipe generation.
 - The recipe builds the universal APK rather than restricting the first build to
   `arm64-v8a`.
+- Each F-Droid source tag also produces a developer-signed reference APK. The
+  metadata pins its signer and stable release URL so `fdroid publish` can compare
+  it against the F-Droid source build before publication.
 - Remaining work is external maintainer review and any requested follow-up.
 - Keep the neutral-identity fallback plan only if store review rejects the
   current name, domain, or symbols.

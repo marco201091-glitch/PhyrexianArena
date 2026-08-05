@@ -94,6 +94,8 @@ for (const text of [
   'AutoUpdateMode: Version',
   'UpdateCheckMode: Tags fdroid-v[0-9.]+$',
   'UpdateCheckData: expo/app.json',
+  'Binaries: https://github.com/marco201091-glitch/PhyrexianArena/releases/download/fdroid-v%v/mtg-tracker-fdroid-v%v.apk',
+  'AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab3002106',
 ]) {
   if (!fdroidMetadata.includes(text)) {
     failures.push(`F-Droid metadata draft must mention ${text}`);
