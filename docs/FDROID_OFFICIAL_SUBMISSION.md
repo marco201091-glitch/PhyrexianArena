@@ -75,6 +75,16 @@ REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA
 with the exact full commit SHA of the public release commit. F-Droid metadata
 requires commit hashes rather than branch names.
 
+The reference APK workflow (`fdroid-v*` tag) deliberately mirrors the F-Droid
+recipe prerequisites: it validates the F-Droid source tree, applies the React
+Native JDK 21 toolchain patch, builds two unsigned APKs and compares them byte
+for byte before signing the reference artifact. This is a release gate, not a
+substitute for the final `fdroid build` run in F-Droid's buildserver container.
+
+To validate the exact metadata locally, use the current F-Droid buildserver
+container and run `fdroid readmeta`, `fdroid lint`, and `fdroid build` as in
+the official quick-start guide.
+
 ## Official submission
 
 Merge request:

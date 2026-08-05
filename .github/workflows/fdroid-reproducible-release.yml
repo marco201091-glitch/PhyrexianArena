@@ -48,7 +48,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - uses: android-actions/setup-android@v3
 
@@ -59,6 +59,15 @@ jobs:
         run: |
           npm ci
           npm --prefix expo ci
+
+      - name: Validate the F-Droid source tree
+        run: |
+          npm run verify:fdroid
+          npm --prefix expo run typecheck
+
+      - name: Apply the F-Droid JDK toolchain patch
+        working-directory: expo
+        run: node scripts/patch-fdroid-java-toolchains.mjs
 
       - name: Generate F-Droid Android project
         working-directory: expo
