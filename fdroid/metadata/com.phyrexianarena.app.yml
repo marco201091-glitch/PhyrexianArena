@@ -35,7 +35,8 @@ Builds:
       - export EXPO_PUBLIC_SENTRY_ENABLED=false
       - export EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
       - npx --no-install expo prebuild --platform android --clean --no-install
-      - sed -i 's/-Xmx2048m/-Xmx4g/; s/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties
+      - sed -i 's/-Xmx2048m/-Xmx4g/; s/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/'
+        android/gradle.properties
       - echo 'org.gradle.workers.max=1' >> android/gradle.properties
       - cd ..
       - npm run verify:fdroid
