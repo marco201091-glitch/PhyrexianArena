@@ -101,8 +101,14 @@ for (const text of [
     failures.push(`F-Droid metadata draft must mention ${text}`);
   }
 }
-if (fdroidMetadata.includes('-PreactNativeArchitectures=arm64-v8a')) {
-  failures.push('F-Droid metadata must build the universal APK without an arm64-only restriction');
+for (const text of [
+  '-PreactNativeArchitectures=arm64-v8a',
+  "s/-Xmx2048m/-Xmx4g/; s/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/",
+  'org.gradle.workers.max=1',
+]) {
+  if (!fdroidMetadata.includes(text)) {
+    failures.push(`F-Droid metadata must include ${text}`);
+  }
 }
 
 if (failures.length) {

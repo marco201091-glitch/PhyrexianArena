@@ -85,8 +85,10 @@ docs/FDROID_OFFICIAL_SUBMISSION.md
 - Store text and changelog live upstream under `fastlane/metadata/android/en-US`.
 - Future F-Droid releases use immutable `fdroid-v<version>` tags; the metadata
   enables tag-based update checks and automatic build recipe generation.
-- The recipe builds the universal APK rather than restricting the first build to
-  `arm64-v8a`.
+- The first recipe targets `arm64-v8a`, as declared in the submission checklist.
+  Additional ABI builds can be added after initial inclusion.
+- Gradle is constrained to one worker and a 4 GB heap to keep D8 dex merging
+  within the F-Droid buildserver memory budget.
 - Each F-Droid source tag also produces a developer-signed reference APK. The
   metadata pins its signer and stable release URL so `fdroid publish` can compare
   it against the F-Droid source build before publication.
