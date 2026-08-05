@@ -15,6 +15,11 @@ waiting for F-Droid maintainer review.
   Archidekt, Moxfield, EDHREC, Resend, Turnstile, optional Google OAuth, optional
   Expo Push, and optional Sentry diagnostics. These may require F-Droid
   Anti-Feature disclosure.
+- Non-Free Network Services: the metadata declares `NonFreeNet` because these
+  fixed third-party and hosted services are not user-configurable in the app.
+- Tethered Network Services: the app remains useful for local game tracking,
+  but account, sync, deck imports, public playgroups, and some card data depend
+  on network services; this is documented for reviewer assessment.
 - Tracking: Sentry is disabled unless `EXPO_PUBLIC_SENTRY_ENABLED=true`; the
   F-Droid build flag disables Sentry initialization and removes the Expo Sentry
   config plugin from generated native config.
@@ -44,6 +49,7 @@ Set these variables for a F-Droid-oriented Android build:
 APP_VARIANT=fdroid
 EXPO_PUBLIC_FDROID_BUILD=true
 EXPO_PUBLIC_SENTRY_ENABLED=false
+EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
 ```
 
 The standard APK/Obtainium build keeps optional Google sign-in and mobile push
@@ -56,7 +62,7 @@ Run the local verifier before exporting the Android build:
 
 ```bash
 npm run verify:fdroid
-APP_VARIANT=fdroid EXPO_PUBLIC_FDROID_BUILD=true EXPO_PUBLIC_SENTRY_ENABLED=false npm --prefix expo run android:bundle:check
+APP_VARIANT=fdroid EXPO_PUBLIC_FDROID_BUILD=true EXPO_PUBLIC_SENTRY_ENABLED=false EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true npm --prefix expo run android:bundle:check
 ```
 
 Official F-Droid metadata draft:
@@ -77,6 +83,10 @@ docs/FDROID_OFFICIAL_SUBMISSION.md
 - `fdroid build`, APK checks, lint, scanner, and pipeline validation pass.
 - `NonFreeNet` is declared for the fixed hosted and third-party network services.
 - Store text and changelog live upstream under `fastlane/metadata/android/en-US`.
+- Future F-Droid releases use immutable `fdroid-v<version>` tags; the metadata
+  enables tag-based update checks and automatic build recipe generation.
+- The recipe builds the universal APK rather than restricting the first build to
+  `arm64-v8a`.
 - Remaining work is external maintainer review and any requested follow-up.
 - Keep the neutral-identity fallback plan only if store review rejects the
   current name, domain, or symbols.

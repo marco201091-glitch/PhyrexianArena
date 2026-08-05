@@ -87,10 +87,20 @@ for (const text of [
 if (!metadata.includes('MTG Tracker & Analytics')) {
   failures.push('Fastlane metadata must use the Android display name');
 }
-for (const text of ['NonFreeNet', 'REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA', 'app-release-unsigned.apk']) {
+for (const text of [
+  'NonFreeNet',
+  'REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA',
+  'app-release-unsigned.apk',
+  'AutoUpdateMode: Version',
+  'UpdateCheckMode: Tags fdroid-v[0-9.]+$',
+  'UpdateCheckData: expo/app.json',
+]) {
   if (!fdroidMetadata.includes(text)) {
     failures.push(`F-Droid metadata draft must mention ${text}`);
   }
+}
+if (fdroidMetadata.includes('-PreactNativeArchitectures=arm64-v8a')) {
+  failures.push('F-Droid metadata must build the universal APK without an arm64-only restriction');
 }
 
 if (failures.length) {

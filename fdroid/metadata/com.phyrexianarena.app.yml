@@ -60,10 +60,11 @@ Builds:
       - export EXPO_PUBLIC_SENTRY_ENABLED=false
       - export EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
       - cd android
-      - gradle :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a
+      - gradle :app:assembleRelease -PfdroidBuild=true
         --no-daemon --console=plain
 
-AutoUpdateMode: None
-UpdateCheckMode: None
-CurrentVersion: 8.0.0
-CurrentVersionCode: 80000
+AutoUpdateMode: Version
+UpdateCheckMode: Tags fdroid-v[0-9.]+$
+UpdateCheckData: expo/app.json|"versionCode":\s*(\d+),|.|"version":\s*"([^"]+)"
+CurrentVersion: 8.0.3
+CurrentVersionCode: 80003

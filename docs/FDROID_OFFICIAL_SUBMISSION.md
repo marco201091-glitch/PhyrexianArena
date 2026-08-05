@@ -44,7 +44,7 @@ Gradle unsigned release check:
 
 ```bash
 cd expo/android
-APP_VARIANT=fdroid EXPO_PUBLIC_FDROID_BUILD=true EXPO_PUBLIC_SENTRY_ENABLED=false EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true ./gradlew :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
+APP_VARIANT=fdroid EXPO_PUBLIC_FDROID_BUILD=true EXPO_PUBLIC_SENTRY_ENABLED=false EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true ./gradlew :app:assembleRelease -PfdroidBuild=true --no-daemon --console=plain
 ```
 
 On Windows PowerShell:
@@ -55,7 +55,7 @@ $env:APP_VARIANT='fdroid'
 $env:EXPO_PUBLIC_FDROID_BUILD='true'
 $env:EXPO_PUBLIC_SENTRY_ENABLED='false'
 $env:EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS='true'
-.\gradlew.bat :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
+.\gradlew.bat :app:assembleRelease -PfdroidBuild=true --no-daemon --console=plain
 ```
 
 ## F-Droid metadata
