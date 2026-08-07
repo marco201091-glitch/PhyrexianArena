@@ -13,7 +13,7 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
 - `fdroid-prep`: F-Droid-specific source flavor and submission material. It is
   deliberately not a wholesale merge of `main` because proprietary/mobile-only
   dependencies are removed here.
-- Standard Android release line is `8.0.3` (`main` commit `33c826f`): it
+- Standard Android release line is `8.0.4` (release commit pending): it
   includes the Turnstile/captcha recovery and Arena analytics deck-owner label.
 
 ## Infrastructure
@@ -33,16 +33,18 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
 - Official MR: <https://gitlab.com/fdroid/fdroiddata/-/merge_requests/44721>
 - Source branch: `marco201091-glitch/fdroiddata:add-mtg-tracker-analytics`.
 - Latest green metadata commit: `207bd1f23`.
-- Current submitted build: version `8.0.3`, versionCode `80003`, source commit
-  `665bb5dc0bcfe936fc19212d62cbd3db8acdc43e` (`fdroid-v8.0.3`).
+- Current submitted build: version `8.0.4`, versionCode `80004`, source commit
+  pending publication as `fdroid-v8.0.4`.
 - The build recipe uses Node 24, the React Native JDK 21 toolchain patch,
   `arm64-v8a`, `-Xmx4g`, a 1 GB metaspace cap, and one Gradle worker. These
   settings are required for the F-Droid buildserver: universal ABI packaging
   caused D8 heap exhaustion.
 - `AutoUpdateMode: Version` and tag-based update checking are enabled.
-- The first release intentionally accepts F-Droid signing. Do not claim that
-  developer-signed reproducible builds are enabled until a matching reference
-  APK has been verified with `Binaries` and `AllowedAPKSigningKeys`.
+- Developer-signed reproducible builds are now the selected first-release
+  strategy. The repository contains the reference-APK workflow, and F-Droid
+  metadata points to the signed artifact through `Binaries` and
+  `AllowedAPKSigningKeys`; activation completes when the tagged workflow
+  publishes and F-Droid verifies that artifact.
 - The MR checklist is complete. A status comment tagging `@linsui` was posted
   after the green pipeline.
 
@@ -74,4 +76,3 @@ Keep operational replies in Italian and concise:
 
 1. Start work with `ok`.
 2. End only when complete with `fatto` and a compact changelist/report.
-

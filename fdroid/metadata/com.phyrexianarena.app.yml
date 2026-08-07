@@ -21,9 +21,7 @@ Builds:
     subdir: expo
     sudo:
       - apt-get update
-      - apt-get install -y ca-certificates curl
-      - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-      - apt-get install -y nodejs
+      - apt-get install -y nodejs npm
     init:
       - cd .. && npm ci
       - cd expo && npm ci
@@ -70,5 +68,5 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags fdroid-v[0-9.]+$
 UpdateCheckData: expo/app.json|"versionCode":\s*(\d+),|.|"version":\s*"([^"]+)"
-CurrentVersion: 8.0.3
-CurrentVersionCode: 80003
+CurrentVersion: 8.0.4
+CurrentVersionCode: 80004

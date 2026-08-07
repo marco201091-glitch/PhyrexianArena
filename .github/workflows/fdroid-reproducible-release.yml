@@ -11,7 +11,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 180
     env:
       APP_VARIANT: fdroid
       EXPO_PUBLIC_FDROID_BUILD: 'true'
@@ -72,6 +72,12 @@ jobs:
       - name: Generate F-Droid Android project
         working-directory: expo
         run: npx --no-install expo prebuild --platform android --clean --no-install
+
+      - name: Constrain Gradle memory and workers
+        working-directory: expo
+        run: |
+          sed -i 's/-Xmx2048m/-Xmx4g/; s/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties
+          printf '\norg.gradle.workers.max=1\n' >> android/gradle.properties
 
       - name: Build twice and compare unsigned APKs
         working-directory: expo/android
