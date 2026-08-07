@@ -13,7 +13,8 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
 - `fdroid-prep`: F-Droid-specific source flavor and submission material. It is
   deliberately not a wholesale merge of `main` because proprietary/mobile-only
   dependencies are removed here.
-- Standard Android release line is `8.0.4` (release commit pending): it
+- Standard Android release line is `8.0.4` (`fdroid-v8.0.4` commit
+  `01644c2`): it
   includes the Turnstile/captcha recovery and Arena analytics deck-owner label.
 
 ## Infrastructure
@@ -34,7 +35,7 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
 - Source branch: `marco201091-glitch/fdroiddata:add-mtg-tracker-analytics`.
 - Latest green metadata commit: `207bd1f23`.
 - Current submitted build: version `8.0.4`, versionCode `80004`, source commit
-  pending publication as `fdroid-v8.0.4`.
+  `01644c240982e6f7e5020ed7ef501e17037e9086` (`fdroid-v8.0.4`).
 - The build recipe uses Node 24, the React Native JDK 21 toolchain patch,
   `arm64-v8a`, `-Xmx4g`, a 1 GB metaspace cap, and one Gradle worker. These
   settings are required for the F-Droid buildserver: universal ABI packaging

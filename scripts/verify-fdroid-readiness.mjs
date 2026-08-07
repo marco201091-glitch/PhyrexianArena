@@ -89,7 +89,6 @@ if (!metadata.includes('MTG Tracker & Analytics')) {
 }
 for (const text of [
   'NonFreeNet',
-  'REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA',
   'app-release-unsigned.apk',
   'AutoUpdateMode: Version',
   'UpdateCheckMode: Tags fdroid-v[0-9.]+$',
@@ -100,6 +99,9 @@ for (const text of [
   if (!fdroidMetadata.includes(text)) {
     failures.push(`F-Droid metadata draft must mention ${text}`);
   }
+}
+if (!/\n\s+commit:\s+[0-9a-f]{40}\s*\n/.test(fdroidMetadata)) {
+  failures.push('F-Droid metadata must pin the release to a full source commit SHA');
 }
 for (const text of [
   '-PreactNativeArchitectures=arm64-v8a',

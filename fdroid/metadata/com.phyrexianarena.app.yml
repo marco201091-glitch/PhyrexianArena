@@ -14,9 +14,9 @@ Binaries: https://github.com/marco201091-glitch/PhyrexianArena/releases/download
 AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab3002106
 
 Builds:
-  - versionName: 8.0.0
-    versionCode: 80000
-    commit: REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA
+  - versionName: 8.0.4
+    versionCode: 80004
+    commit: 01644c240982e6f7e5020ed7ef501e17037e9086
     timeout: 7200
     subdir: expo
     sudo:
