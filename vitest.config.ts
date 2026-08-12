@@ -13,10 +13,10 @@ export default defineConfig({
       exclude: ['lib/types/**'],
       reporter: ['text', 'json-summary'],
       thresholds: {
-        statements: 40,
+        statements: 55,
         branches: 70,
         functions: 50,
-        lines: 40,
+        lines: 55,
       },
     },
   },
