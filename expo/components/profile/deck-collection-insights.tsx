@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Text, View } from 'react-native';
 import { ManaColorBadge, ManaColorPills } from '@/components/ui/mana-color-pills';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { StatCard } from '@/components/ui/stat-card';

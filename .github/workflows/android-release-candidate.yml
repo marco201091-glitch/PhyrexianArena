@@ -7,17 +7,50 @@ on:
         description: SemVer version to build
         required: true
         type: string
+  push:
+    tags:
+      - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate release version
+        id: release
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ inputs.version }}"
+          } else {
+            if (-not $env:GITHUB_REF_NAME.StartsWith("v")) { throw "Release tag must start with v" }
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+
+            $remoteTagRefs = (git ls-remote --tags origin "refs/tags/$env:GITHUB_REF_NAME*") -join "`n"
+            if ($remoteTagRefs -notmatch '\^\{\}') {
+              throw "Release tag must be annotated"
+            }
+
+            git fetch origin main --no-tags
+            git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+            if ($LASTEXITCODE -ne 0) { throw "Release tag is not based on main" }
+          }
+
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Version must use SemVer (X.Y.Z)" }
+          $appVersion = (Get-Content -Raw "expo/app.json" | ConvertFrom-Json).expo.version
+          if ($appVersion -ne $version) {
+            throw "Tag/input version $version does not match expo/app.json version $appVersion"
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - uses: actions/setup-node@v4
         with:
@@ -51,16 +84,25 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
           PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_MOBILE_PROJECT: ${{ secrets.SENTRY_MOBILE_PROJECT }}
+          SENTRY_URL: ${{ secrets.SENTRY_URL }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
           if (-not $env:RELEASE_KEYSTORE_BASE64) { throw "Missing release keystore secret" }
+          if (-not $env:SENTRY_AUTH_TOKEN -or -not $env:SENTRY_ORG -or -not $env:SENTRY_MOBILE_PROJECT -or -not $env:SENTRY_DSN) {
+            throw "Missing Sentry release configuration"
+          }
           $turnstile = Invoke-RestMethod -Uri "https://app.phyrexianarena.dpdns.org/api/auth/turnstile/config" -TimeoutSec 15
           if (-not $turnstile.siteKey) { throw "Production Turnstile site key is unavailable" }
           $keystorePath = Join-Path $env:RUNNER_TEMP "phyrexian-arena-release.jks"
           [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:RELEASE_KEYSTORE_BASE64))
+          $gradleKeystorePath = $keystorePath -replace '\\', '/'
 
           $signingPath = Join-Path $env:RUNNER_TEMP "android-signing.properties"
           @(
-            "storeFile=$keystorePath"
+            "storeFile=$gradleKeystorePath"
             "storePassword=$env:RELEASE_STORE_PASSWORD"
             "keyAlias=$env:RELEASE_KEY_ALIAS"
             "keyPassword=$env:RELEASE_KEY_PASSWORD"
@@ -73,19 +115,53 @@ jobs:
             "EXPO_PUBLIC_SITE_URL=https://app.phyrexianarena.dpdns.org"
             "EXPO_PUBLIC_TURNSTILE_SITE_KEY=$($turnstile.siteKey)"
             "EXPO_PUBLIC_SUPPORT_EMAIL=support@phyrexianarena.dpdns.org"
-            "EXPO_PUBLIC_SENTRY_ENABLED=false"
+            "EXPO_PUBLIC_SENTRY_ENABLED=true"
+            "EXPO_PUBLIC_SENTRY_DSN=$env:SENTRY_DSN"
           ) | Set-Content -LiteralPath "expo/.env.production.local"
 
           $env:PHYREXIAN_SIGNING_PROPERTIES = $signingPath
-          cmd /c "scripts\build-apk-production.bat ${{ inputs.version }} --no-pause"
+          cmd /c "scripts\build-apk-production.bat ${{ steps.release.outputs.version }} --no-pause"
           if ($LASTEXITCODE -ne 0) { throw "Android release candidate build failed" }
 
       - name: Upload private release candidate
         uses: actions/upload-artifact@v4
         with:
-          name: mtg-commander-${{ inputs.version }}
+          name: mtg-tracker-analytics-${{ steps.release.outputs.version }}
           path: |
-            artifacts/apk/mtg-commander-v${{ inputs.version }}.apk
-            artifacts/apk/mtg-commander-v${{ inputs.version }}.apk.sha256
+            artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk
+            artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk.sha256
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish GitHub release for Obtainium
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          $apk = "artifacts/apk/mtg-commander-v$env:RELEASE_VERSION.apk"
+          $checksum = "$apk.sha256"
+          @(
+            "## MTG Tracker & Analytics $env:GITHUB_REF_NAME",
+            "",
+            "First public release of the Android app.",
+            "",
+            "### Main features",
+            "",
+            "- Commander game and life tracking",
+            "- Player, deck and match statistics",
+            "- Awards and performance analytics",
+            "- Shared tables and multiplayer sessions",
+            "- Optional Google login and notifications",
+            "",
+            "Install or update with Obtainium from this repository's GitHub Releases.",
+            "",
+            "The attached checksum can be used to verify the APK before installation."
+          ) | Set-Content -LiteralPath "$env:RUNNER_TEMP/release-notes.md" -Encoding utf8
+
+          gh release create $env:GITHUB_REF_NAME $apk $checksum `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "MTG Tracker & Analytics $env:GITHUB_REF_NAME" `
+            --notes-file "$env:RUNNER_TEMP/release-notes.md" `
+            --verify-tag

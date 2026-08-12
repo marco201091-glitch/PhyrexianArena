@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
 import { DeckCarousel, useDeckCarouselCardWidth } from '@/components/ui/deck-carousel';
 import { Input } from '@/components/ui/input';
-import { colors, radii, spacing } from '@/constants/theme';
+import { colors, spacing } from '@/constants/theme';
 import type { ArenaGuestDeck } from '@/lib/arena-participants';
 import type { ParticipantKey } from '@/lib/participant-keys';
 

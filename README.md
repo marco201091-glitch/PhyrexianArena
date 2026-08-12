@@ -1,89 +1,63 @@
 # MTG Tracker & Analytics
 
-[![Live app](https://img.shields.io/badge/web-live-brightgreen?style=flat-square)](https://app.phyrexianarena.dpdns.org)
-[![Version](https://img.shields.io/badge/version-8.0.0-7c3aed?style=flat-square)](https://github.com/marco201091-glitch/PhyrexianArena/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Web app](https://img.shields.io/badge/Open-Web_App-16a34a?style=flat-square)](https://app.phyrexianarena.dpdns.org)
+[![Android](https://img.shields.io/badge/Android-v8.0.0-7c3aed?style=flat-square)](https://github.com/marco201091-glitch/PhyrexianArena/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-Track Commander games, manage your playgroup, and turn match history into useful statistics — without spreadsheets.
+Track Commander games, manage your playgroup, and turn match history into useful statistics—without spreadsheets.
 
-**Open the app:** [app.phyrexianarena.dpdns.org](https://app.phyrexianarena.dpdns.org)
+## Try or install the app
 
-## Features
+### Web app
 
-- Live Commander tracker for 2–6 players, including life, commander damage, infect, eliminations, undo, and offline recovery.
-- Private playgroups with invitations, registered members, occasional guests, and shared match history.
-- Deck management with manual creation and imports from Archidekt or Moxfield.
+Open [app.phyrexianarena.dpdns.org](https://app.phyrexianarena.dpdns.org) in any modern browser. No installation is required.
+
+### Android with Obtainium
+
+1. Install [Obtainium](https://obtainium.imranr.dev/).
+2. In Obtainium, choose **Add App**.
+3. Paste this repository URL:
+
+   `https://github.com/marco201091-glitch/PhyrexianArena`
+
+4. Confirm the detected release and install the APK.
+
+Obtainium will notify you when a new signed release is available. You can also download the APK directly from [GitHub Releases](https://github.com/marco201091-glitch/PhyrexianArena/releases/latest).
+
+### F-Droid and iOS
+
+- The official F-Droid submission is currently under review.
+- A public iOS build is not available yet.
+
+## Main features
+
+- Live Commander tracker for 2–6 players, with life, commander damage, infect, eliminations, undo, and game recovery.
+- Private playgroups, invitations, guests, shared match history, and optional public result pages.
+- Deck management and imports from Archidekt or Moxfield.
 - Rankings, deck and commander performance, color trends, personal analytics, and playgroup awards.
-- Public playgroup pages that can be enabled only when a group chooses to share its results.
-- English and Italian interfaces across web and native apps.
-- Email/password authentication, with optional Google sign-in in standard builds.
+- English and Italian interfaces.
+- Email/password authentication and optional Google sign-in in the web and standard Android versions.
 
 ## Screenshots
 
 | Desktop | Mobile |
 |---|---|
-| ![MTG Tracker & Analytics desktop](tests/e2e/snapshots/public-ui.spec.ts/desktop/landing.png) | ![MTG Tracker & Analytics mobile](tests/e2e/snapshots/public-ui.spec.ts/mobile/landing.png) |
+| ![Desktop home screen](tests/e2e/snapshots/public-ui.spec.ts/desktop/landing.png) | ![Mobile home screen](tests/e2e/snapshots/public-ui.spec.ts/mobile/landing.png) |
 
-## Get started
+## How it works
 
-1. Create an account.
-2. Create a playgroup or join one with an invite code.
-3. Add your decks.
-4. Start a live game or record a completed match.
-5. Review rankings, history, awards, and deck performance.
+The web app and the standard Android app use the same hosted account and data service. Matches, decks, playgroups, and statistics stay synchronized when you sign in on another supported device.
 
-## Availability
+The F-Droid edition keeps the same core tracking and analytics features, but uses email/password authentication and omits Google sign-in, push notifications, avatar upload, and Sentry integration to comply with the F-Droid build policy.
 
-| Platform | Status |
-|---|---|
-| Web | Available now |
-| Android APK / Obtainium | Prepared from `main` |
-| F-Droid | Submitted for official review |
-| iOS | Source and build configuration available; public distribution pending |
+An internet connection is required for account synchronization, multiplayer data, and external deck or card services.
 
-The F-Droid flavor uses email/password authentication and omits Google OAuth, push notifications, avatar upload, and Sentry dependencies. Standard Android builds retain these optional features.
+## Privacy and legal information
 
-## Development
-
-This monorepo contains the Next.js web app and Expo/React Native mobile app.
-
-```bash
-npm ci
-npm run dev
-```
-
-```bash
-npm --prefix expo ci
-npm --prefix expo start
-```
-
-Run the full quality gates before opening a pull request:
-
-```bash
-npm run quality
-npm --prefix expo run quality
-```
-
-Branch workflow:
-
-- `Dev`: active development and integration.
-- `main`: stable standard release for web, APK, and Obtainium.
-- `fdroid-prep`: F-Droid-specific dependency and build recipe.
-
-## Technology
-
-- Next.js, React, Tailwind CSS
-- Expo and React Native
-- Supabase Auth, PostgreSQL, Realtime, and Storage
-- Scryfall, Archidekt, Moxfield, and EDHREC integrations
-- Self-hosted deployment with Dokploy
-
-## Contributing
-
-Issues and pull requests are welcome. For larger changes, open an issue first so the implementation can be discussed.
-
-## License and acknowledgements
-
-The source code is released under the [MIT License](LICENSE). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party services and assets.
+- [Privacy policy](https://app.phyrexianarena.dpdns.org/legal/privacy)
+- [Terms of service](https://app.phyrexianarena.dpdns.org/legal/terms)
+- [Account deletion](https://app.phyrexianarena.dpdns.org/legal/delete-account)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [MIT License](LICENSE)
 
 MTG Tracker & Analytics is unofficial fan content. It is not approved, endorsed, or sponsored by Wizards of the Coast. Portions of the materials used are property of Wizards of the Coast LLC.
