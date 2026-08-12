@@ -27,6 +27,10 @@ if (missing.length) throw new Error(`Missing ${missing.map((name) => `${prefix}_
 const sshArgs = ['-o', 'BatchMode=yes'];
 const port = process.env[`${prefix}_VM_PORT`];
 const keyPath = process.env[`${prefix}_VM_KEY_PATH`];
+const dbUser = process.env[`${prefix}_DB_USER`] ?? 'postgres';
+if (!/^[a-z_][a-z0-9_]*$/i.test(dbUser)) {
+  throw new Error(`${prefix}_DB_USER must be a valid PostgreSQL role name.`);
+}
 if (port) sshArgs.push('-p', port);
 if (keyPath) sshArgs.push('-i', keyPath);
 sshArgs.push(`${config.VM_USER}@${config.VM_HOST}`);
@@ -34,7 +38,7 @@ sshArgs.push(`${config.VM_USER}@${config.VM_HOST}`);
 const remoteCommand = [
   `container=$(docker ps -q --filter label=com.docker.compose.project=${config.COMPOSE_PROJECT} --filter label=com.docker.compose.service=db | head -n 1)`,
   'test -n "$container"',
-  'docker exec -i "$container" psql -v ON_ERROR_STOP=1 -U postgres -d postgres',
+  `docker exec -i "$container" psql -v ON_ERROR_STOP=1 -U ${dbUser} -d postgres`,
 ].join(' && ');
 
 const child = spawn('ssh', [...sshArgs, remoteCommand], { stdio: ['pipe', 'inherit', 'inherit'] });
