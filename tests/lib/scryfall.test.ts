@@ -93,7 +93,19 @@ describe('Scryfall server adapter', () => {
   });
 
   it('builds commander searches for every partner mode', async () => {
-    const modes: Array<CommanderPartnerMode | null> = [null, 'partner', 'background', 'background-owner', 'friends', 'doctor', 'doctor-companion'];
+    const modes: Array<CommanderPartnerMode | null> = [
+      null,
+      'partner',
+      'background',
+      'background-owner',
+      'friends',
+      'father-son',
+      'survivors',
+      'character-select',
+      'doctor',
+      'doctor-companion',
+      'partner-with:Amy Pond',
+    ];
     for (const mode of modes) {
       vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ data: [card] }));
       const result = await searchCommanders('at', mode);

@@ -7,14 +7,18 @@ function commander(overrides: Partial<CommanderSearchResult> = {}): CommanderSea
 }
 
 describe('commander partners', () => {
-  it('recognizes every supported partner mechanic without false partner-with matches', () => {
+  it('recognizes every supported partner mechanic', () => {
     expect(getCommanderPartnerMode(commander({ oracleText: 'Choose a Background' }))).toBe('background');
     expect(getCommanderPartnerMode(commander({ typeLine: 'Legendary Background' }))).toBe('background-owner');
     expect(getCommanderPartnerMode(commander({ typeLine: 'Legendary Time Lord Doctor' }))).toBe('doctor-companion');
     expect(getCommanderPartnerMode(commander({ oracleText: "Doctor's companion" }))).toBe('doctor');
     expect(getCommanderPartnerMode(commander({ keywords: ['Friends forever'] }))).toBe('friends');
+    expect(getCommanderPartnerMode(commander({ oracleText: 'Partner—Father & son' }))).toBe('father-son');
+    expect(getCommanderPartnerMode(commander({ oracleText: 'Partner—Survivors' }))).toBe('survivors');
+    expect(getCommanderPartnerMode(commander({ oracleText: 'Partner—Character select' }))).toBe('character-select');
     expect(getCommanderPartnerMode(commander({ keywords: ['Partner'] }))).toBe('partner');
-    expect(getCommanderPartnerMode(commander({ oracleText: 'Partner with Amy' }))).toBeNull();
+    expect(getCommanderPartnerMode(commander({ oracleText: 'Partner with Amy Pond (Reminder text)' }))).toBe('partner-with:Amy Pond');
+    expect(getCommanderPartnerMode(commander({ oracleText: 'Partner—Future team (Reminder text)' }))).toBe('partner-family:Future team');
   });
 
   it('generates localized picker copy for specialized and regular modes', () => {
@@ -22,6 +26,8 @@ describe('commander partners', () => {
     expect(getCommanderPartnerCopy('background', english).placeholder).toBe('Search background...');
     expect(getCommanderPartnerCopy('doctor', english).title).toBe('Doctor');
     expect(getCommanderPartnerCopy('friends', english).title).toBe('Friends forever');
+    expect(getCommanderPartnerCopy('character-select', english).title).toBe('Character select');
+    expect(getCommanderPartnerCopy('partner-with:Amy Pond', english).placeholder).toBe('Search Amy Pond...');
     expect(getCommanderPartnerCopy('partner', english).empty).toBe('No second commander found');
   });
 

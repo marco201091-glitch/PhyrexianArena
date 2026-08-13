@@ -39,6 +39,12 @@ import {
   resolveSelectedCommanderOption,
 } from '@/lib/deck-metadata';
 import { lookupCommanderCmcInBrowser } from '@/lib/commander-cmc-client';
+import { buildCommanderNameSearchClause } from '@/lib/commander-search-aliases';
+import {
+  getCommanderPartnerCopy as getManualPartnerCopy,
+  getCommanderPartnerMode as getManualPartnerMode,
+} from '@/lib/commander-partners';
+import type { CommanderPartnerMode } from '@/lib/scryfall';
 import {
   buildArchidektBatchCommanderSelections,
   deckDataToColorFields,
@@ -183,7 +189,7 @@ interface CommanderArtOption {
 }
 
 type AddDeckMode = 'choose' | 'import-url' | 'archidekt-user' | 'manual';
-type ManualPartnerMode = 'partner' | 'background' | 'background-owner' | 'friends' | 'doctor' | 'doctor-companion';
+type ManualPartnerMode = CommanderPartnerMode;
 
 interface ScryfallBrowserCard {
   id: string;
@@ -409,9 +415,20 @@ function scryfallPartnerModeQuery(mode: ManualPartnerMode | null) {
   if (mode === 'background') return 'is:commander t:background';
   if (mode === 'background-owner') return 'is:commander o:"choose a background"';
   if (mode === 'friends') return 'is:commander o:"friends forever"';
+  if (mode === 'father-son') return 'is:commander o:"partner—father & son"';
+  if (mode === 'survivors') return 'is:commander o:"partner—survivors"';
+  if (mode === 'character-select') return 'is:commander o:"partner—character select"';
   if (mode === 'doctor') return 'is:commander t:doctor t:"time lord"';
   if (mode === 'doctor-companion') return 'is:commander o:"doctor\'s companion"';
-  if (mode === 'partner') return 'is:commander o:partner -o:"partner with"';
+  if (mode?.startsWith('partner-with:')) {
+    const partnerName = sanitizeScryfallQuery(mode.slice('partner-with:'.length));
+    return partnerName ? `is:commander !"${partnerName}"` : 'is:commander o:"partner with"';
+  }
+  if (mode?.startsWith('partner-family:')) {
+    const familyName = sanitizeScryfallQuery(mode.slice('partner-family:'.length));
+    return familyName ? `is:commander o:"partner—${familyName}"` : 'is:commander';
+  }
+  if (mode === 'partner') return 'is:commander o:partner -o:"partner with" -o:"partner—"';
   return 'is:commander';
 }
 
@@ -437,7 +454,7 @@ async function fetchScryfallCommandersFromBrowser(
 
   const baseQuery = scryfallPartnerModeQuery(partnerMode);
   const response = await fetch(
-    `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${baseQuery} (${queryText} or name:"${queryText}")`)}&order=edhrec&unique=cards`,
+    `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${baseQuery} ${buildCommanderNameSearchClause(queryText)}`)}&order=edhrec&unique=cards`,
     { headers: { Accept: 'application/json' }, signal }
   );
 
@@ -550,62 +567,6 @@ function uniqueCommanderOptions(options: ImportedCommanderOption[]) {
     option.name &&
     allOptions.findIndex((candidate) => candidate.name.toLowerCase() === option.name.toLowerCase()) === index
   );
-}
-
-function getManualPartnerMode(commander: CommanderSearchResult): ManualPartnerMode | null {
-  const typeLine = commander.typeLine.toLowerCase();
-  const rulesText = `${commander.oracleText || ''} ${(commander.keywords || []).join(' ')}`.toLowerCase();
-
-  if (typeLine.includes('background')) return 'background-owner';
-  if (rulesText.includes('choose a background')) return 'background';
-  if (typeLine.includes('doctor') && typeLine.includes('time lord')) return 'doctor-companion';
-  if (rulesText.includes("doctor's companion")) return 'doctor';
-  if (rulesText.includes('friends forever')) return 'friends';
-  if (rulesText.includes('partner') && !rulesText.includes('partner with') && !rulesText.includes("doctor's companion")) {
-    return 'partner';
-  }
-
-  return null;
-}
-
-function getManualPartnerCopy(mode: ManualPartnerMode, t: ReturnType<typeof useLanguage>['copy']) {
-  if (mode === 'background') {
-    return {
-      title: t({ it: 'Background', en: 'Background' }),
-      placeholder: t({ it: 'Cerca background...', en: 'Search background...' }),
-      empty: t({ it: 'Nessun background trovato', en: 'No backgrounds found' }),
-    };
-  }
-
-  if (mode === 'background-owner') {
-    return {
-      title: t({ it: 'Comandante con Background', en: 'Background commander' }),
-      placeholder: t({ it: 'Cerca comandante con Choose a Background...', en: 'Search Choose a Background commander...' }),
-      empty: t({ it: 'Nessun comandante compatibile trovato', en: 'No compatible commanders found' }),
-    };
-  }
-
-  if (mode === 'doctor') {
-    return {
-      title: t({ it: 'Dottore', en: 'Doctor' }),
-      placeholder: t({ it: 'Cerca Dottore...', en: 'Search Doctor...' }),
-      empty: t({ it: 'Nessun Dottore trovato', en: 'No Doctors found' }),
-    };
-  }
-
-  if (mode === 'doctor-companion') {
-    return {
-      title: t({ it: 'Doctor companion', en: 'Doctor companion' }),
-      placeholder: t({ it: 'Cerca Doctor companion...', en: 'Search Doctor companion...' }),
-      empty: t({ it: 'Nessun companion trovato', en: 'No companions found' }),
-    };
-  }
-
-  return {
-    title: t({ it: mode === 'friends' ? 'Friends forever' : 'Partner', en: mode === 'friends' ? 'Friends forever' : 'Partner' }),
-    placeholder: t({ it: mode === 'friends' ? 'Cerca Friends forever...' : 'Cerca partner...', en: mode === 'friends' ? 'Search Friends forever...' : 'Search partner...' }),
-    empty: t({ it: 'Nessun secondo comandante trovato', en: 'No second commander found' }),
-  };
 }
 
 export default function ProfilePage() {
