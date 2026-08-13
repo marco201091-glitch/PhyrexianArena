@@ -86,6 +86,15 @@ import {
 } from '@/lib/arena-session-export';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
 import {
+  ARENA_SEASON_MONTHS,
+  fetchArenaSeasonContext,
+  formatArenaSeasonDate,
+  formatArenaSeasonLabel,
+  getArenaSeasonArchiveHighlights,
+  setArenaSeasonResetMonth,
+  type ArenaSeasonContext,
+} from '@/lib/arena-seasons';
+import {
   isoToMatchDateValue,
   matchDateToIso,
   toMatchDateValue,
@@ -302,6 +311,7 @@ interface Group {
   created_by: string;
   created_at: string;
   is_public?: boolean;
+  season_reset_month?: number;
   profiles: Profile;
   group_members: Array<{
     user_id: string;
@@ -415,6 +425,7 @@ export default function TablePage() {
   const [guests, setGuests] = useState<ArenaGuest[]>([]);
   const [analyticsPayload, setAnalyticsPayload] = useState<ArenaAnalyticsBundlePayload>({});
   const [allTimeAwardsPayload, setAllTimeAwardsPayload] = useState<ArenaAnalyticsBundlePayload>({});
+  const [seasonContext, setSeasonContext] = useState<ArenaSeasonContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
@@ -464,6 +475,7 @@ export default function TablePage() {
   const [editArenaName, setEditArenaName] = useState('');
   const [editArenaDescription, setEditArenaDescription] = useState('');
   const [editArenaIsPublic, setEditArenaIsPublic] = useState(false);
+  const [editArenaResetMonth, setEditArenaResetMonth] = useState(1);
   const [savingArena, setSavingArena] = useState(false);
   const [showDeleteArenaModal, setShowDeleteArenaModal] = useState(false);
   const [showLeaveArenaModal, setShowLeaveArenaModal] = useState(false);
@@ -690,7 +702,11 @@ export default function TablePage() {
 
   const initializeMatchHistory = useCallback(async () => {
     try {
-      const recent = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
+      const recentRows = await fetchRecentArenaMatches(supabase, groupId) as unknown as Match[];
+      const seasonThreshold = seasonContext
+        ? new Date(`${seasonContext.currentSeasonStart}T00:00:00Z`).getTime()
+        : Number.NEGATIVE_INFINITY;
+      const recent = recentRows.filter((match) => new Date(match.played_at).getTime() >= seasonThreshold);
       const grouped = groupMatchesByDay(recent);
       const summaries = grouped.map((group) => ({
         dayKey: group.dayKey,
@@ -708,7 +724,7 @@ export default function TablePage() {
       console.error('Error fetching match history:', getSupabaseErrorMessage(error as Error, 'Failed to fetch matches'));
       return [] as Match[];
     }
-  }, [groupId]);
+  }, [groupId, seasonContext]);
 
   const loadArenaDecks = useCallback(async (memberIds: string[]) => {
     if (memberIds.length === 0) {
@@ -755,12 +771,18 @@ export default function TablePage() {
   }, [groupId, user]);
 
   const getStatsSinceDate = useCallback(() => {
-    if (dateFilter === 'all') return null;
+    const seasonStart = seasonContext
+      ? new Date(`${seasonContext.currentSeasonStart}T00:00:00Z`)
+      : null;
+    if (dateFilter === 'all') return seasonStart;
     const now = new Date();
-    if (dateFilter === '7d') return subDays(now, 7);
-    if (dateFilter === '30d') return subDays(now, 30);
-    return subDays(now, 90);
-  }, [dateFilter]);
+    const relativeStart = dateFilter === '7d'
+      ? subDays(now, 7)
+      : dateFilter === '30d'
+        ? subDays(now, 30)
+        : subDays(now, 90);
+    return seasonStart && isAfter(seasonStart, relativeStart) ? seasonStart : relativeStart;
+  }, [dateFilter, seasonContext]);
 
   const refreshMatches = useCallback(async () => {
     const loadedMatches = await initializeMatchHistory();
@@ -773,14 +795,19 @@ export default function TablePage() {
     try {
       const since = getStatsSinceDate();
       const currentRequest = fetchArenaAnalyticsPayload(supabase, groupId, since);
-      const allTimeRequest = since ? fetchArenaAnalyticsPayload(supabase, groupId, null) : currentRequest;
+      const seasonStart = seasonContext
+        ? new Date(`${seasonContext.currentSeasonStart}T00:00:00Z`)
+        : null;
+      const allTimeRequest = since && seasonStart && since.getTime() !== seasonStart.getTime()
+        ? fetchArenaAnalyticsPayload(supabase, groupId, seasonStart)
+        : currentRequest;
       const [currentPayload, allTimePayload] = await Promise.all([currentRequest, allTimeRequest]);
       setAnalyticsPayload(currentPayload);
       setAllTimeAwardsPayload(allTimePayload);
     } catch (error) {
       console.error('Error refreshing arena stats:', error);
     }
-  }, [getStatsSinceDate, groupId, initializeMatchHistory]);
+  }, [getStatsSinceDate, groupId, initializeMatchHistory, seasonContext]);
 
   const loadFilteredMatchHistory = useCallback(async (since: Date) => {
     try {
@@ -907,10 +934,23 @@ export default function TablePage() {
   }, [user, fetchData]);
 
   useEffect(() => {
+    if (!user || !groupId) return;
+    let active = true;
+    void fetchArenaSeasonContext(supabase, groupId)
+      .then((context) => { if (active) setSeasonContext(context); })
+      .catch((error) => console.error('Error fetching Arena season:', error));
+    return () => { active = false; };
+  }, [groupId, user]);
+
+  useEffect(() => {
     if (!user) return;
     void refreshActiveLiveGame();
     const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') void refreshActiveLiveGame();
+      if (document.visibilityState !== 'visible') return;
+      void refreshActiveLiveGame();
+      void fetchArenaSeasonContext(supabase, groupId)
+        .then(setSeasonContext)
+        .catch((error) => console.error('Error refreshing Arena season:', error));
     };
     window.addEventListener('focus', refreshWhenVisible);
     document.addEventListener('visibilitychange', refreshWhenVisible);
@@ -918,10 +958,15 @@ export default function TablePage() {
       window.removeEventListener('focus', refreshWhenVisible);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
-  }, [refreshActiveLiveGame, user]);
+  }, [groupId, refreshActiveLiveGame, user]);
 
   const getFilteredMatches = useCallback(() => {
-    if (dateFilter === 'all') return matches;
+    const seasonThreshold = seasonContext
+      ? new Date(`${seasonContext.currentSeasonStart}T00:00:00Z`).getTime()
+      : Number.NEGATIVE_INFINITY;
+    if (dateFilter === 'all') {
+      return matches.filter((match) => new Date(match.played_at).getTime() >= seasonThreshold);
+    }
 
     const now = new Date();
     let startDate: Date;
@@ -940,8 +985,9 @@ export default function TablePage() {
         return matches;
     }
 
-    return matches.filter((match) => isAfter(new Date(match.played_at), startOfDay(startDate)));
-  }, [matches, dateFilter]);
+    const threshold = Math.max(startOfDay(startDate).getTime(), seasonThreshold);
+    return matches.filter((match) => new Date(match.played_at).getTime() >= threshold);
+  }, [matches, dateFilter, seasonContext]);
 
   const matchDayGroups = useMemo(() => {
     const dateLocale = language === 'it' ? itLocale : enUS;
@@ -1014,7 +1060,12 @@ export default function TablePage() {
       try {
         const since = getStatsSinceDate();
         const currentRequest = fetchArenaAnalyticsPayload(supabase, groupId, since);
-        const allTimeRequest = since ? fetchArenaAnalyticsPayload(supabase, groupId, null) : currentRequest;
+        const seasonStart = seasonContext
+          ? new Date(`${seasonContext.currentSeasonStart}T00:00:00Z`)
+          : null;
+        const allTimeRequest = since && seasonStart && since.getTime() !== seasonStart.getTime()
+          ? fetchArenaAnalyticsPayload(supabase, groupId, seasonStart)
+          : currentRequest;
         const [currentPayload, allTimePayload] = await Promise.all([currentRequest, allTimeRequest]);
         setAnalyticsPayload(currentPayload);
         setAllTimeAwardsPayload(allTimePayload);
@@ -1022,7 +1073,7 @@ export default function TablePage() {
         console.error('Error fetching arena stats:', error);
       }
     })();
-  }, [getStatsSinceDate, groupId, loading, user]);
+  }, [getStatsSinceDate, groupId, loading, seasonContext, user]);
 
   const deckIdsInMatches = useMemo(() => Array.from(new Set(
     getFilteredMatches().flatMap((match) =>
@@ -1863,7 +1914,13 @@ export default function TablePage() {
     if (dateFilter === '7d') return t({ it: 'Ultimi 7 giorni', en: 'Last 7 days' });
     if (dateFilter === '30d') return t({ it: 'Ultimi 30 giorni', en: 'Last 30 days' });
     if (dateFilter === '90d') return t({ it: 'Ultimi 90 giorni', en: 'Last 90 days' });
-    return t({ it: 'Sempre', en: 'All time' });
+    return seasonContext
+      ? formatArenaSeasonLabel(
+          seasonContext.currentSeasonStart,
+          seasonContext.currentSeasonEnd,
+          language === 'it' ? 'it-IT' : 'en-US',
+        )
+      : t({ it: 'Season corrente', en: 'Current season' });
   };
 
   const handleShareArenaStats = async () => {
@@ -2084,6 +2141,7 @@ export default function TablePage() {
     setEditArenaName(group.name);
     setEditArenaDescription(group.description || '');
     setEditArenaIsPublic(Boolean(group.is_public));
+    setEditArenaResetMonth(group.season_reset_month ?? seasonContext?.resetMonth ?? 1);
     setShowEditArenaModal(true);
   };
 
@@ -2100,6 +2158,10 @@ export default function TablePage() {
         })
         .eq('id', group.id);
       if (error) throw error;
+      const nextSeasonContext = editArenaResetMonth !== (seasonContext?.resetMonth ?? group.season_reset_month ?? 1)
+        ? await setArenaSeasonResetMonth(supabase, group.id, editArenaResetMonth)
+        : seasonContext;
+      if (nextSeasonContext) setSeasonContext(nextSeasonContext);
       toast({ title: t({ it: 'Playgroup aggiornato!', en: 'Playgroup updated!' }) });
       setShowEditArenaModal(false);
       setGroup((currentGroup) => currentGroup ? {
@@ -2107,6 +2169,7 @@ export default function TablePage() {
         name: editArenaName.trim(),
         description: editArenaDescription.trim() || null,
         is_public: editArenaIsPublic,
+        season_reset_month: editArenaResetMonth,
       } : currentGroup);
     } catch (error: unknown) {
       toast({ title: t({ it: 'Errore', en: 'Error' }), description: error instanceof Error ? error.message : t({ it: 'Impossibile aggiornare il playgroup', en: 'Failed to update playgroup' }), variant: 'destructive' });
@@ -2351,6 +2414,53 @@ export default function TablePage() {
           </p>
         </PanelWithActions>
 
+        {seasonContext ? (
+          <Card className="mb-5 border-emerald-500/25 bg-emerald-950/15">
+            <CardContent className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                  {formatArenaSeasonLabel(
+                    seasonContext.currentSeasonStart,
+                    seasonContext.currentSeasonEnd,
+                    language === 'it' ? 'it-IT' : 'en-US',
+                  )}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {formatArenaSeasonDate(seasonContext.currentSeasonStart, language === 'it' ? 'it-IT' : 'en-US')}
+                  {' – '}
+                  {formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {seasonContext.archives.length === 0 ? (
+                  <span className="text-xs text-muted-foreground">
+                    {t({ it: 'Nessuna stagione archiviata', en: 'No archived seasons' })}
+                  </span>
+                ) : seasonContext.archives.map((archive) => (
+                  <div key={archive.id} className="rounded-lg border border-border/70 bg-background/35 px-3 py-2 text-xs">
+                    <span className="font-semibold text-foreground">
+                      {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
+                    </span>
+                    <span className="ml-2 text-muted-foreground">
+                      {Number(archive.summary.totalMatches ?? 0)} {t({ it: 'partite', en: 'games' })}
+                      {' · '}{Number(archive.summary.matches?.draws ?? 0)} {t({ it: 'pareggi', en: 'draws' })}
+                      {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {t({ it: 'tracciate', en: 'tracked' })}
+                    </span>
+                    {getArenaSeasonArchiveHighlights(archive).topPlayer ? (
+                      <span className="mt-1 block text-muted-foreground">
+                        {t({ it: 'Leader', en: 'Leader' })}: {getArenaSeasonArchiveHighlights(archive).topPlayer?.display_name}
+                        {getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name
+                          ? ` · ${t({ it: 'Mazzo', en: 'Deck' })}: ${getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name}`
+                          : ''}
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="mb-6 flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-black/35 p-3 shadow-lg shadow-black/20 backdrop-blur-xl xl:flex-row xl:items-center xl:justify-between">
             <TabsList className="grid h-auto w-full min-w-0 grid-cols-5 gap-1 border border-border/70 bg-card/60 p-1 xl:inline-flex xl:h-11 xl:w-auto">
@@ -2435,7 +2545,7 @@ export default function TablePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
-                    <SelectItem value="all">{t({ it: 'Sempre', en: 'All Time' })}</SelectItem>
+                    <SelectItem value="all">{t({ it: 'Season corrente', en: 'Current season' })}</SelectItem>
                     <SelectItem value="7d">{t({ it: 'Ultimi 7 giorni', en: 'Last 7 Days' })}</SelectItem>
                     <SelectItem value="30d">{t({ it: 'Ultimi 30 giorni', en: 'Last 30 Days' })}</SelectItem>
                     <SelectItem value="90d">{t({ it: 'Ultimi 90 giorni', en: 'Last 90 Days' })}</SelectItem>
@@ -3548,6 +3658,30 @@ export default function TablePage() {
                       </a>
                     )}
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {t({ it: 'Mese di inizio season', en: 'Season start month' })}
+                  </label>
+                  <Select value={String(editArenaResetMonth)} onValueChange={(value) => setEditArenaResetMonth(Number(value))}>
+                    <SelectTrigger className="bg-background/50 border-border text-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      {ARENA_SEASON_MONTHS.map((month) => (
+                        <SelectItem key={month} value={String(month)}>
+                          {new Intl.DateTimeFormat(language === 'it' ? 'it-IT' : 'en-US', { month: 'long', timeZone: 'UTC' })
+                            .format(new Date(Date.UTC(2026, month - 1, 1)))}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t({
+                      it: 'La season dura un anno. Cambiare mese ricalcola gli archivi senza eliminare partite o score personali.',
+                      en: 'A season lasts one year. Changing the month rebuilds archives without deleting matches or personal scores.',
+                    })}
+                  </p>
                 </div>
                 <div className="flex gap-3 pt-2">
                   <Button variant="outline" className="flex-1 border-border text-foreground" onClick={() => setShowEditArenaModal(false)}>
