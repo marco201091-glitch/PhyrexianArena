@@ -33,7 +33,7 @@ test('Archidekt settings and username import are connected', async ({ page }) =>
   const loginResponsePromise = page.waitForResponse((response) =>
     response.url().endsWith('/api/auth/login') && response.request().method() === 'POST'
   );
-  await page.getByRole('button', { name: 'Enter Playgroup' }).click();
+  await page.getByRole('button', { name: /^Enter(?: Playgroup)?$/ }).click();
   const loginResponse = await loginResponsePromise;
   expect(loginResponse.status()).toBe(200);
   await page.waitForURL('**/dashboard', { timeout: 20_000 });
