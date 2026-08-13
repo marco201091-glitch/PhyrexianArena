@@ -66,6 +66,30 @@ describe('live game mutations', () => {
     expect(undone.version).toBe(2);
   });
 
+  it('applies and reverses lifelink on commander damage', () => {
+    const initial = makeState();
+    initial.players[0] = { ...initial.players[0]!, life: 30 };
+    const mutation = {
+      type: 'adjust' as const,
+      targetKey: keys[1],
+      sourceKey: keys[0],
+      amount: 7,
+      mode: 'commander' as const,
+      drain: true,
+      drainAmount: 7,
+      eventId: 'commander-lifelink',
+      occurredAt: '2026-08-13T12:00:00.000Z',
+    };
+    const applied = applyLiveGameMutation(initial, mutation);
+    const undone = applyLiveGameMutation(applied, { ...mutation, amount: -7 });
+
+    expect(applied.players.map((player) => player.life)).toEqual([37, 33]);
+    expect(applied.players[1]?.commanderDamageFrom[keys[0]]).toBe(7);
+    expect(applied.summary?.byParticipant[keys[0]]?.lifeGained).toBe(7);
+    expect(undone.players.map((player) => player.life)).toEqual([30, 40]);
+    expect(undone.players[1]?.commanderDamageFrom[keys[0]]).toBe(0);
+  });
+
   it('aggregates only the commander correction that was actually applied', () => {
     const damaged = applyLiveGameMutation(makeState(), {
       type: 'adjust', targetKey: keys[1], sourceKey: keys[0], amount: 2, mode: 'commander',
