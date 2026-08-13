@@ -78,13 +78,22 @@ import { toUserParticipantKey } from '@/lib/participant-keys';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import type { ArenaMatch } from '@/lib/types/arena';
+import {
+  ARENA_SEASON_MONTHS,
+  fetchArenaSeasonContext,
+  formatArenaSeasonDate,
+  formatArenaSeasonLabel,
+  getArenaSeasonArchiveHighlights,
+  setArenaSeasonResetMonth,
+  type ArenaSeasonContext,
+} from '@/lib/arena-seasons';
 
 type ArenaTab = 'matches' | 'players' | 'decks' | 'awards' | 'meta';
 
 const DATE_FILTERS: ArenaDateFilter[] = ['all', '7d', '30d', '90d'];
 
 const DATE_FILTER_KEYS = {
-  all: 'filterAllTime',
+  all: 'currentSeason',
   '7d': 'filter7d',
   '30d': 'filter30d',
   '90d': 'filter90d',
@@ -164,6 +173,24 @@ export default function TableScreen() {
   const [sharing, setSharing] = useState(false);
   const [analyticsPayload, setAnalyticsPayload] = useState<ArenaAnalyticsPayload | null>(null);
   const [allTimeAnalyticsPayload, setAllTimeAnalyticsPayload] = useState<ArenaAnalyticsPayload | null>(null);
+  const [seasonContext, setSeasonContext] = useState<ArenaSeasonContext | null>(null);
+  const [editResetMonth, setEditResetMonth] = useState(1);
+
+  const refreshSeasonContext = useCallback(async () => {
+    if (!groupId || !user?.id) {
+      setSeasonContext(null);
+      return;
+    }
+    try {
+      setSeasonContext(await fetchArenaSeasonContext(supabase, groupId));
+    } catch {
+      setSeasonContext(null);
+    }
+  }, [groupId, user?.id]);
+
+  useEffect(() => {
+    void refreshSeasonContext();
+  }, [refreshSeasonContext]);
 
   useEffect(() => {
     if (!groupId || !user?.id) {
@@ -172,10 +199,11 @@ export default function TableScreen() {
       return;
     }
     let active = true;
-    const currentRequest = fetchArenaAnalytics(supabase, groupId, dateFilter);
+    const seasonStart = seasonContext?.currentSeasonStart ?? null;
+    const currentRequest = fetchArenaAnalytics(supabase, groupId, dateFilter, seasonStart);
     const allTimeRequest = dateFilter === 'all'
       ? currentRequest
-      : fetchArenaAnalytics(supabase, groupId, 'all');
+      : fetchArenaAnalytics(supabase, groupId, 'all', seasonStart);
     void Promise.all([currentRequest, allTimeRequest])
       .then(([current, allTime]) => {
         if (!active) return;
@@ -189,7 +217,7 @@ export default function TableScreen() {
         setAllTimeAnalyticsPayload(null);
       });
     return () => { active = false; };
-  }, [dateFilter, groupId, user?.id]);
+  }, [dateFilter, groupId, seasonContext?.currentSeasonStart, user?.id]);
 
   useEffect(() => {
     if (!detailsMatch?.id || detailsMatch.tracking_version == null) {
@@ -231,7 +259,8 @@ export default function TableScreen() {
   useFocusEffect(
     useCallback(() => {
       void refreshActiveLiveGame();
-    }, [refreshActiveLiveGame]),
+      void refreshSeasonContext();
+    }, [refreshActiveLiveGame, refreshSeasonContext]),
   );
 
   const isMember = isArenaMember(members, user?.id);
@@ -243,8 +272,8 @@ export default function TableScreen() {
   const canLeave = canLeaveArena(members.length, isMember);
 
   const filteredMatches = useMemo(
-    () => filterMatchesByDate(matches, dateFilter),
-    [dateFilter, matches],
+    () => filterMatchesByDate(matches, dateFilter, seasonContext?.currentSeasonStart),
+    [dateFilter, matches, seasonContext?.currentSeasonStart],
   );
 
   const analyticsView = useMemo(
@@ -347,9 +376,9 @@ export default function TableScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshActiveLiveGame()]);
+    await Promise.all([refresh(), refreshActiveLiveGame(), refreshSeasonContext()]);
     setRefreshing(false);
-  }, [refresh, refreshActiveLiveGame]);
+  }, [refresh, refreshActiveLiveGame, refreshSeasonContext]);
 
   const shareInvite = useCallback(() => {
     if (!group) return;
@@ -362,7 +391,13 @@ export default function TableScreen() {
     const locale = language === 'it' ? 'it-IT' : 'en-US';
     return buildArenaShareText({
       arenaName: group.name,
-      periodLabel: getArenaPeriodLabel(dateFilter, language),
+      periodLabel: dateFilter === 'all' && seasonContext
+        ? formatArenaSeasonLabel(
+            seasonContext.currentSeasonStart,
+            seasonContext.currentSeasonEnd,
+            language === 'it' ? 'it-IT' : 'en-US',
+          )
+        : getArenaPeriodLabel(dateFilter, language),
       totalMatches: reportedMatchCount,
       topPlayers: playerStats.slice(0, 5).map((player) => ({
         displayName: player.displayName,
@@ -417,6 +452,7 @@ export default function TableScreen() {
     commanderStats,
     copy,
     dateFilter,
+    seasonContext,
     filteredMatches,
     group,
     language,
@@ -508,6 +544,7 @@ export default function TableScreen() {
     setEditName(group.name);
     setEditDescription(group.description || '');
     setEditIsPublic(Boolean(group.is_public));
+    setEditResetMonth(group.season_reset_month ?? seasonContext?.resetMonth ?? 1);
     setShowEditModal(true);
   };
 
@@ -516,6 +553,10 @@ export default function TableScreen() {
     setSavingArena(true);
     try {
       await updateGroup(editName, editDescription, editIsPublic);
+      if (editResetMonth !== (seasonContext?.resetMonth ?? group?.season_reset_month ?? 1)) {
+        setSeasonContext(await setArenaSeasonResetMonth(supabase, groupId, editResetMonth));
+        await refresh();
+      }
       setShowEditModal(false);
       showToast(copy('arenaUpdated'));
     } catch (error) {
@@ -675,6 +716,44 @@ export default function TableScreen() {
           onPlayGame={() => router.push(`/table/${groupId}/play`)}
           onRecordBattle={() => setShowRecordModal(true)}
         />
+        {seasonContext ? (
+          <PhyrexianPanel style={styles.seasonPanel}>
+            <Text style={styles.seasonTitle}>
+              {formatArenaSeasonLabel(
+                seasonContext.currentSeasonStart,
+                seasonContext.currentSeasonEnd,
+                language === 'it' ? 'it-IT' : 'en-US',
+              )}
+            </Text>
+            <Text style={styles.seasonDates}>
+              {formatArenaSeasonDate(seasonContext.currentSeasonStart, language === 'it' ? 'it-IT' : 'en-US')}
+              {' – '}
+              {formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
+            </Text>
+            {seasonContext.archives.length === 0 ? (
+              <Text style={styles.seasonArchiveText}>{copy('seasonArchiveEmpty')}</Text>
+            ) : seasonContext.archives.map((archive) => (
+              <View key={archive.id} style={styles.seasonArchiveRow}>
+                <Text style={styles.seasonArchiveName}>
+                  {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
+                </Text>
+                <Text style={styles.seasonArchiveText}>
+                  {Number(archive.summary.totalMatches ?? 0)} {copy('seasonArchivedGames')}
+                  {' · '}{Number(archive.summary.matches?.draws ?? 0)} {copy('seasonArchivedDraws')}
+                  {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {copy('trackedGames')}
+                </Text>
+                {getArenaSeasonArchiveHighlights(archive).topPlayer ? (
+                  <Text style={styles.seasonArchiveText}>
+                    {copy('currentLeader')}: {getArenaSeasonArchiveHighlights(archive).topPlayer?.display_name}
+                    {getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name
+                      ? ` · ${copy('deckSingular')}: ${getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name}`
+                      : ''}
+                  </Text>
+                ) : null}
+              </View>
+            ))}
+          </PhyrexianPanel>
+        ) : null}
         <ArenaTabBar
           activeTab={activeTab}
           labels={{
@@ -1182,6 +1261,26 @@ export default function TableScreen() {
             thumbColor={colors.foreground}
           />
         </View>
+        <View style={styles.seasonEditor}>
+          <Text style={styles.publicTitle}>{copy('seasonStartMonth')}</Text>
+          <View style={styles.monthGrid}>
+            {ARENA_SEASON_MONTHS.map((month) => (
+              <Pressable
+                key={month}
+                accessibilityRole="button"
+                accessibilityState={{ selected: editResetMonth === month }}
+                onPress={() => setEditResetMonth(month)}
+                style={[styles.monthButton, editResetMonth === month && styles.monthButtonActive]}
+              >
+                <Text style={[styles.monthButtonText, editResetMonth === month && styles.monthButtonTextActive]}>
+                  {new Intl.DateTimeFormat(language === 'it' ? 'it-IT' : 'en-US', { month: 'short', timeZone: 'UTC' })
+                    .format(new Date(Date.UTC(2026, month - 1, 1)))}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.publicHint}>{copy('seasonResetHint')}</Text>
+        </View>
         {canManage ? (
           <TableUserManagement
             members={members}
@@ -1290,6 +1389,51 @@ export default function TableScreen() {
 }
 
 const styles = StyleSheet.create({
+  seasonPanel: {
+    gap: spacing.xs,
+    borderColor: 'rgba(16, 185, 129, 0.28)',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+  },
+  seasonTitle: {
+    color: '#a7f3d0',
+    fontSize: 14,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  seasonDates: { color: colors.muted, fontSize: 12 },
+  seasonArchiveRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  seasonArchiveName: { color: colors.foreground, fontSize: 12, fontWeight: '700' },
+  seasonArchiveText: { color: colors.muted, fontSize: 12 },
+  seasonEditor: {
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    padding: 12,
+  },
+  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  monthButton: {
+    width: '22%',
+    minWidth: 56,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 8,
+  },
+  monthButtonActive: { borderColor: colors.primary, backgroundColor: 'rgba(16, 185, 129, 0.16)' },
+  monthButtonText: { color: colors.muted, fontSize: 12, textTransform: 'capitalize' },
+  monthButtonTextActive: { color: colors.primaryMuted, fontWeight: '700' },
   resumePanel: {
     gap: spacing.sm,
     borderColor: 'rgba(16, 185, 129, 0.35)',

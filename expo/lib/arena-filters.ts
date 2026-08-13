@@ -19,8 +19,15 @@ function subDays(date: Date, days: number) {
 export function filterMatchesByDate<T extends { played_at: string }>(
   matches: T[],
   dateFilter: ArenaDateFilter,
+  seasonStart?: string | null,
 ): T[] {
-  if (dateFilter === 'all') return matches;
+  const seasonThreshold = seasonStart
+    ? new Date(`${seasonStart.slice(0, 10)}T00:00:00Z`).getTime()
+    : Number.NEGATIVE_INFINITY;
+  if (dateFilter === 'all') {
+    if (!seasonStart) return matches;
+    return matches.filter((match) => new Date(match.played_at).getTime() >= seasonThreshold);
+  }
 
   const now = new Date();
   let startDate: Date;
@@ -39,8 +46,11 @@ export function filterMatchesByDate<T extends { played_at: string }>(
       return matches;
   }
 
-  const threshold = startOfDay(startDate).getTime();
-  return matches.filter((match) => new Date(match.played_at).getTime() > threshold);
+  const relativeThreshold = startOfDay(startDate).getTime();
+  if (seasonThreshold > relativeThreshold) {
+    return matches.filter((match) => new Date(match.played_at).getTime() >= seasonThreshold);
+  }
+  return matches.filter((match) => new Date(match.played_at).getTime() > relativeThreshold);
 }
 
 export function getArenaPeriodLabel(dateFilter: ArenaDateFilter, language: AppLanguage) {

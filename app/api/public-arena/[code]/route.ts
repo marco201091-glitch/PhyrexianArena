@@ -4,6 +4,7 @@ import { computeArenaColorAnalytics, type ArenaColorMatch } from '@/lib/arena-co
 import { applyIpRateLimit } from '@/app/api/_lib/with-rate-limit';
 import { getDeckDisplayColors } from '@/lib/deck-metadata';
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
+import { getArenaSeasonPeriod } from '@/lib/arena-seasons';
 
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -33,13 +34,15 @@ export async function GET(
 
   const { data: group, error: groupError } = await supabase
     .from('groups')
-    .select('id, name, description, invite_code, is_public, created_at')
+    .select('id, name, description, invite_code, is_public, created_at, season_reset_month')
     .eq('invite_code', code.toUpperCase())
     .maybeSingle();
 
   if (groupError || !group || !group.is_public) {
     return NextResponse.json({ error: 'Public playgroup not found' }, { status: 404 });
   }
+
+  const season = getArenaSeasonPeriod(group.season_reset_month ?? 1);
 
   const { data: matches, error: matchesError } = await supabase
     .from('matches')
@@ -65,6 +68,8 @@ export async function GET(
       )
     `)
     .eq('group_id', group.id)
+    .gte('played_at', `${season.start}T00:00:00.000Z`)
+    .lt('played_at', `${season.end}T00:00:00.000Z`)
     .order('played_at', { ascending: false });
 
   if (matchesError) {
@@ -164,6 +169,8 @@ export async function GET(
       description: group.description,
       inviteCode: group.invite_code,
       createdAt: group.created_at,
+      seasonStart: season.start,
+      seasonEnd: season.end,
     },
     summary: {
       totalMatches: matches?.length || 0,

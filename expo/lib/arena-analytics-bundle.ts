@@ -10,6 +10,7 @@ import {
   MANA_COLOR_ORDER,
 } from '@/lib/mana-colors-core';
 import type { PlayerStats } from '@/lib/types/arena';
+import { laterIsoDate } from '@/lib/arena-seasons';
 
 type PlayerRollup = {
   key: string;
@@ -268,10 +269,11 @@ export async function fetchArenaAnalytics(
   client: SupabaseClient,
   groupId: string,
   dateFilter: ArenaDateFilter,
+  seasonStart?: string | null,
 ): Promise<ArenaAnalyticsPayload> {
   const { data, error } = await client.rpc('get_arena_analytics_bundle', {
     p_group_id: groupId,
-    p_since: getAnalyticsSince(dateFilter),
+    p_since: laterIsoDate(getAnalyticsSince(dateFilter), seasonStart ?? null),
     p_until: null,
   });
   if (error) throw error;
