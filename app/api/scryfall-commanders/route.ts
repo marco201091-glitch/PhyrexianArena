@@ -18,10 +18,22 @@ export async function GET(request: NextRequest) {
     'background',
     'background-owner',
     'friends',
+    'father-son',
+    'survivors',
+    'character-select',
     'doctor',
     'doctor-companion',
   ];
-  const partnerMode = validPartnerModes.includes(partnerModeParam as CommanderPartnerMode)
+  const dynamicPartnerMode = (
+    partnerModeParam?.startsWith('partner-with:')
+    && partnerModeParam.length > 'partner-with:'.length
+    && partnerModeParam.length <= 120
+  ) || (
+    partnerModeParam?.startsWith('partner-family:')
+    && partnerModeParam.length > 'partner-family:'.length
+    && partnerModeParam.length <= 80
+  );
+  const partnerMode = validPartnerModes.includes(partnerModeParam as CommanderPartnerMode) || dynamicPartnerMode
     ? partnerModeParam as CommanderPartnerMode
     : null;
 

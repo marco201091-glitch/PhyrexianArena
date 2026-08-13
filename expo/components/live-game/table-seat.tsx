@@ -273,6 +273,29 @@ export function TableSeat({
           </View>
         ) : null}
 
+        {(player.counters.monarch || player.counters.initiative) ? (
+          <View
+            pointerEvents="none"
+            style={styles.emblemBadges}
+            accessible
+            accessibilityLabel={[
+              player.counters.monarch ? 'Monarca' : '',
+              player.counters.initiative ? 'Iniziativa' : '',
+            ].filter(Boolean).join(', ')}
+          >
+            {player.counters.monarch ? (
+              <View style={[styles.emblemBadge, styles.monarchBadge]}>
+                <Ionicons name="ribbon-outline" size={18} color="#fef3c7" />
+              </View>
+            ) : null}
+            {player.counters.initiative ? (
+              <View style={[styles.emblemBadge, styles.initiativeBadge]}>
+                <Ionicons name="trail-sign-outline" size={18} color="#cffafe" />
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {player.isEliminated ? (
           <View style={styles.eliminatedOverlay}>
             <Ionicons name="skull-outline" size={28} color="#fecaca" />
@@ -489,6 +512,30 @@ const styles = StyleSheet.create({
     color: '#fef3c7',
     fontSize: 10,
     fontWeight: '900',
+  },
+  emblemBadges: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    zIndex: 24,
+    flexDirection: 'row',
+    gap: 5,
+  },
+  emblemBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monarchBadge: {
+    borderColor: 'rgba(253,230,138,0.72)',
+    backgroundColor: 'rgba(69,42,8,0.9)',
+  },
+  initiativeBadge: {
+    borderColor: 'rgba(165,243,252,0.68)',
+    backgroundColor: 'rgba(8,51,68,0.9)',
   },
   playerHighlightText: {
     color: '#ffffff',

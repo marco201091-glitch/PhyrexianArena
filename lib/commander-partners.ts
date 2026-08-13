@@ -10,7 +10,17 @@ export function getCommanderPartnerMode(commander: CommanderSearchResult): Comma
   if (typeLine.includes('doctor') && typeLine.includes('time lord')) return 'doctor-companion';
   if (rulesText.includes("doctor's companion")) return 'doctor';
   if (rulesText.includes('friends forever')) return 'friends';
-  if (rulesText.includes('partner') && !rulesText.includes('partner with') && !rulesText.includes("doctor's companion")) {
+  if (rulesText.includes('partner—father & son') || rulesText.includes('partner-father & son')) return 'father-son';
+  if (rulesText.includes('partner—survivors') || rulesText.includes('partner-survivors')) return 'survivors';
+  if (rulesText.includes('partner—character select') || rulesText.includes('partner-character select')) return 'character-select';
+
+  const namedPartner = commander.oracleText.match(/partner with ([^(\n]+)/i)?.[1]?.trim();
+  if (namedPartner) return `partner-with:${namedPartner}`;
+
+  const partnerFamily = commander.oracleText.match(/partner[—-]\s*([^(\n]+)/i)?.[1]?.trim();
+  if (partnerFamily) return `partner-family:${partnerFamily}`;
+
+  if (rulesText.includes('partner') && !rulesText.includes("doctor's companion")) {
     return 'partner';
   }
 
@@ -52,9 +62,37 @@ export function getCommanderPartnerCopy(mode: CommanderPartnerMode, t: CopyFn) {
     };
   }
 
+  if (mode.startsWith('partner-with:')) {
+    const partnerName = mode.slice('partner-with:'.length);
+    return {
+      title: t({ it: `Partner con ${partnerName}`, en: `Partner with ${partnerName}` }),
+      placeholder: t({ it: `Cerca ${partnerName}...`, en: `Search ${partnerName}...` }),
+      empty: t({ it: 'Partner specifico non trovato', en: 'Named partner not found' }),
+    };
+  }
+
+  if (mode.startsWith('partner-family:')) {
+    const familyName = mode.slice('partner-family:'.length);
+    return {
+      title: familyName,
+      placeholder: t({ it: `Cerca ${familyName}...`, en: `Search ${familyName}...` }),
+      empty: t({ it: 'Nessun comandante compatibile trovato', en: 'No compatible commanders found' }),
+    };
+  }
+
+  const variantLabel = mode === 'friends'
+    ? 'Friends forever'
+    : mode === 'father-son'
+      ? 'Father & son'
+      : mode === 'survivors'
+        ? 'Survivors'
+        : mode === 'character-select'
+          ? 'Character select'
+          : 'Partner';
+
   return {
-    title: t({ it: mode === 'friends' ? 'Friends forever' : 'Partner', en: mode === 'friends' ? 'Friends forever' : 'Partner' }),
-    placeholder: t({ it: mode === 'friends' ? 'Cerca Friends forever...' : 'Cerca partner...', en: mode === 'friends' ? 'Search Friends forever...' : 'Search partner...' }),
+    title: variantLabel,
+    placeholder: t({ it: `Cerca ${variantLabel}...`, en: `Search ${variantLabel}...` }),
     empty: t({ it: 'Nessun secondo comandante trovato', en: 'No second commander found' }),
   };
 }

@@ -1,4 +1,5 @@
 import type { CommanderArtOption, CommanderPartnerMode, CommanderSearchResult } from '@/lib/commander-types';
+import { buildCommanderNameSearchClause } from '@/lib/commander-search-aliases';
 import { normalizeDeckColorIdentity } from '@/lib/deck-metadata';
 
 export type ScryfallCard = {
@@ -123,9 +124,20 @@ function partnerModeQuery(mode: CommanderPartnerMode | null): string {
   if (mode === 'background') return 'is:commander t:background';
   if (mode === 'background-owner') return 'is:commander o:"choose a background"';
   if (mode === 'friends') return 'is:commander o:"friends forever"';
+  if (mode === 'father-son') return 'is:commander o:"partner—father & son"';
+  if (mode === 'survivors') return 'is:commander o:"partner—survivors"';
+  if (mode === 'character-select') return 'is:commander o:"partner—character select"';
   if (mode === 'doctor') return 'is:commander t:doctor t:"time lord"';
   if (mode === 'doctor-companion') return 'is:commander o:"doctor\'s companion"';
-  if (mode === 'partner') return 'is:commander o:partner -o:"partner with"';
+  if (mode?.startsWith('partner-with:')) {
+    const partnerName = sanitizeCommanderQuery(mode.slice('partner-with:'.length));
+    return partnerName ? `is:commander !"${partnerName}"` : 'is:commander o:"partner with"';
+  }
+  if (mode?.startsWith('partner-family:')) {
+    const familyName = sanitizeCommanderQuery(mode.slice('partner-family:'.length));
+    return familyName ? `is:commander o:"partner—${familyName}"` : 'is:commander';
+  }
+  if (mode === 'partner') return 'is:commander o:partner -o:"partner with" -o:"partner—"';
   return 'is:commander';
 }
 
@@ -168,7 +180,7 @@ export function buildScryfallCommanderSearchUrl(
   if (queryText.length < 2) return null;
 
   const baseQuery = partnerModeQuery(partnerMode);
-  const scryfallQuery = `${baseQuery} (${queryText} or name:"${queryText}")`;
+  const scryfallQuery = `${baseQuery} ${buildCommanderNameSearchClause(queryText)}`;
   return `https://api.scryfall.com/cards/search?q=${encodeURIComponent(scryfallQuery)}&order=edhrec&unique=cards`;
 }
 
