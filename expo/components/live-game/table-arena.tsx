@@ -88,6 +88,8 @@ type TableArenaProps = {
     everyone: string;
     drain: string;
     drainHint: string;
+    lifelink: string;
+    lifelinkHint: string;
     dieOrCoin: string;
     coin: string;
     heads: string;
@@ -832,6 +834,8 @@ export function TableArena({
           everyone: labels.everyone,
           drain: labels.drain,
           drainHint: labels.drainHint,
+          lifelink: labels.lifelink,
+          lifelinkHint: labels.lifelinkHint,
         }}
         onClose={() => setPendingTransfer(null)}
         onConfirm={({ amount, mode, scope, drain }) => {
@@ -852,7 +856,8 @@ export function TableArena({
           const destination = scope === 'opponents'
             ? labels.eachOpponent
             : scope === 'all_players' ? labels.everyone : targetName;
-          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}${drain ? ` · ${labels.drain}` : ''}`);
+          const drainLabel = mode === 'commander' ? labels.lifelink : labels.drain;
+          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}${drain ? ` · ${drainLabel}` : ''}`);
           setTimeout(() => setDamageFeedback(null), 3200);
           setPendingTransfer(null);
         }}

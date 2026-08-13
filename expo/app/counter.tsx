@@ -236,6 +236,8 @@ export default function CounterScreen() {
         everyone: copy('liveGameEveryone'),
         drain: copy('liveGameDrain'),
         drainHint: copy('liveGameDrainHint'),
+        lifelink: copy('liveGameLifelink'),
+        lifelinkHint: copy('liveGameLifelinkHint'),
         dieOrCoin: copy('dieOrCoin'),
         coin: copy('coin'),
         heads: copy('heads'),
