@@ -90,6 +90,7 @@ export function TableSeat({
   const isLow = mainValue <= 5;
   const shake = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
+  const gainFlashOpacity = useSharedValue(0);
   const lifeScale = useSharedValue(1);
   const lastReportedDragX = useSharedValue(0);
   const lastReportedDragY = useSharedValue(0);
@@ -102,6 +103,16 @@ export function TableSeat({
     const change = player.life - previousLife.current;
     previousLife.current = player.life;
     if (change === 0) return;
+    if (change > 0 && !reducedMotion) {
+      gainFlashOpacity.value = withSequence(
+        withTiming(0.5, { duration: 110 }),
+        withTiming(0, { duration: 520 }),
+      );
+      lifeScale.value = withSequence(
+        withSpring(1.18, { damping: 8, stiffness: 260 }),
+        withSpring(1, { damping: 12, stiffness: 210 }),
+      );
+    }
     setRecentLifeDelta((current) => current + change);
     if (lifeDeltaTimer.current) clearTimeout(lifeDeltaTimer.current);
     lifeDeltaTimer.current = setTimeout(() => {
@@ -111,7 +122,7 @@ export function TableSeat({
     return () => {
       if (lifeDeltaTimer.current) clearTimeout(lifeDeltaTimer.current);
     };
-  }, [player.life]);
+  }, [gainFlashOpacity, lifeScale, player.life, reducedMotion]);
 
   useEffect(() => {
     if (damagePulse <= 0) return;
@@ -140,6 +151,7 @@ export function TableSeat({
     transform: [{ translateX: shake.value }, { translateY: shake.value * 0.3 }],
   }));
   const flashStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
+  const gainFlashStyle = useAnimatedStyle(() => ({ opacity: gainFlashOpacity.value }));
   const lifeStyle = useAnimatedStyle(() => ({ transform: [{ scale: lifeScale.value }] }));
 
   const dragGesture = useMemo(() => Gesture.Pan()
@@ -226,6 +238,7 @@ export function TableSeat({
         <View style={[styles.edgeShade, styles.edgeShadeLeft]} pointerEvents="none" />
         <View style={[styles.edgeShade, styles.edgeShadeRight]} pointerEvents="none" />
         <AnimatedView pointerEvents="none" style={[styles.flash, flashStyle]} />
+        <AnimatedView pointerEvents="none" style={[styles.gainFlash, gainFlashStyle]} />
 
         {onSelectActivePlayer && !player.isEliminated ? (
           <Pressable
@@ -425,6 +438,13 @@ const styles = StyleSheet.create({
   flash: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(239, 68, 68, 0.42)',
+    zIndex: 3,
+  },
+  gainFlash: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(16, 185, 129, 0.34)',
+    borderWidth: 4,
+    borderColor: 'rgba(110, 231, 183, 0.86)',
     zIndex: 3,
   },
   selectSurface: {

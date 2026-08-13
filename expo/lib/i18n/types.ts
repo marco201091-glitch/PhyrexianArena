@@ -297,6 +297,8 @@ export type TranslationKey =
   | 'liveGameEveryone'
   | 'liveGameDrain'
   | 'liveGameDrainHint'
+  | 'liveGameLifelink'
+  | 'liveGameLifelinkHint'
   | 'liveGameCommanderDamage'
   | 'liveGameInfect'
   | 'liveGameEliminated'

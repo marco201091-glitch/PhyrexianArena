@@ -28,6 +28,8 @@ type DamageConfirmSheetProps = {
     everyone: string;
     drain: string;
     drainHint: string;
+    lifelink: string;
+    lifelinkHint: string;
   };
   onClose: () => void;
   onConfirm: (input: { amount: number; mode: DamageMode; scope: 'single' | GroupDamageScope; drain: boolean }) => void;
@@ -187,7 +189,7 @@ export function DamageConfirmSheet({
                   onPress={() => {
                     setMode(option.value);
                     if (option.value === 'commander') setScope('single');
-                    if (option.value === 'commander') setDrain(false);
+                    if (option.value === 'infect') setDrain(false);
                   }}
                 >
                   <Ionicons name={option.icon} size={isIPad ? 19 : (widePhone || straightPhone) ? 20 : 14} color={active ? colors.primaryForeground : colors.muted} />
@@ -236,7 +238,7 @@ export function DamageConfirmSheet({
             </View>
           ) : null}
 
-          {mode !== 'commander' ? (
+          {mode !== 'infect' ? (
             <Pressable
               style={[styles.drainToggle, compactPhone && styles.drainToggleCompact, drain && styles.drainToggleActive]}
               onPress={() => {
@@ -248,12 +250,12 @@ export function DamageConfirmSheet({
               }}
               accessibilityRole="switch"
               accessibilityState={{ checked: drain }}
-              accessibilityLabel={labels.drain}
+              accessibilityLabel={mode === 'commander' ? labels.lifelink : labels.drain}
             >
               <Ionicons name="water-outline" size={17} color={drain ? '#f5d0fe' : colors.muted} />
               <View style={styles.drainCopy}>
-                <Text style={[styles.drainLabel, drain && styles.drainLabelActive]}>{labels.drain}</Text>
-                {!compactPhone ? <Text style={styles.drainHint} numberOfLines={1}>{labels.drainHint}</Text> : null}
+                <Text style={[styles.drainLabel, drain && styles.drainLabelActive]}>{mode === 'commander' ? labels.lifelink : labels.drain}</Text>
+                {!compactPhone ? <Text style={styles.drainHint} numberOfLines={1}>{mode === 'commander' ? labels.lifelinkHint : labels.drainHint}</Text> : null}
               </View>
               <Ionicons name={drain ? 'checkbox' : 'square-outline'} size={19} color={drain ? colors.primaryLight : colors.muted} />
             </Pressable>
