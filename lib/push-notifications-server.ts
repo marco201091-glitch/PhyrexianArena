@@ -2,6 +2,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type AppNotificationType = 'arena_invite' | 'arena_member_joined' | 'match_completed';
 
+type NotificationPreferenceRow = {
+  user_id: string;
+  arena_invite: boolean;
+  arena_member_joined: boolean;
+  match_completed: boolean;
+  push_enabled: boolean;
+};
+
 type NotificationInput = {
   type: AppNotificationType;
   title: string;
@@ -19,7 +27,20 @@ export async function notifyUsers(
   const recipients = Array.from(new Set(userIds)).filter(Boolean);
   if (!recipients.length) return;
 
-  const rows = recipients.map((userId) => ({
+  // Missing preference rows mean opt-in. If an older V8 schema does not have
+  // the table yet, preserve the previous behavior instead of dropping alerts.
+  const preferenceResult = await admin
+    .from('notification_preferences')
+    .select('user_id, arena_invite, arena_member_joined, match_completed, push_enabled')
+    .in('user_id', recipients);
+  const preferences = preferenceResult.error
+    ? new Map<string, NotificationPreferenceRow>()
+    : new Map(((preferenceResult.data ?? []) as NotificationPreferenceRow[])
+        .map((row) => [row.user_id, row]));
+  const inboxRecipients = recipients.filter((userId) => preferences.get(userId)?.[notification.type] !== false);
+  if (!inboxRecipients.length) return;
+
+  const rows = inboxRecipients.map((userId) => ({
     user_id: userId,
     type: notification.type,
     title: notification.title,
@@ -27,7 +48,7 @@ export async function notifyUsers(
     data: notification.data ?? {},
     dedupe_key: notification.dedupeKey ? `${notification.dedupeKey}:${userId}` : null,
   }));
-  let pushRecipients = recipients;
+  let pushRecipients = inboxRecipients;
   if (options.persist !== false) {
     const inserted = notification.dedupeKey
       ? await admin
@@ -45,6 +66,9 @@ export async function notifyUsers(
       if (!pushRecipients.length) return;
     }
   }
+
+  pushRecipients = pushRecipients.filter((userId) => preferences.get(userId)?.push_enabled !== false);
+  if (!pushRecipients.length) return;
 
   const { data: tokens, error } = await admin
     .from('push_tokens')

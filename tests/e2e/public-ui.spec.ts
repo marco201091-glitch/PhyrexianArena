@@ -37,6 +37,13 @@ test('Archidekt settings and username import are connected', async ({ page }) =>
   const loginResponse = await loginResponsePromise;
   expect(loginResponse.status()).toBe(200);
   await page.waitForURL('**/dashboard', { timeout: 20_000 });
+
+  const notificationButton = page.getByRole('button', { name: 'Notifications' });
+  await expect(notificationButton).toBeVisible();
+  await notificationButton.click();
+  await expect(page.getByRole('region', { name: 'Notification center' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Preferences' })).toBeVisible();
+
   await page.goto('/profile');
 
   await expect(page.getByRole('heading', { name: 'Archidekt sync' })).toBeVisible({ timeout: 15_000 });
