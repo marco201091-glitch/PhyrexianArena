@@ -12,6 +12,8 @@ const protectedRoutes = [
   'app/api/edhrec-commander/route.ts',
   'app/api/edhrec-resolve/route.ts',
   'app/api/profile/deck-refresh-budget/route.ts',
+  'app/api/notifications/route.ts',
+  'app/api/notifications/match-completed/route.ts',
 ];
 
 const authenticatedFetchClients = [
@@ -20,6 +22,7 @@ const authenticatedFetchClients = [
   'lib/deck-color-sync.ts',
   'components/deck/edhrec-badge.tsx',
   'components/arena/guest-commander-picker.tsx',
+  'components/notification-center.tsx',
 ];
 
 describe('protected routes', () => {
