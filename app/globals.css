@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    --font-cinzel: 'Cinzel';
     --background: 240 20% 5%;
     --foreground: 240 5% 96%;
     --card: 240 18% 9%;
@@ -70,6 +71,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter Variable', Inter, system-ui, sans-serif;
     overflow-x: clip;
     background-color: hsl(var(--background));
     background-image:

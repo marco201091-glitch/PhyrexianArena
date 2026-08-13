@@ -62,7 +62,8 @@ import { delay, runTasksWithConcurrency } from '@/lib/async-utils';
 import { runWhenIdle } from '@/lib/idle-work';
 import { type DeckWinRateSnapshot } from '@/lib/personal-analytics';
 import { MANA_COLOR_LABELS, MANA_COLOR_ORDER } from '@/lib/mana-colors';
-import { getAvatarPublicUrl, userHasAvatar } from '@/lib/avatar-storage';
+import { resolveAvatarUrl } from '@/lib/avatar-storage';
+import { useAvatarObject } from '@/hooks/use-avatar-object';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { ManaColorPills } from '@/components/ui/mana-color-pills';
@@ -628,7 +629,6 @@ export default function ProfilePage() {
   const [activeAccountPanel, setActiveAccountPanel] = useState<'nickname' | 'password' | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState<number>(() => Date.now());
-  const [hasAvatar, setHasAvatar] = useState(false);
   const [profileDisplayNameDrafts, setProfileDisplayNameDrafts] = useState<Record<string, string>>({});
   const [savingProfileDisplayNameIds, setSavingProfileDisplayNameIds] = useState<string[]>([]);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -697,9 +697,8 @@ export default function ProfilePage() {
   const [detailsDeck, setDetailsDeck] = useState<Deck | null>(null);
   const currentProfile = user ? profiles.find((profile) => profile.id === user.id) || null : null;
   const targetProfiles = profiles.filter((profile) => !RESERVED_USERNAMES.has(profile.username.toLowerCase()));
-  const currentAvatarUrl = user && hasAvatar
-    ? getAvatarPublicUrl(supabase, user.id, avatarVersion)
-    : undefined;
+  const avatarObject = useAvatarObject(supabase, user?.id, avatarVersion);
+  const currentAvatarUrl = resolveAvatarUrl(supabase, user?.id, avatarObject, avatarVersion) ?? undefined;
   const manualPartnerMode = selectedCommander ? getManualPartnerMode(selectedCommander) : null;
   const manualPartnerCopy = manualPartnerMode ? getManualPartnerCopy(manualPartnerMode, t) : null;
 
@@ -719,22 +718,6 @@ export default function ProfilePage() {
     if (!currentProfile) return;
     setDisplayNameDraft(currentProfile.display_name || '');
   }, [currentProfile]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setHasAvatar(false);
-      return;
-    }
-
-    let cancelled = false;
-    void userHasAvatar(supabase, user.id).then((exists) => {
-      if (!cancelled) setHasAvatar(exists);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, avatarVersion]);
 
   useEffect(() => {
     decksRef.current = decks;
@@ -1336,7 +1319,6 @@ export default function ProfilePage() {
         .from('profiles')
         .update({ avatar_revision: new Date().toISOString() })
         .eq('id', user.id);
-      setHasAvatar(true);
       setAvatarVersion(Date.now());
 
       toast({ title: t({ it: 'Avatar aggiornato', en: 'Avatar updated' }) });

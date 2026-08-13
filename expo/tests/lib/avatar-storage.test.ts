@@ -37,7 +37,19 @@ describe('avatar storage cache identity', () => {
 
     expect(state).toEqual({
       exists: true,
+      objectName: 'avatar',
       revision: '2026-07-17T12:00:00Z',
+    });
+  });
+
+  it('uses the real legacy object name and avoids URLs for missing avatars', async () => {
+    const client = fakeClient([{ name: 'avatar.png', created_at: '2026-01-01' }]);
+    const state = await getAvatarObjectState(client, 'user-1');
+    expect(state.objectName).toBe('avatar.png');
+    expect(getAvatarPublicUrl(client, 'user-1', 1, state.revision, state.objectName!))
+      .toContain('/user-1/avatar.png?');
+    await expect(getAvatarObjectState(fakeClient(), 'user-1')).resolves.toEqual({
+      exists: false, objectName: null, revision: null,
     });
   });
 });

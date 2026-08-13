@@ -11,6 +11,7 @@ type ProfileSnapshot = {
   profile: ProfileRow;
   hasAvatar: boolean;
   avatarRevision: string | null;
+  avatarObjectName: string | null;
 };
 
 export function useProfile(userId: string | undefined) {
@@ -33,10 +34,12 @@ export function useProfile(userId: string | undefined) {
 
       if (!current.error) {
         const profile = current.data as ProfileRow;
+        const avatarState = await getAvatarObjectState(supabase, userId!);
         return {
           profile,
-          hasAvatar: Boolean(profile.avatar_revision),
-          avatarRevision: profile.avatar_revision ?? null,
+          hasAvatar: avatarState.exists,
+          avatarRevision: avatarState.revision ?? profile.avatar_revision ?? null,
+          avatarObjectName: avatarState.objectName,
         };
       }
 
@@ -54,6 +57,7 @@ export function useProfile(userId: string | undefined) {
         profile: data as ProfileRow,
         hasAvatar: avatarState.exists,
         avatarRevision: avatarState.revision,
+        avatarObjectName: avatarState.objectName,
       };
     },
   });
@@ -96,7 +100,7 @@ export function useProfile(userId: string | undefined) {
     if (status !== 200 || !data?.avatarRevision) throw new Error(error || 'AVATAR_UPLOAD_FAILED');
     const avatarRevision = data.avatarRevision;
     queryClient.setQueryData<ProfileSnapshot>(queryKey, (current) => current
-      ? { ...current, hasAvatar: true, avatarRevision }
+      ? { ...current, hasAvatar: true, avatarRevision, avatarObjectName: 'avatar' }
       : current);
   }, [queryClient, queryKey, userId]);
 
@@ -107,8 +111,9 @@ export function useProfile(userId: string | undefined) {
       Boolean(profileData?.hasAvatar),
       version,
       profileData?.avatarRevision ?? null,
+      profileData?.avatarObjectName ?? 'avatar',
     );
-  }, [profileData?.avatarRevision, profileData?.hasAvatar, userId]);
+  }, [profileData?.avatarObjectName, profileData?.avatarRevision, profileData?.hasAvatar, userId]);
 
   return {
     profile: profileData?.profile ?? null,
