@@ -47,7 +47,8 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
   metadata points to the signed artifact through `Binaries` and
   `AllowedAPKSigningKeys`; activation completes when the tagged workflow
   publishes and F-Droid verifies that artifact.
-- The MR checklist is complete. The corrected pipeline is pending.
+- The MR checklist is complete. Pipeline `2761009143` passed, including the
+  reproducible build and reference-APK comparison.
 
 ## F-Droid flavor boundaries
 

@@ -2,13 +2,13 @@
 
 ## In progress
 
-- [ ] Publish the deterministic F-Droid 8.0.7 reference APK.
-- [ ] Update MR !44721 to the canonical 8.0.7 metadata.
-- [ ] Monitor the corrected GitLab pipeline through completion.
+- [x] Publish the deterministic F-Droid 8.0.7 reference APK.
+- [x] Update MR !44721 to the canonical 8.0.7 metadata.
+- [x] Monitor the corrected GitLab pipeline through completion.
 
 ## External follow-up
 
-- [ ] Await the GitLab pipeline and F-Droid maintainer review for MR !44721.
+- [ ] Await F-Droid maintainer review for MR !44721.
 - [ ] PM must provide the original release keystore location so two encrypted, off-VM backups can be created and recovery-tested.
 
 ## Completed
