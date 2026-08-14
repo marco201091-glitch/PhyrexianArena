@@ -23,8 +23,9 @@ interface PublicArenaResponse {
     description: string | null;
     inviteCode: string;
     createdAt: string;
-    seasonStart: string;
-    seasonEnd: string;
+    seasonsEnabled: boolean;
+    seasonStart: string | null;
+    seasonEnd: string | null;
   };
   summary: {
     totalMatches: number;
@@ -187,11 +188,11 @@ export default function PublicArenaPage() {
                 <span>
                   {t({ it: 'Creata il', en: 'Created' })} {format(new Date(data.arena.createdAt), 'PPP')}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                {data.arena.seasonsEnabled && data.arena.seasonStart && data.arena.seasonEnd ? <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-emerald-200">
                   <CalendarDays className="h-3.5 w-3.5" />
                   {formatArenaSeasonLabel(data.arena.seasonStart, data.arena.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
                   {' · '}{formatArenaSeasonDate(data.arena.seasonStart, language === 'it' ? 'it-IT' : 'en-US')}
-                </span>
+                </span> : null}
               </div>
             </div>
             <Button variant="outline" className="border-emerald-500/30 bg-background/40" onClick={copyArenaLink}>

@@ -380,6 +380,8 @@ export type TranslationKey =
   | 'updateArenaFailed'
   | 'arenaUpdated'
   | 'currentSeason'
+  | 'seasonsEnabled'
+  | 'seasonsEnabledHint'
   | 'seasonStartMonth'
   | 'seasonResetHint'
   | 'seasonArchiveEmpty'

@@ -43,6 +43,7 @@ function extractScryfallImage(card) {
 }
 
 async function fetchCommanderImage(commanderName) {
+  if (process.env.DEMO_SKIP_REMOTE_IMAGES === 'true') return null;
   const queryText = commanderName.trim().replace(/"/g, '');
   if (!queryText) return null;
 
@@ -233,7 +234,7 @@ async function seedDemoTemplate(admin, demoUserId) {
   return { arenaId: arena.id, inviteCode: arena.invite_code };
 }
 
-const env = loadEnv('.env.local');
+const env = { ...loadEnv('.env.local'), ...process.env };
 const url = env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 

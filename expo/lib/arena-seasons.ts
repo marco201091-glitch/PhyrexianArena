@@ -41,6 +41,7 @@ export function getArenaSeasonArchiveHighlights(archive: ArenaSeasonArchive) {
 }
 
 export type ArenaSeasonContext = {
+  enabled: true;
   resetMonth: number;
   currentSeasonStart: string;
   currentSeasonEnd: string;
@@ -94,17 +95,24 @@ export function formatArenaSeasonDate(date: string, locale: string): string {
 export async function fetchArenaSeasonContext(
   client: ArenaSeasonClient,
   groupId: string,
-): Promise<ArenaSeasonContext> {
+): Promise<ArenaSeasonContext | null> {
   const { data, error } = await client.rpc('get_arena_season_context', { p_group_id: groupId });
   if (error) throw error;
-  return data as ArenaSeasonContext;
+  return parseArenaSeasonContext(data);
+}
+
+export function parseArenaSeasonContext(data: unknown): ArenaSeasonContext | null {
+  if (!data || typeof data !== 'object') return null;
+  if ('enabled' in data && data.enabled === false) return null;
+  if (!('currentSeasonStart' in data) || !('currentSeasonEnd' in data)) return null;
+  return { ...(data as Omit<ArenaSeasonContext, 'enabled'>), enabled: true };
 }
 
 export async function setArenaSeasonResetMonth(
   client: ArenaSeasonClient,
   groupId: string,
   resetMonth: number,
-): Promise<ArenaSeasonContext> {
+): Promise<ArenaSeasonContext | null> {
   if (!Number.isInteger(resetMonth) || resetMonth < 1 || resetMonth > 12) {
     throw new RangeError('Reset month must be an integer between 1 and 12.');
   }
@@ -113,5 +121,23 @@ export async function setArenaSeasonResetMonth(
     p_reset_month: resetMonth,
   });
   if (error) throw error;
-  return data as ArenaSeasonContext;
+  return parseArenaSeasonContext(data);
+}
+
+export async function setArenaSeasonSettings(
+  client: ArenaSeasonClient,
+  groupId: string,
+  enabled: boolean,
+  resetMonth: number,
+): Promise<ArenaSeasonContext | null> {
+  if (!Number.isInteger(resetMonth) || resetMonth < 1 || resetMonth > 12) {
+    throw new RangeError('Reset month must be an integer between 1 and 12.');
+  }
+  const { data, error } = await client.rpc('set_arena_season_settings', {
+    p_group_id: groupId,
+    p_enabled: enabled,
+    p_reset_month: resetMonth,
+  });
+  if (error) throw error;
+  return parseArenaSeasonContext(data);
 }
