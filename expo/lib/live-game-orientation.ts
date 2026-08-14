@@ -1,4 +1,5 @@
 type ScreenOrientationModule = typeof import('expo-screen-orientation');
+type ScreenOrientationApi = Pick<ScreenOrientationModule, 'OrientationLock' | 'lockAsync' | 'unlockAsync'>;
 
 let cachedModule: ScreenOrientationModule | null | undefined;
 
@@ -14,30 +15,30 @@ function getScreenOrientationModule(): ScreenOrientationModule | null {
   }
 }
 
-export function getLiveGameOrientationPolicy(platform: string, isPad: boolean) {
-  return platform === 'ios' && isPad ? 'unlocked' : 'portrait';
+export function getLiveGameOrientationPolicy(_platform: string, _isPad: boolean) {
+  return 'landscape-primary';
 }
 
 export async function applyLiveGameOrientationLock(
   _playerCount: number,
   device: { platform?: string; isPad?: boolean } = {},
+  moduleOverride?: ScreenOrientationApi,
 ): Promise<void> {
-  const orientationModule = getScreenOrientationModule();
+  const orientationModule = moduleOverride ?? getScreenOrientationModule();
   if (!orientationModule) return;
 
   try {
-    if (getLiveGameOrientationPolicy(device.platform ?? '', device.isPad ?? false) === 'unlocked') {
-      await orientationModule.unlockAsync();
-      return;
-    }
-    await orientationModule.lockAsync(orientationModule.OrientationLock.PORTRAIT_UP);
+    getLiveGameOrientationPolicy(device.platform ?? '', device.isPad ?? false);
+    await orientationModule.lockAsync(orientationModule.OrientationLock.LANDSCAPE_RIGHT);
   } catch {
     // Native module missing until the dev client is rebuilt.
   }
 }
 
-export async function clearLiveGameOrientationLock(): Promise<void> {
-  const orientationModule = getScreenOrientationModule();
+export async function clearLiveGameOrientationLock(
+  moduleOverride?: ScreenOrientationApi,
+): Promise<void> {
+  const orientationModule = moduleOverride ?? getScreenOrientationModule();
   if (!orientationModule) return;
 
   try {
