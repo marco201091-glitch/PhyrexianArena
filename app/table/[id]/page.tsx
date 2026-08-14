@@ -86,14 +86,14 @@ import {
 } from '@/lib/arena-session-export';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
 import {
-  ARENA_SEASON_MONTHS,
   fetchArenaSeasonContext,
   formatArenaSeasonDate,
   formatArenaSeasonLabel,
   getArenaSeasonArchiveHighlights,
-  setArenaSeasonResetMonth,
+  setArenaSeasonSettings,
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
+import { ArenaSeasonSettings } from '@/components/arena-season-settings';
 import {
   isoToMatchDateValue,
   matchDateToIso,
@@ -311,6 +311,7 @@ interface Group {
   created_by: string;
   created_at: string;
   is_public?: boolean;
+  seasons_enabled?: boolean;
   season_reset_month?: number;
   profiles: Profile;
   group_members: Array<{
@@ -475,6 +476,7 @@ export default function TablePage() {
   const [editArenaName, setEditArenaName] = useState('');
   const [editArenaDescription, setEditArenaDescription] = useState('');
   const [editArenaIsPublic, setEditArenaIsPublic] = useState(false);
+  const [editArenaSeasonsEnabled, setEditArenaSeasonsEnabled] = useState(true);
   const [editArenaResetMonth, setEditArenaResetMonth] = useState(1);
   const [savingArena, setSavingArena] = useState(false);
   const [showDeleteArenaModal, setShowDeleteArenaModal] = useState(false);
@@ -1920,7 +1922,7 @@ export default function TablePage() {
           seasonContext.currentSeasonEnd,
           language === 'it' ? 'it-IT' : 'en-US',
         )
-      : t({ it: 'Season corrente', en: 'Current season' });
+      : t({ it: 'Tutto il periodo', en: 'All time' });
   };
 
   const handleShareArenaStats = async () => {
@@ -2141,6 +2143,7 @@ export default function TablePage() {
     setEditArenaName(group.name);
     setEditArenaDescription(group.description || '');
     setEditArenaIsPublic(Boolean(group.is_public));
+    setEditArenaSeasonsEnabled(group.seasons_enabled ?? true);
     setEditArenaResetMonth(group.season_reset_month ?? seasonContext?.resetMonth ?? 1);
     setShowEditArenaModal(true);
   };
@@ -2158,10 +2161,12 @@ export default function TablePage() {
         })
         .eq('id', group.id);
       if (error) throw error;
-      const nextSeasonContext = editArenaResetMonth !== (seasonContext?.resetMonth ?? group.season_reset_month ?? 1)
-        ? await setArenaSeasonResetMonth(supabase, group.id, editArenaResetMonth)
+      const seasonSettingsChanged = editArenaSeasonsEnabled !== (group.seasons_enabled ?? true)
+        || editArenaResetMonth !== (seasonContext?.resetMonth ?? group.season_reset_month ?? 1);
+      const nextSeasonContext = seasonSettingsChanged
+        ? await setArenaSeasonSettings(supabase, group.id, editArenaSeasonsEnabled, editArenaResetMonth)
         : seasonContext;
-      if (nextSeasonContext) setSeasonContext(nextSeasonContext);
+      setSeasonContext(nextSeasonContext);
       toast({ title: t({ it: 'Playgroup aggiornato!', en: 'Playgroup updated!' }) });
       setShowEditArenaModal(false);
       setGroup((currentGroup) => currentGroup ? {
@@ -2169,6 +2174,7 @@ export default function TablePage() {
         name: editArenaName.trim(),
         description: editArenaDescription.trim() || null,
         is_public: editArenaIsPublic,
+        seasons_enabled: editArenaSeasonsEnabled,
         season_reset_month: editArenaResetMonth,
       } : currentGroup);
     } catch (error: unknown) {
@@ -3659,30 +3665,25 @@ export default function TablePage() {
                     )}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    {t({ it: 'Mese di inizio season', en: 'Season start month' })}
-                  </label>
-                  <Select value={String(editArenaResetMonth)} onValueChange={(value) => setEditArenaResetMonth(Number(value))}>
-                    <SelectTrigger className="bg-background/50 border-border text-foreground">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      {ARENA_SEASON_MONTHS.map((month) => (
-                        <SelectItem key={month} value={String(month)}>
-                          {new Intl.DateTimeFormat(language === 'it' ? 'it-IT' : 'en-US', { month: 'long', timeZone: 'UTC' })
-                            .format(new Date(Date.UTC(2026, month - 1, 1)))}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {t({
+                <ArenaSeasonSettings
+                  enabled={editArenaSeasonsEnabled}
+                  resetMonth={editArenaResetMonth}
+                  locale={language === 'it' ? 'it-IT' : 'en-US'}
+                  labels={{
+                    enabled: t({ it: 'Abilita le season', en: 'Enable seasons' }),
+                    enabledHint: t({
+                      it: 'Classifiche e statistiche ripartono ogni anno. Disabilitando, l’Arena usa tutto lo storico.',
+                      en: 'Leaderboards and stats restart yearly. When disabled, the Arena uses its full history.',
+                    }),
+                    startMonth: t({ it: 'Mese di inizio season', en: 'Season start month' }),
+                    resetHint: t({
                       it: 'La season dura un anno. Cambiare mese ricalcola gli archivi senza eliminare partite o score personali.',
                       en: 'A season lasts one year. Changing the month rebuilds archives without deleting matches or personal scores.',
-                    })}
-                  </p>
-                </div>
+                    }),
+                  }}
+                  onEnabledChange={setEditArenaSeasonsEnabled}
+                  onResetMonthChange={setEditArenaResetMonth}
+                />
                 <div className="flex gap-3 pt-2">
                   <Button variant="outline" className="flex-1 border-border text-foreground" onClick={() => setShowEditArenaModal(false)}>
                     {t({ it: 'Annulla', en: 'Cancel' })}

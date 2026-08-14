@@ -19,6 +19,7 @@ import { ArenaInviteQrModal } from '@/components/table/arena-invite-qr-modal';
 import { ArenaFilterPanel } from '@/components/table/arena-filter-panel';
 import { ArenaTabBar } from '@/components/table/arena-tab-bar';
 import { ArenaCommandPanel } from '@/components/table/arena-command-panel';
+import { ArenaSeasonSettings } from '@/components/table/arena-season-settings';
 import { TableArenaManagement } from '@/components/table/table-arena-management';
 import { TableDecksTab } from '@/components/table/table-decks-tab';
 import { TableGuestsSection } from '@/components/table/table-guests-section';
@@ -79,12 +80,11 @@ import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
 import type { ArenaMatch } from '@/lib/types/arena';
 import {
-  ARENA_SEASON_MONTHS,
   fetchArenaSeasonContext,
   formatArenaSeasonDate,
   formatArenaSeasonLabel,
   getArenaSeasonArchiveHighlights,
-  setArenaSeasonResetMonth,
+  setArenaSeasonSettings,
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
 
@@ -166,6 +166,7 @@ export default function TableScreen() {
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editIsPublic, setEditIsPublic] = useState(false);
+  const [editSeasonsEnabled, setEditSeasonsEnabled] = useState(true);
   const [leaveConfirm, setLeaveConfirm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [expandedDayKeys, setExpandedDayKeys] = useState<Set<string>>(new Set());
@@ -544,6 +545,7 @@ export default function TableScreen() {
     setEditName(group.name);
     setEditDescription(group.description || '');
     setEditIsPublic(Boolean(group.is_public));
+    setEditSeasonsEnabled(group.seasons_enabled ?? true);
     setEditResetMonth(group.season_reset_month ?? seasonContext?.resetMonth ?? 1);
     setShowEditModal(true);
   };
@@ -553,8 +555,10 @@ export default function TableScreen() {
     setSavingArena(true);
     try {
       await updateGroup(editName, editDescription, editIsPublic);
-      if (editResetMonth !== (seasonContext?.resetMonth ?? group?.season_reset_month ?? 1)) {
-        setSeasonContext(await setArenaSeasonResetMonth(supabase, groupId, editResetMonth));
+      const seasonSettingsChanged = editSeasonsEnabled !== (group?.seasons_enabled ?? true)
+        || editResetMonth !== (seasonContext?.resetMonth ?? group?.season_reset_month ?? 1);
+      if (seasonSettingsChanged) {
+        setSeasonContext(await setArenaSeasonSettings(supabase, groupId, editSeasonsEnabled, editResetMonth));
         await refresh();
       }
       setShowEditModal(false);
@@ -774,7 +778,7 @@ export default function TableScreen() {
           bracketOptions={bracketOptions}
           dateFilters={DATE_FILTERS}
           dateFilterLabels={{
-            all: copy(DATE_FILTER_KEYS.all),
+            all: copy(seasonContext ? DATE_FILTER_KEYS.all : 'filterAllTime'),
             '7d': copy(DATE_FILTER_KEYS['7d']),
             '30d': copy(DATE_FILTER_KEYS['30d']),
             '90d': copy(DATE_FILTER_KEYS['90d']),
@@ -1261,26 +1265,19 @@ export default function TableScreen() {
             thumbColor={colors.foreground}
           />
         </View>
-        <View style={styles.seasonEditor}>
-          <Text style={styles.publicTitle}>{copy('seasonStartMonth')}</Text>
-          <View style={styles.monthGrid}>
-            {ARENA_SEASON_MONTHS.map((month) => (
-              <Pressable
-                key={month}
-                accessibilityRole="button"
-                accessibilityState={{ selected: editResetMonth === month }}
-                onPress={() => setEditResetMonth(month)}
-                style={[styles.monthButton, editResetMonth === month && styles.monthButtonActive]}
-              >
-                <Text style={[styles.monthButtonText, editResetMonth === month && styles.monthButtonTextActive]}>
-                  {new Intl.DateTimeFormat(language === 'it' ? 'it-IT' : 'en-US', { month: 'short', timeZone: 'UTC' })
-                    .format(new Date(Date.UTC(2026, month - 1, 1)))}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.publicHint}>{copy('seasonResetHint')}</Text>
-        </View>
+        <ArenaSeasonSettings
+          enabled={editSeasonsEnabled}
+          resetMonth={editResetMonth}
+          locale={language === 'it' ? 'it-IT' : 'en-US'}
+          labels={{
+            enabled: copy('seasonsEnabled'),
+            enabledHint: copy('seasonsEnabledHint'),
+            startMonth: copy('seasonStartMonth'),
+            resetHint: copy('seasonResetHint'),
+          }}
+          onEnabledChange={setEditSeasonsEnabled}
+          onResetMonthChange={setEditResetMonth}
+        />
         {canManage ? (
           <TableUserManagement
             members={members}
