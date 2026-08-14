@@ -25,6 +25,7 @@ import {
 } from '@/lib/live-game-offline';
 
 const sessionKey = 'phyrexian-arena:live-game:v2:group-1';
+const backupSessionKey = 'phyrexian-arena:live-game:v2:backup:group-1';
 const outboxKey = 'phyrexian-arena:live-game:v2:outbox';
 
 function record(id = 'live-1'): LiveGameRecord {
@@ -55,6 +56,7 @@ describe('live game offline persistence', () => {
     expect(loaded?.record.state.layoutVariant).toBe('classic');
     expect(Date.parse(loaded?.savedAt ?? '')).not.toBeNaN();
 
+    storage.delete(backupSessionKey);
     storage.set(sessionKey, JSON.stringify({ record: record() }));
     expect(await loadLiveGameOfflineSession('group-1')).toMatchObject({
       needsCreate: false, mutations: [], pendingFinalization: null, pendingCancel: false,
@@ -69,6 +71,26 @@ describe('live game offline persistence', () => {
     expect(await loadLiveGameOfflineSession('group-1')).toBeNull();
     storage.delete(sessionKey);
     expect(await loadLiveGameOfflineSession('group-1')).toBeNull();
+  });
+
+  it('recovers the live game from the shadow journal after a partial write', async () => {
+    await saveLiveGameOfflineSession('group-1', {
+      record: record(), serverRecord: record(), needsCreate: false, mutations: [],
+      pendingFinalization: null, pendingCancel: false, history: { undo: [], redo: [] },
+    });
+    storage.set(sessionKey, '{partial');
+    expect(storage.has(backupSessionKey)).toBe(true);
+    expect((await loadLiveGameOfflineSession('group-1'))?.record.id).toBe('live-1');
+  });
+
+  it('uses the newest journal copy after an interrupted primary update', async () => {
+    const session = (game: LiveGameRecord, savedAt: string) => JSON.stringify({
+      record: game, serverRecord: game, needsCreate: false, mutations: [],
+      pendingFinalization: null, pendingCancel: false, history: { undo: [], redo: [] }, savedAt,
+    });
+    storage.set(sessionKey, session(record('stale'), '2026-07-15T10:00:00.000Z'));
+    storage.set(backupSessionKey, session(record('fresh'), '2026-07-15T10:01:00.000Z'));
+    expect((await loadLiveGameOfflineSession('group-1'))?.record.id).toBe('fresh');
   });
 
   it('round-trips outbox entries and recovers from corrupted storage', async () => {
