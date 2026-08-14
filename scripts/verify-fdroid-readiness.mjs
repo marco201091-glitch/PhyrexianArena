@@ -89,6 +89,12 @@ if (!metadata.includes('MTG Tracker & Analytics')) {
 }
 for (const text of [
   'NonFreeNet',
+  'AuthorName: blackistoostrong',
+  'AuthorEmail: support@phyrexianarena.dpdns.org',
+  'AuthorWebSite: https://github.com/marco201091-glitch',
+  'WebSite: https://app.phyrexianarena.dpdns.org',
+  'IssueTracker: https://github.com/marco201091-glitch/PhyrexianArena/issues',
+  'Changelog: https://github.com/marco201091-glitch/PhyrexianArena/releases',
   'app-release-unsigned.apk',
   'AutoUpdateMode: Version',
   'UpdateCheckMode: Tags fdroid-v[0-9.]+$',
@@ -105,12 +111,16 @@ if (!/\n\s+commit:\s+[0-9a-f]{40}\s*\n/.test(fdroidMetadata)) {
 }
 for (const text of [
   '-PreactNativeArchitectures=arm64-v8a',
-  "s/-Xmx2048m/-Xmx4g/; s/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/",
+  "sed -i 's/-Xmx2048m/-Xmx4g/' android/gradle.properties",
+  "sed -i 's/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties",
   'org.gradle.workers.max=1',
 ]) {
   if (!fdroidMetadata.includes(text)) {
     failures.push(`F-Droid metadata must include ${text}`);
   }
+}
+if (/^\s+- .*?(?:&&|;)\s+/m.test(fdroidMetadata)) {
+  failures.push('F-Droid metadata commands must be separate YAML list entries, without && or ; chaining');
 }
 
 if (failures.length) {

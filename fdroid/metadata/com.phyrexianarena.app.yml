@@ -6,7 +6,13 @@ AntiFeatures:
 Categories:
   - Card Game
 License: MIT
+AuthorName: blackistoostrong
+AuthorEmail: support@phyrexianarena.dpdns.org
+AuthorWebSite: https://github.com/marco201091-glitch
+WebSite: https://app.phyrexianarena.dpdns.org
 SourceCode: https://github.com/marco201091-glitch/PhyrexianArena
+IssueTracker: https://github.com/marco201091-glitch/PhyrexianArena/issues
+Changelog: https://github.com/marco201091-glitch/PhyrexianArena/releases
 
 RepoType: git
 Repo: https://github.com/marco201091-glitch/PhyrexianArena.git
@@ -23,8 +29,10 @@ Builds:
       - apt-get update
       - apt-get install -y nodejs npm
     init:
-      - cd .. && npm ci
-      - cd expo && npm ci
+      - cd ..
+      - npm ci
+      - cd expo
+      - npm ci
       - node scripts/patch-fdroid-java-toolchains.mjs
     output: android/app/build/outputs/apk/release/app-release-unsigned.apk
     prebuild:
@@ -33,8 +41,8 @@ Builds:
       - export EXPO_PUBLIC_SENTRY_ENABLED=false
       - export EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
       - npx --no-install expo prebuild --platform android --clean --no-install
-      - sed -i 's/-Xmx2048m/-Xmx4g/; s/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/'
-        android/gradle.properties
+      - sed -i 's/-Xmx2048m/-Xmx4g/' android/gradle.properties
+      - sed -i 's/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties
       - echo 'org.gradle.workers.max=1' >> android/gradle.properties
       - cd ..
       - npm run verify:fdroid

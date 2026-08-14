@@ -75,6 +75,11 @@ REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA
 with the exact full commit SHA of the public release commit. F-Droid metadata
 requires commit hashes rather than branch names.
 
+Keep every `sudo`, `init`, `prebuild`, and `build` command as a separate YAML
+list entry. Do not chain commands with `&&` or `;`. The descriptive metadata
+must retain the upstream author name and public contact, project website, issue
+tracker, and changelog links required during review.
+
 The reference APK workflow (`fdroid-v*` tag) deliberately mirrors the F-Droid
 recipe prerequisites: it validates the F-Droid source tree, applies the React
 Native JDK 21 toolchain patch, builds two unsigned APKs and compares them byte
