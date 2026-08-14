@@ -570,6 +570,10 @@ export function WebLiveGame({
         setOptimisticRecord(cached.record);
       }
       try {
+        if (cached && (cached.pendingFinalization || cached.pendingCancel) && navigator.onLine) {
+          const terminalOperationRecovered = await flush();
+          if (terminalOperationRecovered) return;
+        }
         const remote = await fetchActiveLiveGame(supabase, groupId, participantKey);
         if (!mounted) return;
         if (remote) {
