@@ -1,10 +1,16 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompactDeckCard } from '@/components/deck/compact-deck-card';
 import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { StatCard } from '@/components/ui/stat-card';
 import { cardRowGap, colors } from '@/constants/theme';
 import type { CommanderStats } from '@/lib/arena-deck-stats';
+import {
+  countProvisionalDeckRankings,
+  filterDeckRankings,
+  isProvisionalDeckRanking,
+} from '@/lib/deck-ranking-visibility';
 
 type TableDecksTabProps = {
   commanderStats: CommanderStats[];
@@ -18,10 +24,20 @@ type TableDecksTabProps = {
     deckRankings: string;
     bracket: string;
     games: string;
+    showProvisionalDecks: string;
+    hideProvisionalDecks: string;
+    provisionalDeckSample: string;
+    noRankedDecks: string;
   };
 };
 
 export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
+  const [showProvisional, setShowProvisional] = useState(false);
+  const visibleDecks = useMemo(
+    () => filterDeckRankings(commanderStats, showProvisional),
+    [commanderStats, showProvisional],
+  );
+  const provisionalCount = countProvisionalDeckRankings(commanderStats);
   if (commanderStats.length === 0) {
     return (
       <PhyrexianPanel style={styles.emptyCard}>
@@ -35,19 +51,30 @@ export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
   return (
     <View style={styles.section}>
       <View style={styles.summaryRow}>
-        <StatCard compact label={labels.bestDeck} value={commanderStats[0]?.commander || '—'} />
+        <StatCard compact label={labels.bestDeck} value={visibleDecks[0]?.commander || '—'} />
         <StatCard compact label={labels.uniqueDecks} value={commanderStats.length} />
       </View>
 
-      <Text style={styles.sectionTitle}>{labels.deckRankings}</Text>
+      <View style={styles.rankingHeader}>
+        <Text style={styles.sectionTitle}>{labels.deckRankings}</Text>
+        {provisionalCount > 0 ? (
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>{showProvisional ? labels.hideProvisionalDecks : labels.showProvisionalDecks}</Text>
+            <Switch value={showProvisional} onValueChange={setShowProvisional} trackColor={{ true: colors.primary }} />
+          </View>
+        ) : null}
+      </View>
       <View>
-        {commanderStats.map((deck, index) => (
+        {visibleDecks.map((deck, index) => (
           <CompactDeckCard
             key={deck.key}
             artUri={deck.commanderImageUrl}
             title={deck.commander}
             commander={deck.ownerDisplayName}
-            eyebrow={deck.bracket ? `${labels.bracket} ${deck.bracket}` : labels.deckRankings}
+            eyebrow={[
+              deck.bracket ? `${labels.bracket} ${deck.bracket}` : null,
+              isProvisionalDeckRanking(deck.gamesPlayed) ? labels.provisionalDeckSample : null,
+            ].filter(Boolean).join(' · ') || labels.deckRankings}
             meta={`${deck.gamesPlayed} ${labels.games} · ${deck.wins}W`}
             badge={index + 1}
             gamesPlayed={deck.gamesPlayed}
@@ -55,6 +82,7 @@ export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
             trailing={<Text style={styles.deckWinRate}>{deck.winRate}%</Text>}
           />
         ))}
+        {visibleDecks.length === 0 ? <Text style={styles.emptyFiltered}>{labels.noRankedDecks}</Text> : null}
       </View>
     </View>
   );
@@ -70,6 +98,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 4,
   },
+  rankingHeader: { gap: 10 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  toggleLabel: { flex: 1, color: colors.muted, fontSize: 12 },
+  emptyFiltered: { color: colors.muted, fontSize: 13, textAlign: 'center', paddingVertical: 18 },
   summaryRow: {
     flexDirection: 'row',
     alignItems: 'stretch',

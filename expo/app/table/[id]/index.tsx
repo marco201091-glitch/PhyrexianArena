@@ -872,6 +872,10 @@ export default function TableScreen() {
               deckRankings: copy('deckRankings'),
               bracket: copy('bracket'),
               games: copy('games'),
+              showProvisionalDecks: copy('showProvisionalDecks'),
+              hideProvisionalDecks: copy('hideProvisionalDecks'),
+              provisionalDeckSample: copy('provisionalDeckSample'),
+              noRankedDecks: copy('noRankedDecks'),
             }}
           />
         ) : null}
