@@ -12,6 +12,7 @@ const sentryRuntime = read('expo/lib/sentry.ts');
 const env = read('expo/lib/env.ts');
 const fdroidReleasePlugin = read('expo/plugins/with-fdroid-release-build.js');
 const fdroidPermissionsPlugin = read('expo/plugins/with-fdroid-blocked-permissions.js');
+const fdroidReferenceWorkflow = read('.github/workflows/fdroid-reproducible-release.yml');
 const fdroidDocs = read('docs/FDROID_RELEASE_READINESS.md');
 const metadata = read('fastlane/metadata/android/en-US/full_description.txt');
 const fdroidMetadata = read('fdroid/metadata/com.phyrexianarena.app.yml');
@@ -108,6 +109,9 @@ for (const text of [
 }
 if (!/\n\s+commit:\s+[0-9a-f]{40}\s*\n/.test(fdroidMetadata)) {
   failures.push('F-Droid metadata must pin the release to a full source commit SHA');
+}
+if ((fdroidReferenceWorkflow.match(/-PreactNativeArchitectures=arm64-v8a/g) ?? []).length !== 2) {
+  failures.push('F-Droid reference workflow must restrict both reproducibility builds to arm64-v8a');
 }
 for (const text of [
   '-PreactNativeArchitectures=arm64-v8a',

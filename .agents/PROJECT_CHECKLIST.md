@@ -2,7 +2,8 @@
 
 ## In progress
 
-- [ ] None.
+- [ ] Publish F-Droid 8.0.5 reference APK restricted to `arm64-v8a`.
+- [ ] Update F-Droid metadata to the canonical 8.0.5 release commit.
 
 ## External follow-up
 

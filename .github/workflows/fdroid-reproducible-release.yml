@@ -82,10 +82,10 @@ jobs:
       - name: Build twice and compare unsigned APKs
         working-directory: expo/android
         run: |
-          ./gradlew :app:assembleRelease -PfdroidBuild=true --no-daemon --console=plain
+          ./gradlew :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
           cp app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/fdroid-first.apk"
           ./gradlew clean --no-daemon --console=plain
-          ./gradlew :app:assembleRelease -PfdroidBuild=true --no-daemon --console=plain
+          ./gradlew :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
           cmp "$RUNNER_TEMP/fdroid-first.apk" app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: Sign and verify the reproducible reference APK
