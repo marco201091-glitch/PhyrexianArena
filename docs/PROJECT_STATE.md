@@ -13,8 +13,8 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
 - `fdroid-prep`: F-Droid-specific source flavor and submission material. It is
   deliberately not a wholesale merge of `main` because proprietary/mobile-only
   dependencies are removed here.
-- F-Droid Android release candidate is `8.0.6` (`fdroid-v8.0.6` commit
-  `4480842`): it
+- F-Droid Android release candidate is `8.0.7` (`fdroid-v8.0.7` commit
+  `672016f`): it
   includes the Turnstile/captcha recovery and Arena analytics deck-owner label.
 
 ## Infrastructure
@@ -33,8 +33,8 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
 
 - Official MR: <https://gitlab.com/fdroid/fdroiddata/-/merge_requests/44721>
 - Source branch: `marco201091-glitch/fdroiddata:add-mtg-tracker-analytics`.
-- Current build target: version `8.0.6`, versionCode `80006`, source commit
-  `4480842981c233022eb6f85e7525eef1821a876c` (`fdroid-v8.0.6`).
+- Current build target: version `8.0.7`, versionCode `80007`, source commit
+  `672016f3330332081fcf994c5b67c574f759b3b8` (`fdroid-v8.0.7`).
 - The build recipe uses Debian's Node/npm packages, the React Native JDK 21 toolchain patch,
   deterministic Glide module ordering and dev-server IP, `arm64-v8a`, `-Xmx4g`,
   a 1 GB metaspace cap, and one Gradle worker. The upstream workflow mirrors the
@@ -47,8 +47,7 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
   metadata points to the signed artifact through `Binaries` and
   `AllowedAPKSigningKeys`; activation completes when the tagged workflow
   publishes and F-Droid verifies that artifact.
-- The MR checklist is complete. A status comment tagging `@linsui` was posted
-  after the green pipeline.
+- The MR checklist is complete. The corrected pipeline is pending.
 
 ## F-Droid flavor boundaries
 
