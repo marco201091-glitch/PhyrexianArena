@@ -78,6 +78,11 @@ import { formatGameDuration } from '@/lib/live-game-duration';
 import { subscribeToArenaCatalog } from '@/lib/arena-catalog-realtime';
 import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
 import { buildArenaAwards, type ArenaAward as DeckArenaAward, type DeckPerformanceStats } from '@/lib/deck-performance-analytics';
+import {
+  countProvisionalDeckRankings,
+  filterDeckRankings,
+  isProvisionalDeckRanking,
+} from '@/lib/deck-ranking-visibility';
 
 import { formatDayGroupLabel, groupMatchesByDay } from '@/lib/arena-session';
 import {
@@ -434,6 +439,7 @@ export default function TablePage() {
   const [dateFilter, setDateFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
   const [bracketFilter, setBracketFilter] = useState('all');
   const [deckStatsSort, setDeckStatsSort] = useState<'winRate' | 'gamesPlayed'>('winRate');
+  const [showProvisionalDecks, setShowProvisionalDecks] = useState(false);
   const [syncingDeckColors, setSyncingDeckColors] = useState(false);
   const [deckColorOverrides, setDeckColorOverrides] = useState<Record<string, string[]>>({});
   const colorSyncInFlightRef = useRef(false);
@@ -445,6 +451,11 @@ export default function TablePage() {
   );
   const playerStats = analyticsBundle.players as PlayerStats[];
   const deckStats = analyticsBundle.decks;
+  const visibleDeckStats = useMemo(
+    () => filterDeckRankings(deckStats, showProvisionalDecks),
+    [deckStats, showProvisionalDecks],
+  );
+  const provisionalDeckCount = countProvisionalDeckRankings(deckStats);
 
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [detailsMatch, setDetailsMatch] = useState<Match | null>(null);
@@ -513,8 +524,8 @@ export default function TablePage() {
   );
 
   const commanderRanksByIndex = useMemo(
-    () => deckStats.map((_, index) => getCommanderRank(deckStats, index, deckStatsSort)),
-    [deckStats, deckStatsSort]
+    () => visibleDeckStats.map((_, index) => getCommanderRank(visibleDeckStats, index, deckStatsSort)),
+    [visibleDeckStats, deckStatsSort]
   );
 
   const syncArenaDeckMetadata = useCallback(async (loadedDecks: Deck[]) => {
@@ -3113,14 +3124,14 @@ export default function TablePage() {
                         <Trophy className="w-5 h-5" />
                         <span className="text-sm font-medium">{t({ it: 'Miglior mazzo', en: 'Best Deck' })}</span>
                       </div>
-                      <p className="text-xl font-bold text-foreground truncate">{deckStats[0]?.name || '-'}</p>
-                      <p className="text-xs text-muted-foreground">{deckStats[0]?.ownerDisplayName || '-'}</p>
-                      {deckStats[0]?.bracket && (
+                      <p className="text-xl font-bold text-foreground truncate">{visibleDeckStats[0]?.name || '-'}</p>
+                      <p className="text-xs text-muted-foreground">{visibleDeckStats[0]?.ownerDisplayName || '-'}</p>
+                      {visibleDeckStats[0]?.bracket && (
                         <p className="text-xs text-emerald-300">
-                          {t({ it: 'Bracket', en: 'Bracket' })} {deckStats[0].bracket}
+                          {t({ it: 'Bracket', en: 'Bracket' })} {visibleDeckStats[0].bracket}
                         </p>
                       )}
-                      <p className="text-sm text-muted-foreground">{deckStats[0]?.winRate}% {t({ it: 'win rate', en: 'win rate' })}</p>
+                      <p className="text-sm text-muted-foreground">{visibleDeckStats[0]?.winRate ?? 0}% {t({ it: 'win rate', en: 'win rate' })}</p>
                     </CardContent>
                   </Card>
                   <Card className="bg-card/50 border-border">
@@ -3140,15 +3151,15 @@ export default function TablePage() {
                         <span className="text-sm font-medium">{t({ it: 'Piu giocato', en: 'Most Played' })}</span>
                       </div>
                       <p className="text-xl font-bold text-foreground truncate">
-                        {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.name || '-'}
+                        {[...visibleDeckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.name || '-'}
                       </p>
-                      {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.bracket && (
+                      {[...visibleDeckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.bracket && (
                         <p className="text-xs text-emerald-300">
-                          {t({ it: 'Bracket', en: 'Bracket' })} {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0].bracket}
+                          {t({ it: 'Bracket', en: 'Bracket' })} {[...visibleDeckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0].bracket}
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground">
-                        {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.gamesPlayed || 0} {t({ it: 'partite', en: 'games' })}
+                        {[...visibleDeckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.gamesPlayed || 0} {t({ it: 'partite', en: 'games' })}
                       </p>
                     </CardContent>
                   </Card>
@@ -3159,7 +3170,7 @@ export default function TablePage() {
                         <span className="text-sm font-medium">{t({ it: 'Win rate medio', en: 'Avg Win Rate' })}</span>
                       </div>
                       <p className="text-2xl font-bold text-foreground">
-                        {deckStats.length > 0 ? Math.round(deckStats.reduce((a, b) => a + b.winRate, 0) / deckStats.length) : 0}%
+                        {visibleDeckStats.length > 0 ? Math.round(visibleDeckStats.reduce((a, b) => a + b.winRate, 0) / visibleDeckStats.length) : 0}%
                       </p>
                       <p className="text-sm text-muted-foreground">{t({ it: 'su tutti i mazzi', en: 'across all decks' })}</p>
                     </CardContent>
@@ -3176,11 +3187,23 @@ export default function TablePage() {
                       {deckStatsSort === 'winRate' && t({ it: 'Ordinata per win rate, vittorie e partite giocate', en: 'Sorted by win rate, wins, and games played' })}
                       {deckStatsSort === 'gamesPlayed' && t({ it: 'Ordinata per partite giocate', en: 'Sorted by games played' })}
                     </CardDescription>
+                    {provisionalDeckCount > 0 ? (
+                      <button
+                        type="button"
+                        aria-pressed={showProvisionalDecks}
+                        onClick={() => setShowProvisionalDecks((value) => !value)}
+                        className="w-fit rounded-full border border-border bg-background/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-emerald-500/50 hover:text-emerald-200"
+                      >
+                        {showProvisionalDecks
+                          ? t({ it: 'Nascondi mazzi con meno di 5 partite', en: 'Hide decks under 5 games' })
+                          : t({ it: `Mostra ${provisionalDeckCount} mazzi con meno di 5 partite`, en: `Show ${provisionalDeckCount} decks under 5 games` })}
+                      </button>
+                    ) : null}
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {deckStats.map((deck, index) => {
-                        const isRanked = deck.gamesPlayed >= 3;
+                      {visibleDeckStats.map((deck, index) => {
+                        const isRanked = !isProvisionalDeckRanking(deck.gamesPlayed);
                         const rank = commanderRanksByIndex[index] ?? index + 1;
                         return (
                           <div
@@ -3209,6 +3232,7 @@ export default function TablePage() {
                               <div className="flex flex-wrap items-center gap-2 mb-1">
                                 {isRanked && rank === 1 && <Trophy className="w-4 h-4 text-emerald-400" />}
                               <p className="font-semibold text-foreground break-words">{deck.commander}</p>
+                              {!isRanked ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-200">{t({ it: 'Campione ridotto', en: 'Low sample' })}</span> : null}
                               <p className="w-full text-xs text-muted-foreground">{t({ it: 'Proprietario', en: 'Owner' })}: {deck.ownerDisplayName}</p>
                                 {deck.bracket && <BracketBadge bracket={deck.bracket} />}
                                 <EdhrecBadge commander={deck.commander} />
@@ -3234,6 +3258,9 @@ export default function TablePage() {
                           </div>
                         );
                       })}
+                      {visibleDeckStats.length === 0 ? (
+                        <p className="py-5 text-center text-sm text-muted-foreground">{t({ it: 'Nessun mazzo ha ancora raggiunto 5 partite.', en: 'No deck has reached 5 games yet.' })}</p>
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>

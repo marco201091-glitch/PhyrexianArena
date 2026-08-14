@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { CompactDeckCard } from '@/components/deck/compact-deck-card';
 import { ManaColorBadge } from '@/components/ui/mana-color-pills';
@@ -10,6 +11,11 @@ import { cardRowGap, colors, sectionStackGap, spacing } from '@/constants/theme'
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 import type { PersonalAnalytics } from '@/lib/personal-analytics';
 import type { AppLanguage } from '@/lib/i18n/types';
+import {
+  countProvisionalDeckRankings,
+  filterDeckRankings,
+  isProvisionalDeckRanking,
+} from '@/lib/deck-ranking-visibility';
 
 type PersonalAnalyticsSectionProps = {
   analytics: PersonalAnalytics | null;
@@ -31,6 +37,10 @@ type PersonalAnalyticsSectionProps = {
   bestDeckTitle: string;
   bestDeckHint: string;
   trackedGamesLabel: string;
+  showProvisionalDecksLabel: string;
+  hideProvisionalDecksLabel: string;
+  provisionalDeckSampleLabel: string;
+  noRankedDecksLabel: string;
 };
 
 export function PersonalAnalyticsSection({
@@ -53,8 +63,18 @@ export function PersonalAnalyticsSection({
   bestDeckTitle,
   bestDeckHint,
   trackedGamesLabel,
+  showProvisionalDecksLabel,
+  hideProvisionalDecksLabel,
+  provisionalDeckSampleLabel,
+  noRankedDecksLabel,
 }: PersonalAnalyticsSectionProps) {
+  const [showProvisional, setShowProvisional] = useState(false);
   const hasData = analytics && analytics.gamesPlayed > 0;
+  const visibleTopDecks = useMemo(
+    () => filterDeckRankings(analytics?.topDecks ?? [], showProvisional),
+    [analytics?.topDecks, showProvisional],
+  );
+  const provisionalCount = countProvisionalDeckRankings(analytics?.topDecks ?? []);
   const formatStreak = (value: number) => (value > 0 ? `${value}W` : '0');
 
   return (
@@ -118,13 +138,20 @@ export function PersonalAnalyticsSection({
           <PhyrexianPanel>
             <Text style={styles.cardTitle}>{topDecksTitle}</Text>
             <Text style={styles.cardSubtitle}>{topDecksSubtitle}</Text>
+            {provisionalCount > 0 ? (
+              <View style={styles.toggleRow}>
+                <Text style={styles.toggleLabel}>{showProvisional ? hideProvisionalDecksLabel : showProvisionalDecksLabel}</Text>
+                <Switch value={showProvisional} onValueChange={setShowProvisional} trackColor={{ true: colors.primary }} />
+              </View>
+            ) : null}
             <View style={styles.deckList}>
-              {analytics.topDecks.map((deck, index) => (
+              {visibleTopDecks.map((deck, index) => (
                 <CompactDeckCard
                   key={deck.id}
                   artUri={deck.commanderImage}
                   title={deck.name}
                   commander={deck.commander}
+                  eyebrow={isProvisionalDeckRanking(deck.gamesPlayed) ? provisionalDeckSampleLabel : undefined}
                   meta={`${deck.gamesPlayed}G · ${deck.wins}W`}
                   badge={index + 1}
                   gamesPlayed={deck.gamesPlayed}
@@ -132,6 +159,7 @@ export function PersonalAnalyticsSection({
                   trailing={<Text style={styles.deckWinRate}>{deck.winRate}%</Text>}
                 />
               ))}
+              {visibleTopDecks.length === 0 ? <Text style={styles.emptyFiltered}>{noRankedDecksLabel}</Text> : null}
             </View>
           </PhyrexianPanel>
 
@@ -251,6 +279,9 @@ const styles = StyleSheet.create({
   deckList: {
     gap: spacing.sm,
   },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, marginBottom: spacing.sm },
+  toggleLabel: { flex: 1, color: colors.muted, fontSize: 12 },
+  emptyFiltered: { color: colors.muted, fontSize: 12, textAlign: 'center', paddingVertical: spacing.md },
   deckWinRate: {
     color: '#fff',
     fontSize: 18,
