@@ -16,7 +16,7 @@ Changelog: https://github.com/marco201091-glitch/PhyrexianArena/releases
 
 RepoType: git
 Repo: https://github.com/marco201091-glitch/PhyrexianArena.git
-Binaries:
+Binaries: 
   https://github.com/marco201091-glitch/PhyrexianArena/releases/download/fdroid-v%v/mtg-tracker-fdroid-v%v.apk
 
 Builds:
@@ -34,6 +34,7 @@ Builds:
       - cd expo
       - npm ci
       - node scripts/patch-fdroid-java-toolchains.mjs
+      - node scripts/patch-fdroid-reproducibility.mjs
     output: android/app/build/outputs/apk/release/app-release-unsigned.apk
     prebuild:
       - export APP_VARIANT=fdroid
@@ -70,7 +71,7 @@ Builds:
       - export EXPO_PUBLIC_SENTRY_ENABLED=false
       - export EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
       - cd android
-      - gradle :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a
+      - gradle :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a -PreactNativeDevServerIp=localhost
         --no-daemon --console=plain
 
 AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab3002106

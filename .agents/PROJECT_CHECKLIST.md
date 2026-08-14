@@ -2,6 +2,8 @@
 
 ## In progress
 
+- [ ] Monitor the corrected GitLab pipeline for F-Droid MR !44721 through completion.
+
 ## External follow-up
 
 - [ ] Await the GitLab pipeline and F-Droid maintainer review for MR !44721.

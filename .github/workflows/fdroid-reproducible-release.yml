@@ -17,6 +17,7 @@ jobs:
       EXPO_PUBLIC_FDROID_BUILD: 'true'
       EXPO_PUBLIC_SENTRY_ENABLED: 'false'
       EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS: 'true'
+      GRADLE_USER_HOME: /home/vagrant/.gradle
       PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
       RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
       RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
@@ -41,9 +42,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.18.0
+          node-version: 20.19.2
           cache: npm
           cache-dependency-path: expo/package-lock.json
+
+      - name: Match Debian Forky npm
+        run: npm install --global npm@9.2.0
 
       - uses: actions/setup-java@v4
         with:
@@ -55,42 +59,52 @@ jobs:
       - name: Install Android build-tools 34
         run: sdkmanager 'build-tools;34.0.0'
 
+      - name: Mirror the F-Droid build paths
+        run: |
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /home/vagrant/build/com.phyrexianarena.app
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /home/vagrant/.gradle
+          cp -a "$GITHUB_WORKSPACE/." /home/vagrant/build/com.phyrexianarena.app/
+
       - name: Install dependencies
+        working-directory: /home/vagrant/build/com.phyrexianarena.app
         run: |
           npm ci
           npm --prefix expo ci
 
       - name: Validate the F-Droid source tree
+        working-directory: /home/vagrant/build/com.phyrexianarena.app
         run: |
           npm run verify:fdroid
           npm --prefix expo run typecheck
 
-      - name: Apply the F-Droid JDK toolchain patch
-        working-directory: expo
-        run: node scripts/patch-fdroid-java-toolchains.mjs
+      - name: Apply the F-Droid build patches
+        working-directory: /home/vagrant/build/com.phyrexianarena.app/expo
+        run: |
+          node scripts/patch-fdroid-java-toolchains.mjs
+          node scripts/patch-fdroid-reproducibility.mjs
 
       - name: Generate F-Droid Android project
-        working-directory: expo
+        working-directory: /home/vagrant/build/com.phyrexianarena.app/expo
         run: npx --no-install expo prebuild --platform android --clean --no-install
 
       - name: Constrain Gradle memory and workers
-        working-directory: expo
+        working-directory: /home/vagrant/build/com.phyrexianarena.app/expo
         run: |
           sed -i 's/-Xmx2048m/-Xmx4g/; s/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties
           printf '\norg.gradle.workers.max=1\n' >> android/gradle.properties
 
       - name: Build twice and compare unsigned APKs
-        working-directory: expo/android
+        working-directory: /home/vagrant/build/com.phyrexianarena.app/expo/android
         run: |
-          ./gradlew :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
+          ./gradlew :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a -PreactNativeDevServerIp=localhost --no-daemon --console=plain
           cp app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/fdroid-first.apk"
           ./gradlew clean --no-daemon --console=plain
-          ./gradlew :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
+          ./gradlew :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a -PreactNativeDevServerIp=localhost --no-daemon --console=plain
           cmp "$RUNNER_TEMP/fdroid-first.apk" app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: Sign and verify the reproducible reference APK
         id: apk
-        working-directory: expo/android
+        working-directory: /home/vagrant/build/com.phyrexianarena.app/expo/android
         run: |
           keystore="$RUNNER_TEMP/phyrexian-arena-release.jks"
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$keystore"

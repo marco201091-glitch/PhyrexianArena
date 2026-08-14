@@ -114,8 +114,24 @@ if (!/\n\s+commit:\s+[0-9a-f]{40}\s*\n/.test(fdroidMetadata)) {
 if ((fdroidReferenceWorkflow.match(/-PreactNativeArchitectures=arm64-v8a/g) ?? []).length !== 2) {
   failures.push('F-Droid reference workflow must restrict both reproducibility builds to arm64-v8a');
 }
+if ((fdroidReferenceWorkflow.match(/-PreactNativeDevServerIp=localhost/g) ?? []).length !== 2) {
+  failures.push('F-Droid reference workflow must use a deterministic React Native dev-server IP');
+}
+for (const text of [
+  '/home/vagrant/build/com.phyrexianarena.app',
+  'GRADLE_USER_HOME: /home/vagrant/.gradle',
+  'node-version: 20.19.2',
+  'npm@9.2.0',
+  'node scripts/patch-fdroid-reproducibility.mjs',
+]) {
+  if (!fdroidReferenceWorkflow.includes(text)) {
+    failures.push(`F-Droid reference workflow must include ${text}`);
+  }
+}
 for (const text of [
   '-PreactNativeArchitectures=arm64-v8a',
+  '-PreactNativeDevServerIp=localhost',
+  'node scripts/patch-fdroid-reproducibility.mjs',
   "sed -i 's/-Xmx2048m/-Xmx4g/' android/gradle.properties",
   "sed -i 's/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties",
   'org.gradle.workers.max=1',
