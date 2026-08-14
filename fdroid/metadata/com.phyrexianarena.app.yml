@@ -71,8 +71,8 @@ Builds:
       - export EXPO_PUBLIC_SENTRY_ENABLED=false
       - export EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
       - cd android
-      - gradle :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a -PreactNativeDevServerIp=localhost
-        --no-daemon --console=plain
+      - gradle :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a
+        -PreactNativeDevServerIp=localhost --no-daemon --console=plain
 
 AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab3002106
 

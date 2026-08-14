@@ -119,6 +119,8 @@ if ((fdroidReferenceWorkflow.match(/-PreactNativeDevServerIp=localhost/g) ?? [])
 }
 for (const text of [
   '/home/vagrant/build/com.phyrexianarena.app',
+  "echo 'ANDROID_HOME=/opt/android-sdk'",
+  "echo 'ANDROID_SDK_ROOT=/opt/android-sdk'",
   'GRADLE_USER_HOME: /home/vagrant/.gradle',
   'node-version: 20.19.2',
   'npm@9.2.0',

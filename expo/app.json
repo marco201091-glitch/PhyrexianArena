@@ -2,7 +2,7 @@
   "expo": {
     "name": "MTG Tracker & Analytics",
     "slug": "phyrexian-arena",
-    "version": "8.0.6",
+    "version": "8.0.7",
     "platforms": ["android", "ios", "web"],
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "com.phyrexianarena.app",
-      "buildNumber": "80006",
+      "buildNumber": "80007",
       "icon": "./assets/icon.png",
       "backgroundColor": "#0a0a0f",
       "associatedDomains": [
@@ -41,7 +41,7 @@
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 80006,
+      "versionCode": 80007,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",

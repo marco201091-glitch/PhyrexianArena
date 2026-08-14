@@ -1,6 +1,6 @@
 {
   "name": "nextjs",
-  "version": "8.0.6",
+  "version": "8.0.7",
   "private": true,
   "packageManager": "npm@11.16.0",
   "engines": {
