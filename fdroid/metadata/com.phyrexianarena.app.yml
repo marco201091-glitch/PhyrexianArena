@@ -16,13 +16,13 @@ Changelog: https://github.com/marco201091-glitch/PhyrexianArena/releases
 
 RepoType: git
 Repo: https://github.com/marco201091-glitch/PhyrexianArena.git
-Binaries: https://github.com/marco201091-glitch/PhyrexianArena/releases/download/fdroid-v%v/mtg-tracker-fdroid-v%v.apk
-AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab3002106
+Binaries:
+  https://github.com/marco201091-glitch/PhyrexianArena/releases/download/fdroid-v%v/mtg-tracker-fdroid-v%v.apk
 
 Builds:
-  - versionName: 8.0.4
-    versionCode: 80004
-    commit: 01644c240982e6f7e5020ed7ef501e17037e9086
+  - versionName: 8.0.5
+    versionCode: 80005
+    commit: 38caf624ac30ab601d53dd4cae91cd9dce20b555
     timeout: 7200
     subdir: expo
     sudo:
@@ -73,8 +73,10 @@ Builds:
       - gradle :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a
         --no-daemon --console=plain
 
+AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab3002106
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags fdroid-v[0-9.]+$
 UpdateCheckData: expo/app.json|"versionCode":\s*(\d+),|.|"version":\s*"([^"]+)"
-CurrentVersion: 8.0.4
-CurrentVersionCode: 80004
+CurrentVersion: 8.0.5
+CurrentVersionCode: 80005

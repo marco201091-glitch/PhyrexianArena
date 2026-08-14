@@ -1,6 +1,6 @@
 # Project state
 
-Updated: 2026-08-05
+Updated: 2026-08-14
 
 This is the short operational handoff for maintainers and agents. Update it
 when a release, deployment, F-Droid recipe, or infrastructure decision changes.
@@ -13,8 +13,8 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
 - `fdroid-prep`: F-Droid-specific source flavor and submission material. It is
   deliberately not a wholesale merge of `main` because proprietary/mobile-only
   dependencies are removed here.
-- Standard Android release line is `8.0.4` (`fdroid-v8.0.4` commit
-  `01644c2`): it
+- F-Droid Android release candidate is `8.0.5` (`fdroid-v8.0.5` commit
+  `38caf62`): it
   includes the Turnstile/captcha recovery and Arena analytics deck-owner label.
 
 ## Infrastructure
@@ -33,10 +33,9 @@ when a release, deployment, F-Droid recipe, or infrastructure decision changes.
 
 - Official MR: <https://gitlab.com/fdroid/fdroiddata/-/merge_requests/44721>
 - Source branch: `marco201091-glitch/fdroiddata:add-mtg-tracker-analytics`.
-- Latest green metadata commit: `207bd1f23`.
-- Current submitted build: version `8.0.4`, versionCode `80004`, source commit
-  `01644c240982e6f7e5020ed7ef501e17037e9086` (`fdroid-v8.0.4`).
-- The build recipe uses Node 24, the React Native JDK 21 toolchain patch,
+- Current submitted build target: version `8.0.5`, versionCode `80005`, source
+  commit `38caf624ac30ab601d53dd4cae91cd9dce20b555` (`fdroid-v8.0.5`).
+- The build recipe uses Debian's Node/npm packages, the React Native JDK 21 toolchain patch,
   `arm64-v8a`, `-Xmx4g`, a 1 GB metaspace cap, and one Gradle worker. These
   settings are required for the F-Droid buildserver: universal ABI packaging
   caused D8 heap exhaustion.
