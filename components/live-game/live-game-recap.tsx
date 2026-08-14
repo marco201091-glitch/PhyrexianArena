@@ -24,6 +24,12 @@ export function LiveGameRecapView({
                 <div className="min-w-0">
                   <p className="truncate text-xs font-bold text-foreground">{player.displayName}</p>
                   <p className="truncate text-[10px] text-muted-foreground">{player.commander}</p>
+                  <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] font-semibold text-muted-foreground">
+                    {player.damageDealt > 0 ? <span>⚔ {player.damageDealt}</span> : null}
+                    {player.lifeGained > 0 ? <span>♥ +{player.lifeGained}</span> : null}
+                    {player.eliminationsCaused > 0 ? <span>☠ {player.eliminationsCaused}</span> : null}
+                    {player.events > 0 ? <span>• {player.events}</span> : null}
+                  </div>
                 </div>
                 <div className="ml-auto flex items-center gap-3">
                   {player.finalInfect > 0 ? <span className="text-xs font-bold text-emerald-300">☠ {player.finalInfect}</span> : null}

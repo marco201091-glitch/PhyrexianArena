@@ -33,17 +33,23 @@ async function checkDatabase() {
 }
 
 export async function GET() {
+  const startedAt = Date.now();
   const database = await checkDatabase();
   const ok = database.ok;
+  const latencyMs = Date.now() - startedAt;
 
   return NextResponse.json({
     ok,
     status: ok ? 'ready' : 'degraded',
     version: packageJson.version,
     commit: process.env.GIT_COMMIT_SHA || 'unknown',
+    latencyMs,
     checks: { database },
   }, {
     status: ok ? 200 : 503,
-    headers: { 'Cache-Control': 'no-store' },
+    headers: {
+      'Cache-Control': 'no-store',
+      'Server-Timing': `database;dur=${database.latencyMs}, total;dur=${latencyMs}`,
+    },
   });
 }
