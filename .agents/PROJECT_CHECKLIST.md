@@ -2,9 +2,6 @@
 
 ## In progress
 
-- [ ] Publish F-Droid 8.0.5 reference APK restricted to `arm64-v8a`.
-- [ ] Update F-Droid metadata to the canonical 8.0.5 release commit.
-
 ## External follow-up
 
 - [ ] Await the GitLab pipeline and F-Droid maintainer review for MR !44721.
@@ -12,6 +9,8 @@
 
 ## Completed
 
+- [x] Publish F-Droid 8.0.5 reference APK restricted to `arm64-v8a`.
+- [x] Update F-Droid metadata to the canonical 8.0.5 release commit.
 - [x] Read the latest maintainer comment on F-Droid MR !44721.
 - [x] Split every F-Droid recipe command into its own YAML list entry.
 - [x] Add upstream author, contact, website, issue tracker, and changelog metadata.
