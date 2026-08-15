@@ -15,19 +15,19 @@ describe('live-game orientation policy', () => {
     unlockAsync.mockClear();
   });
 
-  it('locks phones to the primary landscape orientation', () => {
-    expect(getLiveGameOrientationPolicy('ios', false)).toBe('landscape-primary');
-    expect(getLiveGameOrientationPolicy('android', false)).toBe('landscape-primary');
+  it('keeps phone live-game layouts portrait', () => {
+    expect(getLiveGameOrientationPolicy('ios', false)).toBe('portrait');
+    expect(getLiveGameOrientationPolicy('android', false)).toBe('portrait');
   });
 
-  it('uses the same fixed landscape policy on tablets', () => {
-    expect(getLiveGameOrientationPolicy('ios', true)).toBe('landscape-primary');
+  it('keeps the previous unlocked iPad behavior', () => {
+    expect(getLiveGameOrientationPolicy('ios', true)).toBe('unlocked');
   });
 
-  it('locks the native screen for a live game and restores the device default afterwards', async () => {
-    const landscapeRight = 4;
+  it('locks a four-player phone game to portrait and restores the device default afterwards', async () => {
+    const portraitUp = 1;
     const orientationModule = {
-      OrientationLock: { LANDSCAPE_RIGHT: landscapeRight },
+      OrientationLock: { PORTRAIT_UP: portraitUp },
       lockAsync,
       unlockAsync,
     } as unknown as NonNullable<Parameters<typeof applyLiveGameOrientationLock>[2]>;
@@ -37,9 +37,26 @@ describe('live-game orientation policy', () => {
       { platform: 'android', isPad: false },
       orientationModule,
     );
-    expect(lockAsync).toHaveBeenCalledWith(landscapeRight);
+    expect(lockAsync).toHaveBeenCalledWith(portraitUp);
 
     await clearLiveGameOrientationLock(orientationModule);
+    expect(unlockAsync).toHaveBeenCalledOnce();
+  });
+
+  it('does not force an orientation on iPad', async () => {
+    const orientationModule = {
+      OrientationLock: { PORTRAIT_UP: 1 },
+      lockAsync,
+      unlockAsync,
+    } as unknown as NonNullable<Parameters<typeof applyLiveGameOrientationLock>[2]>;
+
+    await applyLiveGameOrientationLock(
+      4,
+      { platform: 'ios', isPad: true },
+      orientationModule,
+    );
+
+    expect(lockAsync).not.toHaveBeenCalled();
     expect(unlockAsync).toHaveBeenCalledOnce();
   });
 });
