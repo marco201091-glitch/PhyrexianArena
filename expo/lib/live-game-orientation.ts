@@ -15,8 +15,8 @@ function getScreenOrientationModule(): ScreenOrientationModule | null {
   }
 }
 
-export function getLiveGameOrientationPolicy(_platform: string, _isPad: boolean) {
-  return 'landscape-primary';
+export function getLiveGameOrientationPolicy(platform: string, isPad: boolean) {
+  return platform === 'ios' && isPad ? 'unlocked' : 'portrait';
 }
 
 export async function applyLiveGameOrientationLock(
@@ -28,8 +28,11 @@ export async function applyLiveGameOrientationLock(
   if (!orientationModule) return;
 
   try {
-    getLiveGameOrientationPolicy(device.platform ?? '', device.isPad ?? false);
-    await orientationModule.lockAsync(orientationModule.OrientationLock.LANDSCAPE_RIGHT);
+    if (getLiveGameOrientationPolicy(device.platform ?? '', device.isPad ?? false) === 'unlocked') {
+      await orientationModule.unlockAsync();
+      return;
+    }
+    await orientationModule.lockAsync(orientationModule.OrientationLock.PORTRAIT_UP);
   } catch {
     // Native module missing until the dev client is rebuilt.
   }
