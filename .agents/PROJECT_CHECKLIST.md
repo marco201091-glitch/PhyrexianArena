@@ -2,6 +2,7 @@
 
 ## In progress
 
+- [x] Post the final verified response to the F-Droid maintainer comments.
 - [x] Publish the deterministic F-Droid 8.0.7 reference APK.
 - [x] Update MR !44721 to the canonical 8.0.7 metadata.
 - [x] Monitor the corrected GitLab pipeline through completion.
