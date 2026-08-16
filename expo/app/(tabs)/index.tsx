@@ -32,6 +32,7 @@ import { supabase } from '@/lib/supabase';
 import { responsiveGridColumns } from '@/lib/layout';
 import { apiPost } from '@/lib/api';
 import { PendingArenaInvitations } from '@/components/dashboard/pending-arena-invitations';
+import { NotificationInboxButton } from '@/components/dashboard/notification-inbox-button';
 
 export default function DashboardScreen() {
   const { user } = useAuth();
@@ -171,6 +172,7 @@ export default function DashboardScreen() {
           variant="strong"
           actions={(
             <>
+              <NotificationInboxButton />
               <Button
                 label={copy('joinArena')}
                 variant="ghost"

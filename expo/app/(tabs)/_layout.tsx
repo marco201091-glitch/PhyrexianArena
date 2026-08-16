@@ -80,12 +80,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="notifications"
-        options={{
-          title: copy('notifications'),
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="notifications-outline" focusedName="notifications" color={color} focused={focused} />
-          ),
-        }}
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="notification-settings"
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="settings"

@@ -2631,7 +2631,7 @@ export default function ProfilePage() {
               <div className="mt-6 overflow-hidden rounded-xl border border-emerald-400/30 bg-emerald-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
                   <div className="mb-2 flex items-center gap-2">
                     <Link2 className="h-4 w-4 text-emerald-300" />
-                    <h3 className="font-semibold text-emerald-50">Archidekt sync</h3>
+                    <h3 className="font-semibold text-emerald-50">{t({ it: 'Sincronizzazione Archidekt', en: 'Archidekt sync' })}</h3>
                   </div>
                   <p className="mb-3 text-sm text-emerald-200/70">
                     {t({

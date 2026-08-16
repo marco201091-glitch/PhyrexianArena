@@ -36,6 +36,8 @@ const EN: Translations = {
   memberJoinedNotifications: 'New playgroup members',
   matchCompletedNotifications: 'Completed matches',
   pushNotifications: 'Push notifications',
+  archidektSync: 'Archidekt sync',
+  autoUpdate: 'Auto-update',
   appVersion: 'Version',
   language: 'Language',
   english: 'English',
@@ -647,6 +649,16 @@ const EN: Translations = {
   coin: 'Coin',
   heads: 'Heads',
   tails: 'Tails',
+  genericErrorTitle: 'Something went wrong',
+  genericErrorBody: 'This screen is unavailable. Try again.',
+  retry: 'Try again',
+  captchaRequiredHint: 'Required to continue',
+  editNotes: 'Edit notes',
+  formattingOptions: 'Formatting options',
+  bold: 'Bold',
+  italic: 'Italic',
+  strikethrough: 'Strikethrough',
+  bulletList: 'Bullet list',
 };
 
 const IT: Translations = {
@@ -685,6 +697,8 @@ const IT: Translations = {
   memberJoinedNotifications: 'Nuovi membri del playgroup',
   matchCompletedNotifications: 'Partite concluse',
   pushNotifications: 'Notifiche push',
+  archidektSync: 'Sincronizzazione Archidekt',
+  autoUpdate: 'Aggiornamento automatico',
   appVersion: 'Versione',
   language: 'Lingua',
   english: 'English',
@@ -1296,6 +1310,16 @@ const IT: Translations = {
   coin: 'Moneta',
   heads: 'Testa',
   tails: 'Croce',
+  genericErrorTitle: 'Qualcosa è andato storto',
+  genericErrorBody: 'La schermata non è disponibile. Riprova.',
+  retry: 'Riprova',
+  captchaRequiredHint: 'Richiesto per continuare',
+  editNotes: 'Modifica note',
+  formattingOptions: 'Opzioni di formattazione',
+  bold: 'Grassetto',
+  italic: 'Corsivo',
+  strikethrough: 'Barrato',
+  bulletList: 'Elenco puntato',
 };
 
 export const translations: Record<AppLanguage, Translations> = { en: EN, it: IT };

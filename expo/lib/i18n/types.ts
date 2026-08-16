@@ -36,6 +36,8 @@ export type TranslationKey =
   | 'memberJoinedNotifications'
   | 'matchCompletedNotifications'
   | 'pushNotifications'
+  | 'archidektSync'
+  | 'autoUpdate'
   | 'appVersion'
   | 'language'
   | 'english'
@@ -646,6 +648,16 @@ export type TranslationKey =
   | 'dieOrCoin'
   | 'coin'
   | 'heads'
-  | 'tails';
+  | 'tails'
+  | 'genericErrorTitle'
+  | 'genericErrorBody'
+  | 'retry'
+  | 'captchaRequiredHint'
+  | 'editNotes'
+  | 'formattingOptions'
+  | 'bold'
+  | 'italic'
+  | 'strikethrough'
+  | 'bulletList';
 
 export type Translations = Record<TranslationKey, string>;

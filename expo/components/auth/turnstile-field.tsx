@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 import { Modal } from '@/components/ui/modal';
 import { getApiBaseUrl } from '@/lib/env';
 import { colors, spacing } from '@/constants/theme';
+import { useLanguage } from '@/contexts/language-context';
 
 type TurnstileFieldProps = {
   onVerify: (token: string) => void;
@@ -17,6 +18,7 @@ type TurnstileFieldProps = {
 };
 
 export function TurnstileField({ onVerify, onExpire, onError, resetSignal = 0, verifyLabel, verifiedLabel, errorLabel }: TurnstileFieldProps) {
+  const { copy } = useLanguage();
   const { height } = useWindowDimensions();
   const [visible, setVisible] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -28,7 +30,7 @@ export function TurnstileField({ onVerify, onExpire, onError, resetSignal = 0, v
   const close = useCallback(() => setVisible(false), []);
   const open = useCallback(() => { setErrorMessage(null); setSessionKey((value) => value + 1); setVisible(true); }, []);
   return <View style={styles.wrapper}>
-    {verified ? <Text style={styles.verified}>✓ {verifiedLabel}</Text> : <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={verifyLabel} style={styles.button}><Text style={styles.buttonText}>🛡 {verifyLabel}</Text><Text style={styles.buttonHint}>Richiesto per continuare</Text></Pressable>}
+    {verified ? <Text style={styles.verified}>✓ {verifiedLabel}</Text> : <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={verifyLabel} style={styles.button}><Text style={styles.buttonText}>🛡 {verifyLabel}</Text><Text style={styles.buttonHint}>{copy('captchaRequiredHint')}</Text></Pressable>}
     {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
     <Modal visible={visible} onClose={() => { close(); onExpire(); }} scroll={false} presentation="dialog">
       <Text style={styles.modalTitle}>{verifyLabel}</Text>

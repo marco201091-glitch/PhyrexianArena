@@ -27,8 +27,10 @@ export async function POST(request: Request) {
     const name = profile?.display_name || profile?.username || 'Un giocatore';
     await notifyUsers(admin, (members ?? []).map((row) => row.user_id), {
       type: 'arena_member_joined',
-      title: 'Nuovo membro nel playgroup',
-      body: `${name} si è unito a ${group.name}`,
+      content: {
+        it: { title: 'Nuovo membro nel playgroup', body: `${name} si è unito a ${group.name}` },
+        en: { title: 'New playgroup member', body: `${name} joined ${group.name}` },
+      },
       data: { groupId: group.id, memberId: auth.user.id },
     }, { persist: false });
   }

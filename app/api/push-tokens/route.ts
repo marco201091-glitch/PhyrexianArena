@@ -15,13 +15,20 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const token = typeof body.token === 'string' ? body.token : '';
   const platform = body.platform === 'ios' ? 'ios' : body.platform === 'android' ? 'android' : null;
+  const locale = body.locale === 'en' ? 'en' : 'it';
   if (!EXPO_TOKEN_RE.test(token) || !platform) return NextResponse.json({ error: 'Invalid push token' }, { status: 400 });
-  const { error } = await admin.from('push_tokens').upsert({
+  let result = await admin.from('push_tokens').upsert({
     user_id: auth.user.id,
     expo_push_token: token,
     platform,
+    locale,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'expo_push_token' });
-  if (error) return NextResponse.json({ error: 'Token registration failed' }, { status: 500 });
+  if (result.error) {
+    result = await admin.from('push_tokens').upsert({
+      user_id: auth.user.id, expo_push_token: token, platform, updated_at: new Date().toISOString(),
+    }, { onConflict: 'expo_push_token' });
+  }
+  if (result.error) return NextResponse.json({ error: 'Token registration failed' }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

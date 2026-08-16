@@ -2698,7 +2698,7 @@ export default function TablePage() {
                                       {(match.tracking_version || match.duration_seconds != null) ? (
                                         <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-cyan-300" onClick={() => setDetailsMatch(match)} title={t({ it: 'Dettagli tracking', en: 'Tracking details' })}>
                                           <Eye className="h-4 w-4" />
-                                          <span className="hidden lg:inline">Details</span>
+                                          <span className="hidden lg:inline">{t({ it: 'Dettagli', en: 'Details' })}</span>
                                         </Button>
                                       ) : null}
                                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-emerald-300" onClick={() => handleShareMatch(match)} title={t({ it: 'Condividi log', en: 'Share log' })}>

@@ -12,8 +12,7 @@ type NotificationPreferenceRow = {
 
 type NotificationInput = {
   type: AppNotificationType;
-  title: string;
-  body: string;
+  content: Record<'it' | 'en', { title: string; body: string }>;
   data?: Record<string, string>;
   dedupeKey?: string;
 };
@@ -40,12 +39,19 @@ export async function notifyUsers(
   const inboxRecipients = recipients.filter((userId) => preferences.get(userId)?.[notification.type] !== false);
   if (!inboxRecipients.length) return;
 
+  const localizedData = {
+    ...(notification.data ?? {}),
+    title_it: notification.content.it.title,
+    body_it: notification.content.it.body,
+    title_en: notification.content.en.title,
+    body_en: notification.content.en.body,
+  };
   const rows = inboxRecipients.map((userId) => ({
     user_id: userId,
     type: notification.type,
-    title: notification.title,
-    body: notification.body,
-    data: notification.data ?? {},
+    title: notification.content.it.title,
+    body: notification.content.it.body,
+    data: localizedData,
     dedupe_key: notification.dedupeKey ? `${notification.dedupeKey}:${userId}` : null,
   }));
   let pushRecipients = inboxRecipients;
@@ -70,19 +76,27 @@ export async function notifyUsers(
   pushRecipients = pushRecipients.filter((userId) => preferences.get(userId)?.push_enabled !== false);
   if (!pushRecipients.length) return;
 
-  const { data: tokens, error } = await admin
+  const localizedTokenResult = await admin
     .from('push_tokens')
-    .select('id, expo_push_token')
+    .select('id, expo_push_token, locale')
     .in('user_id', pushRecipients);
-  if (error || !tokens?.length) return;
+  const tokenResult = localizedTokenResult.error
+    ? await admin.from('push_tokens').select('id, expo_push_token').in('user_id', pushRecipients)
+    : localizedTokenResult;
+  const tokens = (tokenResult.data ?? []) as Array<{ id: string; expo_push_token: string; locale?: string }>;
+  if (tokenResult.error || !tokens.length) return;
 
-  const messages = tokens.map((token) => ({
-    to: token.expo_push_token,
-    sound: 'default',
-    title: notification.title,
-    body: notification.body,
-    data: { type: notification.type, ...(notification.data ?? {}) },
-  }));
+  const messages = tokens.map((token) => {
+    const language = token.locale === 'en' ? 'en' : 'it';
+    const content = notification.content[language];
+    return {
+      to: token.expo_push_token,
+      sound: 'default',
+      title: content.title,
+      body: content.body,
+      data: { type: notification.type, ...(notification.data ?? {}) },
+    };
+  });
   const response = await fetch('https://exp.host/--/api/v2/push/send', {
     method: 'POST',
     headers: {

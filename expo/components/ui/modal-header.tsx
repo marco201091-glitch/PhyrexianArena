@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radii, spacing } from '@/constants/theme';
+import { useLanguage } from '@/contexts/language-context';
 
 type ModalTone = 'default' | 'danger' | 'success' | 'warning';
 
@@ -42,6 +43,7 @@ export function ModalHeader({
   tone = 'default',
   onClose,
 }: ModalHeaderProps) {
+  const { copy } = useLanguage();
   const palette = toneColors[tone];
 
   return (
@@ -63,7 +65,7 @@ export function ModalHeader({
       {onClose ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={copy('close')}
           hitSlop={8}
           onPress={onClose}
           style={({ pressed }) => [styles.close, pressed && styles.closePressed]}

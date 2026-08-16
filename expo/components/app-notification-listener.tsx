@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
 import { apiPost } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/contexts/language-context';
+import { localizeNotification } from '@/lib/notification-copy';
 
 let handledNotificationResponseId: string | null = null;
 let notificationsPromise: Promise<typeof ExpoNotifications | null> | null = null;
@@ -33,6 +35,7 @@ function getNotificationsModule() {
 export function AppNotificationListener() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { language } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
@@ -54,11 +57,11 @@ export function AppNotificationListener() {
       const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
       if (!projectId) return;
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-      if (active) await apiPost('/api/push-tokens', { token, platform: Platform.OS });
+      if (active) await apiPost('/api/push-tokens', { token, platform: Platform.OS, locale: language });
     };
     void register().catch(() => undefined);
     return () => { active = false; };
-  }, [user]);
+  }, [language, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -70,12 +73,13 @@ export function AppNotificationListener() {
         table: 'app_notifications',
         filter: `user_id=eq.${user.id}`,
       }, (event) => {
-        const item = event.new as { title?: string; body?: string };
-        showToast([item.title, item.body].filter(Boolean).join(' · '), 'info');
+        const item = event.new as { type?: 'arena_invite' | 'arena_member_joined' | 'match_completed'; title: string; body: string; data?: Record<string, unknown> };
+        const localized = localizeNotification(item, language);
+        showToast([localized.title, localized.body].filter(Boolean).join(' · '), 'info');
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [showToast, user]);
+  }, [language, showToast, user]);
 
   useEffect(() => {
     let subscription: ExpoNotifications.EventSubscription | null = null;

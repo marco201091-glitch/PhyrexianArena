@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/components/language-provider';
 import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import { supabase } from '@/lib/supabase';
+import { localizeNotification } from '@/lib/notification-copy';
 
 type NotificationItem = {
   id: string;
@@ -34,7 +35,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
 
 export function NotificationCenter() {
   const { user } = useAuth();
-  const { copy } = useLanguage();
+  const { copy, language } = useLanguage();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -149,13 +150,16 @@ export function NotificationCenter() {
           <div className="max-h-[min(65vh,32rem)] overflow-y-auto">
             {loading && !items.length && <p className="p-5 text-center text-sm text-muted-foreground">{copy({ it: 'Caricamento…', en: 'Loading…' })}</p>}
             {!loading && !items.length && <p className="p-5 text-center text-sm text-muted-foreground">{copy({ it: 'Nessuna notifica', en: 'No notifications' })}</p>}
-            {items.map((item) => (
-              <button key={item.id} type="button" onClick={() => void openItem(item)} className={`block w-full border-b border-border/60 p-4 text-left last:border-0 hover:bg-muted/40 ${item.read_at ? 'opacity-70' : 'bg-emerald-950/20'}`}>
-                <span className="block text-sm font-semibold">{item.title}</span>
-                <span className="mt-1 block text-sm text-muted-foreground">{item.body}</span>
-                <time className="mt-2 block text-xs text-muted-foreground" dateTime={item.created_at}>{new Date(item.created_at).toLocaleString()}</time>
-              </button>
-            ))}
+            {items.map((item) => {
+              const localized = localizeNotification(item, language);
+              return (
+                <button key={item.id} type="button" onClick={() => void openItem(item)} className={`block w-full border-b border-border/60 p-4 text-left last:border-0 hover:bg-muted/40 ${item.read_at ? 'opacity-70' : 'bg-emerald-950/20'}`}>
+                  <span className="block text-sm font-semibold">{localized.title}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">{localized.body}</span>
+                  <time className="mt-2 block text-xs text-muted-foreground" dateTime={item.created_at}>{new Date(item.created_at).toLocaleString(language === 'it' ? 'it-IT' : 'en-US')}</time>
+                </button>
+              );
+            })}
           </div>
         </section>
       )}

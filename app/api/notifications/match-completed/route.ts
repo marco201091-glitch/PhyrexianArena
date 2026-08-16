@@ -28,11 +28,19 @@ export async function POST(request: Request) {
   }
   const group = Array.isArray(match.groups) ? match.groups[0] : match.groups;
   const winner = Array.isArray(match.profiles) ? match.profiles[0] : match.profiles;
-  const result = match.is_draw ? 'Pareggio' : `Vince ${winner?.display_name || winner?.username || 'un giocatore'}`;
+  const winnerName = winner?.display_name || winner?.username;
   await notifyUsers(admin, participantIds, {
     type: 'match_completed',
-    title: `Partita conclusa · ${group?.name ?? 'Playgroup'}`,
-    body: result,
+    content: {
+      it: {
+        title: `Partita conclusa · ${group?.name ?? 'Playgroup'}`,
+        body: match.is_draw ? 'Pareggio' : `Vince ${winnerName || 'un giocatore'}`,
+      },
+      en: {
+        title: `Match completed · ${group?.name ?? 'Playgroup'}`,
+        body: match.is_draw ? 'Draw' : `${winnerName || 'A player'} wins`,
+      },
+    },
     data: { groupId: match.group_id, matchId: match.id },
     dedupeKey: `match_completed:${match.id}`,
   });
