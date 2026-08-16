@@ -38,6 +38,7 @@ import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { useReducedMotion } from '@/lib/reduced-motion';
 import { useLiveGameRuntimeStore } from '@/stores/live-game-runtime-store';
+import { useLanguage } from '@/contexts/language-context';
 
 type PendingTransfer = {
   sourceKey: ParticipantKey;
@@ -288,6 +289,7 @@ export function TableArena({
   onAdjustCounter,
   onSetEmblem,
 }: TableArenaProps) {
+  const { copy } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const [arenaSize, setArenaSize] = useState({ width: 0, height: 0 });
@@ -586,7 +588,7 @@ export function TableArena({
         style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
         onPress={onBack}
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel={copy('back')}
       >
         <Ionicons name="arrow-back" size={23} color={colors.foreground} />
       </Pressable>
@@ -601,7 +603,7 @@ export function TableArena({
         onPress={onUndo}
         disabled={!canUndo}
         accessibilityRole="button"
-        accessibilityLabel="Undo"
+        accessibilityLabel={labels.undo}
         accessibilityState={{ disabled: !canUndo }}
       >
         <Ionicons

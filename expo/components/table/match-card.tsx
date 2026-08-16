@@ -10,6 +10,7 @@ import {
   getParticipantDisplayName,
 } from '@/lib/arena-participants';
 import type { ArenaMatch } from '@/lib/types/arena';
+import { useLanguage } from '@/contexts/language-context';
 
 type MatchCardProps = {
   match: ArenaMatch;
@@ -29,6 +30,7 @@ function getWinConditionIcon(condition: ArenaMatch['win_condition']): keyof type
 }
 
 export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete, onDetails }: MatchCardProps) {
+  const { copy } = useLanguage();
   return (
     <PhyrexianPanel variant="inset" padded={false}>
       {match.is_draw ? (
@@ -71,7 +73,7 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
       ) : null}
 
       <View style={styles.actions}>
-        {onDetails ? <Pressable onPress={onDetails} hitSlop={8} style={styles.detailsButton} accessibilityRole="button"><Ionicons name="stats-chart-outline" size={16} color={colors.primaryMuted} /><Text style={styles.detailsText}>Details</Text></Pressable> : null}
+        {onDetails ? <Pressable onPress={onDetails} hitSlop={8} style={styles.detailsButton} accessibilityRole="button"><Ionicons name="stats-chart-outline" size={16} color={colors.primaryMuted} /><Text style={styles.detailsText}>{copy('details')}</Text></Pressable> : null}
         <Pressable onPress={onShare} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
           <Ionicons name="share-outline" size={18} color={colors.muted} />
         </Pressable>
