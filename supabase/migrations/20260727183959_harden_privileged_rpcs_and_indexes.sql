@@ -34,9 +34,33 @@ ALTER POLICY "arena_guest_decks_update" ON public.arena_guest_decks TO authentic
 ALTER POLICY "arena_guests_insert" ON public.arena_guests TO authenticated;
 ALTER POLICY "arena_guests_select" ON public.arena_guests TO authenticated;
 ALTER POLICY "arena_guests_update" ON public.arena_guests TO authenticated;
-ALTER POLICY "Users can join groups" ON public.group_members TO authenticated;
-ALTER POLICY "Users can leave groups" ON public.group_members TO authenticated;
-ALTER POLICY "Users can view group members" ON public.group_members TO authenticated;
+-- Some clean installs only contain the current snake_case policies. Preserve
+-- upgrades from older databases without making a full migration replay fail.
+DO $$
+DECLARE
+  legacy_policy text;
+BEGIN
+  FOREACH legacy_policy IN ARRAY ARRAY[
+    'Users can join groups',
+    'Users can leave groups',
+    'Users can view group members'
+  ]
+  LOOP
+    IF EXISTS (
+      SELECT 1
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND tablename = 'group_members'
+        AND policyname = legacy_policy
+    ) THEN
+      EXECUTE format(
+        'ALTER POLICY %I ON public.group_members TO authenticated',
+        legacy_policy
+      );
+    END IF;
+  END LOOP;
+END;
+$$;
 ALTER POLICY "live_games_delete_creator" ON public.live_games TO authenticated;
 ALTER POLICY "live_games_insert_members" ON public.live_games TO authenticated;
 ALTER POLICY "live_games_select_members" ON public.live_games TO authenticated;
