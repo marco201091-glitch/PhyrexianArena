@@ -720,12 +720,17 @@ export default function LiveGameScreen() {
   useFocusEffect(
     useCallback(() => {
       if (liveGameId) {
+        void applyLiveGameOrientationLock(liveGamePlayerCount, {
+          platform: Platform.OS,
+          isPad: Platform.OS === 'ios' && Platform.isPad,
+        });
         applyLiveGameImmersive();
       }
       return () => {
+        void clearLiveGameOrientationLock();
         clearLiveGameImmersive();
       };
-    }, [liveGameId]),
+    }, [liveGameId, liveGamePlayerCount]),
   );
 
   const enqueueMutation = useCallback((

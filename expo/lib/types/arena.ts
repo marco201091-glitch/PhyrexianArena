@@ -53,6 +53,7 @@ export interface ArenaDetail {
   created_by: string;
   created_at: string;
   is_public?: boolean;
+  seasons_enabled?: boolean;
   season_reset_month?: number;
   profiles: ArenaProfile;
   group_members: ArenaGroupMember[];

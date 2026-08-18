@@ -8,6 +8,7 @@ import {
 import { parseLiveGameHistory, type LiveGameHistory } from '@/lib/live-game-history';
 
 const STORAGE_PREFIX = 'phyrexian-arena:live-game:v2:';
+const STORAGE_BACKUP_PREFIX = 'phyrexian-arena:live-game:v2:backup:';
 const OUTBOX_KEY = 'phyrexian-arena:live-game:v2:outbox';
 
 export type PendingLiveGameFinalization = {
@@ -48,47 +49,68 @@ function storageKey(groupId: string) {
   return `${STORAGE_PREFIX}${groupId}`;
 }
 
+function backupStorageKey(groupId: string) {
+  return `${STORAGE_BACKUP_PREFIX}${groupId}`;
+}
+
+function parseOfflineSession(raw: string | null): LiveGameOfflineSession | null {
+  if (!raw) return null;
+  const parsed = JSON.parse(raw) as Partial<LiveGameOfflineSession>;
+  if (!parsed.record?.id || !parsed.record?.state?.players) return null;
+  const record = { ...parsed.record, state: parseLiveGameState(parsed.record.state) } as LiveGameRecord;
+  const rawServerRecord = parsed.serverRecord ?? parsed.record;
+  const serverRecord = {
+    ...rawServerRecord,
+    state: parseLiveGameState(rawServerRecord.state),
+  } as LiveGameRecord;
+  return {
+    record,
+    serverRecord,
+    needsCreate: Boolean(parsed.needsCreate),
+    mutations: Array.isArray(parsed.mutations) ? parsed.mutations : [],
+    pendingFinalization: parsed.pendingFinalization ?? null,
+    pendingCancel: Boolean(parsed.pendingCancel),
+    history: parseLiveGameHistory(parsed.history),
+    savedAt: parsed.savedAt ?? new Date(0).toISOString(),
+  };
+}
+
 export async function loadLiveGameOfflineSession(
   groupId: string,
 ): Promise<LiveGameOfflineSession | null> {
-  try {
-    const raw = await AsyncStorage.getItem(storageKey(groupId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<LiveGameOfflineSession>;
-    if (!parsed.record?.id || !parsed.record?.state?.players) return null;
-    const record = { ...parsed.record, state: parseLiveGameState(parsed.record.state) } as LiveGameRecord;
-    const rawServerRecord = parsed.serverRecord ?? parsed.record;
-    const serverRecord = {
-      ...rawServerRecord,
-      state: parseLiveGameState(rawServerRecord.state),
-    } as LiveGameRecord;
-    return {
-      record,
-      serverRecord,
-      needsCreate: Boolean(parsed.needsCreate),
-      mutations: Array.isArray(parsed.mutations) ? parsed.mutations : [],
-      pendingFinalization: parsed.pendingFinalization ?? null,
-      pendingCancel: Boolean(parsed.pendingCancel),
-      history: parseLiveGameHistory(parsed.history),
-      savedAt: parsed.savedAt ?? new Date(0).toISOString(),
-    };
-  } catch {
-    return null;
+  const sessions: LiveGameOfflineSession[] = [];
+  for (const key of [storageKey(groupId), backupStorageKey(groupId)]) {
+    try {
+      const session = parseOfflineSession(await AsyncStorage.getItem(key));
+      if (session) sessions.push(session);
+    } catch {
+      // Try the shadow copy after a partial/corrupted device write.
+    }
   }
+  return sessions.sort((left, right) => (
+    (Date.parse(right.savedAt) || 0) - (Date.parse(left.savedAt) || 0)
+  ))[0] ?? null;
 }
 
 export async function saveLiveGameOfflineSession(
   groupId: string,
   session: Omit<LiveGameOfflineSession, 'savedAt'>,
 ): Promise<void> {
-  await AsyncStorage.setItem(storageKey(groupId), JSON.stringify({
+  const serialized = JSON.stringify({
     ...session,
     savedAt: new Date().toISOString(),
-  } satisfies LiveGameOfflineSession));
+  } satisfies LiveGameOfflineSession);
+  await AsyncStorage.multiSet([
+    [backupStorageKey(groupId), serialized],
+    [storageKey(groupId), serialized],
+  ]);
 }
 
 export async function clearLiveGameOfflineSession(groupId: string): Promise<void> {
-  await AsyncStorage.removeItem(storageKey(groupId));
+  await Promise.all([
+    AsyncStorage.removeItem(storageKey(groupId)),
+    AsyncStorage.removeItem(backupStorageKey(groupId)),
+  ]);
 }
 
 export async function clearLiveGameOfflineSessionIfMatches(
@@ -127,5 +149,6 @@ export async function archiveAndClearLiveGameSession(
   await AsyncStorage.multiSet([
     [OUTBOX_KEY, JSON.stringify(nextOutbox)],
     [storageKey(groupId), 'null'],
+    [backupStorageKey(groupId), 'null'],
   ]);
 }

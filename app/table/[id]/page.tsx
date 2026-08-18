@@ -78,6 +78,11 @@ import { formatGameDuration } from '@/lib/live-game-duration';
 import { subscribeToArenaCatalog } from '@/lib/arena-catalog-realtime';
 import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
 import { buildArenaAwards, type ArenaAward as DeckArenaAward, type DeckPerformanceStats } from '@/lib/deck-performance-analytics';
+import {
+  countProvisionalDeckRankings,
+  filterDeckRankings,
+  isProvisionalDeckRanking,
+} from '@/lib/deck-ranking-visibility';
 
 import { formatDayGroupLabel, groupMatchesByDay } from '@/lib/arena-session';
 import {
@@ -86,14 +91,14 @@ import {
 } from '@/lib/arena-session-export';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
 import {
-  ARENA_SEASON_MONTHS,
   fetchArenaSeasonContext,
   formatArenaSeasonDate,
   formatArenaSeasonLabel,
   getArenaSeasonArchiveHighlights,
-  setArenaSeasonResetMonth,
+  setArenaSeasonSettings,
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
+import { ArenaSeasonSettings } from '@/components/arena-season-settings';
 import {
   isoToMatchDateValue,
   matchDateToIso,
@@ -311,6 +316,7 @@ interface Group {
   created_by: string;
   created_at: string;
   is_public?: boolean;
+  seasons_enabled?: boolean;
   season_reset_month?: number;
   profiles: Profile;
   group_members: Array<{
@@ -433,6 +439,7 @@ export default function TablePage() {
   const [dateFilter, setDateFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
   const [bracketFilter, setBracketFilter] = useState('all');
   const [deckStatsSort, setDeckStatsSort] = useState<'winRate' | 'gamesPlayed'>('winRate');
+  const [showProvisionalDecks, setShowProvisionalDecks] = useState(false);
   const [syncingDeckColors, setSyncingDeckColors] = useState(false);
   const [deckColorOverrides, setDeckColorOverrides] = useState<Record<string, string[]>>({});
   const colorSyncInFlightRef = useRef(false);
@@ -444,6 +451,11 @@ export default function TablePage() {
   );
   const playerStats = analyticsBundle.players as PlayerStats[];
   const deckStats = analyticsBundle.decks;
+  const visibleDeckStats = useMemo(
+    () => filterDeckRankings(deckStats, showProvisionalDecks),
+    [deckStats, showProvisionalDecks],
+  );
+  const provisionalDeckCount = countProvisionalDeckRankings(deckStats);
 
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [detailsMatch, setDetailsMatch] = useState<Match | null>(null);
@@ -475,6 +487,7 @@ export default function TablePage() {
   const [editArenaName, setEditArenaName] = useState('');
   const [editArenaDescription, setEditArenaDescription] = useState('');
   const [editArenaIsPublic, setEditArenaIsPublic] = useState(false);
+  const [editArenaSeasonsEnabled, setEditArenaSeasonsEnabled] = useState(true);
   const [editArenaResetMonth, setEditArenaResetMonth] = useState(1);
   const [savingArena, setSavingArena] = useState(false);
   const [showDeleteArenaModal, setShowDeleteArenaModal] = useState(false);
@@ -511,8 +524,8 @@ export default function TablePage() {
   );
 
   const commanderRanksByIndex = useMemo(
-    () => deckStats.map((_, index) => getCommanderRank(deckStats, index, deckStatsSort)),
-    [deckStats, deckStatsSort]
+    () => visibleDeckStats.map((_, index) => getCommanderRank(visibleDeckStats, index, deckStatsSort)),
+    [visibleDeckStats, deckStatsSort]
   );
 
   const syncArenaDeckMetadata = useCallback(async (loadedDecks: Deck[]) => {
@@ -1920,7 +1933,7 @@ export default function TablePage() {
           seasonContext.currentSeasonEnd,
           language === 'it' ? 'it-IT' : 'en-US',
         )
-      : t({ it: 'Season corrente', en: 'Current season' });
+      : t({ it: 'Tutto il periodo', en: 'All time' });
   };
 
   const handleShareArenaStats = async () => {
@@ -2141,6 +2154,7 @@ export default function TablePage() {
     setEditArenaName(group.name);
     setEditArenaDescription(group.description || '');
     setEditArenaIsPublic(Boolean(group.is_public));
+    setEditArenaSeasonsEnabled(group.seasons_enabled ?? true);
     setEditArenaResetMonth(group.season_reset_month ?? seasonContext?.resetMonth ?? 1);
     setShowEditArenaModal(true);
   };
@@ -2158,10 +2172,12 @@ export default function TablePage() {
         })
         .eq('id', group.id);
       if (error) throw error;
-      const nextSeasonContext = editArenaResetMonth !== (seasonContext?.resetMonth ?? group.season_reset_month ?? 1)
-        ? await setArenaSeasonResetMonth(supabase, group.id, editArenaResetMonth)
+      const seasonSettingsChanged = editArenaSeasonsEnabled !== (group.seasons_enabled ?? true)
+        || editArenaResetMonth !== (seasonContext?.resetMonth ?? group.season_reset_month ?? 1);
+      const nextSeasonContext = seasonSettingsChanged
+        ? await setArenaSeasonSettings(supabase, group.id, editArenaSeasonsEnabled, editArenaResetMonth)
         : seasonContext;
-      if (nextSeasonContext) setSeasonContext(nextSeasonContext);
+      setSeasonContext(nextSeasonContext);
       toast({ title: t({ it: 'Playgroup aggiornato!', en: 'Playgroup updated!' }) });
       setShowEditArenaModal(false);
       setGroup((currentGroup) => currentGroup ? {
@@ -2169,6 +2185,7 @@ export default function TablePage() {
         name: editArenaName.trim(),
         description: editArenaDescription.trim() || null,
         is_public: editArenaIsPublic,
+        seasons_enabled: editArenaSeasonsEnabled,
         season_reset_month: editArenaResetMonth,
       } : currentGroup);
     } catch (error: unknown) {
@@ -2681,7 +2698,7 @@ export default function TablePage() {
                                       {(match.tracking_version || match.duration_seconds != null) ? (
                                         <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-cyan-300" onClick={() => setDetailsMatch(match)} title={t({ it: 'Dettagli tracking', en: 'Tracking details' })}>
                                           <Eye className="h-4 w-4" />
-                                          <span className="hidden lg:inline">Details</span>
+                                          <span className="hidden lg:inline">{t({ it: 'Dettagli', en: 'Details' })}</span>
                                         </Button>
                                       ) : null}
                                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-emerald-300" onClick={() => handleShareMatch(match)} title={t({ it: 'Condividi log', en: 'Share log' })}>
@@ -3107,14 +3124,14 @@ export default function TablePage() {
                         <Trophy className="w-5 h-5" />
                         <span className="text-sm font-medium">{t({ it: 'Miglior mazzo', en: 'Best Deck' })}</span>
                       </div>
-                      <p className="text-xl font-bold text-foreground truncate">{deckStats[0]?.name || '-'}</p>
-                      <p className="text-xs text-muted-foreground">{deckStats[0]?.ownerDisplayName || '-'}</p>
-                      {deckStats[0]?.bracket && (
+                      <p className="text-xl font-bold text-foreground truncate">{visibleDeckStats[0]?.name || '-'}</p>
+                      <p className="text-xs text-muted-foreground">{visibleDeckStats[0]?.ownerDisplayName || '-'}</p>
+                      {visibleDeckStats[0]?.bracket && (
                         <p className="text-xs text-emerald-300">
-                          {t({ it: 'Bracket', en: 'Bracket' })} {deckStats[0].bracket}
+                          {t({ it: 'Bracket', en: 'Bracket' })} {visibleDeckStats[0].bracket}
                         </p>
                       )}
-                      <p className="text-sm text-muted-foreground">{deckStats[0]?.winRate}% {t({ it: 'win rate', en: 'win rate' })}</p>
+                      <p className="text-sm text-muted-foreground">{visibleDeckStats[0]?.winRate ?? 0}% {t({ it: 'win rate', en: 'win rate' })}</p>
                     </CardContent>
                   </Card>
                   <Card className="bg-card/50 border-border">
@@ -3134,15 +3151,15 @@ export default function TablePage() {
                         <span className="text-sm font-medium">{t({ it: 'Piu giocato', en: 'Most Played' })}</span>
                       </div>
                       <p className="text-xl font-bold text-foreground truncate">
-                        {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.name || '-'}
+                        {[...visibleDeckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.name || '-'}
                       </p>
-                      {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.bracket && (
+                      {[...visibleDeckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.bracket && (
                         <p className="text-xs text-emerald-300">
-                          {t({ it: 'Bracket', en: 'Bracket' })} {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0].bracket}
+                          {t({ it: 'Bracket', en: 'Bracket' })} {[...visibleDeckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0].bracket}
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground">
-                        {[...deckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.gamesPlayed || 0} {t({ it: 'partite', en: 'games' })}
+                        {[...visibleDeckStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.gamesPlayed || 0} {t({ it: 'partite', en: 'games' })}
                       </p>
                     </CardContent>
                   </Card>
@@ -3153,7 +3170,7 @@ export default function TablePage() {
                         <span className="text-sm font-medium">{t({ it: 'Win rate medio', en: 'Avg Win Rate' })}</span>
                       </div>
                       <p className="text-2xl font-bold text-foreground">
-                        {deckStats.length > 0 ? Math.round(deckStats.reduce((a, b) => a + b.winRate, 0) / deckStats.length) : 0}%
+                        {visibleDeckStats.length > 0 ? Math.round(visibleDeckStats.reduce((a, b) => a + b.winRate, 0) / visibleDeckStats.length) : 0}%
                       </p>
                       <p className="text-sm text-muted-foreground">{t({ it: 'su tutti i mazzi', en: 'across all decks' })}</p>
                     </CardContent>
@@ -3170,11 +3187,23 @@ export default function TablePage() {
                       {deckStatsSort === 'winRate' && t({ it: 'Ordinata per win rate, vittorie e partite giocate', en: 'Sorted by win rate, wins, and games played' })}
                       {deckStatsSort === 'gamesPlayed' && t({ it: 'Ordinata per partite giocate', en: 'Sorted by games played' })}
                     </CardDescription>
+                    {provisionalDeckCount > 0 ? (
+                      <button
+                        type="button"
+                        aria-pressed={showProvisionalDecks}
+                        onClick={() => setShowProvisionalDecks((value) => !value)}
+                        className="w-fit rounded-full border border-border bg-background/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-emerald-500/50 hover:text-emerald-200"
+                      >
+                        {showProvisionalDecks
+                          ? t({ it: 'Nascondi mazzi con meno di 5 partite', en: 'Hide decks under 5 games' })
+                          : t({ it: `Mostra ${provisionalDeckCount} mazzi con meno di 5 partite`, en: `Show ${provisionalDeckCount} decks under 5 games` })}
+                      </button>
+                    ) : null}
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {deckStats.map((deck, index) => {
-                        const isRanked = deck.gamesPlayed >= 3;
+                      {visibleDeckStats.map((deck, index) => {
+                        const isRanked = !isProvisionalDeckRanking(deck.gamesPlayed);
                         const rank = commanderRanksByIndex[index] ?? index + 1;
                         return (
                           <div
@@ -3203,6 +3232,7 @@ export default function TablePage() {
                               <div className="flex flex-wrap items-center gap-2 mb-1">
                                 {isRanked && rank === 1 && <Trophy className="w-4 h-4 text-emerald-400" />}
                               <p className="font-semibold text-foreground break-words">{deck.commander}</p>
+                              {!isRanked ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-200">{t({ it: 'Campione ridotto', en: 'Low sample' })}</span> : null}
                               <p className="w-full text-xs text-muted-foreground">{t({ it: 'Proprietario', en: 'Owner' })}: {deck.ownerDisplayName}</p>
                                 {deck.bracket && <BracketBadge bracket={deck.bracket} />}
                                 <EdhrecBadge commander={deck.commander} />
@@ -3228,6 +3258,9 @@ export default function TablePage() {
                           </div>
                         );
                       })}
+                      {visibleDeckStats.length === 0 ? (
+                        <p className="py-5 text-center text-sm text-muted-foreground">{t({ it: 'Nessun mazzo ha ancora raggiunto 5 partite.', en: 'No deck has reached 5 games yet.' })}</p>
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>
@@ -3659,30 +3692,25 @@ export default function TablePage() {
                     )}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    {t({ it: 'Mese di inizio season', en: 'Season start month' })}
-                  </label>
-                  <Select value={String(editArenaResetMonth)} onValueChange={(value) => setEditArenaResetMonth(Number(value))}>
-                    <SelectTrigger className="bg-background/50 border-border text-foreground">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      {ARENA_SEASON_MONTHS.map((month) => (
-                        <SelectItem key={month} value={String(month)}>
-                          {new Intl.DateTimeFormat(language === 'it' ? 'it-IT' : 'en-US', { month: 'long', timeZone: 'UTC' })
-                            .format(new Date(Date.UTC(2026, month - 1, 1)))}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {t({
+                <ArenaSeasonSettings
+                  enabled={editArenaSeasonsEnabled}
+                  resetMonth={editArenaResetMonth}
+                  locale={language === 'it' ? 'it-IT' : 'en-US'}
+                  labels={{
+                    enabled: t({ it: 'Abilita le season', en: 'Enable seasons' }),
+                    enabledHint: t({
+                      it: 'Classifiche e statistiche ripartono ogni anno. Disabilitando, l’Arena usa tutto lo storico.',
+                      en: 'Leaderboards and stats restart yearly. When disabled, the Arena uses its full history.',
+                    }),
+                    startMonth: t({ it: 'Mese di inizio season', en: 'Season start month' }),
+                    resetHint: t({
                       it: 'La season dura un anno. Cambiare mese ricalcola gli archivi senza eliminare partite o score personali.',
                       en: 'A season lasts one year. Changing the month rebuilds archives without deleting matches or personal scores.',
-                    })}
-                  </p>
-                </div>
+                    }),
+                  }}
+                  onEnabledChange={setEditArenaSeasonsEnabled}
+                  onResetMonthChange={setEditArenaResetMonth}
+                />
                 <div className="flex gap-3 pt-2">
                   <Button variant="outline" className="flex-1 border-border text-foreground" onClick={() => setShowEditArenaModal(false)}>
                     {t({ it: 'Annulla', en: 'Cancel' })}

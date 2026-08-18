@@ -15,7 +15,6 @@ import {
   Heart,
   Loader2,
   Maximize2,
-  Minimize2,
   Minus,
   MoreHorizontal,
   Pause,
@@ -35,6 +34,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { HoldActionButton } from '@/components/ui/hold-action-button';
 import { DeckImage } from '@/components/deck-image';
+import { LayoutMiniature } from '@/components/live-game/layout-miniature';
 import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
 import { ModalCard, ModalOverlay } from '@/components/ui/modal-shell';
 import { useLanguage } from '@/components/language-provider';
@@ -157,15 +157,15 @@ function secureRandom() {
 }
 
 type LockableScreenOrientation = ScreenOrientation & {
-  lock?: (orientation: 'portrait') => Promise<void>;
+  lock?: (orientation: 'landscape-primary') => Promise<void>;
   unlock?: () => void;
 };
 
-async function lockTrackerPortraitOrientation() {
+async function lockTrackerLandscapeOrientation() {
   const orientation = screen.orientation as LockableScreenOrientation | undefined;
   if (!orientation?.lock) return;
   try {
-    await orientation.lock('portrait');
+    await orientation.lock('landscape-primary');
   } catch {
     // Safari and some embedded browsers do not expose orientation locking.
   }
@@ -215,6 +215,13 @@ function ModalTitle({ icon: Icon, title, onClose }: {
       </Button>
     </div>
   );
+}
+
+function restoreDefaultTrackerDisplay() {
+  unlockTrackerOrientation();
+  if (document.fullscreenElement) {
+    void document.exitFullscreen().catch(() => undefined);
+  }
 }
 
 export function WebLiveGame({
@@ -287,21 +294,20 @@ export function WebLiveGame({
   const [tableSize, setTableSize] = useState({ width: 390, height: 760 });
   const [fullscreen, setFullscreen] = useState(false);
 
-  const toggleTrackerFullscreen = useCallback(() => {
+  const enterTrackerLandscape = useCallback(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
     if (standalone) {
-      void lockTrackerPortraitOrientation();
+      void lockTrackerLandscapeOrientation();
       return;
     }
     if (document.fullscreenElement) {
-      unlockTrackerOrientation();
-      void document.exitFullscreen().catch(() => undefined);
+      void lockTrackerLandscapeOrientation();
       return;
     }
     if (document.fullscreenEnabled && document.documentElement.requestFullscreen) {
       void document.documentElement.requestFullscreen({ navigationUI: 'hide' })
-        .then(() => lockTrackerPortraitOrientation())
+        .then(() => lockTrackerLandscapeOrientation())
         .catch(() => {
           toast({
             title: copy({
@@ -313,6 +319,7 @@ export function WebLiveGame({
         });
       return;
     }
+    void lockTrackerLandscapeOrientation();
     toast({
       title: copy({
         it: 'Per il vero schermo intero su iPad, aggiungi MTG: Commander alla schermata Home.',
@@ -325,19 +332,26 @@ export function WebLiveGame({
     const updateFullscreen = () => {
       const isFullscreen = Boolean(document.fullscreenElement);
       setFullscreen(isFullscreen);
-      if (isFullscreen) {
-        void lockTrackerPortraitOrientation();
-      } else {
-        unlockTrackerOrientation();
+      if (recordRef.current) {
+        void lockTrackerLandscapeOrientation();
       }
     };
     updateFullscreen();
     document.addEventListener('fullscreenchange', updateFullscreen);
     return () => {
       document.removeEventListener('fullscreenchange', updateFullscreen);
-      unlockTrackerOrientation();
+      restoreDefaultTrackerDisplay();
     };
   }, []);
+
+  const activeOrientationRecordId = record?.id ?? null;
+  useEffect(() => {
+    if (activeOrientationRecordId) {
+      void lockTrackerLandscapeOrientation();
+      return;
+    }
+    restoreDefaultTrackerDisplay();
+  }, [activeOrientationRecordId]);
 
   const setOptimisticRecord = useCallback((next: LiveGameRecord | null) => {
     recordRef.current = next;
@@ -556,6 +570,10 @@ export function WebLiveGame({
         setOptimisticRecord(cached.record);
       }
       try {
+        if (cached && (cached.pendingFinalization || cached.pendingCancel) && navigator.onLine) {
+          const terminalOperationRecovered = await flush();
+          if (terminalOperationRecovered) return;
+        }
         const remote = await fetchActiveLiveGame(supabase, groupId, participantKey);
         if (!mounted) return;
         if (remote) {
@@ -672,7 +690,7 @@ export function WebLiveGame({
       toast({ title: copy({ it: 'Completa tutti i posti', en: 'Complete every seat' }), variant: 'destructive' });
       return;
     }
-    toggleTrackerFullscreen();
+    enterTrackerLandscape();
     setStarting(true);
     try {
       const keys = selected.map((seat) => seat.participantKey!) as ParticipantKey[];
@@ -739,6 +757,7 @@ export function WebLiveGame({
       runRoulette(keys, startingPlayer.participantKey);
       void flush();
     } catch (error) {
+      restoreDefaultTrackerDisplay();
       toast({ title: copy({ it: 'Partita non avviata', en: 'Game not started' }), description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
     } finally {
       setStarting(false);
@@ -1074,6 +1093,7 @@ export function WebLiveGame({
     }
     const usedKeys = seats.map((seat) => seat.participantKey).filter(Boolean);
     const setupLayouts = getSquareTableLayouts(playerCount, 1000, 680, layoutVariant);
+    const setupToolbarBand = getCenterToolbarBand(playerCount, 1000, 680, layoutVariant);
     const activeSetupSeat = seats[setupSeatIndex] ?? seats[0];
     const activeSetupParticipant = participants.find((entry) => entry.key === activeSetupSeat?.participantKey);
     const setupComplete = seats.length === playerCount
@@ -1089,7 +1109,8 @@ export function WebLiveGame({
             </div>
             <div className="flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-2 text-xs text-muted-foreground">
               {online ? <CircleDot className="h-3.5 w-3.5 text-emerald-400" /> : <WifiOff className="h-3.5 w-3.5 text-amber-400" />}
-              {online ? 'Realtime' : 'Offline'}
+              <span className="hidden sm:inline">{online ? 'Realtime' : copy({ it: 'Non in linea', en: 'Offline' })}</span>
+              <span className="sr-only sm:hidden">{online ? 'Realtime' : copy({ it: 'Non in linea', en: 'Offline' })}</span>
             </div>
           </div>
 
@@ -1122,7 +1143,7 @@ export function WebLiveGame({
                     setSetupSeatIndex(0);
                   }}
                 >
-                  <RotateCcw className="mr-2 h-4 w-4" />Reset
+                  <RotateCcw className="mr-2 h-4 w-4" />{copy({ it: 'Azzera', en: 'Reset' })}
                 </Button>
               </div>
 
@@ -1150,7 +1171,7 @@ export function WebLiveGame({
                 </div>
 
                 {setupStep === 0 ? (
-                  <div className="grid grid-cols-5 gap-2 sm:gap-4">
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 sm:gap-4">
                     {[2, 3, 4, 5, 6].map((count) => (
                       <button
                         key={count}
@@ -1171,13 +1192,13 @@ export function WebLiveGame({
                 ) : null}
 
                 {setupStep === 1 ? (
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {[20, 25, 30, 40, 60].map((life) => (
                       <button
                         key={life}
                         onClick={() => setStartingLife(life)}
                         className={cn(
-                          'relative flex h-24 items-center justify-center rounded-3xl border text-2xl font-black transition hover:-translate-y-1 active:scale-95',
+                          'relative flex h-20 items-center justify-center rounded-3xl border text-2xl font-black transition hover:-translate-y-1 active:scale-95 sm:h-24',
                           startingLife === life
                             ? 'border-cyan-300 bg-gradient-to-br from-cyan-500/25 to-emerald-500/15 text-cyan-50 shadow-xl shadow-cyan-950/20'
                             : 'border-white/10 bg-white/[.035] text-muted-foreground hover:border-cyan-400/45 hover:text-white',
@@ -1187,7 +1208,7 @@ export function WebLiveGame({
                         {startingLife === life ? <Check className="absolute right-4 top-4 h-4 w-4 text-cyan-200" /> : null}
                       </button>
                     ))}
-                    <label className="flex h-24 items-center gap-3 rounded-3xl border border-white/10 bg-white/[.035] px-5 focus-within:border-cyan-400/60">
+                    <label className="flex h-20 items-center gap-3 rounded-3xl border border-white/10 bg-white/[.035] px-4 focus-within:border-cyan-400/60 sm:h-24 sm:px-5">
                       <Heart className="h-6 w-6 text-rose-300" />
                       <span className="sr-only">{copy({ it: 'Punti vita personalizzati', en: 'Custom starting life' })}</span>
                       <input
@@ -1208,29 +1229,44 @@ export function WebLiveGame({
                 {setupStep === 2 ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     {(['classic', 'opposed'] as const).map((variant) => {
-                      const preview = getSquareTableLayouts(playerCount, 500, 320, variant);
+                      const title = variant === 'classic'
+                        ? copy({ it: 'Intorno al tavolo', en: 'Around the table' })
+                        : copy({ it: 'Lati contrapposti', en: 'Opposing sides' });
+                      const description = variant === 'classic'
+                        ? copy({ it: 'Posti distribuiti in modo uniforme.', en: 'Seats distributed evenly around the table.' })
+                        : copy({ it: 'Posti raggruppati sui lati opposti.', en: 'Seats grouped on opposing sides.' });
                       return (
                         <button
                           key={variant}
                           onClick={() => setLayoutVariant(variant)}
+                          aria-pressed={layoutVariant === variant}
                           className={cn(
-                            'relative rounded-3xl border p-4 text-left transition hover:-translate-y-1 active:scale-[.98]',
+                            'group relative rounded-3xl border p-3 text-left transition hover:-translate-y-1 active:scale-[.98] sm:p-4',
                             layoutVariant === variant
                               ? 'border-emerald-300 bg-emerald-500/15 shadow-xl shadow-emerald-950/30'
                               : 'border-white/10 bg-white/[.035] hover:border-emerald-400/45',
                           )}
                         >
-                          <div className="relative mb-4 aspect-[25/16] overflow-hidden rounded-2xl border border-white/10 bg-black/45">
-                            {preview.map((seat, index) => (
-                              <span
-                                key={index}
-                                className="absolute rounded-md border border-emerald-300/35 bg-emerald-500/25"
-                                style={{ left: `${seat.left / 5}%`, top: `${seat.top / 3.2}%`, width: `${seat.width / 5}%`, height: `${seat.height / 3.2}%` }}
-                              />
-                            ))}
+                          <LayoutMiniature
+                            playerCount={playerCount}
+                            variant={variant}
+                            tableLabel={copy({ it: 'centro', en: 'center' })}
+                            seatLabel={copy({ it: 'Posto', en: 'Seat' })}
+                          />
+                          <div className="mt-4 flex items-start gap-3">
+                            <span className={cn(
+                              'mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-black transition',
+                              layoutVariant === variant
+                                ? 'border-emerald-200 bg-emerald-400 text-emerald-950'
+                                : 'border-white/15 bg-white/5 text-white/50 group-hover:border-emerald-300/50',
+                            )}>
+                              {layoutVariant === variant ? <Check className="h-4 w-4" /> : playerCount}
+                            </span>
+                            <span className="min-w-0">
+                              <b className="block text-sm text-foreground sm:text-base">{title}</b>
+                              <small className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{description}</small>
+                            </span>
                           </div>
-                          <b>{variant === 'classic' ? copy({ it: 'Intorno al tavolo', en: 'Around the table' }) : copy({ it: 'Lati contrapposti', en: 'Opposing sides' })}</b>
-                          {layoutVariant === variant ? <Check className="absolute right-5 top-5 h-5 w-5 text-emerald-200" /> : null}
                         </button>
                       );
                     })}
@@ -1240,6 +1276,20 @@ export function WebLiveGame({
                 {setupStep === 3 ? (
                   <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,.65fr)]">
                     <div className="relative aspect-[25/17] overflow-hidden rounded-3xl border border-emerald-400/20 bg-[radial-gradient(circle_at_center,#0a120c_0%,#08080d_68%)] shadow-inner">
+                      <div className="pointer-events-none absolute inset-2 rounded-[1.15rem] border border-emerald-100/[.06]" />
+                      {setupToolbarBand ? (
+                        <span
+                          className="absolute z-[1] grid place-items-center rounded-lg border border-dashed border-amber-200/20 bg-amber-950/20 text-[8px] font-black uppercase tracking-[.2em] text-amber-100/45"
+                          style={{
+                            left: `${setupToolbarBand.left / 10}%`,
+                            top: `${setupToolbarBand.top / 6.8}%`,
+                            width: `${setupToolbarBand.width / 10}%`,
+                            height: `${setupToolbarBand.height / 6.8}%`,
+                          }}
+                        >
+                          {copy({ it: 'centro tavolo', en: 'table center' })}
+                        </span>
+                      ) : null}
                       {setupLayouts.map((layout, index) => {
                         const seat = seats[index];
                         const participant = participants.find((entry) => entry.key === seat?.participantKey);
@@ -1249,18 +1299,25 @@ export function WebLiveGame({
                             key={index}
                             type="button"
                             onClick={() => setSetupSeatIndex(index)}
+                            aria-label={`${copy({ it: 'Posto', en: 'Seat' })} ${index + 1}${participant ? `: ${participant.displayName}` : ''}`}
+                            aria-pressed={setupSeatIndex === index}
                             className={cn(
-                              'absolute overflow-hidden rounded-xl border p-2 text-center transition active:scale-[.98]',
+                              'group absolute overflow-hidden rounded-xl border p-1.5 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 active:scale-[.98] sm:p-2',
                               setupSeatIndex === index
                                 ? 'z-10 border-emerald-200 bg-emerald-500/25 ring-4 ring-emerald-500/20'
                                 : 'border-dashed border-emerald-300/35 bg-emerald-500/10 hover:border-emerald-300/70',
                             )}
                             style={{ left: `${layout.left / 10}%`, top: `${layout.top / 6.8}%`, width: `${layout.width / 10}%`, height: `${layout.height / 6.8}%` }}
                           >
-                            {deck?.commanderImage ? <DeckImage src={deck.commanderImage} alt="" className="absolute inset-0 h-full w-full rounded-none object-cover opacity-35" fallbackClassName="hidden" /> : null}
-                            <span className="relative block text-[10px] font-black uppercase tracking-wider text-emerald-200">{copy({ it: 'Posto', en: 'Seat' })} {index + 1}</span>
-                            <b className="relative mt-1 block truncate text-xs sm:text-sm">{participant?.displayName ?? '+'}</b>
-                            <small className="relative block truncate text-[9px] text-white/65">{deck?.commander}</small>
+                            {deck?.commanderImage ? <DeckImage src={deck.commanderImage} alt="" className="absolute inset-0 h-full w-full rounded-none object-cover opacity-30 transition group-hover:opacity-40" fallbackClassName="hidden" /> : null}
+                            <span className="absolute left-1.5 top-1.5 z-[1] grid h-5 min-w-5 place-items-center rounded-md border border-emerald-100/25 bg-black/65 px-1 text-[9px] font-black text-emerald-100 sm:left-2 sm:top-2 sm:h-6 sm:min-w-6 sm:text-[10px]">
+                              {index + 1}
+                            </span>
+                            <span className="relative flex h-full min-h-0 flex-col items-center justify-center px-1">
+                              <UserRound className={cn('mb-1 h-4 w-4 text-emerald-200/70', participant && 'hidden')} />
+                              <b className="block max-w-full truncate text-[10px] leading-tight text-white sm:text-sm">{participant?.displayName ?? copy({ it: 'Scegli', en: 'Choose' })}</b>
+                              {deck ? <small className="mt-0.5 hidden max-w-full truncate text-[9px] text-white/70 sm:block">{deck.commander}</small> : null}
+                            </span>
                           </button>
                         );
                       })}
@@ -1302,14 +1359,14 @@ export function WebLiveGame({
                 ) : null}
               </section>
 
-              <div className="flex gap-3 border-t border-border pt-5">
-                {setupStep > 0 ? <Button variant="outline" onClick={() => setSetupStep((step) => step - 1)}><ArrowLeft className="mr-2 h-4 w-4" />{copy({ it: 'Indietro', en: 'Back' })}</Button> : <span className="flex-1" />}
+              <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row">
+                {setupStep > 0 ? <Button variant="outline" onClick={() => setSetupStep((step) => step - 1)} className="w-full sm:w-auto"><ArrowLeft className="mr-2 h-4 w-4" />{copy({ it: 'Indietro', en: 'Back' })}</Button> : <span className="hidden flex-1 sm:block" />}
                 {setupStep < 3 ? (
-                  <Button onClick={() => setSetupStep((step) => step + 1)} className="ml-auto h-12 bg-gradient-to-r from-emerald-600 to-teal-600 px-7 font-black shadow-lg shadow-emerald-950/40">
+                  <Button onClick={() => setSetupStep((step) => step + 1)} className="h-12 w-full bg-gradient-to-r from-emerald-600 to-teal-600 px-7 font-black shadow-lg shadow-emerald-950/40 sm:ml-auto sm:w-auto">
                     {copy({ it: 'Avanti', en: 'Next' })}<ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button onClick={() => void startGame()} disabled={starting || !setupComplete} className="ml-auto h-12 bg-gradient-to-r from-emerald-600 to-teal-600 px-8 font-black shadow-lg shadow-emerald-950/40">
+                  <Button onClick={() => void startGame()} disabled={starting || !setupComplete} className="h-12 w-full bg-gradient-to-r from-emerald-600 to-teal-600 px-5 font-black shadow-lg shadow-emerald-950/40 sm:ml-auto sm:w-auto sm:px-8">
                     {starting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Swords className="mr-2 h-5 w-5" />}
                     {setupComplete ? copy({ it: 'Avvia partita', en: 'Start game' }) : copy({ it: 'Completa tutti i posti', en: 'Complete every seat' })}
                   </Button>
@@ -1425,7 +1482,17 @@ export function WebLiveGame({
             </span>
           </Button>
           <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={openEnd} title="End game"><Flag /></Button>
-          <Button variant="ghost" size="icon" className="shrink-0 rounded-full" style={toolbarButtonStyle} onClick={toggleTrackerFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>{fullscreen ? <Minimize2 /> : <Maximize2 />}</Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-full"
+            style={toolbarButtonStyle}
+            onClick={enterTrackerLandscape}
+            title={copy({ it: 'Blocca in orizzontale', en: 'Lock landscape' })}
+            aria-label={copy({ it: 'Blocca in orizzontale', en: 'Lock landscape' })}
+          >
+            <Maximize2 className={fullscreen ? 'text-emerald-300' : undefined} />
+          </Button>
         </div>
         </div>}
         <button

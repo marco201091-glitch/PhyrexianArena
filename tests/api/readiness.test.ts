@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import packageJson from '@/package.json';
 
 const mocks = vi.hoisted(() => ({
   getSupabaseAdminClient: vi.fn(),
@@ -33,11 +34,13 @@ describe('GET /api/ready', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('server-timing')).toMatch(/^database;dur=\d+, total;dur=\d+$/);
     expect(body).toMatchObject({
       ok: true,
       status: 'ready',
-      version: '8.0.3',
+      version: packageJson.version,
       commit: 'abc123',
+      latencyMs: expect.any(Number),
       checks: { database: { ok: true, status: 'ready' } },
     });
     expect(query.from).toHaveBeenCalledWith('profiles');

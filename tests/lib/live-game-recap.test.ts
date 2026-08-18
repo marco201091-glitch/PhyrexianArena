@@ -15,11 +15,24 @@ describe('live-game recap', () => {
           { id: '1', type: 'damage', occurredAt: '2026-01-01T00:01:00.000Z', targetKey: 'user:a', sourceKey: null, amount: 5 },
           { id: '2', type: 'lifegain', occurredAt: '2026-01-01T00:02:00.000Z', targetKey: 'user:a', sourceKey: null, amount: 3 },
         ],
+        summary: {
+          schemaVersion: 1,
+          totalEvents: 2,
+          firstOccurredAt: '2026-01-01T00:01:00.000Z',
+          lastOccurredAt: '2026-01-01T00:02:00.000Z',
+          byParticipant: {
+            'user:a': { eventCount: 2, lifeLost: 5, lifeGained: 3, lifeDamageDealt: 12, unattributedLifeLost: 5, commanderDamageTaken: 0, commanderDamageDealt: 0, infectReceived: 0, infectDealt: 0, eliminations: 0, eliminationsCaused: 1, revives: 0, corrections: 0, groupDamageDealt: 0, groupDamageEvents: 0 },
+          },
+        },
       },
     } satisfies LiveGameRecord;
     expect(buildLiveGameRecap(record).players[0]).toMatchObject({
       finalLife: 38,
       finalInfect: 0,
+      events: 2,
+      damageDealt: 12,
+      lifeGained: 3,
+      eliminationsCaused: 1,
     });
   });
 
@@ -53,6 +66,9 @@ describe('live-game recap', () => {
         final_life: 7,
         final_infect: 2,
         tracked_event_count: 18,
+        life_gained: 6,
+        life_damage_dealt: 34,
+        eliminations_caused: 2,
       }],
     });
 
@@ -69,6 +85,8 @@ describe('live-game recap', () => {
       infect: 2,
     });
     expect(record.state.summary?.totalEvents).toBe(18);
-    expect(buildLiveGameRecap(record).highlights).toHaveLength(1);
+    const recap = buildLiveGameRecap(record);
+    expect(recap.highlights).toHaveLength(1);
+    expect(recap.players[0]).toMatchObject({ events: 18, damageDealt: 34, lifeGained: 6, eliminationsCaused: 2 });
   });
 });

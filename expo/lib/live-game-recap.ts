@@ -21,6 +21,10 @@ export type LiveGameRecapPlayer = {
   finalLife: number;
   finalInfect: number;
   eliminatedAt: string | null;
+  events: number;
+  damageDealt: number;
+  lifeGained: number;
+  eliminationsCaused: number;
 };
 
 export type LiveGameRecap = {
@@ -65,6 +69,23 @@ export function buildHistoricalLiveGameRecord(match: HistoricalMatchSnapshot): L
     totalEvents,
     firstOccurredAt: parsedLog.events.at(0)?.occurredAt ?? null,
     lastOccurredAt: parsedLog.events.at(-1)?.occurredAt ?? null,
+    byParticipant: Object.fromEntries(participants.map(({ participant, key }) => [key, {
+      eventCount: participant.tracked_event_count ?? 0,
+      lifeLost: participant.life_lost ?? 0,
+      lifeGained: participant.life_gained ?? 0,
+      lifeDamageDealt: participant.life_damage_dealt ?? 0,
+      unattributedLifeLost: participant.unattributed_life_lost ?? 0,
+      commanderDamageTaken: participant.commander_damage_taken ?? 0,
+      commanderDamageDealt: participant.commander_damage_dealt ?? 0,
+      infectReceived: participant.infect_received ?? 0,
+      infectDealt: participant.infect_dealt ?? 0,
+      eliminations: participant.eliminations ?? 0,
+      eliminationsCaused: participant.eliminations_caused ?? 0,
+      revives: participant.revives ?? 0,
+      corrections: participant.corrections ?? 0,
+      groupDamageDealt: participant.group_damage_dealt ?? 0,
+      groupDamageEvents: participant.group_damage_events ?? 0,
+    }])),
   };
   const endedAt = match.duration_seconds != null
     ? new Date(new Date(match.played_at).getTime() + match.duration_seconds * 1000).toISOString()
@@ -112,15 +133,22 @@ export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
   const orderedEvents = [...record.state.events].sort((left, right) => (
     left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id)
   ));
-  const players = record.state.players.map((player) => ({
-    participantKey: player.participantKey,
-    displayName: player.displayName,
-    commander: player.commander,
-    commanderImage: player.commanderImage,
-    finalLife: player.life,
-    finalInfect: player.infect,
-    eliminatedAt: player.eliminatedAt,
-  }));
+  const players = record.state.players.map((player) => {
+    const metrics = record.state.summary?.byParticipant[player.participantKey];
+    return {
+      participantKey: player.participantKey,
+      displayName: player.displayName,
+      commander: player.commander,
+      commanderImage: player.commanderImage,
+      finalLife: player.life,
+      finalInfect: player.infect,
+      eliminatedAt: player.eliminatedAt,
+      events: metrics?.eventCount ?? 0,
+      damageDealt: metrics?.lifeDamageDealt ?? 0,
+      lifeGained: metrics?.lifeGained ?? 0,
+      eliminationsCaused: metrics?.eliminationsCaused ?? 0,
+    };
+  });
   return {
     totalEvents: record.state.summary?.totalEvents ?? orderedEvents.length,
     startedAt: record.started_at,

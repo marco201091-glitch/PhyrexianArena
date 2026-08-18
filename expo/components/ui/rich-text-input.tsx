@@ -101,7 +101,7 @@ export function RichTextInput({
             onPress={beginEditing}
             style={[styles.preview, { minHeight }]}
             accessibilityRole="button"
-            accessibilityLabel={label || placeholder || 'Edit notes'}
+            accessibilityLabel={label || placeholder || copy('editNotes')}
           >
             <FormattedMarkdown value={value} style={styles.previewMarkdown} />
             <Text style={styles.previewHint}>{copy('richTextTapToEdit')}</Text>
@@ -114,7 +114,7 @@ export function RichTextInput({
                 style={({ pressed }) => [styles.formatToggle, pressed && styles.toolbarButtonPressed]}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: toolbarOpen }}
-                accessibilityLabel="Formatting options"
+                accessibilityLabel={copy('formattingOptions')}
               >
                 <Ionicons
                   name={toolbarOpen ? 'chevron-up' : 'options-outline'}
@@ -126,22 +126,22 @@ export function RichTextInput({
                 <View style={styles.toolbar}>
                   <ToolbarButton
                     icon="format-bold"
-                    label="Bold"
+                    label={copy('bold')}
                     onPress={() => applyEdit((currentValue, currentSelection) => wrapSelectionWithMarker(currentValue, currentSelection, '**'))}
                   />
                   <ToolbarButton
                     icon="format-italic"
-                    label="Italic"
+                    label={copy('italic')}
                     onPress={() => applyEdit((currentValue, currentSelection) => wrapSelectionWithMarker(currentValue, currentSelection, '*'))}
                   />
                   <ToolbarButton
                     icon="format-strikethrough"
-                    label="Strikethrough"
+                    label={copy('strikethrough')}
                     onPress={() => applyEdit((currentValue, currentSelection) => wrapSelectionWithMarker(currentValue, currentSelection, '~~'))}
                   />
                   <ToolbarButton
                     ionicon="list-outline"
-                    label="Bullet list"
+                    label={copy('bulletList')}
                     onPress={() => applyEdit((currentValue, currentSelection) => toggleLinePrefix(currentValue, currentSelection, '- '))}
                   />
                 </View>

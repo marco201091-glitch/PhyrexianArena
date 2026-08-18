@@ -4,6 +4,8 @@ import {
   getArenaSeasonArchiveHighlights,
   getArenaSeasonPeriod,
   laterIsoDate,
+  parseArenaSeasonContext,
+  setArenaSeasonSettings,
 } from '@/lib/arena-seasons';
 
 describe('arena seasons', () => {
@@ -41,5 +43,30 @@ describe('arena seasons', () => {
     });
     expect(highlights.topPlayer?.display_name).toBe('B');
     expect(players[0].display_name).toBe('A');
+  });
+
+  it('maps disabled seasons to all-time mode and accepts pre-flag payloads', () => {
+    expect(parseArenaSeasonContext({ enabled: false, resetMonth: 1, archives: [] })).toBeNull();
+    expect(parseArenaSeasonContext({
+      resetMonth: 1,
+      currentSeasonStart: '2026-01-01',
+      currentSeasonEnd: '2027-01-01',
+      archives: [],
+    })).toMatchObject({ enabled: true, resetMonth: 1 });
+  });
+
+  it('updates enabled state and reset month atomically through the manager RPC', async () => {
+    const calls: Array<{ name: string; parameters: Record<string, unknown> }> = [];
+    const client = {
+      rpc: (name: string, parameters: Record<string, unknown>) => {
+        calls.push({ name, parameters });
+        return Promise.resolve({ data: { enabled: false, resetMonth: 9, archives: [] }, error: null });
+      },
+    };
+    await expect(setArenaSeasonSettings(client, 'arena-id', false, 9)).resolves.toBeNull();
+    expect(calls).toEqual([{
+      name: 'set_arena_season_settings',
+      parameters: { p_group_id: 'arena-id', p_enabled: false, p_reset_month: 9 },
+    }]);
   });
 });

@@ -54,6 +54,10 @@ export default function StatsScreen() {
           bestDeckTitle={copy('bestDeck')}
           bestDeckHint={copy('personalBestDeckHint')}
           trackedGamesLabel={copy('trackedGamesTitle')}
+          showProvisionalDecksLabel={copy('showProvisionalDecks')}
+          hideProvisionalDecksLabel={copy('hideProvisionalDecks')}
+          provisionalDeckSampleLabel={copy('provisionalDeckSample')}
+          noRankedDecksLabel={copy('noRankedDecks')}
         />
       </ScrollView>
     </Screen>

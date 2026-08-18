@@ -21,4 +21,11 @@ describe('V8 notification compatibility', () => {
     expect(route).not.toContain("from('group_members')");
     expect(route).toContain('participantIds.includes(auth.user.id)');
   });
+
+  it('adds push locale without changing or removing V8 columns', () => {
+    const migration = read('supabase/migrations/20260816071447_localized_notification_delivery.sql');
+    expect(migration).toMatch(/add column if not exists locale/i);
+    expect(migration).toMatch(/default 'it'/i);
+    expect(migration).not.toMatch(/drop\s+(table|column)|alter\s+column\s+.*type/i);
+  });
 });

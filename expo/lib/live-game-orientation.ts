@@ -1,4 +1,5 @@
 type ScreenOrientationModule = typeof import('expo-screen-orientation');
+type ScreenOrientationApi = Pick<ScreenOrientationModule, 'OrientationLock' | 'lockAsync' | 'unlockAsync'>;
 
 let cachedModule: ScreenOrientationModule | null | undefined;
 
@@ -21,8 +22,9 @@ export function getLiveGameOrientationPolicy(platform: string, isPad: boolean) {
 export async function applyLiveGameOrientationLock(
   _playerCount: number,
   device: { platform?: string; isPad?: boolean } = {},
+  moduleOverride?: ScreenOrientationApi,
 ): Promise<void> {
-  const orientationModule = getScreenOrientationModule();
+  const orientationModule = moduleOverride ?? getScreenOrientationModule();
   if (!orientationModule) return;
 
   try {
@@ -36,8 +38,10 @@ export async function applyLiveGameOrientationLock(
   }
 }
 
-export async function clearLiveGameOrientationLock(): Promise<void> {
-  const orientationModule = getScreenOrientationModule();
+export async function clearLiveGameOrientationLock(
+  moduleOverride?: ScreenOrientationApi,
+): Promise<void> {
+  const orientationModule = moduleOverride ?? getScreenOrientationModule();
   if (!orientationModule) return;
 
   try {
