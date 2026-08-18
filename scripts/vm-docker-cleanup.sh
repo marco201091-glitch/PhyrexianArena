@@ -19,6 +19,15 @@ while IFS= read -r container_id; do
   esac
 done < <(docker ps --quiet)
 
+# Gradle builds run on developer workstations, not on this VM. Remove cache
+# entries that have been inactive for 30 days, but never interfere with a build
+# if one is started manually for diagnostics.
+if ! pgrep -f 'GradleDaemon|org\.gradle\.launcher|gradlew' >/dev/null; then
+  while IFS= read -r -d '' gradle_cache; do
+    find "$gradle_cache" -xdev -depth -mindepth 1 -mtime +30 -delete
+  done < <(find /home /root -xdev -type d -path '*/.gradle/caches' -prune -print0 2>/dev/null)
+fi
+
 docker container prune -f
 docker image prune -af
 docker network prune -f
