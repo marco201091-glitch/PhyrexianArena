@@ -6,6 +6,8 @@
 
 Track Commander games, manage your playgroup, and turn match history into useful statistics—without spreadsheets.
 
+Current stable release: **8.1.0**.
+
 ## Try or install the app
 
 ### Web app
@@ -31,10 +33,12 @@ Obtainium will notify you when a new signed release is available. You can also d
 
 ## Main features
 
-- Live Commander tracker for 2–6 players, with life, commander damage, infect, eliminations, undo, and game recovery.
+- Live Commander tracker for 2–6 players, with configurable table layouts, life, commander damage, infect, eliminations, undo, and game recovery.
 - Private playgroups, invitations, guests, shared match history, and optional public result pages.
-- Deck management and imports from Archidekt or Moxfield.
-- Rankings, deck and commander performance, color trends, personal analytics, and playgroup awards.
+- Deck management, paired Commander variants, and imports from Archidekt or Moxfield.
+- Rankings, deck and commander performance, color trends, personal analytics, and playgroup awards. Decks with fewer than five recorded games are hidden from rankings by default and can be shown on demand.
+- Optional annual Arena seasons, configurable by Arena managers, with summaries of archived seasons.
+- Localized notification inbox with an unread counter and notification preferences.
 - English and Italian interfaces.
 - Email/password authentication and optional Google sign-in in the web and standard Android versions.
 
