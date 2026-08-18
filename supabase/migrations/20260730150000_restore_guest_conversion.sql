@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.3 seconds
-Output:
 CREATE TABLE public.arena_guest_claim_links (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   guest_id uuid NOT NULL REFERENCES public.arena_guests(id) ON DELETE CASCADE,
