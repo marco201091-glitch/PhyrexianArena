@@ -18,13 +18,17 @@ module.exports = ({ config: base }) => {
   const iosAssociatedDomains = isDevVariant
     ? base.ios.associatedDomains.map((domain) => domain === `applinks:${productionHost}` ? `applinks:${devHost}` : domain)
     : base.ios.associatedDomains;
+  const basePlugins = (base.plugins ?? []).filter((plugin) => {
+    const name = Array.isArray(plugin) ? plugin[0] : plugin;
+    return name !== 'expo-splash-screen' && name !== './plugins/with-release-signing';
+  });
 
   return {
     ...base,
     name: isDevVariant ? 'MTG Tracker Dev' : base.name,
     scheme: isDevVariant ? devScheme : base.scheme,
     plugins: [
-      ...base.plugins,
+      ...basePlugins,
       'expo-font',
       'expo-image',
       ['expo-splash-screen', {

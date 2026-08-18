@@ -36,7 +36,7 @@ test('authenticated screens fit legacy iPad and Android viewports', async ({ pag
   await page.goto('/auth/login');
   await page.getByLabel('Email or username').fill(identifier!);
   await page.getByLabel('Password').fill(password!);
-  await page.getByRole('button', { name: 'Enter Playgroup' }).click();
+  await page.getByRole('button', { name: /^Enter(?: Playgroup)?$/ }).click();
   await page.waitForURL('**/dashboard', { timeout: 20_000 });
 
   for (const device of legacyDevices) {
