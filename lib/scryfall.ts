@@ -1,4 +1,5 @@
 import { isScryfallError, resolveCommanderCmcFromCard } from '@/lib/commander-cmc';
+import { buildCommanderNameSearchClause } from '@/lib/commander-search-aliases';
 import { unstable_cache } from 'next/cache';
 
 export { extractCardCmc, resolveCommanderCmcFromCard } from '@/lib/commander-cmc';
@@ -162,10 +163,10 @@ export async function fetchCardByName(name: string): Promise<ScryfallCard | null
 
 const fetchCommanderCardPersistent = unstable_cache(
   async (queryText: string) => {
-    const named = await fetchCardByName(queryText);
-    if (named) return named;
-
     try {
+      const named = await fetchCardByName(queryText);
+      if (named) return named;
+
       const commanderSearch = await fetchScryfallJson<ScryfallSearchResponse>(
         `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:commander name:"${queryText}"`)}&unique=cards`,
       );
@@ -217,16 +218,32 @@ export type CommanderPartnerMode =
   | 'background'
   | 'background-owner'
   | 'friends'
+  | 'father-son'
+  | 'survivors'
+  | 'character-select'
   | 'doctor'
-  | 'doctor-companion';
+  | 'doctor-companion'
+  | `partner-with:${string}`
+  | `partner-family:${string}`;
 
 function partnerModeQuery(mode: CommanderPartnerMode | null) {
   if (mode === 'background') return 'is:commander t:background';
   if (mode === 'background-owner') return 'is:commander o:"choose a background"';
   if (mode === 'friends') return 'is:commander o:"friends forever"';
+  if (mode === 'father-son') return 'is:commander o:"partner—father & son"';
+  if (mode === 'survivors') return 'is:commander o:"partner—survivors"';
+  if (mode === 'character-select') return 'is:commander o:"partner—character select"';
   if (mode === 'doctor') return 'is:commander t:doctor t:"time lord"';
   if (mode === 'doctor-companion') return 'is:commander o:"doctor\'s companion"';
-  if (mode === 'partner') return 'is:commander o:partner -o:"partner with"';
+  if (mode?.startsWith('partner-with:')) {
+    const partnerName = sanitizeCommanderQuery(mode.slice('partner-with:'.length));
+    return partnerName ? `is:commander !"${partnerName}"` : 'is:commander o:"partner with"';
+  }
+  if (mode?.startsWith('partner-family:')) {
+    const familyName = sanitizeCommanderQuery(mode.slice('partner-family:'.length));
+    return familyName ? `is:commander o:"partner—${familyName}"` : 'is:commander';
+  }
+  if (mode === 'partner') return 'is:commander o:partner -o:"partner with" -o:"partner—"';
   return 'is:commander';
 }
 
@@ -246,7 +263,7 @@ const searchCommandersPersistent = unstable_cache(
   async (queryText: string, partnerMode: CommanderPartnerMode | null) => {
     const baseQuery = partnerModeQuery(partnerMode);
     const search = await fetchScryfallJson<ScryfallSearchResponse>(
-      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${baseQuery} (${queryText} or name:"${queryText}")`)}&order=edhrec&unique=cards`
+      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${baseQuery} ${buildCommanderNameSearchClause(queryText)}`)}&order=edhrec&unique=cards`
     );
     return (search?.data || []).slice(0, 20).map(toCommanderSearchResult);
   },

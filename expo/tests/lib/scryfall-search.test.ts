@@ -27,6 +27,20 @@ describe('scryfall-search', () => {
     expect(decodeURIComponent(url || '')).toContain('o:partner');
   });
 
+  it('supports named and grouped partner variants', () => {
+    expect(decodeURIComponent(buildScryfallCommanderSearchUrl('rock', 'partner-with:Rocksteady, Mutant Marauder') || ''))
+      .toContain('!"Rocksteady, Mutant Marauder"');
+    expect(decodeURIComponent(buildScryfallCommanderSearchUrl('leo', 'character-select') || ''))
+      .toContain('partner—character select');
+    expect(decodeURIComponent(buildScryfallCommanderSearchUrl('new', 'partner-family:Future team') || ''))
+      .toContain('partner—Future team');
+  });
+
+  it('resolves original Friends forever printed names through canonical aliases', () => {
+    const url = decodeURIComponent(buildScryfallCommanderSearchUrl('Eleven') || '');
+    expect(url).toContain('name:"Cecily, Haunted Mage"');
+  });
+
   it('builds an exact-art search URL for commander printings', () => {
     const url = buildScryfallArtSearchUrl('Tymna the Weaver');
     expect(url).toContain('api.scryfall.com/cards/search');

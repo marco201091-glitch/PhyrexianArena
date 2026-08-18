@@ -19,16 +19,28 @@ export async function POST(request: Request) {
     .eq('id', matchId)
     .maybeSingle();
   if (!match) return NextResponse.json({ error: 'Match unavailable' }, { status: 404 });
-  const { data: actorMember } = await admin.from('group_members').select('id').eq('group_id', match.group_id).eq('user_id', auth.user.id).maybeSingle();
-  if (!actorMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { data: participants } = await admin.from('match_participants').select('user_id').eq('match_id', match.id).not('user_id', 'is', null);
+  const participantIds = Array.from(new Set(
+    (participants ?? []).map((row) => row.user_id).filter(Boolean) as string[],
+  ));
+  if (!participantIds.includes(auth.user.id)) {
+    return NextResponse.json({ error: 'Only a match participant can send this notification' }, { status: 403 });
+  }
   const group = Array.isArray(match.groups) ? match.groups[0] : match.groups;
   const winner = Array.isArray(match.profiles) ? match.profiles[0] : match.profiles;
-  const result = match.is_draw ? 'Pareggio' : `Vince ${winner?.display_name || winner?.username || 'un giocatore'}`;
-  await notifyUsers(admin, (participants ?? []).map((row) => row.user_id).filter(Boolean) as string[], {
+  const winnerName = winner?.display_name || winner?.username;
+  await notifyUsers(admin, participantIds, {
     type: 'match_completed',
-    title: `Partita conclusa · ${group?.name ?? 'Playgroup'}`,
-    body: result,
+    content: {
+      it: {
+        title: `Partita conclusa · ${group?.name ?? 'Playgroup'}`,
+        body: match.is_draw ? 'Pareggio' : `Vince ${winnerName || 'un giocatore'}`,
+      },
+      en: {
+        title: `Match completed · ${group?.name ?? 'Playgroup'}`,
+        body: match.is_draw ? 'Draw' : `${winnerName || 'A player'} wins`,
+      },
+    },
     data: { groupId: match.group_id, matchId: match.id },
     dedupeKey: `match_completed:${match.id}`,
   });

@@ -39,6 +39,12 @@ import {
   resolveSelectedCommanderOption,
 } from '@/lib/deck-metadata';
 import { lookupCommanderCmcInBrowser } from '@/lib/commander-cmc-client';
+import { buildCommanderNameSearchClause } from '@/lib/commander-search-aliases';
+import {
+  getCommanderPartnerCopy as getManualPartnerCopy,
+  getCommanderPartnerMode as getManualPartnerMode,
+} from '@/lib/commander-partners';
+import type { CommanderPartnerMode } from '@/lib/scryfall';
 import {
   buildArchidektBatchCommanderSelections,
   deckDataToColorFields,
@@ -62,7 +68,8 @@ import { delay, runTasksWithConcurrency } from '@/lib/async-utils';
 import { runWhenIdle } from '@/lib/idle-work';
 import { type DeckWinRateSnapshot } from '@/lib/personal-analytics';
 import { MANA_COLOR_LABELS, MANA_COLOR_ORDER } from '@/lib/mana-colors';
-import { getAvatarPublicUrl, userHasAvatar } from '@/lib/avatar-storage';
+import { resolveAvatarUrl } from '@/lib/avatar-storage';
+import { useAvatarObject } from '@/hooks/use-avatar-object';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { ManaColorPills } from '@/components/ui/mana-color-pills';
@@ -182,7 +189,7 @@ interface CommanderArtOption {
 }
 
 type AddDeckMode = 'choose' | 'import-url' | 'archidekt-user' | 'manual';
-type ManualPartnerMode = 'partner' | 'background' | 'background-owner' | 'friends' | 'doctor' | 'doctor-companion';
+type ManualPartnerMode = CommanderPartnerMode;
 
 interface ScryfallBrowserCard {
   id: string;
@@ -408,9 +415,20 @@ function scryfallPartnerModeQuery(mode: ManualPartnerMode | null) {
   if (mode === 'background') return 'is:commander t:background';
   if (mode === 'background-owner') return 'is:commander o:"choose a background"';
   if (mode === 'friends') return 'is:commander o:"friends forever"';
+  if (mode === 'father-son') return 'is:commander o:"partner—father & son"';
+  if (mode === 'survivors') return 'is:commander o:"partner—survivors"';
+  if (mode === 'character-select') return 'is:commander o:"partner—character select"';
   if (mode === 'doctor') return 'is:commander t:doctor t:"time lord"';
   if (mode === 'doctor-companion') return 'is:commander o:"doctor\'s companion"';
-  if (mode === 'partner') return 'is:commander o:partner -o:"partner with"';
+  if (mode?.startsWith('partner-with:')) {
+    const partnerName = sanitizeScryfallQuery(mode.slice('partner-with:'.length));
+    return partnerName ? `is:commander !"${partnerName}"` : 'is:commander o:"partner with"';
+  }
+  if (mode?.startsWith('partner-family:')) {
+    const familyName = sanitizeScryfallQuery(mode.slice('partner-family:'.length));
+    return familyName ? `is:commander o:"partner—${familyName}"` : 'is:commander';
+  }
+  if (mode === 'partner') return 'is:commander o:partner -o:"partner with" -o:"partner—"';
   return 'is:commander';
 }
 
@@ -436,7 +454,7 @@ async function fetchScryfallCommandersFromBrowser(
 
   const baseQuery = scryfallPartnerModeQuery(partnerMode);
   const response = await fetch(
-    `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${baseQuery} (${queryText} or name:"${queryText}")`)}&order=edhrec&unique=cards`,
+    `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${baseQuery} ${buildCommanderNameSearchClause(queryText)}`)}&order=edhrec&unique=cards`,
     { headers: { Accept: 'application/json' }, signal }
   );
 
@@ -551,62 +569,6 @@ function uniqueCommanderOptions(options: ImportedCommanderOption[]) {
   );
 }
 
-function getManualPartnerMode(commander: CommanderSearchResult): ManualPartnerMode | null {
-  const typeLine = commander.typeLine.toLowerCase();
-  const rulesText = `${commander.oracleText || ''} ${(commander.keywords || []).join(' ')}`.toLowerCase();
-
-  if (typeLine.includes('background')) return 'background-owner';
-  if (rulesText.includes('choose a background')) return 'background';
-  if (typeLine.includes('doctor') && typeLine.includes('time lord')) return 'doctor-companion';
-  if (rulesText.includes("doctor's companion")) return 'doctor';
-  if (rulesText.includes('friends forever')) return 'friends';
-  if (rulesText.includes('partner') && !rulesText.includes('partner with') && !rulesText.includes("doctor's companion")) {
-    return 'partner';
-  }
-
-  return null;
-}
-
-function getManualPartnerCopy(mode: ManualPartnerMode, t: ReturnType<typeof useLanguage>['copy']) {
-  if (mode === 'background') {
-    return {
-      title: t({ it: 'Background', en: 'Background' }),
-      placeholder: t({ it: 'Cerca background...', en: 'Search background...' }),
-      empty: t({ it: 'Nessun background trovato', en: 'No backgrounds found' }),
-    };
-  }
-
-  if (mode === 'background-owner') {
-    return {
-      title: t({ it: 'Comandante con Background', en: 'Background commander' }),
-      placeholder: t({ it: 'Cerca comandante con Choose a Background...', en: 'Search Choose a Background commander...' }),
-      empty: t({ it: 'Nessun comandante compatibile trovato', en: 'No compatible commanders found' }),
-    };
-  }
-
-  if (mode === 'doctor') {
-    return {
-      title: t({ it: 'Dottore', en: 'Doctor' }),
-      placeholder: t({ it: 'Cerca Dottore...', en: 'Search Doctor...' }),
-      empty: t({ it: 'Nessun Dottore trovato', en: 'No Doctors found' }),
-    };
-  }
-
-  if (mode === 'doctor-companion') {
-    return {
-      title: t({ it: 'Doctor companion', en: 'Doctor companion' }),
-      placeholder: t({ it: 'Cerca Doctor companion...', en: 'Search Doctor companion...' }),
-      empty: t({ it: 'Nessun companion trovato', en: 'No companions found' }),
-    };
-  }
-
-  return {
-    title: t({ it: mode === 'friends' ? 'Friends forever' : 'Partner', en: mode === 'friends' ? 'Friends forever' : 'Partner' }),
-    placeholder: t({ it: mode === 'friends' ? 'Cerca Friends forever...' : 'Cerca partner...', en: mode === 'friends' ? 'Search Friends forever...' : 'Search partner...' }),
-    empty: t({ it: 'Nessun secondo comandante trovato', en: 'No second commander found' }),
-  };
-}
-
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -628,7 +590,6 @@ export default function ProfilePage() {
   const [activeAccountPanel, setActiveAccountPanel] = useState<'nickname' | 'password' | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState<number>(() => Date.now());
-  const [hasAvatar, setHasAvatar] = useState(false);
   const [profileDisplayNameDrafts, setProfileDisplayNameDrafts] = useState<Record<string, string>>({});
   const [savingProfileDisplayNameIds, setSavingProfileDisplayNameIds] = useState<string[]>([]);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -697,9 +658,8 @@ export default function ProfilePage() {
   const [detailsDeck, setDetailsDeck] = useState<Deck | null>(null);
   const currentProfile = user ? profiles.find((profile) => profile.id === user.id) || null : null;
   const targetProfiles = profiles.filter((profile) => !RESERVED_USERNAMES.has(profile.username.toLowerCase()));
-  const currentAvatarUrl = user && hasAvatar
-    ? getAvatarPublicUrl(supabase, user.id, avatarVersion)
-    : undefined;
+  const avatarObject = useAvatarObject(supabase, user?.id, avatarVersion);
+  const currentAvatarUrl = resolveAvatarUrl(supabase, user?.id, avatarObject, avatarVersion) ?? undefined;
   const manualPartnerMode = selectedCommander ? getManualPartnerMode(selectedCommander) : null;
   const manualPartnerCopy = manualPartnerMode ? getManualPartnerCopy(manualPartnerMode, t) : null;
 
@@ -719,22 +679,6 @@ export default function ProfilePage() {
     if (!currentProfile) return;
     setDisplayNameDraft(currentProfile.display_name || '');
   }, [currentProfile]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setHasAvatar(false);
-      return;
-    }
-
-    let cancelled = false;
-    void userHasAvatar(supabase, user.id).then((exists) => {
-      if (!cancelled) setHasAvatar(exists);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, avatarVersion]);
 
   useEffect(() => {
     decksRef.current = decks;
@@ -1336,7 +1280,6 @@ export default function ProfilePage() {
         .from('profiles')
         .update({ avatar_revision: new Date().toISOString() })
         .eq('id', user.id);
-      setHasAvatar(true);
       setAvatarVersion(Date.now());
 
       toast({ title: t({ it: 'Avatar aggiornato', en: 'Avatar updated' }) });
@@ -2688,7 +2631,7 @@ export default function ProfilePage() {
               <div className="mt-6 overflow-hidden rounded-xl border border-emerald-400/30 bg-emerald-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
                   <div className="mb-2 flex items-center gap-2">
                     <Link2 className="h-4 w-4 text-emerald-300" />
-                    <h3 className="font-semibold text-emerald-50">Archidekt sync</h3>
+                    <h3 className="font-semibold text-emerald-50">{t({ it: 'Sincronizzazione Archidekt', en: 'Archidekt sync' })}</h3>
                   </div>
                   <p className="mb-3 text-sm text-emerald-200/70">
                     {t({

@@ -266,7 +266,17 @@ export default function SettingsScreen() {
       </PhyrexianPanel>
 
       <PhyrexianPanel style={styles.card}>
-        <SectionHeader title="Archidekt sync" />
+        <SectionHeader title={copy('notifications')} />
+        <Button
+          label={copy('notificationPreferences')}
+          variant="ghost"
+          icon="notifications-outline"
+          onPress={() => router.push('./notification-settings')}
+        />
+      </PhyrexianPanel>
+
+      <PhyrexianPanel style={styles.card}>
+        <SectionHeader title={copy('archidektSync')} />
         <Text style={styles.preferenceHint}>{copy('archidektPublicHint')}</Text>
         <Input
           label={copy('archidektUsername')}
@@ -277,10 +287,10 @@ export default function SettingsScreen() {
         />
         <View style={styles.preferenceRow}>
           <View style={styles.preferenceCopy}>
-            <Text style={styles.preferenceLabel}>Auto-update</Text>
+            <Text style={styles.preferenceLabel}>{copy('autoUpdate')}</Text>
             {profile?.archidekt_last_sync_at ? (
               <Text style={styles.preferenceHint}>
-                {new Date(profile.archidekt_last_sync_at).toLocaleString()}
+                {new Date(profile.archidekt_last_sync_at).toLocaleString(language === 'it' ? 'it-IT' : 'en-US')}
               </Text>
             ) : null}
           </View>

@@ -11,6 +11,8 @@
 
 ## Completed
 
+- [x] Aggiungere la pulizia notturna delle cache Gradle inattive, installarla sul server e rimuovere l'Android SDK server-side inutilizzato.
+- [x] Audit read-only dello spazio server e identificazione di elementi Docker/log/cache eliminabili in sicurezza.
 - [x] Publish MTG Tracker & Analytics 8.0.0 through Obtainium.
 - [x] Prepare and submit the F-Droid-compatible build.
 - [x] Replace the main README with the public installation and web-app guide.

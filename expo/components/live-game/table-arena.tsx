@@ -38,6 +38,7 @@ import { rollTableRandom, type TableRandomKind } from '@/lib/table-randomizer';
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { useReducedMotion } from '@/lib/reduced-motion';
 import { useLiveGameRuntimeStore } from '@/stores/live-game-runtime-store';
+import { useLanguage } from '@/contexts/language-context';
 
 type PendingTransfer = {
   sourceKey: ParticipantKey;
@@ -88,6 +89,8 @@ type TableArenaProps = {
     everyone: string;
     drain: string;
     drainHint: string;
+    lifelink: string;
+    lifelinkHint: string;
     dieOrCoin: string;
     coin: string;
     heads: string;
@@ -286,6 +289,7 @@ export function TableArena({
   onAdjustCounter,
   onSetEmblem,
 }: TableArenaProps) {
+  const { copy } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const [arenaSize, setArenaSize] = useState({ width: 0, height: 0 });
@@ -584,7 +588,7 @@ export function TableArena({
         style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
         onPress={onBack}
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel={copy('back')}
       >
         <Ionicons name="arrow-back" size={23} color={colors.foreground} />
       </Pressable>
@@ -599,7 +603,7 @@ export function TableArena({
         onPress={onUndo}
         disabled={!canUndo}
         accessibilityRole="button"
-        accessibilityLabel="Undo"
+        accessibilityLabel={labels.undo}
         accessibilityState={{ disabled: !canUndo }}
       >
         <Ionicons
@@ -832,6 +836,8 @@ export function TableArena({
           everyone: labels.everyone,
           drain: labels.drain,
           drainHint: labels.drainHint,
+          lifelink: labels.lifelink,
+          lifelinkHint: labels.lifelinkHint,
         }}
         onClose={() => setPendingTransfer(null)}
         onConfirm={({ amount, mode, scope, drain }) => {
@@ -852,7 +858,8 @@ export function TableArena({
           const destination = scope === 'opponents'
             ? labels.eachOpponent
             : scope === 'all_players' ? labels.everyone : targetName;
-          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}${drain ? ` · ${labels.drain}` : ''}`);
+          const drainLabel = mode === 'commander' ? labels.lifelink : labels.drain;
+          setDamageFeedback(`${sourceName} → ${destination} · ${amount} ${modeLabel}${drain ? ` · ${drainLabel}` : ''}`);
           setTimeout(() => setDamageFeedback(null), 3200);
           setPendingTransfer(null);
         }}

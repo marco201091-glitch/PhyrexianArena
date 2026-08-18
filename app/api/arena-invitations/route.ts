@@ -75,8 +75,10 @@ export async function POST(request: Request) {
 
   await notifyUsers(admin, [invitedUserId], {
     type: 'arena_invite',
-    title: 'Invito al playgroup',
-    body: `Sei stato invitato in ${group.name}`,
+    content: {
+      it: { title: 'Invito al playgroup', body: `Sei stato invitato in ${group.name}` },
+      en: { title: 'Playgroup invitation', body: `You were invited to ${group.name}` },
+    },
     data: { groupId, invitationId: invitation.id },
     dedupeKey: `arena_invite:${invitation.id}`,
   });
@@ -118,8 +120,10 @@ export async function PATCH(request: Request) {
     const name = profile?.display_name || profile?.username || 'Un giocatore';
     await notifyUsers(admin, (members ?? []).map((row) => row.user_id), {
       type: 'arena_member_joined',
-      title: 'Nuovo membro nel playgroup',
-      body: `${name} si è unito a ${group?.name ?? 'un playgroup'}`,
+      content: {
+        it: { title: 'Nuovo membro nel playgroup', body: `${name} si è unito a ${group?.name ?? 'un playgroup'}` },
+        en: { title: 'New playgroup member', body: `${name} joined ${group?.name ?? 'a playgroup'}` },
+      },
       data: { groupId: invitation.group_id, memberId: auth.user.id },
     }, { persist: false });
   }

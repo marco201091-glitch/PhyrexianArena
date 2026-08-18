@@ -123,8 +123,10 @@ export async function PATCH(request: Request) {
     const { data: members } = await admin.from('group_members').select('user_id').eq('group_id', result.groupId).neq('user_id', auth.user.id);
     await notifyUsers(admin, (members ?? []).map((row) => row.user_id), {
       type: 'arena_member_joined',
-      title: 'Nuovo membro nell’Arena',
-      body: `${result.displayName || 'Un giocatore'} si è unito a ${result.groupName || 'un’Arena'}`,
+      content: {
+        it: { title: 'Nuovo membro nell’Arena', body: `${result.displayName || 'Un giocatore'} si è unito a ${result.groupName || 'un’Arena'}` },
+        en: { title: 'New Arena member', body: `${result.displayName || 'A player'} joined ${result.groupName || 'an Arena'}` },
+      },
       data: { groupId: result.groupId, memberId: auth.user.id },
     }, { persist: false });
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +29,11 @@ import { isDemoUser } from '@/lib/demo';
 import { fetchGroupByInviteCode, normalizeInviteCode } from '@/lib/join-arena';
 import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import { PendingArenaInvitations } from '@/components/arena/pending-arena-invitations';
+import {
+  countProvisionalDeckRankings,
+  filterDeckRankings,
+  isProvisionalDeckRanking,
+} from '@/lib/deck-ranking-visibility';
 
 import { MANA_COLOR_LABELS } from '@/lib/mana-colors';
 import { ManaColorBadge, ManaColorPills } from '@/components/ui/mana-color-pills';
@@ -79,6 +84,12 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [personalAnalytics, setPersonalAnalytics] = useState<PersonalAnalytics | null>(null);
+  const [showProvisionalDecks, setShowProvisionalDecks] = useState(false);
+  const visiblePersonalDecks = useMemo(
+    () => filterDeckRankings(personalAnalytics?.topDecks ?? [], showProvisionalDecks),
+    [personalAnalytics?.topDecks, showProvisionalDecks],
+  );
+  const provisionalPersonalDeckCount = countProvisionalDeckRankings(personalAnalytics?.topDecks ?? []);
 
 
   useEffect(() => {
@@ -579,10 +590,22 @@ export default function DashboardPage() {
                   <CardDescription>
                     {t({ it: 'Ordinati per partite giocate, poi vittorie.', en: 'Sorted by games played, then wins.' })}
                   </CardDescription>
+                  {provisionalPersonalDeckCount > 0 ? (
+                    <button
+                      type="button"
+                      aria-pressed={showProvisionalDecks}
+                      onClick={() => setShowProvisionalDecks((value) => !value)}
+                      className="w-fit rounded-full border border-border bg-background/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-emerald-500/50 hover:text-emerald-200"
+                    >
+                      {showProvisionalDecks
+                        ? t({ it: 'Nascondi mazzi con meno di 5 partite', en: 'Hide decks under 5 games' })
+                        : t({ it: `Mostra ${provisionalPersonalDeckCount} mazzi con meno di 5 partite`, en: `Show ${provisionalPersonalDeckCount} decks under 5 games` })}
+                    </button>
+                  ) : null}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {personalAnalytics.topDecks.map((deck, index) => (
+                    {visiblePersonalDecks.map((deck, index) => (
                       <div key={deck.id} className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/35 p-3 sm:grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-3">
                         <div className="flex w-full min-w-0 items-center gap-3 sm:block sm:w-auto">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-sm font-bold text-emerald-200">
@@ -590,6 +613,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="min-w-0 flex-1 sm:hidden">
                             <p className="truncate font-semibold text-foreground">{deck.name}</p>
+                            {isProvisionalDeckRanking(deck.gamesPlayed) ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-200">{t({ it: 'Campione ridotto', en: 'Low sample' })}</span> : null}
                             {adminMode && deck.ownerUsername ? (
                               <p className="truncate text-xs text-muted-foreground">@{deck.ownerUsername}</p>
                             ) : null}
@@ -603,6 +627,7 @@ export default function DashboardPage() {
                         <div className="hidden min-w-0 sm:block">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="truncate font-semibold text-foreground">{deck.name}</p>
+                            {isProvisionalDeckRanking(deck.gamesPlayed) ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-200">{t({ it: 'Campione ridotto', en: 'Low sample' })}</span> : null}
                             <ManaColorPills colors={deck.colors} size="xs" gap="tight" />
                           </div>
                           {adminMode && deck.ownerUsername ? (
@@ -617,6 +642,9 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     ))}
+                    {visiblePersonalDecks.length === 0 ? (
+                      <p className="py-5 text-center text-sm text-muted-foreground">{t({ it: 'Nessun mazzo ha ancora raggiunto 5 partite.', en: 'No deck has reached 5 games yet.' })}</p>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>

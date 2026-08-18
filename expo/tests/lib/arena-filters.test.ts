@@ -20,6 +20,15 @@ describe('arena filters', () => {
     expect(filterMatchesByDate(matches, 'all')).toBe(matches);
   });
 
+  it('includes the exact season boundary and excludes earlier matches', () => {
+    const matches = [
+      { id: 'before', played_at: '2025-12-31T23:59:59.999Z' },
+      { id: 'boundary', played_at: '2026-01-01T00:00:00.000Z' },
+    ];
+    expect(filterMatchesByDate(matches, 'all', '2026-01-01').map((match) => match.id))
+      .toEqual(['boundary']);
+  });
+
   it('localizes every period label', () => {
     expect(getArenaPeriodLabel('all', 'it')).toBe('Sempre');
     expect(getArenaPeriodLabel('7d', 'en')).toBe('Last 7 days');

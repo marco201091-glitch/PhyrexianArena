@@ -22,17 +22,42 @@ jobs:
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       SENTRY_ENABLED: "false"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24.18.0
           cache: npm
           cache-dependency-path: |
             package-lock.json
             expo/package-lock.json
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.114.0
+          github-token: ${{ github.token }}
+      - name: Apply and lint every Supabase migration
+        run: |
+          supabase start -x realtime,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor,mailpit
+          supabase db lint --local --schema public --level error --fail-on error
+      - name: Export local Supabase test environment
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "E2E_USERNAME=demo@phyrexianarena.local"
+            echo "E2E_PASSWORD=CI-Phyrexian-Arena-8!"
+            echo "DEMO_USER_EMAIL=demo@phyrexianarena.local"
+            echo "DEMO_USER_PASSWORD=CI-Phyrexian-Arena-8!"
+            echo "DEMO_SKIP_REMOTE_IMAGES=true"
+          } >> "$GITHUB_ENV"
       - run: npm ci
       # Web unit tests intentionally reuse shared game logic from expo/lib.
       - run: npm --prefix expo ci
+      - name: Seed authenticated E2E account
+        run: npm run seed:demo-account
       - run: npm run quality
       - run: npm run build
       - run: npx playwright install --with-deps chromium
@@ -45,12 +70,12 @@ jobs:
       run:
         working-directory: expo
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24.18.0
           cache: npm
           cache-dependency-path: expo/package-lock.json
       - run: npm ci
       - run: npm run quality
-      - run: npx expo-doctor
+      - run: npm run doctor

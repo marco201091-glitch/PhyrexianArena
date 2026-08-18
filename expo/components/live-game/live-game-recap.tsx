@@ -26,6 +26,12 @@ export function LiveGameRecapView({
           </View>
         </View>
         <Text style={styles.commander} numberOfLines={1}>{player.commander}</Text>
+        <View style={styles.metrics}>
+          {player.damageDealt > 0 ? <Text style={styles.metric}>⚔ {player.damageDealt}</Text> : null}
+          {player.lifeGained > 0 ? <Text style={styles.metric}>♥ +{player.lifeGained}</Text> : null}
+          {player.eliminationsCaused > 0 ? <Text style={styles.metric}>☠ {player.eliminationsCaused}</Text> : null}
+          {player.events > 0 ? <Text style={styles.metric}>• {player.events}</Text> : null}
+        </View>
       </View>
     ))}
     <Text style={[styles.title, styles.highlightsTitle]}>{labels.highlights}</Text>
@@ -49,6 +55,8 @@ const styles = StyleSheet.create({
   finalMetrics: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   infect: { color: colors.success, fontSize: 11, fontWeight: '800' },
   commander: { color: colors.muted, fontSize: 10 },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  metric: { color: colors.muted, fontSize: 9, fontWeight: '700' },
   highlightsTitle: { color: '#ddd6fe', marginTop: spacing.xs },
   highlights: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   highlight: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.sm, paddingVertical: 5 },

@@ -12,6 +12,7 @@ import { getDeckMastery } from '@/lib/deck-mastery';
 import { getDeckDisplayColors } from '@/lib/deck-metadata';
 import type { AppLanguage } from '@/lib/i18n/types';
 import type { DeckWinRate, ProfileDeck } from '@/lib/types/profile';
+import { useLanguage } from '@/contexts/language-context';
 
 type DeckCardProps = {
   deck: ProfileDeck;
@@ -48,6 +49,7 @@ export const DeckCard = memo(function DeckCard({
   onDelete,
   onToggleFavorite,
 }: DeckCardProps) {
+  const { copy } = useLanguage();
   const manaColors = getDeckDisplayColors(deck);
   const canRefresh = deck.source_type !== 'manual' && Boolean(deck.source_url);
   const gamesPlayed = winRate?.gamesPlayed ?? 0;
@@ -97,7 +99,7 @@ export const DeckCard = memo(function DeckCard({
           <DeckMasteryBadge gamesPlayed={gamesPlayed} wins={wins} language={language} />
           <View style={styles.winRateStat}>
             <Text style={styles.statValue}>{winRate?.winRate ?? 0}%</Text>
-            <Text style={styles.statLabel}>Win rate</Text>
+            <Text style={styles.statLabel}>{copy('winRate')}</Text>
           </View>
         </View>
 

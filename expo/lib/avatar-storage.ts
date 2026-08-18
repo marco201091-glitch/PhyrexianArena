@@ -1,11 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-function avatarObjectPath(userId: string) {
-  return `${userId}/avatar`;
-}
-
 export type AvatarObjectState = {
   exists: boolean;
+  objectName: string | null;
   revision: string | null;
 };
 
@@ -14,13 +11,14 @@ export async function getAvatarObjectState(
   userId: string,
 ): Promise<AvatarObjectState> {
   const { data, error } = await client.storage.from('avatars').list(userId, { limit: 20 });
-  if (error || !data?.length) return { exists: false, revision: null };
+  if (error || !data?.length) return { exists: false, objectName: null, revision: null };
 
   const avatar = data.find((file) => file.name === 'avatar' || file.name.startsWith('avatar.'));
-  if (!avatar) return { exists: false, revision: null };
+  if (!avatar) return { exists: false, objectName: null, revision: null };
 
   return {
     exists: true,
+    objectName: avatar.name,
     revision: avatar.updated_at || avatar.created_at || avatar.id || avatar.name,
   };
 }
@@ -34,8 +32,9 @@ export function getAvatarPublicUrl(
   userId: string,
   version: number,
   revision?: string | null,
+  objectName = 'avatar',
 ) {
-  const { data } = client.storage.from('avatars').getPublicUrl(avatarObjectPath(userId));
+  const { data } = client.storage.from('avatars').getPublicUrl(`${userId}/${objectName}`);
   return `${data.publicUrl}?v=${encodeURIComponent(`${revision || '0'}-${version}`)}`;
 }
 
@@ -45,7 +44,8 @@ export function resolveAvatarUrl(
   hasAvatar: boolean,
   version: number,
   revision?: string | null,
+  objectName = 'avatar',
 ) {
   if (!userId || !hasAvatar) return null;
-  return getAvatarPublicUrl(client, userId, version, revision);
+  return getAvatarPublicUrl(client, userId, version, revision, objectName);
 }

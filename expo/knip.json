@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "expo": false,
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "app.config.js",
+    "plugins/**/*.{js,ts}",
+    "scripts/**/*.{js,mjs}",
+    "tests/**/*.test.ts"
+  ],
+  "project": ["**/*.{js,mjs,ts,tsx}"],
+  "ignoreDependencies": ["@expo/config-plugins", "expo-asset", "expo-splash-screen"],
+  "ignoreBinaries": ["adb", "adb.exe", "findstr", "gradlew.bat", "netstat"]
+}

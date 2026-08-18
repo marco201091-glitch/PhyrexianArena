@@ -28,6 +28,7 @@ export const API_RATE_LIMITS = {
   arenaMembership: { maxRequests: 20, windowSeconds: 60 * 60 },
   pushToken: { maxRequests: 30, windowSeconds: 60 * 60 },
   matchCompleted: { maxRequests: 120, windowSeconds: 10 * 60 },
+  notifications: { maxRequests: 120, windowSeconds: 10 * 60 },
   guestClaimPreview: { maxRequests: 60, windowSeconds: 10 * 60 },
   guestClaimCreate: { maxRequests: 30, windowSeconds: 60 * 60 },
   avatarUpload: { maxRequests: 20, windowSeconds: 60 * 60 },

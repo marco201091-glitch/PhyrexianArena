@@ -46,6 +46,23 @@ describe('live-game', () => {
     expect(player?.commanderDamageFrom['user:a']).toBe(10);
   });
 
+  it('gains life from commander damage when lifelink is enabled', () => {
+    const state = buildState();
+    state.players[0] = { ...state.players[0]!, life: 30 };
+    const next = applyLiveGameMutation(state, {
+      type: 'adjust',
+      targetKey: 'user:b',
+      sourceKey: 'user:a',
+      amount: 6,
+      mode: 'commander',
+      drain: true,
+    });
+
+    expect(next.players[0]?.life).toBe(36);
+    expect(next.players[1]?.life).toBe(34);
+    expect(next.players[1]?.commanderDamageFrom['user:a']).toBe(6);
+  });
+
   it('auto-eliminates on commander damage threshold', () => {
     let state = buildState();
     state = applyDamage(state, 'user:b', COMMANDER_DAMAGE_LIMIT, 'commander', 'user:a');

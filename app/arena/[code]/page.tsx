@@ -13,6 +13,7 @@ import { useLanguage } from '@/components/language-provider';
 import { ManaColorBadge } from '@/components/ui/mana-color-pills';
 import { ArrowLeft, CalendarDays, Copy, Link2, Palette, Swords, Trophy, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatArenaSeasonDate, formatArenaSeasonLabel } from '@/lib/arena-seasons';
 
 import { format } from 'date-fns';
 
@@ -22,6 +23,9 @@ interface PublicArenaResponse {
     description: string | null;
     inviteCode: string;
     createdAt: string;
+    seasonsEnabled: boolean;
+    seasonStart: string | null;
+    seasonEnd: string | null;
   };
   summary: {
     totalMatches: number;
@@ -75,7 +79,7 @@ interface PublicArenaResponse {
 export default function PublicArenaPage() {
   const params = useParams();
   const code = String(params.code || '').toUpperCase();
-  const { copy: t } = useLanguage();
+  const { copy: t, language } = useLanguage();
   const { toast } = useToast();
   const [data, setData] = useState<PublicArenaResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -184,6 +188,11 @@ export default function PublicArenaPage() {
                 <span>
                   {t({ it: 'Creata il', en: 'Created' })} {format(new Date(data.arena.createdAt), 'PPP')}
                 </span>
+                {data.arena.seasonsEnabled && data.arena.seasonStart && data.arena.seasonEnd ? <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  {formatArenaSeasonLabel(data.arena.seasonStart, data.arena.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
+                  {' · '}{formatArenaSeasonDate(data.arena.seasonStart, language === 'it' ? 'it-IT' : 'en-US')}
+                </span> : null}
               </div>
             </div>
             <Button variant="outline" className="border-emerald-500/30 bg-background/40" onClick={copyArenaLink}>

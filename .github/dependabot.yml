@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: Dev
+    groups:
+      web-patch-and-minor:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /expo
+    schedule:
+      interval: weekly
+    target-branch: Dev
+    groups:
+      expo-patch-and-minor:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: Dev
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: Dev

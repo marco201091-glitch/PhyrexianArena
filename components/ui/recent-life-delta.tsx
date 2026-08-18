@@ -7,6 +7,7 @@ export function RecentLifeDelta({ life, className }: { life: number; className?:
   const previousLife = useRef(life);
   const timer = useRef<number | null>(null);
   const [delta, setDelta] = useState(0);
+  const [animationKey, setAnimationKey] = useState(0);
 
   useEffect(() => {
     const change = life - previousLife.current;
@@ -14,6 +15,7 @@ export function RecentLifeDelta({ life, className }: { life: number; className?:
     if (change === 0) return;
 
     setDelta((current) => current + change);
+    setAnimationKey((current) => current + 1);
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       timer.current = null;
@@ -29,10 +31,11 @@ export function RecentLifeDelta({ life, className }: { life: number; className?:
 
   return (
     <span
+      key={animationKey}
       aria-live="polite"
       className={cn(
         'pointer-events-none font-black tabular-nums drop-shadow-[0_2px_4px_rgba(0,0,0,.95)]',
-        delta < 0 ? 'text-red-400' : 'text-emerald-300',
+        delta < 0 ? 'text-red-400' : 'life-gain-pop text-emerald-300',
         className,
       )}
     >

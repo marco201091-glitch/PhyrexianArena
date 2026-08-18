@@ -90,6 +90,7 @@ export function TableSeat({
   const isLow = mainValue <= 5;
   const shake = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
+  const gainFlashOpacity = useSharedValue(0);
   const lifeScale = useSharedValue(1);
   const lastReportedDragX = useSharedValue(0);
   const lastReportedDragY = useSharedValue(0);
@@ -102,6 +103,16 @@ export function TableSeat({
     const change = player.life - previousLife.current;
     previousLife.current = player.life;
     if (change === 0) return;
+    if (change > 0 && !reducedMotion) {
+      gainFlashOpacity.value = withSequence(
+        withTiming(0.5, { duration: 110 }),
+        withTiming(0, { duration: 520 }),
+      );
+      lifeScale.value = withSequence(
+        withSpring(1.18, { damping: 8, stiffness: 260 }),
+        withSpring(1, { damping: 12, stiffness: 210 }),
+      );
+    }
     setRecentLifeDelta((current) => current + change);
     if (lifeDeltaTimer.current) clearTimeout(lifeDeltaTimer.current);
     lifeDeltaTimer.current = setTimeout(() => {
@@ -111,7 +122,7 @@ export function TableSeat({
     return () => {
       if (lifeDeltaTimer.current) clearTimeout(lifeDeltaTimer.current);
     };
-  }, [player.life]);
+  }, [gainFlashOpacity, lifeScale, player.life, reducedMotion]);
 
   useEffect(() => {
     if (damagePulse <= 0) return;
@@ -140,6 +151,7 @@ export function TableSeat({
     transform: [{ translateX: shake.value }, { translateY: shake.value * 0.3 }],
   }));
   const flashStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
+  const gainFlashStyle = useAnimatedStyle(() => ({ opacity: gainFlashOpacity.value }));
   const lifeStyle = useAnimatedStyle(() => ({ transform: [{ scale: lifeScale.value }] }));
 
   const dragGesture = useMemo(() => Gesture.Pan()
@@ -226,6 +238,7 @@ export function TableSeat({
         <View style={[styles.edgeShade, styles.edgeShadeLeft]} pointerEvents="none" />
         <View style={[styles.edgeShade, styles.edgeShadeRight]} pointerEvents="none" />
         <AnimatedView pointerEvents="none" style={[styles.flash, flashStyle]} />
+        <AnimatedView pointerEvents="none" style={[styles.gainFlash, gainFlashStyle]} />
 
         {onSelectActivePlayer && !player.isEliminated ? (
           <Pressable
@@ -257,6 +270,29 @@ export function TableSeat({
               color="#fef3c7"
             />
             <Text style={styles.startingBadgeText} numberOfLines={1}>{startingBadgeLabel}</Text>
+          </View>
+        ) : null}
+
+        {(player.counters.monarch || player.counters.initiative) ? (
+          <View
+            pointerEvents="none"
+            style={styles.emblemBadges}
+            accessible
+            accessibilityLabel={[
+              player.counters.monarch ? 'Monarca' : '',
+              player.counters.initiative ? 'Iniziativa' : '',
+            ].filter(Boolean).join(', ')}
+          >
+            {player.counters.monarch ? (
+              <View style={[styles.emblemBadge, styles.monarchBadge]}>
+                <Ionicons name="ribbon-outline" size={18} color="#fef3c7" />
+              </View>
+            ) : null}
+            {player.counters.initiative ? (
+              <View style={[styles.emblemBadge, styles.initiativeBadge]}>
+                <Ionicons name="trail-sign-outline" size={18} color="#cffafe" />
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -427,6 +463,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.42)',
     zIndex: 3,
   },
+  gainFlash: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(16, 185, 129, 0.34)',
+    borderWidth: 4,
+    borderColor: 'rgba(110, 231, 183, 0.86)',
+    zIndex: 3,
+  },
   selectSurface: {
     ...StyleSheet.absoluteFill,
     zIndex: 50,
@@ -469,6 +512,30 @@ const styles = StyleSheet.create({
     color: '#fef3c7',
     fontSize: 10,
     fontWeight: '900',
+  },
+  emblemBadges: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    zIndex: 24,
+    flexDirection: 'row',
+    gap: 5,
+  },
+  emblemBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monarchBadge: {
+    borderColor: 'rgba(253,230,138,0.72)',
+    backgroundColor: 'rgba(69,42,8,0.9)',
+  },
+  initiativeBadge: {
+    borderColor: 'rgba(165,243,252,0.68)',
+    backgroundColor: 'rgba(8,51,68,0.9)',
   },
   playerHighlightText: {
     color: '#ffffff',

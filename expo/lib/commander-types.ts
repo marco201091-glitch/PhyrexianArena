@@ -22,5 +22,10 @@ export type CommanderPartnerMode =
   | 'background'
   | 'background-owner'
   | 'friends'
+  | 'father-son'
+  | 'survivors'
+  | 'character-select'
   | 'doctor'
-  | 'doctor-companion';
+  | 'doctor-companion'
+  | `partner-with:${string}`
+  | `partner-family:${string}`;

@@ -1,6 +1,9 @@
 import './globals.css';
+import '@fontsource-variable/inter';
+import '@fontsource/cinzel/400.css';
+import '@fontsource/cinzel/600.css';
+import '@fontsource/cinzel/700.css';
 import type { Metadata } from 'next';
-import { Inter, Cinzel } from 'next/font/google';
 import { AuthProvider } from '@/hooks/use-auth';
 import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/components/language-provider';
@@ -10,9 +13,7 @@ import { DemoBanner } from '@/components/demo-banner';
 import { QueryProvider } from '@/components/query-provider';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { AppNotificationListener } from '@/components/app-notification-listener';
-
-const inter = Inter({ subsets: ['latin'] });
-const cinzel = Cinzel({ subsets: ['latin'], weight: ['400', '600', '700'], variable: '--font-cinzel' });
+import { NotificationCenter } from '@/components/notification-center';
 
 export const viewport = {
   width: 'device-width',
@@ -55,12 +56,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.className} ${cinzel.variable}`} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <QueryProvider>
           <LanguageProvider>
             <AuthProvider>
             <AccessLogger />
             <AppNotificationListener />
+            <NotificationCenter />
             <DemoBanner />
             <AppErrorBoundary>{children}</AppErrorBoundary>
             <AppLocalizer />

@@ -115,7 +115,7 @@ export type LiveGameMutation = (
       amount: number;
       mode: DamageMode;
       sourceKey?: ParticipantKey;
-      /** Gain life equal to life or infect damage actually dealt. */
+      /** Gain life equal to the damage actually dealt, including commander damage. */
       drain?: boolean;
       /** Fixed amount used when reversing a drain action. */
       drainAmount?: number;
@@ -576,7 +576,7 @@ export function applyLiveGameMutation(
         }, ':ko');
       }
     }
-    const drainAmount = mutation.mode !== 'commander' && mutation.drain && mutation.sourceKey
+    const drainAmount = mutation.drain && mutation.sourceKey
       && mutation.sourceKey !== mutation.targetKey
       ? mutation.drainAmount ?? appliedAmount
       : 0;

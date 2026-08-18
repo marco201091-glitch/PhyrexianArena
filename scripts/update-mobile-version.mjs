@@ -48,6 +48,9 @@ update('package.json', [packageVersion]);
 update('package-lock.json', [packageVersion, packageLockProjectVersion]);
 update('expo/package.json', [packageVersion]);
 update('expo/package-lock.json', [packageVersion, packageLockProjectVersion]);
+update('README.md', [
+  [/(img\.shields\.io\/badge\/Android-v)[^-]+(-7c3aed)/, `$1${version}$2`],
+]);
 update('expo/app.json', [
   packageVersion,
   [/("buildNumber"\s*:\s*")[^"]+("\s*,)/, `$1${versionCode}$2`],

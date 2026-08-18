@@ -720,12 +720,17 @@ export default function LiveGameScreen() {
   useFocusEffect(
     useCallback(() => {
       if (liveGameId) {
+        void applyLiveGameOrientationLock(liveGamePlayerCount, {
+          platform: Platform.OS,
+          isPad: Platform.OS === 'ios' && Platform.isPad,
+        });
         applyLiveGameImmersive();
       }
       return () => {
+        void clearLiveGameOrientationLock();
         clearLiveGameImmersive();
       };
-    }, [liveGameId]),
+    }, [liveGameId, liveGamePlayerCount]),
   );
 
   const enqueueMutation = useCallback((
@@ -1316,6 +1321,8 @@ export default function LiveGameScreen() {
             everyone: copy('liveGameEveryone'),
             drain: copy('liveGameDrain'),
             drainHint: copy('liveGameDrainHint'),
+            lifelink: copy('liveGameLifelink'),
+            lifelinkHint: copy('liveGameLifelinkHint'),
             dieOrCoin: copy('dieOrCoin'),
             coin: copy('coin'),
             heads: copy('heads'),
