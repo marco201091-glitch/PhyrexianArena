@@ -22,7 +22,7 @@ Binaries:
 Builds:
   - versionName: 8.1.0
     versionCode: 80100
-    commit: e83a888a865fca46e4a097c152ceff7c2ab912ab
+    commit: 487373e078143fad3471e1a3abc6b5e3fb85a1e4
     timeout: 7200
     subdir: expo
     sudo:
