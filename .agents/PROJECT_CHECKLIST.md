@@ -9,12 +9,12 @@
 - [x] Publish the deterministic F-Droid 8.0.7 reference APK.
 - [x] Update MR !44721 to the canonical 8.0.7 metadata.
 - [x] Monitor the corrected GitLab pipeline through completion.
+- [x] Publish validated source commit `487373e`, tag `fdroid-v8.1.0`, and the reproducible reference APK.
+- [x] Update MR !44721 to 8.1.0 and pass GitLab pipeline `2789471649`, including `fdroid build` and `check apk`.
 
 ## External follow-up
 
 - [ ] Await F-Droid maintainer review for MR !44721.
-- [ ] Publish validated source commit `487373e`, tag `fdroid-v8.1.0`, and the successful reproducible reference APK.
-- [ ] Update MR !44721 from 8.0.7 to 8.1.0 only after the reference APK is available, then start the GitLab pipeline.
 
 ## Completed
 
