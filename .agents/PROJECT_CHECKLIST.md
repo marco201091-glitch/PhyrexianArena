@@ -13,10 +13,13 @@
 ## External follow-up
 
 - [ ] Await F-Droid maintainer review for MR !44721.
-- [ ] PM must provide the original release keystore location so two encrypted, off-VM backups can be created and recovery-tested.
+- [ ] Create two encrypted, off-VM signing backups and recovery-test both copies by following `docs/ANDROID_SIGNING_BACKUP.md`.
 
 ## Completed
 
+- [x] Locate and validate the permanent Android release keystore and its DPAPI-protected credentials.
+- [x] Confirm the keystore certificate matches the F-Droid `AllowedAPKSigningKeys` fingerprint.
+- [x] Prepare a manual, short-lived, public-key-encrypted signing-backup export workflow.
 - [x] Publish F-Droid 8.0.5 reference APK restricted to `arm64-v8a`.
 - [x] Update F-Droid metadata to the canonical 8.0.5 release commit.
 - [x] Read the latest maintainer comment on F-Droid MR !44721.
