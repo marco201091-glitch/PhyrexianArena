@@ -12,10 +12,10 @@ interface ManaLogoProps {
 
 export function ManaLogo({ size = 'md', className, showText = false, layout = 'horizontal', title, subtitle }: ManaLogoProps) {
   const sizes = {
-    sm: { img: 'h-9 w-9', stackedImg: 'h-16 w-16', gap: 'gap-2', title: 'text-sm', stackedTitle: 'text-lg', subtitle: 'text-[0.52rem]' },
-    md: { img: 'h-11 w-11', stackedImg: 'h-20 w-20', gap: 'gap-3', title: 'text-base', stackedTitle: 'text-xl', subtitle: 'text-[0.6rem]' },
-    lg: { img: 'h-16 w-16', stackedImg: 'h-24 w-24', gap: 'gap-3', title: 'text-xl', stackedTitle: 'text-2xl', subtitle: 'text-[0.6rem]' },
-    xl: { img: 'h-20 w-20', stackedImg: 'h-32 w-32 sm:h-36 sm:w-36', gap: 'gap-4', title: 'text-2xl', stackedTitle: 'text-3xl sm:text-4xl', subtitle: 'text-[0.7rem]' },
+    sm: { img: 'h-9 w-9', stackedImg: 'h-16 w-16', imageSizes: '36px', stackedImageSizes: '64px', gap: 'gap-2', title: 'text-sm', stackedTitle: 'text-lg', subtitle: 'text-[0.52rem]' },
+    md: { img: 'h-11 w-11', stackedImg: 'h-20 w-20', imageSizes: '44px', stackedImageSizes: '80px', gap: 'gap-3', title: 'text-base', stackedTitle: 'text-xl', subtitle: 'text-[0.6rem]' },
+    lg: { img: 'h-16 w-16', stackedImg: 'h-24 w-24', imageSizes: '64px', stackedImageSizes: '96px', gap: 'gap-3', title: 'text-xl', stackedTitle: 'text-2xl', subtitle: 'text-[0.6rem]' },
+    xl: { img: 'h-20 w-20', stackedImg: 'h-32 w-32 sm:h-36 sm:w-36', imageSizes: '80px', stackedImageSizes: '(min-width: 640px) 144px, 128px', gap: 'gap-4', title: 'text-2xl', stackedTitle: 'text-3xl sm:text-4xl', subtitle: 'text-[0.7rem]' },
   };
 
   const s = sizes[size];
@@ -31,7 +31,7 @@ export function ManaLogo({ size = 'md', className, showText = false, layout = 'h
           alt={showText ? '' : primaryText}
           fill
           className="object-contain drop-shadow-lg"
-          sizes="80px"
+          sizes={isStacked ? s.stackedImageSizes : s.imageSizes}
           priority
         />
       </div>

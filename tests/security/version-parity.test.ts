@@ -30,5 +30,8 @@ describe('release version parity', () => {
     for (const path of ['lib/legal-site.ts', 'expo/lib/legal-site.ts', 'expo/lib/app-version.ts']) {
       expect(readFileSync(resolve(root, path), 'utf8'), path).toContain(`'${version}'`);
     }
+
+    expect(readFileSync(resolve(root, 'README.md'), 'utf8'))
+      .toContain(`img.shields.io/badge/version-${version}-`);
   });
 });

@@ -41,6 +41,7 @@ interface PublicArenaResponse {
     winRate: number;
   }[];
   topDecks: {
+    name: string;
     commander: string;
     commanderImage: string | null;
     bracket: string | null;
