@@ -1,0 +1,4 @@
+Adds arena seasons, commander partner variants, emblems, and lifelink tracking.
+Improves live-game setup, recovery, recap, orientation, and finalization.
+Adds localized in-app notifications without proprietary push services.
+Includes compatibility, security, and reliability fixes.

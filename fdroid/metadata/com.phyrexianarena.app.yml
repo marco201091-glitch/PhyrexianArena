@@ -20,9 +20,9 @@ Binaries:
   https://github.com/marco201091-glitch/PhyrexianArena/releases/download/fdroid-v%v/mtg-tracker-fdroid-v%v.apk
 
 Builds:
-  - versionName: 8.0.7
-    versionCode: 80007
-    commit: 672016f3330332081fcf994c5b67c574f759b3b8
+  - versionName: 8.1.0
+    versionCode: 80100
+    commit: e83a888a865fca46e4a097c152ceff7c2ab912ab
     timeout: 7200
     subdir: expo
     sudo:
@@ -79,5 +79,5 @@ AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab
 AutoUpdateMode: Version
 UpdateCheckMode: Tags fdroid-v[0-9.]+$
 UpdateCheckData: expo/app.json|"versionCode":\s*(\d+),|.|"version":\s*"([^"]+)"
-CurrentVersion: 8.0.7
-CurrentVersionCode: 80007
+CurrentVersion: 8.1.0
+CurrentVersionCode: 80100

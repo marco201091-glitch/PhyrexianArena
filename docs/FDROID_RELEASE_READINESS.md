@@ -1,7 +1,8 @@
 # F-Droid-style release readiness
 
-Version 8.0.0 has been submitted to the official F-Droid `fdroiddata`
-repository. The source build and validation pipeline pass; inclusion is now
+Version 8.0.7 has been submitted to the official F-Droid `fdroiddata`
+repository. A selective 8.1.0 source port is validated locally but remains
+unpublished while inclusion is under review. The source build and validation pipeline pass; inclusion is now
 waiting for F-Droid maintainer review.
 
 ## Current assessment

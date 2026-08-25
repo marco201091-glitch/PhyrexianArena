@@ -2,9 +2,9 @@
 
 ## In progress
 
-- [ ] Port Dev 8.1.0 features selectively to `fdroid-prep`.
-- [ ] Preserve the approved F-Droid metadata, reproducibility workflow, and non-free dependency exclusions.
-- [ ] Validate the local 8.1.0 F-Droid source before publishing any tag or MR update.
+- [x] Port Dev 8.1.0 features selectively to `fdroid-prep`.
+- [x] Preserve the approved F-Droid metadata, reproducibility workflow, and non-free dependency exclusions.
+- [x] Validate the local 8.1.0 F-Droid source before publishing any tag or MR update.
 - [x] Post the final verified response to the F-Droid maintainer comments.
 - [x] Publish the deterministic F-Droid 8.0.7 reference APK.
 - [x] Update MR !44721 to the canonical 8.0.7 metadata.
