@@ -13,6 +13,8 @@
 ## External follow-up
 
 - [ ] Await F-Droid maintainer review for MR !44721.
+- [ ] Publish validated source commit `487373e`, tag `fdroid-v8.1.0`, and the successful reproducible reference APK.
+- [ ] Update MR !44721 from 8.0.7 to 8.1.0 only after the reference APK is available, then start the GitLab pipeline.
 
 ## Completed
 
