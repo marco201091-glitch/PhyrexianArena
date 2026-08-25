@@ -91,7 +91,10 @@ jobs:
           tar -C "$plaintext" -cf "$archive" .
           output="$encrypted/android-signing-backup-${GITHUB_RUN_ID}.tar.gpg"
           gpg --batch --yes --trust-model always --recipient "$recipient" --output "$output" --encrypt "$archive"
-          sha256sum "$output" > "$output.sha256"
+          output_name="${output##*/}"
+          pushd "$encrypted"
+          sha256sum "$output_name" > "$output_name.sha256"
+          popd
           test -s "$output"
           echo "directory=$encrypted" >> "$GITHUB_OUTPUT"
 
