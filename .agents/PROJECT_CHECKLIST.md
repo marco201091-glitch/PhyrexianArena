@@ -13,7 +13,6 @@
 ## External follow-up
 
 - [ ] Await F-Droid maintainer review for MR !44721.
-- [ ] Create two encrypted, off-VM signing backups and recovery-test both copies by following `docs/ANDROID_SIGNING_BACKUP.md`.
 
 ## Completed
 
@@ -21,6 +20,7 @@
 - [x] Confirm the keystore certificate matches the F-Droid `AllowedAPKSigningKeys` fingerprint.
 - [x] Prepare a manual, short-lived, public-key-encrypted signing-backup export workflow.
 - [x] Schedule lightweight weekly encrypted exports with three overlapping recovery points.
+- [x] Configure the backup GPG key, create independent encrypted recovery copies, and pass an end-to-end signing recovery test.
 - [x] Publish F-Droid 8.0.5 reference APK restricted to `arm64-v8a`.
 - [x] Update F-Droid metadata to the canonical 8.0.5 release commit.
 - [x] Read the latest maintainer comment on F-Droid MR !44721.
