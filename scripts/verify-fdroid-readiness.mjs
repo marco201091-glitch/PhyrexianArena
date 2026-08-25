@@ -8,6 +8,8 @@ const failures = [];
 
 const appConfig = read('expo/app.config.js');
 const androidLogin = read('expo/app/(auth)/login.tsx');
+const appLayout = read('expo/app/_layout.tsx');
+const appNotificationListener = read('expo/components/app-notification-listener.tsx');
 const sentryRuntime = read('expo/lib/sentry.ts');
 const env = read('expo/lib/env.ts');
 const fdroidReleasePlugin = read('expo/plugins/with-fdroid-release-build.js');
@@ -38,8 +40,14 @@ if (!sentryRuntime.includes('sentryEnabled = false')) {
 if (!androidLogin.includes("Platform.OS === 'android' && !isFdroidBuild()")) {
   failures.push('Google login must be hidden in Android F-Droid builds');
 }
-if (!read('expo/app/_layout.tsx').includes('!isFdroidBuild()')) {
-  failures.push('Expo Push notifications must be disabled in F-Droid builds');
+if (!appLayout.includes('<AppNotificationListener />')) {
+  failures.push('F-Droid app layout must mount the in-app notification listener');
+}
+if (!appNotificationListener.includes('app_notifications')) {
+  failures.push('F-Droid notification listener must use Supabase in-app notifications');
+}
+if (appNotificationListener.includes('expo-notifications')) {
+  failures.push('F-Droid notification listener must not import Expo Push notifications');
 }
 if (read('expo/package.json').includes('@sentry/react-native')) {
   failures.push('F-Droid branch must not depend on @sentry/react-native');

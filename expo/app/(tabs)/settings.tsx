@@ -1,7 +1,6 @@
 import { Link, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { showAppAlert } from '@/lib/app-alert';
 import { isPasswordPolicyValid, PasswordRequirements } from '@/components/auth/password-requirements';
 import { Button } from '@/components/ui/button';

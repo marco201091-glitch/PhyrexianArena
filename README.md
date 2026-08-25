@@ -1,7 +1,7 @@
 # MTG Tracker & Analytics
 
 [![Live app](https://img.shields.io/badge/web-live-brightgreen?style=flat-square)](https://app.phyrexianarena.dpdns.org)
-[![Version](https://img.shields.io/badge/version-8.0.0-7c3aed?style=flat-square)](https://github.com/marco201091-glitch/PhyrexianArena/releases)
+[![Version](https://img.shields.io/badge/version-8.1.0-7c3aed?style=flat-square)](https://github.com/marco201091-glitch/PhyrexianArena/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
 Track Commander games, manage your playgroup, and turn match history into useful statistics — without spreadsheets.

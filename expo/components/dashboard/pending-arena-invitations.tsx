@@ -5,7 +5,7 @@ import { PhyrexianPanel } from '@/components/ui/phyrexian-panel';
 import { colors, spacing } from '@/constants/theme';
 import { apiGet, apiPatch } from '@/lib/api';
 
-type Invitation = { id: string; group_id: string; groups: { name: string } | Array<{ name: string }> | null };
+type Invitation = { id: string; group_id: string; groups: { name: string } | { name: string }[] | null };
 const one = <T,>(value: T | T[] | null) => Array.isArray(value) ? value[0] ?? null : value;
 
 export function PendingArenaInvitations({

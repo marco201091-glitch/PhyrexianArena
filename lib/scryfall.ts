@@ -163,10 +163,10 @@ export async function fetchCardByName(name: string): Promise<ScryfallCard | null
 
 const fetchCommanderCardPersistent = unstable_cache(
   async (queryText: string) => {
-    const named = await fetchCardByName(queryText);
-    if (named) return named;
-
     try {
+      const named = await fetchCardByName(queryText);
+      if (named) return named;
+
       const commanderSearch = await fetchScryfallJson<ScryfallSearchResponse>(
         `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:commander name:"${queryText}"`)}&unique=cards`,
       );

@@ -1,6 +1,6 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect , useLocalSearchParams, useRouter } from 'expo-router';
 import NetInfo from '@react-native-community/netinfo';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+
 import * as Crypto from 'expo-crypto';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -106,12 +106,12 @@ import type { MemberDeck } from '@/lib/types/arena';
 
 type LifePreset = '20' | '25' | '30' | '40' | '60' | 'custom';
 const LIFE_PRESETS: LifePreset[] = ['20', '25', '30', '40', '60'];
-const ALTERNATIVE_WIN_CONDITIONS: Array<{
+const ALTERNATIVE_WIN_CONDITIONS: {
   value: Exclude<WinCondition, 'last_standing'>;
   icon: keyof typeof Ionicons.glyphMap;
   labelKey: 'liveGameWinCombo' | 'liveGameWinConcession' | 'liveGameWinAlternateCard' | 'liveGameWinOther';
   hintKey: 'liveGameWinComboHint' | 'liveGameWinConcessionHint' | 'liveGameWinAlternateCardHint' | 'liveGameWinOtherHint';
-}> = [
+}[] = [
   { value: 'combo', icon: 'git-merge-outline', labelKey: 'liveGameWinCombo', hintKey: 'liveGameWinComboHint' },
   { value: 'concession', icon: 'flag-outline', labelKey: 'liveGameWinConcession', hintKey: 'liveGameWinConcessionHint' },
   { value: 'alternate_card', icon: 'sparkles-outline', labelKey: 'liveGameWinAlternateCard', hintKey: 'liveGameWinAlternateCardHint' },
@@ -170,7 +170,7 @@ export default function LiveGameScreen() {
   const [showRematch, setShowRematch] = useState(false);
   const [completedGame, setCompletedGame] = useState<LiveGameRecord | null>(null);
   const [completedDurationSeconds, setCompletedDurationSeconds] = useState(0);
-  const rouletteTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const rouletteTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const previousActivePlayerCountRef = useRef<number | null>(null);
 
   const liveGameRef = useRef<LiveGameRecord | null>(null);

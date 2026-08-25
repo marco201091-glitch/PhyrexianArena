@@ -889,7 +889,7 @@ export function TableArena({
             ['d4', 'd4'],
             ['d6', 'd6'],
             ['d20', 'd20'],
-          ] as Array<[TableRandomKind, string]>).map(([kind, label]) => (
+          ] as [TableRandomKind, string][]).map(([kind, label]) => (
             <Pressable
               key={kind}
               style={[
