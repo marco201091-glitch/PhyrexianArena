@@ -29,6 +29,7 @@ After the repository variable is configured, GitHub runs the export every
 Sunday at 03:17 UTC. Each encrypted artifact is retained for 21 days, leaving
 three overlapping weekly recovery points. The job uses a GitHub-hosted runner,
 does not run an app build, and does not consume build-VM CPU, RAM, or disk.
+Scheduled runs are safely skipped until the public-key variable exists.
 
 The workflow can also be started manually to test configuration or create an
 immediate recovery point. A failed scheduled export does not delete older
