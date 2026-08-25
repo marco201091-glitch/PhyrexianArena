@@ -5,9 +5,15 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLanguage } from '@/contexts/language-context';
 import { colors, radii, spacing } from '@/constants/theme';
 import { apiGet, apiPatch } from '@/lib/api';
+import { isFdroidBuild } from '@/lib/env';
 
 type Preferences = { arena_invite: boolean; arena_member_joined: boolean; match_completed: boolean; push_enabled: boolean };
 const DEFAULTS: Preferences = { arena_invite: true, arena_member_joined: true, match_completed: true, push_enabled: true };
+const PREFERENCE_ROWS = [
+  ['arena_invite', 'arenaInviteNotifications'],
+  ['arena_member_joined', 'memberJoinedNotifications'],
+  ['match_completed', 'matchCompletedNotifications'],
+] as const;
 
 export default function NotificationSettingsScreen() {
   const { user } = useAuth();
@@ -33,12 +39,18 @@ export default function NotificationSettingsScreen() {
     <Screen>
       <Text style={styles.title}>{copy('notificationPreferences')}</Text>
       <View style={styles.card}>
-        {([['arena_invite', 'arenaInviteNotifications'], ['arena_member_joined', 'memberJoinedNotifications'], ['match_completed', 'matchCompletedNotifications'], ['push_enabled', 'pushNotifications']] as const).map(([key, label]) => (
+        {PREFERENCE_ROWS.map(([key, label]) => (
           <View key={key} style={styles.preference}>
             <Text style={styles.label}>{copy(label)}</Text>
             <Switch value={preferences[key]} onValueChange={() => void toggle(key)} trackColor={{ true: colors.primary, false: colors.surfaceMuted }} />
           </View>
         ))}
+        {!isFdroidBuild() ? (
+          <View style={styles.preference}>
+            <Text style={styles.label}>{copy('pushNotifications')}</Text>
+            <Switch value={preferences.push_enabled} onValueChange={() => void toggle('push_enabled')} trackColor={{ true: colors.primary, false: colors.surfaceMuted }} />
+          </View>
+        ) : null}
       </View>
     </Screen>
   );
