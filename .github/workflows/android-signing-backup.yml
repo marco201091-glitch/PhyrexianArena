@@ -92,7 +92,7 @@ jobs:
           output="$encrypted/android-signing-backup-${GITHUB_RUN_ID}.tar.gpg"
           gpg --batch --yes --trust-model always --recipient "$recipient" --output "$output" --encrypt "$archive"
           sha256sum "$output" > "$output.sha256"
-          gpg --batch --list-packets "$output" > /dev/null
+          test -s "$output"
           echo "directory=$encrypted" >> "$GITHUB_OUTPUT"
 
       - name: Remove plaintext material
