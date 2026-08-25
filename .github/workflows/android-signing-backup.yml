@@ -1,16 +1,21 @@
 name: Export encrypted Android signing backup
 
 on:
+  schedule:
+    - cron: '17 3 * * 0'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-signing-backup
+  cancel-in-progress: false
+
 jobs:
   export:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    environment: signing-backup
     env:
       RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
       RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
@@ -102,4 +107,4 @@ jobs:
           name: android-signing-backup-${{ github.run_id }}
           path: ${{ steps.backup.outputs.directory }}/*
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 21

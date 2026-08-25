@@ -19,16 +19,30 @@ rename, or delete these files until recovery from both offline copies has passed
    offline locations. Protect them with a strong, unique passphrase.
 3. Export only the public key in binary form, Base64-encode it, and add it as the
    GitHub repository variable `RELEASE_BACKUP_GPG_PUBLIC_KEY_BASE64`.
-4. Create the GitHub environment `signing-backup` and protect it with a required
-   reviewer so exporting the signing material always needs explicit approval.
 
 The private GPG key and its passphrase must never be stored in GitHub, this
 repository, or the build VM.
 
-## Create the two backups
+## Automatic rolling export
 
-1. Manually run the `Export encrypted Android signing backup` workflow.
-2. Download its artifact within three days. The workflow uploads only a GPG
+After the repository variable is configured, GitHub runs the export every
+Sunday at 03:17 UTC. Each encrypted artifact is retained for 21 days, leaving
+three overlapping weekly recovery points. The job uses a GitHub-hosted runner,
+does not run an app build, and does not consume build-VM CPU, RAM, or disk.
+
+The workflow can also be started manually to test configuration or create an
+immediate recovery point. A failed scheduled export does not delete older
+artifacts, and concurrent exports are disabled.
+
+GitHub artifacts are an automated off-VM safety copy, but several artifacts in
+the same GitHub account are not two independent offline backups. The following
+one-time procedure is still required to satisfy disaster recovery and the
+release checklist.
+
+## Create the two independent backups
+
+1. Manually run the `Export encrypted Android signing backup` workflow once.
+2. Download its artifact within 21 days. The workflow uploads only a GPG
    encrypted archive and its SHA-256 checksum; plaintext exists only in the
    temporary GitHub runner directory and is removed before upload.
 3. Verify the checksum, then copy the encrypted archive and checksum to two
@@ -36,8 +50,8 @@ repository, or the build VM.
    encrypted cloud vault. Do not count two folders on the same disk as two copies.
 4. Delete the downloaded working copy after both destinations are verified.
 
-The archive is tiny (only the keystore, credentials, and a manifest), so it does
-not consume meaningful VM storage or run automatically.
+The archive is tiny (only the keystore, credentials, and a manifest), so the
+rolling exports do not consume meaningful storage.
 
 ## Mandatory recovery test
 
