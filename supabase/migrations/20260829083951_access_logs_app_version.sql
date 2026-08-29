@@ -130,7 +130,7 @@ BEGIN
   WHERE (p_from IS NULL OR al.accessed_at >= p_from)
     AND (p_to IS NULL OR al.accessed_at <= p_to)
   ORDER BY al.accessed_at DESC
-  LIMIT pg_catalog.least(pg_catalog.greatest(COALESCE(p_limit, 100), 1), 500);
+  LIMIT LEAST(GREATEST(COALESCE(p_limit, 100), 1), 500);
 END;
 $$;
 
