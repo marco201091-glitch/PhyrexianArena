@@ -21,6 +21,7 @@ import {
   Plus,
   Redo2,
   RotateCcw,
+  RotateCw,
   Search,
   Shield,
   Skull,
@@ -260,6 +261,7 @@ export function WebLiveGame({
   const [syncing, setSyncing] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncBadgeVisible, setSyncBadgeVisible] = useState(true);
   const telemetrySessionRef = useRef(globalThis.crypto.randomUUID());
   const [duration, setDuration] = useState('00:00');
   useScreenWakeLock(Boolean(record));
@@ -291,6 +293,22 @@ export function WebLiveGame({
   const [completedRecord, setCompletedRecord] = useState<LiveGameRecord | null>(null);
   const [completedDuration, setCompletedDuration] = useState('00:00');
   const durationRef = useRef('00:00');
+  const syncPresentationStatus = syncError
+    ? 'error'
+    : syncing
+      ? 'syncing'
+      : pendingSyncCount
+        ? 'pending'
+        : online
+          ? 'synced'
+          : 'offline';
+
+  useEffect(() => {
+    setSyncBadgeVisible(true);
+    if (syncPresentationStatus !== 'synced' && syncPresentationStatus !== 'offline') return;
+    const timer = window.setTimeout(() => setSyncBadgeVisible(false), 15_000);
+    return () => window.clearTimeout(timer);
+  }, [syncPresentationStatus]);
   const [confirmRematch, setConfirmRematch] = useState(false);
   const [confirmEliminate, setConfirmEliminate] = useState<ParticipantKey | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -1482,7 +1500,14 @@ export function WebLiveGame({
                 </button>
                 {player.isEliminated && <button onClick={(event) => { event.stopPropagation(); enqueue({ type: 'revive', targetKey: player.participantKey, startingLife: record.starting_life }, { type: 'restore-player', player }); }} className="absolute left-3 top-3 z-20 rounded-full bg-emerald-600 px-3 font-black" style={{ height: auxiliarySize, fontSize: Math.max(10, auxiliarySize * 0.27) }}><RotateCcw className="mr-1 inline" style={{ width: auxiliarySize * 0.38, height: auxiliarySize * 0.38 }} />Revive</button>}
                 {!player.isEliminated && <button onClick={(event) => { event.stopPropagation(); setConfirmEliminate(player.participantKey); }} className="absolute left-3 top-3 z-20 grid place-items-center rounded-full border border-white/20 bg-black/55 text-white/75" style={{ width: auxiliarySize, height: auxiliarySize }}><Skull style={{ width: auxiliarySize * 0.4, height: auxiliarySize * 0.4 }} /></button>}
-                {isStarting && <div className="absolute left-3 bottom-3 max-w-[55%] rounded-full border border-amber-300/50 bg-amber-950/80 px-3 py-1 text-[11px] font-black text-amber-100"><ChevronRight className={cn('mr-1 inline h-3.5 w-3.5', record.state.startingDirection === 'counterclockwise' && 'rotate-180')} />{record.state.startingDirection === 'clockwise' ? 'Clockwise' : 'Counterclockwise'}</div>}
+                {isStarting && (() => {
+                  const clockwise = record.state.startingDirection === 'clockwise';
+                  const DirectionIcon = clockwise ? RotateCw : RotateCcw;
+                  const label = clockwise
+                    ? copy({ it: 'Primo giocatore · senso orario', en: 'Starting player · clockwise' })
+                    : copy({ it: 'Primo giocatore · senso antiorario', en: 'Starting player · counterclockwise' });
+                  return <div role="img" aria-label={label} title={label} className="absolute bottom-3 left-3 grid h-9 w-9 place-items-center rounded-full border border-amber-300/60 bg-amber-950/90 text-amber-100 shadow-lg"><DirectionIcon className="h-7 w-7" /><span className="absolute text-[11px] font-black">1</span></div>;
+                })()}
               </div>
             </section>
           );
@@ -1527,7 +1552,7 @@ export function WebLiveGame({
           </Button>
         </div>
         </div>}
-        <button
+        {syncBadgeVisible ? <button
           type="button"
           onClick={() => void flush()}
           className={cn(
@@ -1538,7 +1563,7 @@ export function WebLiveGame({
         >
           {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : online ? <CircleDot className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
           {syncError ? copy({ it: 'Riprova sync', en: 'Retry sync' }) : syncing ? copy({ it: 'Sincronizzo', en: 'Syncing' }) : pendingSyncCount ? `${pendingSyncCount} ${copy({ it: 'in attesa', en: 'pending' })}` : online ? copy({ it: 'Sincronizzato', en: 'Synced' }) : 'Offline'}
-        </button>
+        </button> : null}
         {randomOpponentMode && <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+1rem)] z-40 mx-auto max-w-md rounded-2xl border border-emerald-400/40 bg-emerald-950/95 px-4 py-3 text-center text-sm font-bold shadow-2xl backdrop-blur">{copy({ it: 'Tocca qualsiasi punto della card del giocatore attivo da escludere.', en: 'Tap anywhere on the active player card to exclude them.' })}</div>}
       </div>
 

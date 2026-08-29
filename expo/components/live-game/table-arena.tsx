@@ -298,6 +298,14 @@ export function TableArena({
   const [dragSource, setDragSource] = useState<ParticipantKey | null>(null);
   const [dragHoverKey, setDragHoverKey] = useState<ParticipantKey | null>(null);
   const [pendingTransfer, setPendingTransfer] = useState<PendingTransfer | null>(null);
+  const [syncBadgeVisible, setSyncBadgeVisible] = useState(true);
+
+  useEffect(() => {
+    setSyncBadgeVisible(true);
+    if (syncStatus !== 'synced' && syncStatus !== 'offline') return;
+    const timer = setTimeout(() => setSyncBadgeVisible(false), 15_000);
+    return () => clearTimeout(timer);
+  }, [syncStatus]);
   const [detailsPlayerKey, setDetailsPlayerKey] = useState<ParticipantKey | null>(null);
   const [damageFeedback, setDamageFeedback] = useState<string | null>(null);
   const [randomizerOpen, setRandomizerOpen] = useState(false);
@@ -584,14 +592,14 @@ export function TableArena({
 
   const toolbarControls = (
     <>
-      <Pressable
+      {syncBadgeVisible ? <Pressable
         style={[styles.toolBtn, styles.toolBtnSurface, toolbarButtonStyle]}
         onPress={onBack}
         accessibilityRole="button"
         accessibilityLabel={copy('back')}
       >
         <Ionicons name="arrow-back" size={23} color={colors.foreground} />
-      </Pressable>
+      </Pressable> : null}
 
       <View style={[styles.durationPill, isVerticalCenterToolbar && styles.durationPillVertical]}>
         <Ionicons name="time-outline" size={15} color={colors.muted} />

@@ -263,13 +263,20 @@ export function TableSeat({
         ) : null}
 
         {startingDirection && startingBadgeLabel ? (
-          <View pointerEvents="none" style={styles.startingBadge}>
+          <View
+            pointerEvents="none"
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={startingBadgeLabel}
+            style={styles.startingBadge}
+          >
             <Ionicons
-              name={startingDirection === 'clockwise' ? 'arrow-redo-outline' : 'arrow-undo-outline'}
-              size={14}
+              name="refresh-outline"
+              size={29}
               color="#fef3c7"
+              style={startingDirection === 'counterclockwise' ? styles.startingBadgeCounterclockwise : undefined}
             />
-            <Text style={styles.startingBadgeText} numberOfLines={1}>{startingBadgeLabel}</Text>
+            <Text style={styles.startingBadgeText}>1</Text>
           </View>
         ) : null}
 
@@ -492,26 +499,26 @@ const styles = StyleSheet.create({
   },
   startingBadge: {
     position: 'absolute',
-    top: 8,
+    bottom: 8,
     left: 8,
-    right: 8,
-    zIndex: 24,
-    flexDirection: 'row',
+    zIndex: 6,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(251,191,36,0.52)',
     backgroundColor: 'rgba(69,42,8,0.88)',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
   },
   startingBadgeText: {
-    flexShrink: 1,
+    position: 'absolute',
     color: '#fef3c7',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '900',
+  },
+  startingBadgeCounterclockwise: {
+    transform: [{ scaleX: -1 }],
   },
   emblemBadges: {
     position: 'absolute',
