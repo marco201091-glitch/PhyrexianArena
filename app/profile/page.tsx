@@ -22,7 +22,6 @@ import { AppProfileButton } from '@/components/navigation/app-profile-button';
 import { DeckCollectionInsights } from '@/components/profile/deck-collection-insights';
 import { DeckMasteryBadge } from '@/components/profile/deck-mastery-badge';
 import { DeckImage } from '@/components/deck-image';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/components/language-provider';
 import { usePlatformAdmin } from '@/hooks/use-platform-admin';
 
@@ -68,8 +67,6 @@ import { delay, runTasksWithConcurrency } from '@/lib/async-utils';
 import { runWhenIdle } from '@/lib/idle-work';
 import { type DeckWinRateSnapshot } from '@/lib/personal-analytics';
 import { MANA_COLOR_LABELS, MANA_COLOR_ORDER } from '@/lib/mana-colors';
-import { resolveAvatarUrl } from '@/lib/avatar-storage';
-import { useAvatarObject } from '@/hooks/use-avatar-object';
 import { getProfileDisplayName } from '@/lib/profile-display';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { ManaColorPills } from '@/components/ui/mana-color-pills';
@@ -102,7 +99,6 @@ import {
   X,
   Check,
   Image as ImageIcon,
-  Upload,
   Lock,
   BarChart3,
   Crosshair,
@@ -112,6 +108,7 @@ import {
   Skull,
   Link2,
   Star,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -587,12 +584,10 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  const [exportingAccount, setExportingAccount] = useState(false);
   const [activeAccountPanel, setActiveAccountPanel] = useState<'nickname' | 'password' | null>(null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [avatarVersion, setAvatarVersion] = useState<number>(() => Date.now());
   const [profileDisplayNameDrafts, setProfileDisplayNameDrafts] = useState<Record<string, string>>({});
   const [savingProfileDisplayNameIds, setSavingProfileDisplayNameIds] = useState<string[]>([]);
-  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const commanderSearchAbortRef = useRef<AbortController | null>(null);
   const partnerSearchAbortRef = useRef<AbortController | null>(null);
   const deckMetadataSyncAbortRef = useRef(false);
@@ -658,8 +653,6 @@ export default function ProfilePage() {
   const [detailsDeck, setDetailsDeck] = useState<Deck | null>(null);
   const currentProfile = user ? profiles.find((profile) => profile.id === user.id) || null : null;
   const targetProfiles = profiles.filter((profile) => !RESERVED_USERNAMES.has(profile.username.toLowerCase()));
-  const avatarObject = useAvatarObject(supabase, user?.id, avatarVersion);
-  const currentAvatarUrl = resolveAvatarUrl(supabase, user?.id, avatarObject, avatarVersion) ?? undefined;
   const manualPartnerMode = selectedCommander ? getManualPartnerMode(selectedCommander) : null;
   const manualPartnerCopy = manualPartnerMode ? getManualPartnerCopy(manualPartnerMode, t) : null;
 
@@ -1237,60 +1230,23 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user) return;
-
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: t({ it: 'Formato non valido', en: 'Invalid format' }),
-        description: t({ it: 'Carica un file JPG, PNG, WEBP o GIF.', en: 'Upload a JPG, PNG, WEBP, or GIF file.' }),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast({
-        title: t({ it: 'Immagine troppo grande', en: 'Image too large' }),
-        description: t({ it: 'Usa un file da massimo 2 MB.', en: 'Use a file up to 2 MB.' }),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setUploadingAvatar(true);
+  const exportAccountData = async () => {
+    setExportingAccount(true);
     try {
-      const filePath = `${user.id}/avatar`;
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          contentType: file.type,
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      await supabase
-        .from('profiles')
-        .update({ avatar_revision: new Date().toISOString() })
-        .eq('id', user.id);
-      setAvatarVersion(Date.now());
-
-      toast({ title: t({ it: 'Avatar aggiornato', en: 'Avatar updated' }) });
-    } catch (error: unknown) {
-      toast({
-        title: t({ it: 'Errore', en: 'Error' }),
-        description: getSupabaseErrorMessage(error, t({ it: 'Impossibile caricare l\'avatar', en: 'Failed to upload avatar' })),
-        variant: 'destructive',
-      });
+      const response = await authenticatedFetch('/api/auth/export-account');
+      if (!response.ok) throw new Error(t({ it: 'Export non riuscito.', en: 'Export failed.' }));
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `mtg-tracker-account-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({ title: t({ it: 'Dati account esportati', en: 'Account data exported' }) });
+    } catch (error) {
+      toast({ title: t({ it: 'Errore', en: 'Error' }), description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
     } finally {
-      setUploadingAvatar(false);
+      setExportingAccount(false);
     }
   };
 
@@ -2431,48 +2387,10 @@ export default function ProfilePage() {
               <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-teal-400/10 blur-3xl" />
               <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
               <div className="flex shrink-0 flex-col items-center gap-4 sm:w-48 sm:items-stretch sm:border-r sm:border-emerald-400/15 sm:pr-6">
-                <div className="flex flex-col items-center gap-2">
-                  <button
-                    type="button"
-                    className="group relative rounded-2xl p-0.5 ring-1 ring-emerald-400/35 shadow-[0_0_28px_rgba(139,92,246,0.22)] transition-all hover:ring-emerald-300/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 disabled:opacity-60"
-                    onClick={() => avatarInputRef.current?.click()}
-                    disabled={uploadingAvatar}
-                    aria-label={t({ it: 'Carica avatar', en: 'Upload avatar' })}
-                  >
-                    <Avatar className="h-16 w-16 rounded-xl sm:h-20 sm:w-20">
-                      {currentAvatarUrl ? (
-                        <AvatarImage
-                          src={currentAvatarUrl}
-                          alt={getProfileDisplayName(currentProfile)}
-                          className="object-cover"
-                        />
-                      ) : null}
-                      <AvatarFallback className="rounded-xl bg-muted text-muted-foreground">
-                        <UserIcon className="h-10 w-10 sm:h-12 sm:w-12" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-emerald-950/70 text-emerald-50 opacity-0 backdrop-blur-[2px] transition-opacity group-hover:opacity-100">
-                      {uploadingAvatar ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-                    </span>
-                  </button>
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={handleAvatarUpload}
-                  />
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300/85 transition-colors hover:text-emerald-100 disabled:opacity-50"
-                    onClick={() => avatarInputRef.current?.click()}
-                    disabled={uploadingAvatar}
-                  >
-                    {uploadingAvatar ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                    {uploadingAvatar
-                      ? t({ it: 'Caricamento...', en: 'Uploading...' })
-                      : t({ it: 'Cambia foto', en: 'Change photo' })}
-                  </button>
+                <div className="flex justify-center" aria-hidden="true">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-muted text-muted-foreground ring-1 ring-emerald-400/35 sm:h-20 sm:w-20">
+                    <UserIcon className="h-10 w-10 sm:h-12 sm:w-12" />
+                  </div>
                 </div>
 
                 <div className="w-full space-y-1 rounded-xl border border-emerald-400/20 bg-emerald-950/20 p-1.5 backdrop-blur-sm">
@@ -2497,6 +2415,17 @@ export default function ProfilePage() {
                       {t({ it: 'Password', en: 'Password' })}
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    className={accountActionButtonClass(false)}
+                    onClick={() => void exportAccountData()}
+                    disabled={exportingAccount}
+                  >
+                    <Download className="h-4 w-4 shrink-0 text-emerald-300/90" />
+                    {exportingAccount
+                      ? t({ it: 'Esportazione...', en: 'Exporting...' })
+                      : t({ it: 'Esporta dati', en: 'Export data' })}
+                  </button>
                 </div>
               </div>
               <div className="min-w-0 flex-1 sm:pt-1">

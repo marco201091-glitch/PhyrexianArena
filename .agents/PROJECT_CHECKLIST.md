@@ -2,14 +2,6 @@
 
 ## In progress
 
-- [ ] Consolidare la 8.2.0 su un feature branch riallineato a `main`, mantenendo compatibilità con i client 8.1.
-- [ ] Rimuovere completamente la funzionalità avatar da web/Expo/API senza eliminare dati legacy richiesti dalla 8.1.
-- [ ] Risolvere Expo doctor/audit e stabilizzare automazioni dipendenze, E2E, supply chain e release governance.
-- [ ] Implementare hardening Supabase/Postgres, test integrazione, monitoraggio, backup e documentazione operativa senza mutare la VM non verificata.
-- [ ] Ridurre hotspot architetturali, aumentare test/accessibilità/performance e condividere meglio il dominio web/mobile.
-- [ ] Implementare dashboard operativa, compatibilità client, feature flag, osservabilità notifiche, analytics, export account e changelog.
-- [ ] Proteggere `main`, verificare read-only lo stato F-Droid/GitLab e preparare PR 8.2.0 su `Dev`.
-
 ## External follow-up
 
 - [ ] Monitor the official F-Droid merge request until approval.
@@ -17,6 +9,13 @@
 
 ## Completed
 
+- [x] Consolidare la 8.2.0 su un feature branch riallineato a `main`, mantenendo compatibilità con i client 8.1.
+- [x] Rimuovere completamente la funzionalità avatar da web/Expo/API, conservando soltanto la cancellazione dei dati legacy per privacy e compatibilità.
+- [x] Risolvere Expo doctor/audit e stabilizzare automazioni dipendenze, E2E, supply chain e release governance.
+- [x] Preparare hardening Supabase/Postgres, audit read-only, monitoraggio, backup cifrato e documentazione operativa senza mutare la VM Dokploy.
+- [x] Ridurre duplicazioni del dominio live, ampliare test e introdurre budget prestazionali per bundle web/mobile.
+- [x] Implementare dashboard operativa, compatibilità client 8.1+, feature flag, osservabilità notifiche, export account e changelog 8.2.
+- [x] Proteggere `main`, verificare read-only lo stato F-Droid/GitLab e preparare la PR 8.2.0 su `Dev`.
 - [x] Super audit read-only dello stato completo di `Dev`/`main` e proposta numerata delle migliorie.
 - [x] Preparare su `Dev` la release 8.2.0 con ricerca mazzi nel wizard live, versione app nei log admin e Last Standing con danni letali automatici.
 - [x] Predisporre il backup automatico cifrato della chiave Android, senza build o carico sulla VM.

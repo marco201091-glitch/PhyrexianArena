@@ -48,7 +48,7 @@ Obtainium will notify you when a new signed release is available. You can also d
 
 The web app and the standard Android app use the same hosted account and data service. Matches, decks, playgroups, and statistics stay synchronized when you sign in on another supported device.
 
-The F-Droid edition keeps the same core tracking and analytics features, but uses email/password authentication and omits Google sign-in, push notifications, avatar upload, and Sentry integration to comply with the F-Droid build policy.
+The F-Droid edition keeps the same core tracking and analytics features, but uses email/password authentication and omits Google sign-in, push notifications, and Sentry integration to comply with the F-Droid build policy.
 
 An internet connection is required for account synchronization, multiplayer data, and external deck or card services.
 

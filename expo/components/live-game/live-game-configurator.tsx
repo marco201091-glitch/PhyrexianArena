@@ -19,6 +19,7 @@ import type { LiveGameSeatSetup } from '@/lib/live-game-setup';
 import { matchesLiveGameDeckSearch } from '@/lib/live-game-deck-search';
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { isCompactViewport, isTabletViewport, layout } from '@/lib/layout';
+import { useRuntimeConfig } from '@/contexts/runtime-config-context';
 
 export type SetupParticipant = {
   key: ParticipantKey;
@@ -120,6 +121,8 @@ export function LiveGameConfigurator({
   onStart,
   starting,
 }: Props) {
+  const { featureFlags } = useRuntimeConfig();
+  const deckSearchEnabled = featureFlags?.deckWizardSearch !== false;
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const compact = isCompactViewport(windowWidth);
   const tablet = isTabletViewport(windowWidth);
@@ -187,8 +190,9 @@ export function LiveGameConfigurator({
   const selectedParticipant = draftPlayer ? participantByKey.get(draftPlayer) ?? null : null;
   const filteredDecks = useMemo(() => {
     if (!selectedParticipant) return [];
+    if (!deckSearchEnabled) return selectedParticipant.decks;
     return selectedParticipant.decks.filter((deck) => matchesLiveGameDeckSearch(deck, deckSearch));
-  }, [deckSearch, selectedParticipant]);
+  }, [deckSearch, deckSearchEnabled, selectedParticipant]);
   const occupiedElsewhere = new Set(
     seats
       .filter((_seat, index) => index !== editingSeat)
@@ -397,7 +401,7 @@ export function LiveGameConfigurator({
           {selectedParticipant ? (
             <View style={[styles.deckSection, tablet && styles.deckSectionTablet]}>
               <Text style={styles.deckSectionTitle}>{labels.chooseDeck}</Text>
-              <View style={styles.deckSearchWrap}>
+              {deckSearchEnabled ? <View style={styles.deckSearchWrap}>
                 <Ionicons name="search-outline" size={18} color={colors.muted} />
                 <TextInput
                   value={deckSearch}
@@ -420,7 +424,7 @@ export function LiveGameConfigurator({
                     <Ionicons name="close-circle" size={18} color={colors.muted} />
                   </Pressable>
                 ) : null}
-              </View>
+              </View> : null}
               <ScrollView style={[styles.deckList, tablet && styles.deckListTablet]} contentContainerStyle={styles.optionListContent} nestedScrollEnabled>
                 {filteredDecks.map((deck) => (
                   <CompactDeckCard

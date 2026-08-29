@@ -31,6 +31,7 @@ module.exports = ({ config: base }) => {
       ...basePlugins,
       'expo-font',
       'expo-image',
+      'expo-sharing',
       ['expo-splash-screen', {
         image: './assets/splash-icon.png',
         imageWidth: 220,

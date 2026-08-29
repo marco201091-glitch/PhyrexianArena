@@ -9,8 +9,8 @@ describe('remote image request headers', () => {
     });
   });
 
-  it('does not attach Scryfall headers to avatars or unrelated hosts', () => {
-    expect(getRemoteImageHeaders('https://example.supabase.co/storage/v1/object/public/avatars/a.jpg'))
+  it('does not attach Scryfall headers to unrelated hosts', () => {
+    expect(getRemoteImageHeaders('https://images.example.com/profile/a.jpg'))
       .toBeUndefined();
   });
 });

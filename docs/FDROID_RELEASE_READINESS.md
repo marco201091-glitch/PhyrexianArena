@@ -49,8 +49,8 @@ EXPO_PUBLIC_SENTRY_ENABLED=false
 The standard APK/Obtainium build keeps optional Google sign-in and mobile push
 notifications available. The F-Droid branch hides Google sign-in, removes
 Sentry from the mobile dependency graph, disables Expo Push, removes
-`expo-notifications`, removes `expo-image-picker` to avoid Android Photo Picker
-Play-services metadata, and uses email/password as the primary login path.
+`expo-notifications`, and uses email/password as the primary login path. Photo
+library access is absent from every build variant.
 
 Run the local verifier before exporting the Android build:
 

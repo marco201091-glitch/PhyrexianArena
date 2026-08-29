@@ -54,12 +54,14 @@ jobs:
             echo "DEMO_SKIP_REMOTE_IMAGES=true"
           } >> "$GITHUB_ENV"
       - run: npm ci
+      - run: npm run audit:production
       # Web unit tests intentionally reuse shared game logic from expo/lib.
       - run: npm --prefix expo ci
       - name: Seed authenticated E2E account
         run: npm run seed:demo-account
       - run: npm run quality
       - run: npm run build
+      - run: npm run verify:build-budget
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 
@@ -77,5 +79,8 @@ jobs:
           cache: npm
           cache-dependency-path: expo/package-lock.json
       - run: npm ci
+      - run: npm run audit:production
       - run: npm run quality
       - run: npm run doctor
+      - run: npm run android:bundle:check
+      - run: npm run verify:bundle-budget

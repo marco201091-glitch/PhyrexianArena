@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,17 @@ export function AccessLogsPanel({ embedded = false }: AccessLogsPanelProps) {
   const [period, setPeriod] = useState<AccessLogPeriod>('7d');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
+  const [search, setSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<'all' | AccessLogSource>('all');
+  const filteredLogs = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return logs.filter((log) => {
+      if (sourceFilter !== 'all' && log.source !== sourceFilter) return false;
+      if (!query) return true;
+      return log.username.toLowerCase().includes(query)
+        || log.appVersion?.toLowerCase().includes(query);
+    });
+  }, [logs, search, sourceFilter]);
 
   const renderSourceBadge = useCallback((source: AccessLogSource) => {
     if (source === 'app') {
@@ -155,6 +166,23 @@ export function AccessLogsPanel({ embedded = false }: AccessLogsPanelProps) {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="w-full sm:min-w-64 sm:flex-1">
+            <label htmlFor="access-log-search" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              {t({ it: 'Cerca', en: 'Search' })}
+            </label>
+            <Input id="access-log-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t({ it: 'Username o versione app', en: 'Username or app version' })} className="border-border bg-background/50 text-foreground" />
+          </div>
+          <div className="w-full sm:w-44">
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t({ it: 'Origine', en: 'Source' })}</label>
+            <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value as 'all' | AccessLogSource)}>
+              <SelectTrigger className="border-border bg-background/50 text-foreground"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t({ it: 'Tutte', en: 'All' })}</SelectItem>
+                <SelectItem value="web">Web</SelectItem>
+                <SelectItem value="app">App</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="w-full sm:w-56">
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
               {t({ it: 'Periodo', en: 'Period' })}
@@ -214,7 +242,7 @@ export function AccessLogsPanel({ embedded = false }: AccessLogsPanelProps) {
           <p className="text-sm text-muted-foreground">
             {t({ it: 'Caricamento log...', en: 'Loading logs...' })}
           </p>
-        ) : logs.length === 0 ? (
+        ) : filteredLogs.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t({ it: 'Nessun accesso nel periodo selezionato.', en: 'No access in the selected period.' })}
           </p>
@@ -229,7 +257,7 @@ export function AccessLogsPanel({ embedded = false }: AccessLogsPanelProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.map((log) => (
+              {filteredLogs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="font-medium text-foreground">{log.username}</TableCell>
                   <TableCell>{renderSourceBadge(log.source ?? 'web')}</TableCell>

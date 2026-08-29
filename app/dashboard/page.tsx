@@ -54,6 +54,7 @@ import {
   BarChart3,
 
   ScrollText,
+  ServerCog,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -366,6 +367,17 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <span className="text-sm text-muted-foreground hidden sm:block">{user?.email}</span>
             {adminMode && (
+              <>
+              <Link href="/admin/operations">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label={t({ it: 'Operazioni', en: 'Operations' })}
+                >
+                  <ServerCog className="h-5 w-5" />
+                </Button>
+              </Link>
               <Link href="/admin/access-logs">
                 <Button
                   variant="ghost"
@@ -376,6 +388,7 @@ export default function DashboardPage() {
                   <ScrollText className="h-5 w-5" />
                 </Button>
               </Link>
+              </>
             )}
             <AppProfileButton />
             <Button

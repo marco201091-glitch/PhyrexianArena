@@ -123,6 +123,12 @@ jobs:
           cmd /c "scripts\build-apk-production.bat ${{ steps.release.outputs.version }} --no-pause"
           if ($LASTEXITCODE -ne 0) { throw "Android release candidate build failed" }
 
+      - name: Generate release SBOMs
+        shell: pwsh
+        run: |
+          npm sbom --sbom-format cyclonedx | Set-Content -LiteralPath "artifacts/apk/web-sbom-${{ steps.release.outputs.version }}.json" -Encoding utf8
+          npm --prefix expo sbom --sbom-format cyclonedx | Set-Content -LiteralPath "artifacts/apk/android-sbom-${{ steps.release.outputs.version }}.json" -Encoding utf8
+
       - name: Upload private release candidate
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
@@ -130,6 +136,8 @@ jobs:
           path: |
             artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk
             artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk.sha256
+            artifacts/apk/web-sbom-${{ steps.release.outputs.version }}.json
+            artifacts/apk/android-sbom-${{ steps.release.outputs.version }}.json
           if-no-files-found: error
           retention-days: 14
 
@@ -142,25 +150,27 @@ jobs:
         run: |
           $apk = "artifacts/apk/mtg-commander-v$env:RELEASE_VERSION.apk"
           $checksum = "$apk.sha256"
+          $webSbom = "artifacts/apk/web-sbom-$env:RELEASE_VERSION.json"
+          $androidSbom = "artifacts/apk/android-sbom-$env:RELEASE_VERSION.json"
           @(
             "## MTG Tracker & Analytics $env:GITHUB_REF_NAME",
             "",
-            "Feature release focused on usability, reliability and arena management.",
+            "Feature release focused on live-game usability, privacy and operational reliability.",
             "",
             "### Main features",
             "",
-            "- Improved live-game layouts, wizard, recap and offline recovery",
-            "- Optional yearly seasons with previous-season summaries",
-            "- Provisional deck rankings hidden by default",
-            "- Notification center and localized push notifications",
-            "- Reliability, monitoring and storage maintenance improvements",
+            "- Search by deck or commander in the live-game wizard",
+            "- Last Standing applies lethal damage to every remaining opponent",
+            "- App-version visibility and operational diagnostics for administrators",
+            "- Account-data export and removal of avatar loading/upload",
+            "- Runtime compatibility controls, notification telemetry and stronger release checks",
             "",
             "Install or update with Obtainium from this repository's GitHub Releases.",
             "",
             "The attached checksum can be used to verify the APK before installation."
           ) | Set-Content -LiteralPath "$env:RUNNER_TEMP/release-notes.md" -Encoding utf8
 
-          gh release create $env:GITHUB_REF_NAME $apk $checksum `
+          gh release create $env:GITHUB_REF_NAME $apk $checksum $webSbom $androidSbom `
             --repo $env:GITHUB_REPOSITORY `
             --title "MTG Tracker & Analytics $env:GITHUB_REF_NAME" `
             --notes-file "$env:RUNNER_TEMP/release-notes.md" `

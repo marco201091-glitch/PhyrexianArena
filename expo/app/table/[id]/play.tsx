@@ -22,6 +22,7 @@ import { ArenaSkeleton } from '@/components/ui/screen-skeletons';
 import { useAuth } from '@/contexts/auth-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useToast } from '@/contexts/toast-context';
+import { useRuntimeConfig } from '@/contexts/runtime-config-context';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useArena } from '@/hooks/use-arena';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
@@ -139,6 +140,7 @@ export default function LiveGameScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { copy } = useLanguage();
+  const { featureFlags } = useRuntimeConfig();
   const { showToast } = useToast();
   const { scrollContentStyle } = useScreenInsets();
 
@@ -1567,7 +1569,9 @@ export default function LiveGameScreen() {
               </View>
               {requiresAlternativeWinCondition ? (
                 <View style={styles.winConditionGrid}>
-                  {WIN_CONDITIONS.map((condition) => {
+                  {WIN_CONDITIONS.filter((condition) => (
+                    condition.value !== 'last_standing' || featureFlags?.lastStanding !== false
+                  )).map((condition) => {
                     const selected = endWinCondition === condition.value;
                     return (
                       <Pressable
