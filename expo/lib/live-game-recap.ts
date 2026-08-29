@@ -25,12 +25,22 @@ export type LiveGameRecapPlayer = {
   damageDealt: number;
   lifeGained: number;
   eliminationsCaused: number;
+  lifeLost: number;
+  commanderDamageDealt: number;
+  commanderDamageTaken: number;
+  infectDealt: number;
+  infectReceived: number;
+  corrections: number;
 };
 
 export type LiveGameRecap = {
   totalEvents: number;
   startedAt: string | null;
   endedAt: string | null;
+  durationSeconds: number | null;
+  startingPlayerKey: ParticipantKey | null;
+  startingPlayerName: string | null;
+  startingDirection: 'clockwise' | 'counterclockwise' | null;
   players: LiveGameRecapPlayer[];
   highlights: LiveGameEvent[];
 };
@@ -147,12 +157,26 @@ export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
       damageDealt: metrics?.lifeDamageDealt ?? 0,
       lifeGained: metrics?.lifeGained ?? 0,
       eliminationsCaused: metrics?.eliminationsCaused ?? 0,
+      lifeLost: metrics?.lifeLost ?? 0,
+      commanderDamageDealt: metrics?.commanderDamageDealt ?? 0,
+      commanderDamageTaken: metrics?.commanderDamageTaken ?? 0,
+      infectDealt: metrics?.infectDealt ?? 0,
+      infectReceived: metrics?.infectReceived ?? 0,
+      corrections: metrics?.corrections ?? 0,
     };
   });
+  const durationSeconds = record.started_at && record.ended_at
+    ? Math.max(0, Math.round((new Date(record.ended_at).getTime() - new Date(record.started_at).getTime()) / 1000))
+    : null;
+  const startingPlayerKey = record.state.startingPlayerKey ?? null;
   return {
     totalEvents: record.state.summary?.totalEvents ?? orderedEvents.length,
     startedAt: record.started_at,
     endedAt: record.ended_at,
+    durationSeconds,
+    startingPlayerKey,
+    startingPlayerName: players.find((player) => player.participantKey === startingPlayerKey)?.displayName ?? null,
+    startingDirection: record.state.startingDirection ?? null,
     players,
     highlights: orderedEvents.slice(-12),
   };

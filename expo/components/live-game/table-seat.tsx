@@ -280,7 +280,7 @@ export function TableSeat({
           </View>
         ) : null}
 
-        {(player.counters.monarch || player.counters.initiative) ? (
+        {(player.counters.monarch || player.counters.initiative || player.counters.energy > 0 || player.counters.experience > 0 || player.counters.commanderTax > 0) ? (
           <View
             pointerEvents="none"
             style={styles.emblemBadges}
@@ -300,6 +300,9 @@ export function TableSeat({
                 <Ionicons name="trail-sign-outline" size={18} color="#cffafe" />
               </View>
             ) : null}
+            {player.counters.energy > 0 ? <View style={[styles.numericCounterBadge, styles.energyBadge]}><Text style={styles.numericCounterText}>E {player.counters.energy}</Text></View> : null}
+            {player.counters.experience > 0 ? <View style={[styles.numericCounterBadge, styles.experienceBadge]}><Text style={styles.numericCounterText}>XP {player.counters.experience}</Text></View> : null}
+            {player.counters.commanderTax > 0 ? <View style={[styles.numericCounterBadge, styles.taxBadge]}><Text style={styles.numericCounterText}>T {player.counters.commanderTax}</Text></View> : null}
           </View>
         ) : null}
 
@@ -526,6 +529,9 @@ const styles = StyleSheet.create({
     bottom: 8,
     zIndex: 24,
     flexDirection: 'row',
+    flexWrap: 'wrap-reverse',
+    justifyContent: 'flex-end',
+    maxWidth: 96,
     gap: 5,
   },
   emblemBadge: {
@@ -544,6 +550,19 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(165,243,252,0.68)',
     backgroundColor: 'rgba(8,51,68,0.9)',
   },
+  numericCounterBadge: {
+    minWidth: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  numericCounterText: { color: '#f8fafc', fontSize: 10, fontWeight: '900' },
+  energyBadge: { borderColor: 'rgba(253,224,71,0.65)', backgroundColor: 'rgba(66,32,6,0.9)' },
+  experienceBadge: { borderColor: 'rgba(196,181,253,0.65)', backgroundColor: 'rgba(46,16,101,0.9)' },
+  taxBadge: { borderColor: 'rgba(203,213,225,0.6)', backgroundColor: 'rgba(15,23,42,0.9)' },
   playerHighlightText: {
     color: '#ffffff',
     fontSize: 14,

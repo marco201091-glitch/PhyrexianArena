@@ -262,6 +262,7 @@ export function WebLiveGame({
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncBadgeVisible, setSyncBadgeVisible] = useState(true);
+  const [liveOnboardingOpen, setLiveOnboardingOpen] = useState(false);
   const telemetrySessionRef = useRef(globalThis.crypto.randomUUID());
   const [duration, setDuration] = useState('00:00');
   useScreenWakeLock(Boolean(record));
@@ -294,6 +295,7 @@ export function WebLiveGame({
   const [completedDuration, setCompletedDuration] = useState('00:00');
   const durationRef = useRef('00:00');
   const syncPresentationStatus = syncError
+    && pendingSyncCount > 0
     ? 'error'
     : syncing
       ? 'syncing'
@@ -627,6 +629,11 @@ export function WebLiveGame({
   }, [flush, groupId, persist, setOptimisticRecord, userId]);
 
   const activeRecordId = record?.id;
+  useEffect(() => {
+    if (!activeRecordId || localStorage.getItem('live-onboarding-v1')) return;
+    const timer = window.setTimeout(() => setLiveOnboardingOpen(true), 4_500);
+    return () => window.clearTimeout(timer);
+  }, [activeRecordId]);
   useEffect(() => {
     if (!activeRecordId || needsCreateRef.current) return;
     return subscribeToLiveGame(supabase, activeRecordId, (remote) => {
@@ -1168,13 +1175,8 @@ export function WebLiveGame({
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    const reset = createDefaultWebLiveGameSetup();
-                    setPlayerCount(reset.playerCount);
-                    setLayoutVariant(reset.layoutVariant);
-                    setStartingLife(reset.startingLife);
-                    setSeats(reset.seats);
-                    setSetupStep(0);
-                    setSetupSeatIndex(0);
+                    setSeats((current) => current.map(() => ({ participantKey: null, deckId: null })));
+                    setSetupDeckSearch('');
                   }}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />{copy({ it: 'Azzera', en: 'Reset' })}
@@ -1480,10 +1482,19 @@ export function WebLiveGame({
                 <HoldActionButton variant="ghost" stopPropagation onShort={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' })} onLong={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' })} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ left: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Riduci punti vita di', en: 'Reduce life for' })} ${player.displayName}`}><Minus style={{ width: iconSize, height: iconSize }} /></HoldActionButton>
                 <HoldActionButton variant="ghost" stopPropagation onShort={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -1, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 1, mode: 'life' })} onLong={() => enqueue({ type: 'adjust', targetKey: player.participantKey, amount: -10, mode: 'life' }, { type: 'adjust', targetKey: player.participantKey, amount: 10, mode: 'life' })} className="absolute top-1/2 z-10 grid -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 font-light shadow-lg backdrop-blur transition active:scale-90" style={{ right: controlInset, width: controlWidth, height: controlSize }} aria-label={`${copy({ it: 'Aumenta punti vita di', en: 'Increase life for' })} ${player.displayName}`}><Plus style={{ width: iconSize, height: iconSize }} /></HoldActionButton>
                 <div className="pointer-events-none absolute left-1/2 top-[7%] z-10 max-w-[66%] -translate-x-1/2 truncate rounded-full border border-white/15 bg-gradient-to-r from-black/75 via-zinc-900/80 to-black/75 px-[clamp(10px,3%,20px)] py-[clamp(4px,1.5%,9px)] font-black tracking-wide text-white shadow-xl backdrop-blur-md" style={{ fontSize: `clamp(11px, ${shortestSide * 0.052}px, 22px)` }}>{player.displayName}</div>
-                {(player.counters.monarch || player.counters.initiative) ? (
-                  <div className="pointer-events-none absolute bottom-3 right-3 z-20 flex gap-1.5" aria-label={[player.counters.monarch ? copy({ it: 'Monarca', en: 'Monarch' }) : '', player.counters.initiative ? copy({ it: 'Iniziativa', en: 'Initiative' }) : ''].filter(Boolean).join(', ')}>
+                {(player.counters.monarch || player.counters.initiative || player.counters.energy > 0 || player.counters.experience > 0 || player.counters.commanderTax > 0) ? (
+                  <div className="pointer-events-none absolute bottom-3 right-3 z-20 flex max-w-24 flex-wrap-reverse justify-end gap-1.5" aria-label={[
+                    player.counters.monarch ? copy({ it: 'Monarca', en: 'Monarch' }) : '',
+                    player.counters.initiative ? copy({ it: 'Iniziativa', en: 'Initiative' }) : '',
+                    player.counters.energy > 0 ? `${copy({ it: 'Energia', en: 'Energy' })} ${player.counters.energy}` : '',
+                    player.counters.experience > 0 ? `${copy({ it: 'Esperienza', en: 'Experience' })} ${player.counters.experience}` : '',
+                    player.counters.commanderTax > 0 ? `Commander Tax ${player.counters.commanderTax}` : '',
+                  ].filter(Boolean).join(', ')}>
                     {player.counters.monarch ? <span title={copy({ it: 'Monarca', en: 'Monarch' })} className="grid h-9 w-9 place-items-center rounded-full border border-amber-200/70 bg-amber-950/90 text-amber-100 shadow-lg backdrop-blur"><Crown className="h-5 w-5" /></span> : null}
                     {player.counters.initiative ? <span title={copy({ it: 'Iniziativa', en: 'Initiative' })} className="grid h-9 w-9 place-items-center rounded-full border border-cyan-200/65 bg-cyan-950/90 text-cyan-100 shadow-lg backdrop-blur"><Swords className="h-5 w-5" /></span> : null}
+                    {player.counters.energy > 0 ? <span title={copy({ it: 'Energia', en: 'Energy' })} className="grid h-9 min-w-9 place-items-center rounded-full border border-yellow-200/60 bg-yellow-950/90 px-2 text-xs font-black text-yellow-100">E {player.counters.energy}</span> : null}
+                    {player.counters.experience > 0 ? <span title={copy({ it: 'Esperienza', en: 'Experience' })} className="grid h-9 min-w-9 place-items-center rounded-full border border-violet-200/60 bg-violet-950/90 px-2 text-xs font-black text-violet-100">XP {player.counters.experience}</span> : null}
+                    {player.counters.commanderTax > 0 ? <span title="Commander Tax" className="grid h-9 min-w-9 place-items-center rounded-full border border-slate-200/60 bg-slate-950/90 px-2 text-xs font-black text-slate-100">T {player.counters.commanderTax}</span> : null}
                   </div>
                 ) : null}
                 <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
@@ -1557,14 +1568,15 @@ export function WebLiveGame({
           onClick={() => void flush()}
           className={cn(
             'absolute right-2 top-[calc(env(safe-area-inset-top)+.5rem)] z-40 flex items-center gap-1.5 rounded-full border bg-black/75 px-2.5 py-1 text-[10px] font-bold backdrop-blur',
-            syncError ? 'border-rose-400/50 text-rose-200' : online ? 'border-emerald-400/30 text-emerald-200' : 'border-amber-400/40 text-amber-200',
+            syncError && pendingSyncCount > 0 ? 'border-rose-400/50 text-rose-200' : online ? 'border-emerald-400/30 text-emerald-200' : 'border-amber-400/40 text-amber-200',
           )}
-          title={syncError ?? undefined}
+          title={pendingSyncCount > 0 ? syncError ?? undefined : undefined}
         >
           {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : online ? <CircleDot className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-          {syncError ? copy({ it: 'Riprova sync', en: 'Retry sync' }) : syncing ? copy({ it: 'Sincronizzo', en: 'Syncing' }) : pendingSyncCount ? `${pendingSyncCount} ${copy({ it: 'in attesa', en: 'pending' })}` : online ? copy({ it: 'Sincronizzato', en: 'Synced' }) : 'Offline'}
+          {syncError && pendingSyncCount > 0 ? copy({ it: 'Riprova sync', en: 'Retry sync' }) : syncing ? copy({ it: 'Sincronizzo', en: 'Syncing' }) : pendingSyncCount ? `${pendingSyncCount} ${copy({ it: 'in attesa', en: 'pending' })}` : online ? copy({ it: 'Sincronizzato', en: 'Synced' }) : 'Offline'}
         </button> : null}
         {randomOpponentMode && <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+1rem)] z-40 mx-auto max-w-md rounded-2xl border border-emerald-400/40 bg-emerald-950/95 px-4 py-3 text-center text-sm font-bold shadow-2xl backdrop-blur">{copy({ it: 'Tocca qualsiasi punto della card del giocatore attivo da escludere.', en: 'Tap anywhere on the active player card to exclude them.' })}</div>}
+        {liveOnboardingOpen ? <div role="dialog" aria-label={copy({ it: 'Guida rapida live', en: 'Live quick guide' })} className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-50 w-[min(92vw,390px)] -translate-x-1/2 rounded-2xl border border-emerald-400/35 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-xl"><div className="flex items-start gap-3"><Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" /><div className="min-w-0 flex-1"><p className="font-black text-emerald-100">{copy({ it: 'Tre gesti utili', en: 'Three useful gestures' })}</p><ul className="mt-2 space-y-1 text-xs text-zinc-300"><li>{copy({ it: 'Tieni premuto +/− per modificare di 10.', en: 'Hold +/− to change by 10.' })}</li><li>{copy({ it: 'Trascina da un giocatore a un altro per assegnare danno.', en: 'Drag between players to assign damage.' })}</li><li>{copy({ it: 'La bandierina conclude e salva la partita.', en: 'The flag ends and saves the game.' })}</li></ul></div><button type="button" aria-label={copy({ it: 'Chiudi guida', en: 'Close guide' })} onClick={() => { localStorage.setItem('live-onboarding-v1', 'done'); setLiveOnboardingOpen(false); }} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/5"><X className="h-4 w-4" /></button></div></div> : null}
       </div>
 
       {drag && <svg className="pointer-events-none fixed inset-0 z-50 h-full w-full"><defs><marker id="damage-arrow" markerWidth="14" markerHeight="14" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fb7185" /></marker><filter id="damage-glow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs><path d={`M ${drag.startX} ${drag.startY} Q ${(drag.startX + drag.x) / 2} ${Math.min(drag.startY, drag.y) - 90} ${drag.x} ${drag.y}`} fill="none" stroke="#fb7185" strokeWidth="7" strokeLinecap="round" markerEnd="url(#damage-arrow)" filter="url(#damage-glow)" strokeDasharray="12 8"><animate attributeName="stroke-dashoffset" from="40" to="0" dur=".7s" repeatCount="indefinite" /></path></svg>}

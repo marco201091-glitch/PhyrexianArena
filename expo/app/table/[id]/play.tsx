@@ -54,6 +54,7 @@ import { buildRouletteSequence } from '@/lib/live-game-roulette';
 import type { TableLayoutVariant } from '@/lib/live-game-table-layout';
 import {
   createDefaultLiveGameSetup,
+  clearLiveGameSeats,
   loadLiveGameSetup,
   saveLiveGameSetup,
   type LiveGameSeatSetup,
@@ -331,12 +332,8 @@ export default function LiveGameScreen() {
   }, [applySeatSetups, seatSetups]);
 
   const resetSetup = useCallback(() => {
-    const defaults = createDefaultLiveGameSetup();
-    setPlayerCount(defaults.playerCount);
-    setLayoutVariant(defaults.layoutVariant);
-    applyStartingLife(defaults.startingLife);
-    applySeatSetups(defaults.seats);
-  }, [applySeatSetups, applyStartingLife]);
+    applySeatSetups(clearLiveGameSeats(seatSetups));
+  }, [applySeatSetups, seatSetups]);
 
   const setOptimisticRecord = useCallback((record: LiveGameRecord | null) => {
     liveGameRef.current = record;

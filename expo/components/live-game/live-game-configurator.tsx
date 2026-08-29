@@ -210,10 +210,7 @@ export function LiveGameConfigurator({
         </View>
         <Pressable
           style={({ pressed }) => [styles.resetButton, pressed && styles.interactivePressed]}
-          onPress={() => {
-            onReset();
-            setStep(0);
-          }}
+          onPress={onReset}
         >
           <Ionicons name="refresh-outline" size={15} color={colors.muted} />
           <Text style={styles.resetText}>{labels.reset}</Text>
