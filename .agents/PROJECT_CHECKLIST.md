@@ -19,6 +19,7 @@
 
 - [x] Super audit read-only dello stato completo di `Dev`/`main` e proposta numerata delle migliorie.
 - [x] Preparare su `Dev` la release 8.2.0 con ricerca mazzi nel wizard live, versione app nei log admin e Last Standing con danni letali automatici.
+- [x] Predisporre il backup automatico cifrato della chiave Android, senza build o carico sulla VM.
 - [x] Aggiungere la pulizia notturna delle cache Gradle inattive, installarla sul server e rimuovere l'Android SDK server-side inutilizzato.
 - [x] Audit read-only dello spazio server e identificazione di elementi Docker/log/cache eliminabili in sicurezza.
 - [x] Publish MTG Tracker & Analytics 8.0.0 through Obtainium.
