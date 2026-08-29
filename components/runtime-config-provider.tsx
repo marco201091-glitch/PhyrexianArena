@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import packageJson from '@/package.json';
 import { useLanguage } from '@/components/language-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +19,7 @@ const RuntimeConfigContext = createContext<RuntimeConfig>({
 
 export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
   const { language } = useLanguage();
+  const pathname = usePathname();
   const { toast } = useToast();
   const [config, setConfig] = useState<RuntimeConfig>({
     featureFlags: { lastStanding: true, deckWizardSearch: true },
@@ -30,6 +32,7 @@ export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
       .then((next) => {
         if (!active || !next) return;
         setConfig(next);
+        if (!['/dashboard', '/profile', '/counter'].includes(pathname) && !pathname.startsWith('/table/')) return;
         const note = next.releaseNotes?.find((entry) => entry.version === packageJson.version);
         const description = language === 'it' ? note?.it : note?.en;
         if (!description) return;
@@ -40,7 +43,7 @@ export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => undefined);
     return () => { active = false; };
-  }, [language, toast]);
+  }, [language, pathname, toast]);
 
   const value = useMemo(() => ({
     ...config,
