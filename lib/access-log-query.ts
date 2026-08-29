@@ -6,6 +6,7 @@ export interface AccessLogEntry {
   id: string;
   username: string;
   source: AccessLogSource;
+  appVersion: string | null;
   accessedAt: string;
 }
 
@@ -88,12 +89,13 @@ function mapAccessLogSource(value: string | null | undefined): AccessLogSource {
 }
 
 function mapAccessLogRows(
-  rows: Array<{ id: string; username: string; source?: string | null; accessed_at: string }>,
+  rows: Array<{ id: string; username: string; source?: string | null; app_version?: string | null; accessed_at: string }>,
 ): AccessLogEntry[] {
   return rows.map((row) => ({
     id: row.id,
     username: row.username,
     source: mapAccessLogSource(row.source),
+    appVersion: row.source === 'app' ? row.app_version ?? null : null,
     accessedAt: row.accessed_at,
   }));
 }
@@ -113,7 +115,7 @@ async function fetchAccessLogsWithServiceRole(options: AccessLogQueryOptions): P
 
   let query = adminClient
     .from('access_logs')
-    .select('id, accessed_at, source, user_id')
+    .select('id, accessed_at, source, app_version, user_id')
     .order('accessed_at', { ascending: false })
     .limit(limit);
 
@@ -154,6 +156,7 @@ async function fetchAccessLogsWithServiceRole(options: AccessLogQueryOptions): P
     id: row.id,
     username: profileByUserId.get(row.user_id) ?? 'unknown',
     source: mapAccessLogSource(row.source),
+    appVersion: row.source === 'app' ? row.app_version ?? null : null,
     accessedAt: row.accessed_at,
   }));
 }
@@ -176,7 +179,7 @@ export async function fetchAccessLogsForAdmin(
   });
 
   if (!error) {
-    return mapAccessLogRows((data as Array<{ id: string; username: string; source?: string | null; accessed_at: string }> | null) ?? []);
+    return mapAccessLogRows((data as Array<{ id: string; username: string; source?: string | null; app_version?: string | null; accessed_at: string }> | null) ?? []);
   }
 
   const missingRpc = error.code === 'PGRST202'

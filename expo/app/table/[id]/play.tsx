@@ -106,12 +106,13 @@ import type { MemberDeck } from '@/lib/types/arena';
 
 type LifePreset = '20' | '25' | '30' | '40' | '60' | 'custom';
 const LIFE_PRESETS: LifePreset[] = ['20', '25', '30', '40', '60'];
-const ALTERNATIVE_WIN_CONDITIONS: {
-  value: Exclude<WinCondition, 'last_standing'>;
+const WIN_CONDITIONS: {
+  value: WinCondition;
   icon: keyof typeof Ionicons.glyphMap;
-  labelKey: 'liveGameWinCombo' | 'liveGameWinConcession' | 'liveGameWinAlternateCard' | 'liveGameWinOther';
-  hintKey: 'liveGameWinComboHint' | 'liveGameWinConcessionHint' | 'liveGameWinAlternateCardHint' | 'liveGameWinOtherHint';
+  labelKey: 'liveGameWinLastStanding' | 'liveGameWinCombo' | 'liveGameWinConcession' | 'liveGameWinAlternateCard' | 'liveGameWinOther';
+  hintKey: 'liveGameWinLastStandingHint' | 'liveGameWinComboHint' | 'liveGameWinConcessionHint' | 'liveGameWinAlternateCardHint' | 'liveGameWinOtherHint';
 }[] = [
+  { value: 'last_standing', icon: 'shield-checkmark-outline', labelKey: 'liveGameWinLastStanding', hintKey: 'liveGameWinLastStandingHint' },
   { value: 'combo', icon: 'git-merge-outline', labelKey: 'liveGameWinCombo', hintKey: 'liveGameWinComboHint' },
   { value: 'concession', icon: 'flag-outline', labelKey: 'liveGameWinConcession', hintKey: 'liveGameWinConcessionHint' },
   { value: 'alternate_card', icon: 'sparkles-outline', labelKey: 'liveGameWinAlternateCard', hintKey: 'liveGameWinAlternateCardHint' },
@@ -1119,7 +1120,15 @@ export default function LiveGameScreen() {
 
     setEndingGame(true);
     try {
-      const players = liveGame.state.players.map((player: LiveGamePlayer) => {
+      if (!endIsDraw && endWinCondition === 'last_standing' && activePlayers.length > 1 && endWinnerKey) {
+        activePlayers
+          .filter((player) => player.participantKey !== endWinnerKey)
+          .forEach((player) => pulseDamage(player.participantKey));
+        enqueueMutation({ type: 'last_standing', winnerKey: endWinnerKey });
+      }
+
+      const finalizedGame = liveGameRef.current ?? liveGame;
+      const players = finalizedGame.state.players.map((player: LiveGamePlayer) => {
         const parsed = parseParticipantKey(player.participantKey);
         return {
           participantKey: player.participantKey,
@@ -1149,7 +1158,7 @@ export default function LiveGameScreen() {
       const durationSeconds = getGameDurationSeconds(liveGame.started_at, pending.endedAt);
       setCompletedDurationSeconds(durationSeconds);
 
-      setCompletedGame(liveGame);
+      setCompletedGame(finalizedGame);
       const pendingJournal = journalWriteRef.current;
       await archiveAndClearLiveGameSession(groupId, {
         id: liveGame.id,
@@ -1558,7 +1567,7 @@ export default function LiveGameScreen() {
               </View>
               {requiresAlternativeWinCondition ? (
                 <View style={styles.winConditionGrid}>
-                  {ALTERNATIVE_WIN_CONDITIONS.map((condition) => {
+                  {WIN_CONDITIONS.map((condition) => {
                     const selected = endWinCondition === condition.value;
                     return (
                       <Pressable
@@ -1673,6 +1682,8 @@ export default function LiveGameScreen() {
                 emptySeat: copy('liveGameEmptySeat'),
                 choosePlayer: copy('liveGameChoosePlayer'),
                 chooseDeck: copy('liveGameChooseDeck'),
+                searchDecks: copy('searchDecks'),
+                noDecksMatchSearch: copy('noDecksMatchSearch'),
                 clearSeat: copy('liveGameClearSeat'),
                 confirm: copy('confirm'),
                 reset: copy('liveGameResetSetup'),

@@ -29,6 +29,7 @@ interface AccessLogRow {
   id: string;
   username: string;
   source: AccessLogSource;
+  appVersion: string | null;
   accessedAt: string;
 }
 
@@ -223,6 +224,7 @@ export function AccessLogsPanel({ embedded = false }: AccessLogsPanelProps) {
               <TableRow>
                 <TableHead>{t({ it: 'Username', en: 'Username' })}</TableHead>
                 <TableHead>{t({ it: 'Origine', en: 'Source' })}</TableHead>
+                <TableHead>{t({ it: 'Versione app', en: 'App version' })}</TableHead>
                 <TableHead>{t({ it: 'Timestamp', en: 'Timestamp' })}</TableHead>
               </TableRow>
             </TableHeader>
@@ -231,6 +233,9 @@ export function AccessLogsPanel({ embedded = false }: AccessLogsPanelProps) {
                 <TableRow key={log.id}>
                   <TableCell className="font-medium text-foreground">{log.username}</TableCell>
                   <TableCell>{renderSourceBadge(log.source ?? 'web')}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">
+                    {log.source === 'app' && log.appVersion ? `v${log.appVersion}` : '—'}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{formatTimestamp(log.accessedAt)}</TableCell>
                 </TableRow>
               ))}

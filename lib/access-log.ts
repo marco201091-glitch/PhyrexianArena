@@ -23,6 +23,14 @@ export function normalizeAccessLogSource(value: unknown): AccessLogSource {
   return typeof value === 'string' && value.trim().toLowerCase() === 'app' ? 'app' : 'web';
 }
 
+const APP_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.-]+)?$/;
+
+export function normalizeAccessLogAppVersion(value: unknown, source: AccessLogSource): string | null {
+  if (source !== 'app' || typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length <= 32 && APP_VERSION_PATTERN.test(normalized) ? normalized : null;
+}
+
 export function getAccessLogSessionKey(userId: string, source: AccessLogSource = 'web') {
   return `access-log:${userId}:${source}`;
 }

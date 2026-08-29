@@ -103,14 +103,14 @@ describe('live-game', () => {
     expect(next.summary?.byParticipant['user:a']?.commanderDamageDealt).toBe(7);
   });
 
-  it('requires an alternative condition while multiple players remain', () => {
+  it('accepts Last Standing as an explicit ending while multiple players remain', () => {
     const state = buildState();
     expect(isValidLiveGameResult(state, {
       winnerKey: 'user:a', isDraw: false, winCondition: 'combo',
     })).toBe(true);
     expect(isValidLiveGameResult(state, {
       winnerKey: 'user:a', isDraw: false, winCondition: 'last_standing',
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it('applies opponent-wide damage as one versioned mutation and compact summary', () => {
