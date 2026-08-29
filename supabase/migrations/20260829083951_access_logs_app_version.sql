@@ -40,12 +40,12 @@ BEGIN
   END IF;
 
   normalized_source := CASE
-    WHEN pg_catalog.lower(pg_catalog.btrim(pg_catalog.coalesce(p_source, ''))) = 'app' THEN 'app'
+    WHEN pg_catalog.lower(pg_catalog.btrim(pg_catalog.coalesce(p_source, ''::text))) = 'app' THEN 'app'
     ELSE 'web'
   END;
   normalized_app_version := CASE
     WHEN normalized_source = 'app'
-      AND pg_catalog.coalesce(p_app_version, '') ~ '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$'
+      AND pg_catalog.coalesce(p_app_version, ''::text) ~ '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$'
       THEN p_app_version
     ELSE NULL
   END;
@@ -121,7 +121,7 @@ BEGIN
   RETURN QUERY
   SELECT
     al.id,
-    pg_catalog.coalesce(p.username, 'unknown') AS username,
+    pg_catalog.coalesce(p.username, 'unknown'::text) AS username,
     al.source,
     CASE WHEN al.source = 'app' THEN al.app_version ELSE NULL END AS app_version,
     al.accessed_at
