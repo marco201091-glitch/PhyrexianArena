@@ -54,6 +54,7 @@ import {
   BarChart3,
 
   ScrollText,
+  ServerCog,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -366,6 +367,17 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <span className="text-sm text-muted-foreground hidden sm:block">{user?.email}</span>
             {adminMode && (
+              <>
+              <Link href="/admin/operations">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label={t({ it: 'Operazioni', en: 'Operations' })}
+                >
+                  <ServerCog className="h-5 w-5" />
+                </Button>
+              </Link>
               <Link href="/admin/access-logs">
                 <Button
                   variant="ghost"
@@ -376,6 +388,7 @@ export default function DashboardPage() {
                   <ScrollText className="h-5 w-5" />
                 </Button>
               </Link>
+              </>
             )}
             <AppProfileButton />
             <Button
@@ -588,7 +601,7 @@ export default function DashboardPage() {
                     {t({ it: 'Top 10 mazzi', en: 'Top 10 Decks' })}
                   </CardTitle>
                   <CardDescription>
-                    {t({ it: 'Ordinati per partite giocate, poi vittorie.', en: 'Sorted by games played, then wins.' })}
+                    {t({ it: 'Ordinati per win rate, poi partite giocate.', en: 'Sorted by win rate, then games played.' })}
                   </CardDescription>
                   {provisionalPersonalDeckCount > 0 ? (
                     <button
@@ -761,6 +774,21 @@ export default function DashboardPage() {
                           );
                         })}
                       </div>
+                    </CardContent>
+                  </Card>
+                ) : null}
+
+                {personalAnalytics.winConditions.length > 0 ? (
+                  <Card className="border-border/70 bg-card/60">
+                    <CardHeader><CardTitle className="text-base text-foreground">{t({ it: 'Condizioni di vittoria', en: 'Win conditions' })}</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {personalAnalytics.winConditions.map((stat) => {
+                        const labels: Record<string, { it: string; en: string }> = {
+                          last_standing: { it: 'Ultimo in gioco', en: 'Last standing' }, combo: { it: 'Combo', en: 'Combo' },
+                          concession: { it: 'Concessione', en: 'Concession' }, alternate_card: { it: 'Carta alternativa', en: 'Alternate card' }, other: { it: 'Altro', en: 'Other' },
+                        };
+                        return <div key={stat.condition}><div className="mb-1 flex justify-between text-sm"><span>{t(labels[stat.condition] ?? { it: stat.condition, en: stat.condition })}</span><span className="text-muted-foreground">{stat.wins}W · {stat.percentage}%</span></div><div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-violet-400/90" style={{ width: `${stat.percentage}%` }} /></div></div>;
+                      })}
                     </CardContent>
                   </Card>
                 ) : null}

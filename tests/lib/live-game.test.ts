@@ -7,6 +7,7 @@ import {
   createLiveGamePlayer,
   eliminatePlayer,
   getSuggestedWinner,
+  getLiveGameResultWarnings,
   isValidLiveGameResult,
   pickRandomPlayer,
   type LiveGameState,
@@ -103,14 +104,24 @@ describe('live-game', () => {
     expect(next.summary?.byParticipant['user:a']?.commanderDamageDealt).toBe(7);
   });
 
-  it('requires an alternative condition while multiple players remain', () => {
+  it('accepts Last Standing as an explicit ending while multiple players remain', () => {
     const state = buildState();
     expect(isValidLiveGameResult(state, {
       winnerKey: 'user:a', isDraw: false, winCondition: 'combo',
     })).toBe(true);
     expect(isValidLiveGameResult(state, {
       winnerKey: 'user:a', isDraw: false, winCondition: 'last_standing',
-    })).toBe(false);
+    })).toBe(true);
+  });
+
+  it('warns about internally inconsistent final results without blocking valid saves', () => {
+    const state = buildState();
+    state.players[0] = { ...state.players[0]!, life: 0 };
+    expect(getLiveGameResultWarnings(state, { winnerKey: 'user:a', isDraw: false, winCondition: 'combo' }))
+      .toContain('winner_has_lethal_total');
+    state.players.slice(1).forEach((player) => { player.isEliminated = true; });
+    expect(getLiveGameResultWarnings(state, { winnerKey: null, isDraw: true, winCondition: null }))
+      .toContain('draw_with_single_survivor');
   });
 
   it('applies opponent-wide damage as one versioned mutation and compact summary', () => {

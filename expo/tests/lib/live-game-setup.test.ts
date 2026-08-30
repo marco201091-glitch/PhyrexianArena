@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultLiveGameSetup, parseLiveGameSetup } from '@/lib/live-game-setup';
+import { clearLiveGameSeats, createDefaultLiveGameSetup, parseLiveGameSetup } from '@/lib/live-game-setup';
 
 describe('live game setup', () => {
   it('defaults to four classic seats at 40 life', () => {
@@ -24,5 +24,17 @@ describe('live game setup', () => {
     }));
     expect(parsed?.layoutVariant).toBe('opposed');
     expect(parsed?.seats).toHaveLength(3);
+  });
+
+  it('clears only seat assignments without changing the seat count', () => {
+    expect(clearLiveGameSeats([
+      { participantKey: 'user:a', deckId: 'deck-a' },
+      { participantKey: null, deckId: null },
+      { participantKey: 'guest:b', deckId: 'deck-b' },
+    ])).toEqual([
+      { participantKey: null, deckId: null },
+      { participantKey: null, deckId: null },
+      { participantKey: null, deckId: null },
+    ]);
   });
 });

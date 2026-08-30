@@ -22,6 +22,7 @@ import { ArenaSkeleton } from '@/components/ui/screen-skeletons';
 import { useAuth } from '@/contexts/auth-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useToast } from '@/contexts/toast-context';
+import { useRuntimeConfig } from '@/contexts/runtime-config-context';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useArena } from '@/hooks/use-arena';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
@@ -29,7 +30,7 @@ import {
   clearLiveGameRuntimePlayers,
   replaceLiveGameRuntimePlayers,
 } from '@/stores/live-game-runtime-store';
-import { hapticLight, hapticSuccess } from '@/lib/haptics';
+import { hapticLight, hapticMedium, hapticSuccess, hapticWarning } from '@/lib/haptics';
 import { apiPost } from '@/lib/api';
 import { getLastDeckSelectionForParticipant } from '@/lib/arena-participants';
 import { getPreferredDeckId } from '@/lib/arena-deck-selection';
@@ -38,6 +39,7 @@ import {
   createLiveGamePlayer,
   createLiveGameSummary,
   getDefaultWinCondition,
+  getLiveGameResultWarnings,
   getSuggestedWinner,
   isValidLiveGameResult,
   pickRandomPlayer,
@@ -53,6 +55,7 @@ import { buildRouletteSequence } from '@/lib/live-game-roulette';
 import type { TableLayoutVariant } from '@/lib/live-game-table-layout';
 import {
   createDefaultLiveGameSetup,
+  clearLiveGameSeats,
   loadLiveGameSetup,
   saveLiveGameSetup,
   type LiveGameSeatSetup,
@@ -82,6 +85,7 @@ import {
   saveLiveGameOutbox,
   saveLiveGameOfflineSession,
   type PendingLiveGameFinalization,
+  type ArchivedLiveGameOperation,
 } from '@/lib/live-game-offline';
 import { persistLiveGameTelemetry, recordLiveGameQueueDepth } from '@/lib/live-game-telemetry';
 import {
@@ -101,17 +105,19 @@ import {
 } from '@/lib/live-game-orientation';
 import { parseParticipantKey, toGuestParticipantKey, toUserParticipantKey, type ParticipantKey } from '@/lib/participant-keys';
 import { getProfileDisplayName } from '@/lib/profile-display';
+import { prefetchCommanderNames, prefetchDeckImageUrls } from '@/lib/deck-image-cache';
 import { supabase } from '@/lib/supabase';
 import type { MemberDeck } from '@/lib/types/arena';
 
 type LifePreset = '20' | '25' | '30' | '40' | '60' | 'custom';
 const LIFE_PRESETS: LifePreset[] = ['20', '25', '30', '40', '60'];
-const ALTERNATIVE_WIN_CONDITIONS: {
-  value: Exclude<WinCondition, 'last_standing'>;
+const WIN_CONDITIONS: {
+  value: WinCondition;
   icon: keyof typeof Ionicons.glyphMap;
-  labelKey: 'liveGameWinCombo' | 'liveGameWinConcession' | 'liveGameWinAlternateCard' | 'liveGameWinOther';
-  hintKey: 'liveGameWinComboHint' | 'liveGameWinConcessionHint' | 'liveGameWinAlternateCardHint' | 'liveGameWinOtherHint';
+  labelKey: 'liveGameWinLastStanding' | 'liveGameWinCombo' | 'liveGameWinConcession' | 'liveGameWinAlternateCard' | 'liveGameWinOther';
+  hintKey: 'liveGameWinLastStandingHint' | 'liveGameWinComboHint' | 'liveGameWinConcessionHint' | 'liveGameWinAlternateCardHint' | 'liveGameWinOtherHint';
 }[] = [
+  { value: 'last_standing', icon: 'shield-checkmark-outline', labelKey: 'liveGameWinLastStanding', hintKey: 'liveGameWinLastStandingHint' },
   { value: 'combo', icon: 'git-merge-outline', labelKey: 'liveGameWinCombo', hintKey: 'liveGameWinComboHint' },
   { value: 'concession', icon: 'flag-outline', labelKey: 'liveGameWinConcession', hintKey: 'liveGameWinConcessionHint' },
   { value: 'alternate_card', icon: 'sparkles-outline', labelKey: 'liveGameWinAlternateCard', hintKey: 'liveGameWinAlternateCardHint' },
@@ -137,7 +143,8 @@ export default function LiveGameScreen() {
   const groupId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
   const { user } = useAuth();
-  const { copy } = useLanguage();
+  const { copy, language } = useLanguage();
+  const { featureFlags } = useRuntimeConfig();
   const { showToast } = useToast();
   const { scrollContentStyle } = useScreenInsets();
 
@@ -170,6 +177,8 @@ export default function LiveGameScreen() {
   const [showRematch, setShowRematch] = useState(false);
   const [completedGame, setCompletedGame] = useState<LiveGameRecord | null>(null);
   const [completedDurationSeconds, setCompletedDurationSeconds] = useState(0);
+  const [recoveryOutbox, setRecoveryOutbox] = useState<ArchivedLiveGameOperation[]>([]);
+  const [showClearRecoveryConfirm, setShowClearRecoveryConfirm] = useState(false);
   const rouletteTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const previousActivePlayerCountRef = useRef<number | null>(null);
 
@@ -328,12 +337,19 @@ export default function LiveGameScreen() {
   }, [applySeatSetups, seatSetups]);
 
   const resetSetup = useCallback(() => {
-    const defaults = createDefaultLiveGameSetup();
-    setPlayerCount(defaults.playerCount);
-    setLayoutVariant(defaults.layoutVariant);
-    applyStartingLife(defaults.startingLife);
-    applySeatSetups(defaults.seats);
-  }, [applySeatSetups, applyStartingLife]);
+    applySeatSetups(clearLiveGameSeats(seatSetups));
+  }, [applySeatSetups, seatSetups]);
+
+  useEffect(() => {
+    const selectedDecks = seatSetups.flatMap((seat) => {
+      if (!seat.participantKey || !seat.deckId) return [];
+      const deck = getDeckOptions(seat.participantKey).find((option) => option.id === seat.deckId);
+      return deck ? [deck] : [];
+    });
+    if (selectedDecks.length === 0) return;
+    void prefetchDeckImageUrls(selectedDecks.map((deck) => deck.commander_image), { background: true });
+    void prefetchCommanderNames(selectedDecks.map((deck) => deck.commander), { background: true });
+  }, [getDeckOptions, seatSetups]);
 
   const setOptimisticRecord = useCallback((record: LiveGameRecord | null) => {
     liveGameRef.current = record;
@@ -369,6 +385,7 @@ export default function LiveGameScreen() {
 
   const flushOutbox = useCallback(async () => {
     const outbox = await loadLiveGameOutbox();
+    setRecoveryOutbox(outbox);
     while (outbox.length > 0) {
       const item = outbox[0];
       let serverRecord = item.serverRecord;
@@ -398,7 +415,12 @@ export default function LiveGameScreen() {
       }
       outbox.shift();
       await saveLiveGameOutbox(outbox);
+      setRecoveryOutbox([...outbox]);
     }
+  }, []);
+
+  useEffect(() => {
+    void loadLiveGameOutbox().then(setRecoveryOutbox);
   }, []);
 
   const syncJournal = useCallback(() => {
@@ -959,7 +981,7 @@ export default function LiveGameScreen() {
   const handleAdjust = (playerKey: ParticipantKey, delta: number) => {
     if (delta < 0) {
       pulseDamage(playerKey);
-      void hapticLight();
+      void (Math.abs(delta) >= 10 ? hapticMedium() : hapticLight());
     }
     const mutation: LiveGameMutation = {
       type: 'adjust',
@@ -1119,7 +1141,15 @@ export default function LiveGameScreen() {
 
     setEndingGame(true);
     try {
-      const players = liveGame.state.players.map((player: LiveGamePlayer) => {
+      if (!endIsDraw && endWinCondition === 'last_standing' && activePlayers.length > 1 && endWinnerKey) {
+        activePlayers
+          .filter((player) => player.participantKey !== endWinnerKey)
+          .forEach((player) => pulseDamage(player.participantKey));
+        enqueueMutation({ type: 'last_standing', winnerKey: endWinnerKey });
+      }
+
+      const finalizedGame = liveGameRef.current ?? liveGame;
+      const players = finalizedGame.state.players.map((player: LiveGamePlayer) => {
         const parsed = parseParticipantKey(player.participantKey);
         return {
           participantKey: player.participantKey,
@@ -1149,7 +1179,7 @@ export default function LiveGameScreen() {
       const durationSeconds = getGameDurationSeconds(liveGame.started_at, pending.endedAt);
       setCompletedDurationSeconds(durationSeconds);
 
-      setCompletedGame(liveGame);
+      setCompletedGame(finalizedGame);
       const pendingJournal = journalWriteRef.current;
       await archiveAndClearLiveGameSession(groupId, {
         id: liveGame.id,
@@ -1269,6 +1299,11 @@ export default function LiveGameScreen() {
 
   const gameState = liveGame?.state;
   const activePlayers = (gameState?.players ?? []).filter((player: LiveGamePlayer) => !player.isEliminated);
+  const endGameWarnings = gameState ? getLiveGameResultWarnings(gameState, {
+    winnerKey: endIsDraw ? null : endWinnerKey || null,
+    isDraw: endIsDraw,
+    winCondition: endIsDraw ? null : endWinCondition,
+  }) : [];
   const requiresAlternativeWinCondition = !endIsDraw && activePlayers.length !== 1;
   const pendingEliminatePlayer = gameState?.players.find(
     (player) => player.participantKey === pendingEliminate,
@@ -1434,6 +1469,7 @@ export default function LiveGameScreen() {
               variant: 'destructive',
               onPress: () => {
                 if (!pendingEliminate) return;
+                void hapticWarning();
                 const player = liveGame.state.players.find(
                   (entry) => entry.participantKey === pendingEliminate,
                 );
@@ -1558,7 +1594,9 @@ export default function LiveGameScreen() {
               </View>
               {requiresAlternativeWinCondition ? (
                 <View style={styles.winConditionGrid}>
-                  {ALTERNATIVE_WIN_CONDITIONS.map((condition) => {
+                  {WIN_CONDITIONS.filter((condition) => (
+                    condition.value !== 'last_standing' || featureFlags?.lastStanding !== false
+                  )).map((condition) => {
                     const selected = endWinCondition === condition.value;
                     return (
                       <Pressable
@@ -1601,6 +1639,16 @@ export default function LiveGameScreen() {
                   <Ionicons name="checkmark-circle" size={20} color="#86efac" />
                 </View>
               )}
+            </View>
+          ) : null}
+          {endGameWarnings.length > 0 ? (
+            <View style={styles.resultWarning}>
+              <Ionicons name="warning-outline" size={18} color="#fcd34d" />
+              <Text style={styles.resultWarningText}>{endGameWarnings.map((warning) => (
+                warning === 'draw_with_single_survivor'
+                  ? (language === 'it' ? 'È rimasto un solo giocatore: verifica che sia davvero un pareggio.' : 'Only one player remains: verify this is really a draw.')
+                  : (language === 'it' ? 'Il vincitore ha già un valore letale o risulta eliminato.' : 'The winner already has a lethal total or is marked eliminated.')
+              )).join(' ')}</Text>
             </View>
           ) : null}
           <Pressable
@@ -1646,6 +1694,12 @@ export default function LiveGameScreen() {
       </View>
 
       <ScrollView contentContainerStyle={[scrollContentStyle, styles.content]}>
+          {recoveryOutbox.length > 0 ? (
+            <PhyrexianPanel style={styles.recoveryPanel}>
+              <View style={styles.recoveryHeader}><Ionicons name="cloud-upload-outline" size={21} color="#fcd34d" /><View style={styles.recoveryCopy}><Text style={styles.recoveryTitle}>{language === 'it' ? 'Centro recupero' : 'Recovery center'}</Text><Text style={styles.recoveryHint}>{language === 'it' ? `${recoveryOutbox.length} salvataggi in attesa. La partita resta protetta sul dispositivo.` : `${recoveryOutbox.length} saves pending. The game remains protected on this device.`}</Text></View></View>
+              <View style={styles.recoveryActions}><Button label={language === 'it' ? 'Sincronizza ora' : 'Sync now'} icon="sync-outline" onPress={() => void syncJournal()} /><Button label={language === 'it' ? 'Scarta' : 'Discard'} variant="ghost" onPress={() => setShowClearRecoveryConfirm(true)} /></View>
+            </PhyrexianPanel>
+          ) : null}
           <PhyrexianPanel style={styles.setupPanel}>
             <Text style={styles.setupTitle}>{copy('liveGameSetupTitle')}</Text>
             <Text style={styles.setupHint}>{copy('liveGameSetupHint')}</Text>
@@ -1673,6 +1727,8 @@ export default function LiveGameScreen() {
                 emptySeat: copy('liveGameEmptySeat'),
                 choosePlayer: copy('liveGameChoosePlayer'),
                 chooseDeck: copy('liveGameChooseDeck'),
+                searchDecks: copy('searchDecks'),
+                noDecksMatchSearch: copy('noDecksMatchSearch'),
                 clearSeat: copy('liveGameClearSeat'),
                 confirm: copy('confirm'),
                 reset: copy('liveGameResetSetup'),
@@ -1687,6 +1743,15 @@ export default function LiveGameScreen() {
 
           </PhyrexianPanel>
       </ScrollView>
+      <ConfirmModal
+        visible={showClearRecoveryConfirm}
+        title={language === 'it' ? 'Scartare i recuperi?' : 'Discard recovery data?'}
+        message={language === 'it' ? 'I salvataggi non ancora sincronizzati verranno rimossi definitivamente.' : 'Unsynced saves will be permanently removed.'}
+        icon="warning-outline"
+        tone="danger"
+        onClose={() => setShowClearRecoveryConfirm(false)}
+        actions={[{ label: copy('cancel'), variant: 'ghost', onPress: () => setShowClearRecoveryConfirm(false) }, { label: language === 'it' ? 'Scarta' : 'Discard', variant: 'destructive', onPress: () => { void saveLiveGameOutbox([]); setRecoveryOutbox([]); setShowClearRecoveryConfirm(false); } }]}
+      />
       <Modal
         visible={showRematch}
         onClose={() => setShowRematch(false)}
@@ -1775,6 +1840,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
+  resultWarning: { flexDirection: 'row', gap: spacing.sm, borderWidth: 1, borderColor: 'rgba(251,191,36,0.35)', borderRadius: radii.md, backgroundColor: 'rgba(245,158,11,0.1)', padding: spacing.sm },
+  resultWarningText: { flex: 1, color: '#fde68a', fontSize: 11, lineHeight: 16 },
+  recoveryPanel: { gap: spacing.sm, borderColor: 'rgba(251,191,36,0.35)' },
+  recoveryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  recoveryCopy: { flex: 1, gap: 2 },
+  recoveryTitle: { color: '#fde68a', fontSize: 14, fontWeight: '900' },
+  recoveryHint: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  recoveryActions: { flexDirection: 'row', gap: spacing.sm },
   rematchActions: {
     gap: spacing.sm,
   },

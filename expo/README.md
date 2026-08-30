@@ -6,7 +6,7 @@ Expo/React Native client for Android and iOS. It shares the same accounts, playg
 
 | Variant | Branch | Integrations |
 |---|---|---|
-| Standard | `Dev` / `main` | Email/password, optional Google OAuth, notifications, avatar picker, optional Sentry |
+| Standard | `Dev` / `main` | Email/password, optional Google OAuth, notifications, optional Sentry |
 | F-Droid | `fdroid-prep` | Email/password only; proprietary and unnecessary native dependencies removed |
 
 Both variants use the same application ID: `com.phyrexianarena.app`.

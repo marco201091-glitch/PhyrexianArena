@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
+  fetchAccessLogsForAdmin,
   normalizeAccessLogLimit,
   normalizeAccessLogPeriod,
   resolveAccessLogDateRange,
@@ -37,5 +38,19 @@ describe('access-log-query', () => {
   it('rejects invalid custom ranges', () => {
     expect(resolveAccessLogDateRange({ period: 'custom', from: '2026-07-08', to: '2026-07-01' })).toBeNull();
     expect(resolveAccessLogDateRange({ period: 'custom', from: 'bad', to: '2026-07-01' })).toBeNull();
+  });
+
+  it('maps app versions from the administrator RPC and hides them for web logs', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [
+        { id: '1', username: 'app-user', source: 'app', app_version: '8.2.0', accessed_at: '2026-08-29T08:00:00Z' },
+        { id: '2', username: 'web-user', source: 'web', app_version: '8.2.0', accessed_at: '2026-08-29T07:00:00Z' },
+      ],
+      error: null,
+    });
+
+    const rows = await fetchAccessLogsForAdmin({ rpc } as never, { period: 'all' });
+    expect(rows[0].appVersion).toBe('8.2.0');
+    expect(rows[1].appVersion).toBeNull();
   });
 });

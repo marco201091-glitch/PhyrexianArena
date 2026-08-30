@@ -1,6 +1,8 @@
 import { Link, useRouter } from 'expo-router';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Share, StyleSheet, Switch, Text, View } from 'react-native';
 import { showAppAlert } from '@/lib/app-alert';
 import { isPasswordPolicyValid, PasswordRequirements } from '@/components/auth/password-requirements';
 import { Button } from '@/components/ui/button';
@@ -13,9 +15,7 @@ import { Screen } from '@/components/ui/screen';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
 import { useLanguage } from '@/contexts/language-context';
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { ManaLogo } from '@/components/ui/mana-logo';
-import { useAvatarVersion } from '@/contexts/avatar-version-context';
 import { useProfile } from '@/hooks/use-profile';
 import type { AppLanguage } from '@/lib/i18n/types';
 import { isGoogleAuthUser } from '@/lib/oauth-profile';
@@ -25,7 +25,7 @@ import { supabase } from '@/lib/supabase';
 import { hapticSuccess } from '@/lib/haptics';
 import { APP_DISPLAY_VERSION } from '@/lib/app-version';
 import { FAN_CONTENT_NOTICE } from '@/lib/legal-site';
-import { apiPost } from '@/lib/api';
+import { apiGet, apiPost } from '@/lib/api';
 import { colors, spacing } from '@/constants/theme';
 import {
   DEFAULT_ACCESSIBILITY_PREFERENCES,
@@ -39,9 +39,7 @@ export default function SettingsScreen() {
   const { copy, language, setLanguage } = useLanguage();
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const { version: avatarVersion } = useAvatarVersion();
-  const { profile, updateDisplayName, getAvatarUrl, refresh: refreshProfile } = useProfile(user?.id);
-  const avatarUrl = getAvatarUrl(avatarVersion);
+  const { profile, updateDisplayName, refresh: refreshProfile } = useProfile(user?.id);
   const { showToast } = useToast();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -56,6 +54,7 @@ export default function SettingsScreen() {
   const [savingName, setSavingName] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [exportingAccount, setExportingAccount] = useState(false);
   const [accessibility, setAccessibility] = useState<AccessibilityPreferences>(DEFAULT_ACCESSIBILITY_PREFERENCES);
   const [archidektUsername, setArchidektUsername] = useState('');
   const [archidektAutoImport, setArchidektAutoImport] = useState(false);
@@ -222,6 +221,29 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleExportAccount = async () => {
+    setExportingAccount(true);
+    try {
+      const response = await apiGet<Record<string, unknown>>('/api/auth/export-account');
+      if (response.error || response.status >= 400 || !response.data) {
+        throw new Error(copy('exportAccountFailed'));
+      }
+      const contents = JSON.stringify(response.data, null, 2);
+      if (FileSystem.cacheDirectory && await Sharing.isAvailableAsync()) {
+        const path = `${FileSystem.cacheDirectory}mtg-tracker-account-${new Date().toISOString().slice(0, 10)}.json`;
+        await FileSystem.writeAsStringAsync(path, contents, { encoding: FileSystem.EncodingType.UTF8 });
+        await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: copy('exportAccount') });
+        await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => undefined);
+      } else {
+        await Share.share({ title: copy('exportAccount'), message: contents });
+      }
+    } catch (error) {
+      showAppAlert(copy('error'), error instanceof Error ? error.message : copy('exportAccountFailed'));
+    } finally {
+      setExportingAccount(false);
+    }
+  };
+
   return (
     <Screen>
       <View style={styles.branding}>
@@ -237,7 +259,6 @@ export default function SettingsScreen() {
       <PhyrexianPanel style={styles.card}>
         <SectionHeader title={copy('profile')} />
         <View style={styles.profileHeader}>
-          <ProfileAvatar uri={avatarUrl} size="md" />
           <Text style={styles.displayName}>{getProfileDisplayName(profile)}</Text>
           {profile?.username ? (
             <Text style={styles.username}>@{profile.username}</Text>
@@ -330,6 +351,14 @@ export default function SettingsScreen() {
         <Text style={styles.legalNotice}>{FAN_CONTENT_NOTICE}</Text>
       </PhyrexianPanel>
 
+      <Button
+        label={exportingAccount ? copy('exportingAccount') : copy('exportAccount')}
+        variant="ghost"
+        icon="download-outline"
+        disabled={exportingAccount}
+        onPress={() => void handleExportAccount()}
+        style={styles.logout}
+      />
       <Button label={copy('logout')} variant="ghost" onPress={() => void signOut()} style={styles.logout} />
       <Button
         label={copy('deleteAccount')}
@@ -481,22 +510,6 @@ const styles = StyleSheet.create({
   },
   profileActions: {
     gap: spacing.sm,
-  },
-  avatarButton: {
-    position: 'relative',
-  },
-  avatarBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.card,
   },
   displayName: {
     color: colors.foreground,

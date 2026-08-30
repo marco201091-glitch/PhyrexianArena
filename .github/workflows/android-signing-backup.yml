@@ -1,0 +1,114 @@
+name: Export encrypted Android signing backup
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-signing-backup
+  cancel-in-progress: false
+
+jobs:
+  export:
+    if: github.event_name == 'workflow_dispatch' || vars.RELEASE_BACKUP_GPG_PUBLIC_KEY_BASE64 != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+      RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+      RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+      RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      BACKUP_GPG_PUBLIC_KEY_BASE64: ${{ vars.RELEASE_BACKUP_GPG_PUBLIC_KEY_BASE64 }}
+      EXPECTED_CERT_SHA256: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab3002106
+
+    steps:
+      - name: Validate backup inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for variable in RELEASE_KEYSTORE_BASE64 RELEASE_STORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD BACKUP_GPG_PUBLIC_KEY_BASE64; do
+            [[ -n "${!variable:-}" ]] || { echo "Missing $variable"; exit 1; }
+          done
+
+      - name: Create and verify encrypted backup
+        id: backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          backup_root="$RUNNER_TEMP/android-signing-backup"
+          plaintext="$backup_root/plaintext"
+          encrypted="$backup_root/encrypted"
+          gnupg_home="$backup_root/gnupg"
+          mkdir -p "$plaintext" "$encrypted" "$gnupg_home"
+          chmod 700 "$gnupg_home"
+          export GNUPGHOME="$gnupg_home"
+
+          printf '%s' "$BACKUP_GPG_PUBLIC_KEY_BASE64" | base64 --decode | gpg --batch --import
+          recipient="$(printf '%s' "$BACKUP_GPG_PUBLIC_KEY_BASE64" | base64 --decode | gpg --batch --with-colons --show-keys | awk -F: '$1 == "fpr" { print $10; exit }')"
+          [[ "$recipient" =~ ^[0-9A-Fa-f]{40}$ ]]
+
+          keystore="$plaintext/mtg-tracker-analytics-release.jks"
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+
+          actual_cert="$(keytool -list -v -keystore "$keystore" -storepass "$RELEASE_STORE_PASSWORD" -alias "$RELEASE_KEY_ALIAS" | awk -F'SHA256: ' '/SHA256:/{gsub(":", "", $2); gsub(/[[:space:]]/, "", $2); print tolower($2); exit}')"
+          [[ "$actual_cert" == "$EXPECTED_CERT_SHA256" ]]
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          destination = Path(os.environ["RUNNER_TEMP"]) / "android-signing-backup" / "plaintext" / "credentials.json"
+          destination.write_text(
+              json.dumps(
+                  {
+                      "keyAlias": os.environ["RELEASE_KEY_ALIAS"],
+                      "keyPassword": os.environ["RELEASE_KEY_PASSWORD"],
+                      "storePassword": os.environ["RELEASE_STORE_PASSWORD"],
+                  },
+                  indent=2,
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          keystore_sha256="$(sha256sum "$keystore" | awk '{print $1}')"
+          cat > "$plaintext/manifest.txt" <<EOF
+          certificate_sha256=$actual_cert
+          keystore_sha256=$keystore_sha256
+          created_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          source_repository=$GITHUB_REPOSITORY
+          source_run_id=$GITHUB_RUN_ID
+          EOF
+
+          archive="$backup_root/android-signing-backup.tar"
+          tar -C "$plaintext" -cf "$archive" .
+          output="$encrypted/android-signing-backup-${GITHUB_RUN_ID}.tar.gpg"
+          gpg --batch --yes --trust-model always --recipient "$recipient" --output "$output" --encrypt "$archive"
+          output_name="${output##*/}"
+          pushd "$encrypted"
+          sha256sum "$output_name" > "$output_name.sha256"
+          popd
+          test -s "$output"
+          echo "directory=$encrypted" >> "$GITHUB_OUTPUT"
+
+      - name: Remove plaintext material
+        if: always()
+        shell: bash
+        run: |
+          backup_root="$RUNNER_TEMP/android-signing-backup"
+          rm -rf -- "$backup_root/plaintext" "$backup_root/android-signing-backup.tar" "$backup_root/gnupg"
+
+      - name: Upload short-lived encrypted backup
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-signing-backup-${{ github.run_id }}
+          path: ${{ steps.backup.outputs.directory }}/*
+          if-no-files-found: error
+          retention-days: 21

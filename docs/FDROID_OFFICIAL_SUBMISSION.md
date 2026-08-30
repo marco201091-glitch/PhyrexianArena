@@ -22,9 +22,7 @@ Expected differences from standard APK:
 - Sentry removed from the mobile dependency graph and native Gradle project.
 - Expo Push disabled and `expo-notifications` removed from the mobile dependency
   graph.
-- `expo-image-picker` removed from the mobile dependency graph; avatar upload is
-  omitted in the F-Droid branch to avoid Android Photo Picker Play-services
-  metadata.
+- Photo-library dependencies are absent from every build variant.
 - Release build can be produced unsigned with Gradle property
   `-PfdroidBuild=true`, so F-Droid can sign the APK itself.
 

@@ -25,6 +25,10 @@ export function createDefaultLiveGameSetup(): LiveGameSetup {
   };
 }
 
+export function clearLiveGameSeats(seats: LiveGameSeatSetup[]): LiveGameSeatSetup[] {
+  return seats.map(() => ({ participantKey: null, deckId: null }));
+}
+
 export function parseLiveGameSetup(raw: string | null): LiveGameSetup | null {
   if (!raw) return null;
   try {

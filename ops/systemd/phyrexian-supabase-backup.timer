@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly encrypted Supabase backup
+
+[Timer]
+OnCalendar=*-*-* 03:25:00 Europe/Rome
+Persistent=true
+RandomizedDelaySec=20m
+Unit=phyrexian-supabase-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -47,12 +47,14 @@ export interface PersonalAnalytics {
   longestWinStreak: number;
   currentWinStreak: number;
   bestDeck: PersonalDeckAnalytics | null;
+  winConditions: Array<{ condition: string; wins: number; percentage: number }>;
 }
 
 export interface PersonalMatchParticipantRow {
   is_winner: boolean;
   deck_id: string;
   played_at?: string | null;
+  win_condition?: string | null;
 }
 
 export const PERSONAL_BEST_DECK_MIN_GAMES = 3;
@@ -69,6 +71,7 @@ export function emptyPersonalAnalytics(): PersonalAnalytics {
     longestWinStreak: 0,
     currentWinStreak: 0,
     bestDeck: null,
+    winConditions: [],
   };
 }
 
@@ -164,7 +167,7 @@ export function buildPersonalAnalytics(
       ...deck,
       winRate: deck.gamesPlayed > 0 ? Math.round((deck.wins / deck.gamesPlayed) * 100) : 0,
     }))
-    .sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.wins - a.wins || b.winRate - a.winRate);
+    .sort((a, b) => b.winRate - a.winRate || b.gamesPlayed - a.gamesPlayed || b.wins - a.wins);
 
   const topDecks = playedDecks.slice(0, 10);
   const gamesPlayed = playedDecks.reduce((total, deck) => total + deck.gamesPlayed, 0);
@@ -202,6 +205,19 @@ export function buildPersonalAnalytics(
   const bestDeck = playedDecks
     .filter((deck) => deck.gamesPlayed >= PERSONAL_BEST_DECK_MIN_GAMES)
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || b.gamesPlayed - a.gamesPlayed)[0] || null;
+  const winConditionMap = new Map<string, number>();
+  participants.forEach((row) => {
+    if (!row.is_winner || !row.win_condition) return;
+    winConditionMap.set(row.win_condition, (winConditionMap.get(row.win_condition) ?? 0) + 1);
+  });
+  const trackedWinConditions = Array.from(winConditionMap.values()).reduce((sum, value) => sum + value, 0);
+  const winConditions = Array.from(winConditionMap.entries())
+    .map(([condition, conditionWins]) => ({
+      condition,
+      wins: conditionWins,
+      percentage: trackedWinConditions > 0 ? Math.round((conditionWins / trackedWinConditions) * 100) : 0,
+    }))
+    .sort((left, right) => right.wins - left.wins || left.condition.localeCompare(right.condition));
 
   return {
     gamesPlayed,
@@ -214,5 +230,6 @@ export function buildPersonalAnalytics(
     longestWinStreak,
     currentWinStreak,
     bestDeck,
+    winConditions,
   };
 }

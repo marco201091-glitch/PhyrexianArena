@@ -74,8 +74,8 @@ export const privacyPolicyDocument: LegalDocument = {
       title: { it: 'Dati che raccogliamo', en: 'Data we collect' },
       paragraphs: [
         {
-          it: 'Dati di account: email, username, password (hash), eventuale nome visualizzato, avatar caricato, data di registrazione e metadati di autenticazione (es. accesso con Google).',
-          en: 'Account data: email, username, password (hash), optional display name, uploaded avatar, registration date, and authentication metadata (e.g. Google sign-in).',
+          it: 'Dati di account: email, username, password (hash), eventuale nome visualizzato, data di registrazione e metadati di autenticazione (es. accesso con Google). Gli avatar caricati con versioni precedenti non vengono più mostrati e restano eliminabili con l’account.',
+          en: 'Account data: email, username, password (hash), optional display name, registration date, and authentication metadata (e.g. Google sign-in). Avatars uploaded with earlier versions are no longer displayed and remain removable with the account.',
         },
         {
           it: 'Dati di utilizzo: playgroup creati o a cui partecipi, mazzi, risultati delle partite, statistiche, note collegate al gioco e log di accesso (username e timestamp, deduplicati ogni ora).',
@@ -94,8 +94,8 @@ export const privacyPolicyDocument: LegalDocument = {
           en: 'Mobile-app data: app and operating-system version, device model or category, crash and performance diagnostics when Sentry diagnostics are enabled, and Expo Push token and platform when you allow notifications. Sentry is configured not to send default personal information.',
         },
         {
-          it: 'Fotocamera e immagini: la fotocamera viene usata solo su tua iniziativa per funzioni come QR; l’accesso alle foto viene richiesto solo per scegliere un avatar. Le immagini non selezionate non vengono caricate.',
-          en: 'Camera and images: the camera is used only at your request for features such as QR; photo access is requested only to choose an avatar. Images you do not select are not uploaded.',
+          it: 'Fotocamera e immagini: la fotocamera viene usata solo su tua iniziativa per funzioni come la scansione dei codici QR. L’app non richiede accesso alla libreria fotografica.',
+          en: 'Camera and images: the camera is used only at your request for features such as scanning QR codes. The app does not request photo-library access.',
         },
         {
           it: 'Preferenze locali: lingua dell’interfaccia e, se attivata, l’opzione "Ricordami" tramite cookie/storage del browser. Per il dettaglio consulta l’Informativa sui cookie.',
@@ -306,8 +306,8 @@ export const termsOfUseDocument: LegalDocument = {
           en: 'Do not use the service for illegal activity, harassment, spam, unauthorized access attempts, aggressive scraping, or infrastructure interference.',
         },
         {
-          it: 'Non caricare contenuti illeciti, offensivi o che violino diritti di terzi (inclusi avatar o nickname).',
-          en: 'Do not upload unlawful, offensive, or third-party-rights-infringing content (including avatars or nicknames).',
+          it: 'Non inserire contenuti illeciti, offensivi o che violino diritti di terzi (inclusi nickname e nomi dei mazzi).',
+          en: 'Do not enter unlawful, offensive, or third-party-rights-infringing content (including nicknames and deck names).',
         },
       ],
     },

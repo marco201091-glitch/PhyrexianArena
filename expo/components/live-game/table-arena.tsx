@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSharedValue } from 'react-native-reanimated';
 import { DamageConfirmSheet } from '@/components/live-game/damage-confirm-sheet';
 import { DamageDragOverlay } from '@/components/live-game/damage-drag-overlay';
@@ -289,7 +290,7 @@ export function TableArena({
   onAdjustCounter,
   onSetEmblem,
 }: TableArenaProps) {
-  const { copy } = useLanguage();
+  const { copy, language } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const [arenaSize, setArenaSize] = useState({ width: 0, height: 0 });
@@ -298,6 +299,29 @@ export function TableArena({
   const [dragSource, setDragSource] = useState<ParticipantKey | null>(null);
   const [dragHoverKey, setDragHoverKey] = useState<ParticipantKey | null>(null);
   const [pendingTransfer, setPendingTransfer] = useState<PendingTransfer | null>(null);
+  const [syncBadgeVisible, setSyncBadgeVisible] = useState(true);
+  const [liveOnboardingOpen, setLiveOnboardingOpen] = useState(false);
+
+  useEffect(() => {
+    if (syncStatus === 'error' && pendingSyncCount === 0) {
+      setSyncBadgeVisible(false);
+      return;
+    }
+    setSyncBadgeVisible(true);
+    if (syncStatus !== 'synced' && syncStatus !== 'offline') return;
+    const timer = setTimeout(() => setSyncBadgeVisible(false), 15_000);
+    return () => clearTimeout(timer);
+  }, [pendingSyncCount, syncStatus]);
+
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    void AsyncStorage.getItem('live-onboarding-v1').then((seen) => {
+      if (!active || seen) return;
+      timer = setTimeout(() => { if (active) setLiveOnboardingOpen(true); }, 4_500);
+    });
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  }, []);
   const [detailsPlayerKey, setDetailsPlayerKey] = useState<ParticipantKey | null>(null);
   const [damageFeedback, setDamageFeedback] = useState<string | null>(null);
   const [randomizerOpen, setRandomizerOpen] = useState(false);
@@ -691,7 +715,7 @@ export function TableArena({
 
   return (
     <View style={styles.root}>
-      <Pressable
+      {syncBadgeVisible ? <Pressable
         onPress={onRetrySync}
         accessibilityRole="button"
         accessibilityLabel={syncLabel}
@@ -711,7 +735,7 @@ export function TableArena({
           {syncLabel}{pendingSyncCount > 0 ? ` · ${pendingSyncCount}` : ''}
         </Text>
         {syncError ? <Ionicons name="refresh" size={12} color="#fecaca" /> : null}
-      </Pressable>
+      </Pressable> : null}
       <View
         style={[
           styles.gridHost,
@@ -798,6 +822,24 @@ export function TableArena({
               <Text style={styles.activePickerCancelText}>{labels.cancel}</Text>
             </Pressable>
           </View>
+        </View>
+      ) : null}
+
+      {liveOnboardingOpen ? (
+        <View accessibilityRole="alert" style={[styles.onboardingCard, { bottom: Math.max(insets.bottom, 8) + toolbarHeight + 8 }]}>
+          <View style={styles.onboardingHeader}>
+            <Ionicons name="sparkles-outline" size={19} color="#6ee7b7" />
+            <Text style={styles.onboardingTitle}>{language === 'it' ? 'Tre gesti utili' : 'Three useful gestures'}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={language === 'it' ? 'Chiudi guida' : 'Close guide'}
+              onPress={() => { void AsyncStorage.setItem('live-onboarding-v1', 'done'); setLiveOnboardingOpen(false); }}
+              style={styles.onboardingClose}
+            ><Ionicons name="close" size={17} color={colors.foreground} /></Pressable>
+          </View>
+          <Text style={styles.onboardingText}>{language === 'it' ? '• Tieni premuto +/− per modificare di 10.' : '• Hold +/− to change by 10.'}</Text>
+          <Text style={styles.onboardingText}>{language === 'it' ? '• Trascina tra giocatori per assegnare danno.' : '• Drag between players to assign damage.'}</Text>
+          <Text style={styles.onboardingText}>{language === 'it' ? '• La bandierina conclude e salva la partita.' : '• The flag ends and saves the game.'}</Text>
         </View>
       ) : null}
 
@@ -1030,6 +1072,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
   },
+  onboardingCard: { position: 'absolute', left: 12, right: 12, zIndex: 80, gap: 5, borderWidth: 1, borderColor: 'rgba(52,211,153,0.38)', borderRadius: radii.lg, backgroundColor: 'rgba(9,9,15,0.97)', padding: spacing.md },
+  onboardingHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  onboardingTitle: { flex: 1, color: '#d1fae5', fontSize: 14, fontWeight: '900' },
+  onboardingClose: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  onboardingText: { color: colors.muted, fontSize: 11, lineHeight: 16 },
   gridHost: {
     flex: 1,
     position: 'relative',
