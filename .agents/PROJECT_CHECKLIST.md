@@ -2,6 +2,8 @@
 
 ## In progress
 
+- [ ] Integrare la 8.2.0 completa su `Dev`, pushare `origin/Dev` e compilare/verificare una APK development locale.
+
 ## External follow-up
 
 - [ ] Monitor the official F-Droid merge request until approval.
