@@ -27,3 +27,12 @@ export async function hapticWarning() {
     // noop
   }
 }
+
+export async function hapticMedium() {
+  if (Platform.OS === 'web') return;
+  try {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  } catch {
+    // Haptics unavailable on some emulators
+  }
+}

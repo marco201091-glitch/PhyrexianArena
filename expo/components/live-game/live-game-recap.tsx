@@ -1,9 +1,10 @@
+import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
+import { captureRef } from 'react-native-view-shot';
 import { buildLiveGameRecap } from '@/lib/live-game-recap';
-import { buildLiveGameRecapShareSvg } from '@/lib/live-game-recap-share';
 import type { LiveGameRecord } from '@/lib/live-game';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
@@ -18,21 +19,27 @@ export function LiveGameRecapView({
   labels: { timeline: string; highlights: string; empty: string };
 }) {
   const { language } = useLanguage();
+  const recapRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
   const recap = buildLiveGameRecap(record);
   const duration = recap.durationSeconds == null ? '—' : `${Math.floor(recap.durationSeconds / 60)}:${String(recap.durationSeconds % 60).padStart(2, '0')}`;
   const shareRecap = async () => {
-    if (!FileSystem.cacheDirectory || !await Sharing.isAvailableAsync()) return;
-    const safeId = record.id.replace(/[^a-zA-Z0-9_-]/g, '-');
-    const path = `${FileSystem.cacheDirectory}mtg-game-recap-${safeId}.svg`;
-    await FileSystem.writeAsStringAsync(path, buildLiveGameRecapShareSvg(record, language), { encoding: FileSystem.EncodingType.UTF8 });
-    await Sharing.shareAsync(path, { mimeType: 'image/svg+xml', dialogTitle: language === 'it' ? 'Condividi riepilogo' : 'Share recap' });
-    await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => undefined);
+    if (!await Sharing.isAvailableAsync() || !recapRef.current) return;
+    setSharing(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    try {
+      const path = await captureRef(recapRef, { format: 'png', quality: 1, result: 'tmpfile' });
+      await Sharing.shareAsync(path, { mimeType: 'image/png', dialogTitle: language === 'it' ? 'Condividi riepilogo' : 'Share recap' });
+      await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => undefined);
+    } finally {
+      setSharing(false);
+    }
   };
-  return <View style={styles.root}>
+  return <View ref={recapRef} collapsable={false} style={styles.root}>
     <View style={styles.summaryRow}>
       <Text style={styles.summaryChip}>⏱ {duration}</Text>
       {recap.startingPlayerName ? <Text style={styles.summaryChip}>① {recap.startingPlayerName} · {recap.startingDirection === 'clockwise' ? '↻' : '↺'}</Text> : null}
-      <Pressable onPress={() => void shareRecap()} accessibilityRole="button" accessibilityLabel={language === 'it' ? 'Condividi riepilogo' : 'Share recap'} style={styles.shareButton}><Ionicons name="share-social-outline" size={15} color="#a7f3d0" /></Pressable>
+      {!sharing ? <Pressable onPress={() => void shareRecap().catch(() => undefined)} accessibilityRole="button" accessibilityLabel={language === 'it' ? 'Condividi riepilogo' : 'Share recap'} style={styles.shareButton}><Ionicons name="share-social-outline" size={15} color="#a7f3d0" /></Pressable> : null}
     </View>
     <Text style={styles.title}>{labels.timeline}</Text>
     {recap.players.map((player, index) => (
@@ -52,7 +59,6 @@ export function LiveGameRecapView({
           {player.eliminationsCaused > 0 ? <Text style={styles.metric}>☠ {player.eliminationsCaused}</Text> : null}
           {player.commanderDamageDealt > 0 ? <Text style={styles.metric}>CMD ⚔ {player.commanderDamageDealt}</Text> : null}
           {player.infectDealt > 0 ? <Text style={styles.metric}>INF ⚔ {player.infectDealt}</Text> : null}
-          {player.corrections > 0 ? <Text style={styles.correctionMetric}>↶ {player.corrections}</Text> : null}
           {player.events > 0 ? <Text style={styles.metric}>• {player.events}</Text> : null}
         </View>
       </View>
@@ -61,8 +67,7 @@ export function LiveGameRecapView({
     {recap.highlights.length ? <View style={styles.highlights}>
       {recap.highlights.map((event) => {
         const target = recap.players.find((player) => player.participantKey === event.targetKey);
-        const correction = event.isCorrection || event.type === 'correction';
-        return <View key={event.id} style={[styles.highlight, correction && styles.correctionHighlight]}><Text style={[styles.highlightText, correction && styles.correctionHighlightText]}>{target?.displayName ?? event.targetKey} · {correction ? (language === 'it' ? 'correzione' : 'correction') : event.type.replace('_', ' ')}</Text></View>;
+        return <View key={event.id} style={styles.highlight}><Text style={styles.highlightText}>{target?.displayName ?? event.targetKey} · {event.type.replace('_', ' ')}</Text></View>;
       })}
     </View> : <Text style={styles.empty}>{labels.empty}</Text>}
   </View>;
@@ -84,12 +89,9 @@ const styles = StyleSheet.create({
   commander: { color: colors.muted, fontSize: 10 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   metric: { color: colors.muted, fontSize: 9, fontWeight: '700' },
-  correctionMetric: { color: '#fcd34d', fontSize: 9, fontWeight: '800' },
   highlightsTitle: { color: '#ddd6fe', marginTop: spacing.xs },
   highlights: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   highlight: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.sm, paddingVertical: 5 },
   highlightText: { color: colors.muted, fontSize: 10 },
-  correctionHighlight: { borderColor: 'rgba(251,191,36,0.35)', backgroundColor: 'rgba(245,158,11,0.1)' },
-  correctionHighlightText: { color: '#fcd34d' },
   empty: { color: colors.muted, fontSize: 11 },
 });

@@ -18,6 +18,7 @@ type Operations = {
   runtimeConfiguration: { minimum_supported_version?: string; recommended_version?: string; feature_flags?: Record<string, boolean> } | null;
   clientAdoption30d: { appVersions: Record<string, number>; webVisits: number; queryLimited: boolean };
   notificationDeliveries24h: { counts: Record<string, number>; available: boolean };
+  liveGameSync14d: { available: boolean; sessions: number; successfulSyncs: number; failedSyncs: number; failureRate: number; recoveredSessions: number; sessionsWithQueue: number; maxQueueDepth: number; versionConflicts: number; slowestSyncMs: number; queryLimited: boolean };
   backupLastSuccessAt: string | null;
 };
 
@@ -58,6 +59,7 @@ export default function AdminOperationsPage() {
     {data ? <div className="mt-4 grid gap-4 lg:grid-cols-2">
       <Card><CardHeader><CardTitle>{t({ it: 'Versioni app · 30 giorni', en: 'App versions · 30 days' })}</CardTitle></CardHeader><CardContent><pre className="overflow-auto text-xs">{JSON.stringify(data.clientAdoption30d, null, 2)}</pre></CardContent></Card>
       <Card><CardHeader><CardTitle>{t({ it: 'Notifiche · 24 ore', en: 'Notifications · 24 hours' })}</CardTitle></CardHeader><CardContent><pre className="overflow-auto text-xs">{JSON.stringify(data.notificationDeliveries24h, null, 2)}</pre></CardContent></Card>
+      <Card><CardHeader><CardTitle>{t({ it: 'Qualità sync Live · 14 giorni', en: 'Live sync quality · 14 days' })}</CardTitle></CardHeader><CardContent className="grid grid-cols-2 gap-3 text-sm"><div><b>{data.liveGameSync14d.failureRate}%</b><p className="text-muted-foreground">{t({ it: 'errori sync', en: 'sync failures' })}</p></div><div><b>{data.liveGameSync14d.recoveredSessions}</b><p className="text-muted-foreground">{t({ it: 'sessioni recuperate', en: 'recovered sessions' })}</p></div><div><b>{data.liveGameSync14d.maxQueueDepth}</b><p className="text-muted-foreground">{t({ it: 'coda massima', en: 'max queue' })}</p></div><div><b>{data.liveGameSync14d.slowestSyncMs} ms</b><p className="text-muted-foreground">{t({ it: 'sync più lento', en: 'slowest sync' })}</p></div><div><b>{data.liveGameSync14d.versionConflicts}</b><p className="text-muted-foreground">{t({ it: 'conflitti versione', en: 'version conflicts' })}</p></div><div><b>{data.liveGameSync14d.sessions}</b><p className="text-muted-foreground">{t({ it: 'sessioni osservate', en: 'observed sessions' })}</p></div></CardContent></Card>
     </div> : <AppLoader label={t({ it: 'Caricamento...', en: 'Loading...' })} />}
   </AdminShell>;
 }

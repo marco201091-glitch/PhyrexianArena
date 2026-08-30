@@ -731,6 +731,27 @@ export function isValidLiveGameResult(
   return true;
 }
 
+export type LiveGameResultWarning =
+  | 'draw_with_single_survivor'
+  | 'winner_marked_eliminated'
+  | 'winner_has_lethal_total';
+
+export function getLiveGameResultWarnings(
+  state: LiveGameState,
+  result: { winnerKey: ParticipantKey | null; isDraw: boolean; winCondition: WinCondition | null },
+): LiveGameResultWarning[] {
+  const warnings: LiveGameResultWarning[] = [];
+  const activePlayers = getActivePlayers(state);
+  if (result.isDraw && activePlayers.length === 1) warnings.push('draw_with_single_survivor');
+  if (!result.winnerKey) return warnings;
+  const winner = state.players.find((player) => player.participantKey === result.winnerKey);
+  if (!winner) return warnings;
+  if (winner.isEliminated) warnings.push('winner_marked_eliminated');
+  const commanderLethal = Object.values(winner.commanderDamageFrom).some((damage) => damage >= 21);
+  if (winner.life <= 0 || winner.infect >= 10 || commanderLethal) warnings.push('winner_has_lethal_total');
+  return warnings;
+}
+
 export function parseLiveGameState(raw: unknown): LiveGameState {
   if (!raw || typeof raw !== 'object') return { version: 0, players: [], events: [] };
   const value = raw as Partial<LiveGameState>;

@@ -30,7 +30,6 @@ export type LiveGameRecapPlayer = {
   commanderDamageTaken: number;
   infectDealt: number;
   infectReceived: number;
-  corrections: number;
 };
 
 export type LiveGameRecap = {
@@ -140,9 +139,11 @@ export function buildHistoricalLiveGameRecord(match: HistoricalMatchSnapshot): L
 }
 
 export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
-  const orderedEvents = [...record.state.events].sort((left, right) => (
-    left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id)
-  ));
+  const orderedEvents = [...record.state.events]
+    .filter((event) => !event.isCorrection && event.type !== 'correction')
+    .sort((left, right) => (
+      left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id)
+    ));
   const players = record.state.players.map((player) => {
     const metrics = record.state.summary?.byParticipant[player.participantKey];
     return {
@@ -153,7 +154,7 @@ export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
       finalLife: player.life,
       finalInfect: player.infect,
       eliminatedAt: player.eliminatedAt,
-      events: metrics?.eventCount ?? 0,
+      events: Math.max(0, (metrics?.eventCount ?? 0) - (metrics?.corrections ?? 0)),
       damageDealt: metrics?.lifeDamageDealt ?? 0,
       lifeGained: metrics?.lifeGained ?? 0,
       eliminationsCaused: metrics?.eliminationsCaused ?? 0,
@@ -162,7 +163,6 @@ export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
       commanderDamageTaken: metrics?.commanderDamageTaken ?? 0,
       infectDealt: metrics?.infectDealt ?? 0,
       infectReceived: metrics?.infectReceived ?? 0,
-      corrections: metrics?.corrections ?? 0,
     };
   });
   const durationSeconds = record.started_at && record.ended_at
@@ -170,7 +170,7 @@ export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
     : null;
   const startingPlayerKey = record.state.startingPlayerKey ?? null;
   return {
-    totalEvents: record.state.summary?.totalEvents ?? orderedEvents.length,
+    totalEvents: orderedEvents.length,
     startedAt: record.started_at,
     endedAt: record.ended_at,
     durationSeconds,

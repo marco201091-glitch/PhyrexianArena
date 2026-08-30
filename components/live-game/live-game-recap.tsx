@@ -20,7 +20,23 @@ export function LiveGameRecapView({
   const shareRecap = async () => {
     const svg = buildLiveGameRecapShareSvg(record, language);
     const safeId = record.id.replace(/[^a-zA-Z0-9_-]/g, '-');
-    const file = new File([svg], `mtg-game-recap-${safeId}.svg`, { type: 'image/svg+xml' });
+    const svgBlob = new Blob([svg], { type: 'image/svg+xml' });
+    const sourceUrl = URL.createObjectURL(svgBlob);
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Unable to render recap'));
+      image.src = sourceUrl;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    canvas.getContext('2d')?.drawImage(image, 0, 0);
+    URL.revokeObjectURL(sourceUrl);
+    const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => (
+      blob ? resolve(blob) : reject(new Error('Unable to create recap image'))
+    ), 'image/png'));
+    const file = new File([png], `mtg-game-recap-${safeId}.png`, { type: 'image/png' });
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ title: 'MTG Tracker & Analytics', files: [file] });
       return;
@@ -38,7 +54,7 @@ export function LiveGameRecapView({
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">⏱ {duration}</span>
         {recap.startingPlayerName ? <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">① {recap.startingPlayerName} · {recap.startingDirection === 'clockwise' ? '↻' : '↺'}</span> : null}
-        <button type="button" onClick={() => void shareRecap()} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 font-bold text-emerald-200"><Share2 className="h-3.5 w-3.5" />{language === 'it' ? 'Condividi' : 'Share'}</button>
+        <button type="button" onClick={() => void shareRecap().catch(() => undefined)} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 font-bold text-emerald-200"><Share2 className="h-3.5 w-3.5" />{language === 'it' ? 'Condividi' : 'Share'}</button>
       </div>
       <div>
         <h3 className="text-sm font-black uppercase tracking-[0.18em] text-cyan-200">{labels.timeline}</h3>
@@ -55,7 +71,6 @@ export function LiveGameRecapView({
                     {player.eliminationsCaused > 0 ? <span>☠ {player.eliminationsCaused}</span> : null}
                     {player.commanderDamageDealt > 0 ? <span>CMD ⚔ {player.commanderDamageDealt}</span> : null}
                     {player.infectDealt > 0 ? <span>INF ⚔ {player.infectDealt}</span> : null}
-                    {player.corrections > 0 ? <span className="text-amber-300">↶ {player.corrections}</span> : null}
                     {player.events > 0 ? <span>• {player.events}</span> : null}
                   </div>
                 </div>
@@ -73,8 +88,7 @@ export function LiveGameRecapView({
           <div className="mt-2 flex flex-wrap gap-2">
             {recap.highlights.map((event) => {
               const target = recap.players.find((player) => player.participantKey === event.targetKey);
-              const correction = event.isCorrection || event.type === 'correction';
-              return <span key={event.id} className={correction ? 'rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-200' : 'rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs text-muted-foreground'}>{target?.displayName ?? event.targetKey} · {correction ? (language === 'it' ? 'correzione' : 'correction') : event.type.replace('_', ' ')}</span>;
+              return <span key={event.id} className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs text-muted-foreground">{target?.displayName ?? event.targetKey} · {event.type.replace('_', ' ')}</span>;
             })}
           </div>
         ) : <p className="mt-2 text-xs text-muted-foreground">{labels.empty}</p>}

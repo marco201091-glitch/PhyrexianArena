@@ -188,6 +188,21 @@ export function PersonalAnalyticsSection({
             </PhyrexianPanel>
           ) : null}
 
+          {analytics.winConditions.length > 0 ? (
+            <PhyrexianPanel>
+              <Text style={styles.cardTitle}>{language === 'it' ? 'Condizioni di vittoria' : 'Win conditions'}</Text>
+              <View style={styles.colorList}>
+                {analytics.winConditions.map((stat) => {
+                  const labels: Record<string, { it: string; en: string }> = {
+                    last_standing: { it: 'Ultimo in gioco', en: 'Last standing' }, combo: { it: 'Combo', en: 'Combo' },
+                    concession: { it: 'Concessione', en: 'Concession' }, alternate_card: { it: 'Carta alternativa', en: 'Alternate card' }, other: { it: 'Altro', en: 'Other' },
+                  };
+                  return <View key={stat.condition} style={styles.colorRow}><View style={styles.colorHeader}><Text style={styles.colorName}>{labels[stat.condition]?.[language] ?? stat.condition}</Text><Text style={styles.colorCount}>{stat.wins}W · {stat.percentage}%</Text></View><View style={styles.progressTrack}><View style={[styles.winConditionProgress, { width: `${stat.percentage}%` }]} /></View></View>;
+                })}
+              </View>
+            </PhyrexianPanel>
+          ) : null}
+
           <PhyrexianPanel>
             <Text style={styles.cardTitle}>{colorsTitle}</Text>
             <View style={styles.colorList}>
@@ -320,4 +335,5 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: colors.primaryLight,
   },
+  winConditionProgress: { height: '100%', borderRadius: 999, backgroundColor: '#a78bfa' },
 });

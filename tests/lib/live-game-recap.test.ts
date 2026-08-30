@@ -17,14 +17,15 @@ describe('live-game recap', () => {
         events: [
           { id: '1', type: 'damage', occurredAt: '2026-01-01T00:01:00.000Z', targetKey: 'user:a', sourceKey: null, amount: 5 },
           { id: '2', type: 'lifegain', occurredAt: '2026-01-01T00:02:00.000Z', targetKey: 'user:a', sourceKey: null, amount: 3 },
+          { id: '3', type: 'correction', occurredAt: '2026-01-01T00:03:00.000Z', targetKey: 'user:a', sourceKey: null, amount: 1, isCorrection: true },
         ],
         summary: {
           schemaVersion: 1,
-          totalEvents: 2,
+          totalEvents: 3,
           firstOccurredAt: '2026-01-01T00:01:00.000Z',
           lastOccurredAt: '2026-01-01T00:02:00.000Z',
           byParticipant: {
-            'user:a': { eventCount: 2, lifeLost: 5, lifeGained: 3, lifeDamageDealt: 12, unattributedLifeLost: 5, commanderDamageTaken: 0, commanderDamageDealt: 4, infectReceived: 0, infectDealt: 2, eliminations: 0, eliminationsCaused: 1, revives: 0, corrections: 1, groupDamageDealt: 0, groupDamageEvents: 0 },
+            'user:a': { eventCount: 3, lifeLost: 5, lifeGained: 3, lifeDamageDealt: 12, unattributedLifeLost: 5, commanderDamageTaken: 0, commanderDamageDealt: 4, infectReceived: 0, infectDealt: 2, eliminations: 0, eliminationsCaused: 1, revives: 0, corrections: 1, groupDamageDealt: 0, groupDamageEvents: 0 },
           },
         },
       },
@@ -36,13 +37,14 @@ describe('live-game recap', () => {
       damageDealt: 12,
       lifeGained: 3,
       eliminationsCaused: 1,
-      corrections: 1,
     });
-    expect(buildLiveGameRecap(record)).toMatchObject({ durationSeconds: 600, startingPlayerName: 'A', startingDirection: 'clockwise' });
+    expect(buildLiveGameRecap(record)).toMatchObject({ totalEvents: 2, durationSeconds: 600, startingPlayerName: 'A', startingDirection: 'clockwise' });
+    expect(buildLiveGameRecap(record).highlights.map((event) => event.id)).toEqual(['1', '2']);
     const svg = buildLiveGameRecapShareSvg(record, 'it');
     expect(svg).toContain('Riepilogo partita');
     expect(svg).toContain('A');
     expect(svg).toContain('10:00');
+    expect(svg).not.toContain('correzioni');
   });
 
   it('rebuilds a recap after the temporary live-game row is purged', () => {
