@@ -1,8 +1,8 @@
 # F-Droid-style release readiness
 
-Version 8.0.0 has been submitted to the official F-Droid `fdroiddata`
-repository. The source build and validation pipeline pass; inclusion is now
-waiting for F-Droid maintainer review.
+Version 8.2.0 is prepared for the official F-Droid `fdroiddata` merge request.
+The source build, reproducibility check, and upstream pipeline must pass before
+the update is announced to F-Droid maintainers.
 
 ## Current assessment
 
@@ -15,6 +15,8 @@ waiting for F-Droid maintainer review.
   Archidekt, Moxfield, EDHREC, Resend, Turnstile, optional Google OAuth, optional
   Expo Push, and optional Sentry diagnostics. These may require F-Droid
   Anti-Feature disclosure.
+- F-Droid anti-features: `Non-Free Network Services` and `Tethered Network Services`
+  are documented for maintainer review where applicable.
 - Tracking: Sentry is disabled unless `EXPO_PUBLIC_SENTRY_ENABLED=true`; the
   F-Droid build flag disables Sentry initialization and removes the Expo Sentry
   config plugin from generated native config.

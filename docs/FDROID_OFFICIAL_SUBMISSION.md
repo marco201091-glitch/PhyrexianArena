@@ -82,4 +82,6 @@ Merge request:
 The F-Droid pipeline has completed `fdroid readmeta`, metadata linting, source
 build, scanner, signed-APK generation, and APK checks successfully. The merge
 request follows the App Inclusion template and the React Native build template.
-Only F-Droid maintainer review remains external to this repository.
+Version 8.2.0 keeps the validated source-build procedure and will be pinned to
+the immutable `fdroid-v8.2.0` release commit. Only F-Droid maintainer review
+remains external to this repository after the update pipeline passes.

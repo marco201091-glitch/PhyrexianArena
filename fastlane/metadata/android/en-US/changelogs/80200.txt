@@ -1,0 +1,4 @@
+Adds deck and commander search to live-game setup and improves recaps.
+Improves Last Standing, live recovery, analytics, and runtime compatibility.
+Adds account-data export and removes avatar loading and upload.
+Includes privacy, notification, security, and reliability improvements.
