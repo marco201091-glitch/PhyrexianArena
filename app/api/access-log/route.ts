@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireAuthenticatedUser } from '@/app/api/_lib/auth';
 import { applyUserRateLimit } from '@/app/api/_lib/with-rate-limit';
-import { normalizeAccessLogSource, shouldSkipAccessLog } from '@/lib/access-log';
+import {
+  normalizeAccessLogAppVersion,
+  normalizeAccessLogSource,
+  shouldSkipAccessLog,
+  type AccessLogSource,
+} from '@/lib/access-log';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
@@ -32,10 +37,12 @@ export async function POST(request: Request) {
   const rateLimited = await applyUserRateLimit(user, 'accessLog');
   if (rateLimited) return rateLimited;
 
-  let source = 'web';
+  let source: AccessLogSource = 'web';
+  let appVersion: string | null = null;
   try {
     const body = await request.json();
     source = normalizeAccessLogSource(body?.source);
+    appVersion = normalizeAccessLogAppVersion(body?.appVersion, source);
   } catch {
     // Empty body defaults to web (browser clients).
   }
@@ -48,6 +55,7 @@ export async function POST(request: Request) {
   const { data, error: rpcError } = await adminClient.rpc('record_user_access', {
     p_user_id: user.id,
     p_source: source,
+    p_app_version: appVersion,
   });
 
   if (rpcError) {

@@ -360,7 +360,7 @@ describe('live game mutations', () => {
     expect(damaged.summary?.byParticipant[keys[1]]?.lifeLost).toBe(5);
   });
 
-  it('requires an alternative win condition unless only one player remains', () => {
+  it('accepts Last Standing explicitly and applies lethal damage to every opponent', () => {
     const activeState = makeState();
     expect(getDefaultWinCondition(activeState)).toBeNull();
     expect(isValidLiveGameResult(activeState, {
@@ -368,7 +368,40 @@ describe('live game mutations', () => {
     })).toBe(true);
     expect(isValidLiveGameResult(activeState, {
       winnerKey: keys[0], isDraw: false, winCondition: 'last_standing',
-    })).toBe(false);
+    })).toBe(true);
+
+    const thirdKey = 'user:c' as const;
+    const threePlayerState = {
+      ...activeState,
+      players: [
+        ...activeState.players,
+        createLiveGamePlayer({
+          slot: 2,
+          participantKey: thirdKey,
+          deckId: 'deck-c',
+          displayName: 'Player 3',
+          commander: 'Commander 3',
+          commanderImage: null,
+          startingLife: 40,
+          allParticipantKeys: [...keys, thirdKey],
+        }),
+      ],
+    };
+    const resolvedAsLastStanding = applyLiveGameMutation(threePlayerState, {
+      type: 'last_standing',
+      winnerKey: keys[0],
+      eventId: 'last-standing',
+      occurredAt: '2026-08-29T10:00:00.000Z',
+    });
+    expect(resolvedAsLastStanding.players[0].life).toBe(40);
+    expect(resolvedAsLastStanding.players[0].isEliminated).toBe(false);
+    expect(resolvedAsLastStanding.players[1].life).toBe(0);
+    expect(resolvedAsLastStanding.players[1].isEliminated).toBe(true);
+    expect(resolvedAsLastStanding.players[2].life).toBe(0);
+    expect(resolvedAsLastStanding.players[2].isEliminated).toBe(true);
+    expect(resolvedAsLastStanding.summary?.byParticipant[keys[0]]?.lifeDamageDealt).toBe(80);
+    expect(resolvedAsLastStanding.summary?.byParticipant[keys[1]]?.lifeLost).toBe(40);
+    expect(resolvedAsLastStanding.summary?.byParticipant[thirdKey]?.lifeLost).toBe(40);
 
     const lastStanding = applyLiveGameMutation(activeState, {
       type: 'eliminate', targetKey: keys[1], eliminatedAt: '2026-07-14T12:00:00.000Z',

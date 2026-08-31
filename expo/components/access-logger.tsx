@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { apiPost } from '@/lib/api';
+import { APP_DISPLAY_VERSION } from '@/lib/app-version';
 import {
   ACCESS_LOG_DEDUP_WINDOW_MS,
   getAccessLogSessionKey,
@@ -28,7 +29,10 @@ export function AccessLogger() {
         // Ignore storage failures.
       }
 
-      const { data, status } = await apiPost<{ recorded?: boolean }>('/api/access-log', { source: 'app' });
+      const { data, status } = await apiPost<{ recorded?: boolean }>('/api/access-log', {
+        source: 'app',
+        appVersion: APP_DISPLAY_VERSION,
+      });
       if (status >= 400 || !data?.recorded) return;
 
       try {

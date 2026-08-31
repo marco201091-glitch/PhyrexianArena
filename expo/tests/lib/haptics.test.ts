@@ -6,7 +6,7 @@ const { impactAsync, notificationAsync } = vi.hoisted(() => ({
 }));
 
 vi.mock('expo-haptics', () => ({
-  ImpactFeedbackStyle: { Light: 'light' },
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium' },
   NotificationFeedbackType: { Success: 'success', Warning: 'warning' },
   impactAsync,
   notificationAsync,
@@ -14,7 +14,7 @@ vi.mock('expo-haptics', () => ({
 
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 
-import { hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
+import { hapticLight, hapticMedium, hapticSuccess, hapticWarning } from '@/lib/haptics';
 
 describe('iOS haptics', () => {
   beforeEach(() => {
@@ -24,10 +24,12 @@ describe('iOS haptics', () => {
 
   it('uses the expected feedback styles', async () => {
     await hapticLight();
+    await hapticMedium();
     await hapticSuccess();
     await hapticWarning();
 
     expect(impactAsync).toHaveBeenCalledWith('light');
+    expect(impactAsync).toHaveBeenCalledWith('medium');
     expect(notificationAsync).toHaveBeenNthCalledWith(1, 'success');
     expect(notificationAsync).toHaveBeenNthCalledWith(2, 'warning');
   });
@@ -37,6 +39,7 @@ describe('iOS haptics', () => {
     notificationAsync.mockRejectedValue(new Error('unsupported'));
 
     await expect(hapticLight()).resolves.toBeUndefined();
+    await expect(hapticMedium()).resolves.toBeUndefined();
     await expect(hapticSuccess()).resolves.toBeUndefined();
     await expect(hapticWarning()).resolves.toBeUndefined();
   });

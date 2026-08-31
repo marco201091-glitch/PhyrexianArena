@@ -52,4 +52,14 @@ describe('personal analytics', () => {
     expect(calculateWinStreaks([true, true, false, true])).toEqual({ longest: 2, current: 1 });
     expect(calculateWinStreaks([])).toEqual({ longest: 0, current: 0 });
   });
+
+  it('uses win rate as the primary ranking and summarizes win conditions', () => {
+    const rows = [
+      ...Array.from({ length: 5 }, (_, index) => ({ deck_id: 'a', is_winner: index < 2, win_condition: index < 2 ? 'combo' : null })),
+      { deck_id: 'b', is_winner: true, win_condition: 'last_standing' },
+    ];
+    const analytics = buildPersonalAnalytics(rows, decks);
+    expect(analytics.topDecks.map((deck) => deck.id)).toEqual(['b', 'a']);
+    expect(analytics.winConditions.map((entry) => [entry.condition, entry.wins])).toEqual([['combo', 2], ['last_standing', 1]]);
+  });
 });

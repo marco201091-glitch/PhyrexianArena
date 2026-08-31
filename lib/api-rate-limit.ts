@@ -20,6 +20,7 @@ export const API_RATE_LIMITS = {
   authDemoLogin: { maxRequests: 20, windowSeconds: 60 * 60, failClosed: true },
   authLogin: { maxRequests: 30, windowSeconds: 60 * 60, failClosed: true },
   accountDelete: { maxRequests: 3, windowSeconds: 60 * 60, failClosed: true },
+  accountExport: { maxRequests: 3, windowSeconds: 60 * 60, failClosed: true },
   accessLog: { maxRequests: 120, windowSeconds: 60 * 60 },
   inviteQr: { maxRequests: 60, windowSeconds: 10 * 60 },
   publicArena: { maxRequests: 120, windowSeconds: 10 * 60, failClosed: true },
@@ -31,7 +32,6 @@ export const API_RATE_LIMITS = {
   notifications: { maxRequests: 120, windowSeconds: 10 * 60 },
   guestClaimPreview: { maxRequests: 60, windowSeconds: 10 * 60 },
   guestClaimCreate: { maxRequests: 30, windowSeconds: 60 * 60 },
-  avatarUpload: { maxRequests: 20, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitConfig>;
 
 interface RateLimitResult {

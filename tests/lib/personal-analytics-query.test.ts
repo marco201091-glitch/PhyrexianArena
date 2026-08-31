@@ -9,6 +9,7 @@ const fact: PersonalAnalyticsFact = {
   is_winner: true,
   deck_id: 'deck-1',
   played_at: '2026-07-01T10:00:00.000Z',
+  win_condition: 'last_standing',
   name: 'Counters',
   commander: 'Atraxa',
   commander_image: null,
@@ -40,6 +41,6 @@ describe('personal analytics query', () => {
     expect(rpc).toHaveBeenCalledWith('get_personal_analytics_facts', {
       p_user_id: 'user-1',
     });
-    expect(inputs.participants[0]).toMatchObject({ is_winner: true, deck_id: 'deck-1' });
+    expect(inputs.participants[0]).toMatchObject({ is_winner: true, deck_id: 'deck-1', win_condition: 'last_standing' });
   });
 });

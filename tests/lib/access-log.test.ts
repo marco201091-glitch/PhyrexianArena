@@ -49,4 +49,12 @@ describe('access-log', () => {
     expect(normalizeAccessLogSource('web')).toBe('web');
     expect(normalizeAccessLogSource(undefined)).toBe('web');
   });
+
+  it('accepts app versions only for app-origin logs', async () => {
+    const { normalizeAccessLogAppVersion } = await import('@/lib/access-log');
+    expect(normalizeAccessLogAppVersion(' 8.2.0 ', 'app')).toBe('8.2.0');
+    expect(normalizeAccessLogAppVersion('8.2.0-beta.1', 'app')).toBe('8.2.0-beta.1');
+    expect(normalizeAccessLogAppVersion('8.2', 'app')).toBeNull();
+    expect(normalizeAccessLogAppVersion('8.2.0', 'web')).toBeNull();
+  });
 });

@@ -14,6 +14,7 @@ import { QueryProvider } from '@/components/query-provider';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { AppNotificationListener } from '@/components/app-notification-listener';
 import { NotificationCenter } from '@/components/notification-center';
+import { RuntimeConfigProvider } from '@/components/runtime-config-provider';
 
 export const viewport = {
   width: 'device-width',
@@ -59,6 +60,7 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <QueryProvider>
           <LanguageProvider>
+            <RuntimeConfigProvider>
             <AuthProvider>
             <AccessLogger />
             <AppNotificationListener />
@@ -68,6 +70,7 @@ export default function RootLayout({
             <AppLocalizer />
             <Toaster />
             </AuthProvider>
+            </RuntimeConfigProvider>
           </LanguageProvider>
         </QueryProvider>
       </body>

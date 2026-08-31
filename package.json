@@ -1,6 +1,6 @@
 {
   "name": "nextjs",
-  "version": "8.1.0",
+  "version": "8.2.0",
   "private": true,
   "packageManager": "npm@11.16.0",
   "engines": {
@@ -26,6 +26,8 @@
     "verify:security": "node scripts/verify-security.mjs",
     "verify:obtainium": "node scripts/verify-obtainium-readiness.mjs",
     "verify:fdroid": "node scripts/verify-fdroid-readiness.mjs",
+    "audit:production": "npm audit --omit=dev --audit-level=high",
+    "verify:build-budget": "node scripts/check-build-budgets.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:stress:dev-db": "node scripts/blocked-linked-supabase-command.mjs scripts/qa/v7-history-stress.sql",
     "test:realtime:dev-db": "node scripts/blocked-linked-supabase-command.mjs scripts/qa/v7-realtime-contract.sql",
@@ -35,8 +37,9 @@
     "backup:dev-db": "node scripts/backup-dev-supabase.mjs",
     "verify:dev-db-backup": "node scripts/verify-dev-supabase-backup.mjs",
     "restore-drill:dev-db": "node scripts/restore-drill-dev-supabase.mjs",
-    "test:e2e": "playwright test",
-    "test:e2e:update": "playwright test --update-snapshots",
+    "test:e2e:preflight": "node scripts/e2e-preflight.mjs",
+    "test:e2e": "npm run test:e2e:preflight && playwright test",
+    "test:e2e:update": "npm run test:e2e:preflight && playwright test --update-snapshots",
     "verify:v7": "npm run quality && npm run build && npm run test:e2e && npm --prefix expo run quality && npm --prefix expo run doctor && npm run expo:ios:ready && npm run expo:ios:bundle:check && npm --prefix expo run android:bundle:check",
     "test:import-images": "node scripts/verify-import-images.mjs",
     "sync:web-favicons": "node scripts/sync-web-favicons.mjs",
@@ -65,7 +68,6 @@
     "@hookform/resolvers": "^5.7.1",
     "@next/env": "16.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.1",
-    "@radix-ui/react-avatar": "^1.1.0",
     "@radix-ui/react-checkbox": "^1.1.1",
     "@radix-ui/react-collapsible": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.1",
@@ -114,5 +116,10 @@
   "overrides": {
     "postcss": "$postcss",
     "sharp": "$sharp"
+  },
+  "allowScripts": {
+    "@sentry/cli@2.58.6": true,
+    "esbuild@0.28.1": true,
+    "unrs-resolver@1.12.2": true
   }
 }

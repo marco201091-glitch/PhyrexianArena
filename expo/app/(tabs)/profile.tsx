@@ -7,7 +7,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { showAppAlert } from '@/lib/app-alert';
 import { AddDeckModal } from '@/components/profile/add-deck-modal';
 import { DeckCard } from '@/components/profile/deck-card';
@@ -28,7 +27,6 @@ import { useToast } from '@/contexts/toast-context';
 import { useLanguage } from '@/contexts/language-context';
 import { hapticSuccess } from '@/lib/haptics';
 import { colors, sectionStackGap, spacing } from '@/constants/theme';
-import { useAvatarVersion } from '@/contexts/avatar-version-context';
 import { useProfile } from '@/hooks/use-profile';
 import { useProfileDecks } from '@/hooks/use-profile-decks';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
@@ -53,8 +51,7 @@ export default function ProfileScreen() {
   const { user } = useAuth();
   const { copy, language } = useLanguage();
   const { showToast } = useToast();
-  const { version: avatarVersion } = useAvatarVersion();
-  const { profile, loading: profileLoading, getAvatarUrl } = useProfile(user?.id);
+  const { profile, loading: profileLoading } = useProfile(user?.id);
   const {
     decks,
     winRates,
@@ -124,8 +121,6 @@ export default function ProfileScreen() {
       return a.name.localeCompare(b.name, language, { sensitivity: 'base' });
     });
   }, [deckColorFilter, deckSort, decks, language, performance, searchQuery]);
-
-  const avatarUrl = getAvatarUrl(avatarVersion);
 
   const memberSince = useMemo(() => {
     if (!profile?.created_at) return '';
@@ -224,7 +219,6 @@ export default function ProfileScreen() {
     <View style={styles.listHeader}>
         <PhyrexianPanel variant="strong" style={styles.profileCard}>
           <View style={styles.profileHeader}>
-            <ProfileAvatar uri={avatarUrl} size="sm" />
             <View style={styles.profileMeta}>
               <Text style={styles.displayName} numberOfLines={1}>
                 {getProfileDisplayName(profile)}

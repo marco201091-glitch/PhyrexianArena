@@ -7,8 +7,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
-import { AvatarVersionProvider } from '@/contexts/avatar-version-context';
 import { LanguageProvider } from '@/contexts/language-context';
+import { RuntimeConfigProvider } from '@/contexts/runtime-config-context';
 import { ToastProvider } from '@/contexts/toast-context';
 import { AccessLogger } from '@/components/access-logger';
 import { AppAlertHost } from '@/components/ui/app-alert-host';
@@ -85,8 +85,8 @@ function RootLayout() {
       <KeyboardProvider>
       <QueryProvider>
       <LanguageProvider>
+        <RuntimeConfigProvider>
         <AuthProvider>
-          <AvatarVersionProvider>
           <ToastProvider>
           <StatusBar style="light" />
           <AppErrorBoundary>
@@ -116,8 +116,8 @@ function RootLayout() {
           </AuthGate>
           </AppErrorBoundary>
           </ToastProvider>
-          </AvatarVersionProvider>
         </AuthProvider>
+        </RuntimeConfigProvider>
       </LanguageProvider>
       </QueryProvider>
       </KeyboardProvider>

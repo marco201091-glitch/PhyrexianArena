@@ -7,6 +7,7 @@ export type PersonalAnalyticsFact = {
   is_winner: boolean;
   deck_id: string;
   played_at: string | null;
+  win_condition?: string | null;
   name: string;
   commander: string;
   commander_image: string | null;
@@ -29,6 +30,7 @@ export function buildPersonalAnalyticsInputs(facts: PersonalAnalyticsFact[]) {
     is_winner: fact.is_winner,
     deck_id: fact.deck_id,
     played_at: fact.played_at,
+    win_condition: fact.win_condition ?? null,
   }));
   const decksById = new Map<string, PersonalDeckSnapshot>();
   facts.forEach((fact) => {

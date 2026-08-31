@@ -139,4 +139,17 @@ describe('personal-analytics', () => {
       current: 0,
     });
   });
+
+  it('ranks by win rate before games played and aggregates winning conditions', () => {
+    const participants: PersonalMatchParticipantRow[] = [
+      ...Array.from({ length: 5 }, (_, index) => ({ deck_id: 'deck-a', is_winner: index < 2, win_condition: index < 2 ? 'combo' : null })),
+      { deck_id: 'deck-b', is_winner: true, win_condition: 'last_standing' },
+    ];
+    const analytics = buildPersonalAnalytics(participants, new Map([['deck-a', deckA], ['deck-b', deckB]]));
+    expect(analytics.topDecks.map((deck) => deck.id)).toEqual(['deck-b', 'deck-a']);
+    expect(analytics.winConditions).toEqual([
+      { condition: 'combo', wins: 2, percentage: 67 },
+      { condition: 'last_standing', wins: 1, percentage: 33 },
+    ]);
+  });
 });

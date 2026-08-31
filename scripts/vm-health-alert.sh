@@ -5,6 +5,9 @@ exec 9>/run/lock/phyrexian-health-alert.lock
 flock -n 9 || exit 0
 
 DISK_THRESHOLD_PERCENT=${DISK_THRESHOLD_PERCENT:-80}
+INODE_THRESHOLD_PERCENT=${INODE_THRESHOLD_PERCENT:-80}
+BACKUP_MAX_AGE_HOURS=${BACKUP_MAX_AGE_HOURS:-30}
+BACKUP_STATE_FILE=${BACKUP_STATE_FILE:-/var/backups/phyrexianarena/last-success}
 STATE_FILE=/run/phyrexian-health-alert.state
 WEBHOOK_ENV=/etc/phyrexian-health-alert.env
 failures=()
@@ -12,6 +15,21 @@ failures=()
 disk_percent=$(df --output=pcent / | tail -n 1 | tr -dc '0-9')
 if (( disk_percent >= DISK_THRESHOLD_PERCENT )); then
   failures+=("disk ${disk_percent}%")
+fi
+
+inode_percent=$(df --output=ipcent / | tail -n 1 | tr -dc '0-9')
+if (( inode_percent >= INODE_THRESHOLD_PERCENT )); then
+  failures+=("inodes ${inode_percent}%")
+fi
+
+if [[ -r "$BACKUP_STATE_FILE" ]]; then
+  backup_epoch=$(cat "$BACKUP_STATE_FILE" 2>/dev/null || printf '0')
+  backup_age_hours=$(( ($(date -u +%s) - backup_epoch) / 3600 ))
+  if (( backup_age_hours > BACKUP_MAX_AGE_HOURS )); then
+    failures+=("production backup ${backup_age_hours}h old")
+  fi
+else
+  failures+=("production backup status missing")
 fi
 
 unhealthy_count=$(docker ps --filter health=unhealthy --quiet | wc -l)
@@ -27,7 +45,7 @@ for container in supabase-db supabase-pooler supabase-dev-db supabase-dev-pooler
 done
 
 for endpoint in \
-  https://app.phyrexianarena.dpdns.org/api/health \
+  https://app.phyrexianarena.dpdns.org/api/ready \
   https://dev.phyrexianarena.dpdns.org/api/ready
 do
   status=$(curl --silent --show-error --output /dev/null --max-time 8 --write-out '%{http_code}' "$endpoint" || true)

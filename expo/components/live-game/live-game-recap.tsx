@@ -1,7 +1,13 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { Ionicons } from '@expo/vector-icons';
+import { captureRef } from 'react-native-view-shot';
 import { buildLiveGameRecap } from '@/lib/live-game-recap';
 import type { LiveGameRecord } from '@/lib/live-game';
 import { colors, radii, spacing } from '@/constants/theme';
+import { useLanguage } from '@/contexts/language-context';
 
 const PLAYER_COLORS = ['#72d17b', '#22d3ee', '#fb7185', '#fbbf24', '#4ade80', '#f472b6'];
 
@@ -12,8 +18,29 @@ export function LiveGameRecapView({
   record: LiveGameRecord;
   labels: { timeline: string; highlights: string; empty: string };
 }) {
+  const { language } = useLanguage();
+  const recapRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
   const recap = buildLiveGameRecap(record);
-  return <View style={styles.root}>
+  const duration = recap.durationSeconds == null ? '—' : `${Math.floor(recap.durationSeconds / 60)}:${String(recap.durationSeconds % 60).padStart(2, '0')}`;
+  const shareRecap = async () => {
+    if (!await Sharing.isAvailableAsync() || !recapRef.current) return;
+    setSharing(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    try {
+      const path = await captureRef(recapRef, { format: 'png', quality: 1, result: 'tmpfile' });
+      await Sharing.shareAsync(path, { mimeType: 'image/png', dialogTitle: language === 'it' ? 'Condividi riepilogo' : 'Share recap' });
+      await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => undefined);
+    } finally {
+      setSharing(false);
+    }
+  };
+  return <View ref={recapRef} collapsable={false} style={styles.root}>
+    <View style={styles.summaryRow}>
+      <Text style={styles.summaryChip}>⏱ {duration}</Text>
+      {recap.startingPlayerName ? <Text style={styles.summaryChip}>① {recap.startingPlayerName} · {recap.startingDirection === 'clockwise' ? '↻' : '↺'}</Text> : null}
+      {!sharing ? <Pressable onPress={() => void shareRecap().catch(() => undefined)} accessibilityRole="button" accessibilityLabel={language === 'it' ? 'Condividi riepilogo' : 'Share recap'} style={styles.shareButton}><Ionicons name="share-social-outline" size={15} color="#a7f3d0" /></Pressable> : null}
+    </View>
     <Text style={styles.title}>{labels.timeline}</Text>
     {recap.players.map((player, index) => (
       <View key={player.participantKey} style={styles.player}>
@@ -30,6 +57,8 @@ export function LiveGameRecapView({
           {player.damageDealt > 0 ? <Text style={styles.metric}>⚔ {player.damageDealt}</Text> : null}
           {player.lifeGained > 0 ? <Text style={styles.metric}>♥ +{player.lifeGained}</Text> : null}
           {player.eliminationsCaused > 0 ? <Text style={styles.metric}>☠ {player.eliminationsCaused}</Text> : null}
+          {player.commanderDamageDealt > 0 ? <Text style={styles.metric}>CMD ⚔ {player.commanderDamageDealt}</Text> : null}
+          {player.infectDealt > 0 ? <Text style={styles.metric}>INF ⚔ {player.infectDealt}</Text> : null}
           {player.events > 0 ? <Text style={styles.metric}>• {player.events}</Text> : null}
         </View>
       </View>
@@ -46,6 +75,9 @@ export function LiveGameRecapView({
 
 const styles = StyleSheet.create({
   root: { gap: spacing.sm, borderWidth: 1, borderColor: 'rgba(34,211,238,0.2)', borderRadius: radii.lg, backgroundColor: 'rgba(34,211,238,0.05)', padding: spacing.md },
+  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
+  summaryChip: { color: colors.muted, fontSize: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 5 },
+  shareButton: { marginLeft: 'auto', width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(52,211,153,0.35)', backgroundColor: 'rgba(16,185,129,0.12)' },
   title: { color: '#a5f3fc', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
   player: { gap: 3, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, paddingBottom: spacing.sm },
   playerHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

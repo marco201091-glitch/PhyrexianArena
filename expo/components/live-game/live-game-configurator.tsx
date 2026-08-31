@@ -16,8 +16,10 @@ import {
   type TableLayoutVariant,
 } from '@/lib/live-game-table-layout';
 import type { LiveGameSeatSetup } from '@/lib/live-game-setup';
+import { matchesLiveGameDeckSearch } from '@/lib/live-game-deck-search';
 import type { ParticipantKey } from '@/lib/participant-keys';
 import { isCompactViewport, isTabletViewport, layout } from '@/lib/layout';
+import { useRuntimeConfig } from '@/contexts/runtime-config-context';
 
 export type SetupParticipant = {
   key: ParticipantKey;
@@ -36,6 +38,8 @@ type Labels = {
   emptySeat: string;
   choosePlayer: string;
   chooseDeck: string;
+  searchDecks: string;
+  noDecksMatchSearch: string;
   clearSeat: string;
   confirm: string;
   reset: string;
@@ -117,6 +121,8 @@ export function LiveGameConfigurator({
   onStart,
   starting,
 }: Props) {
+  const { featureFlags } = useRuntimeConfig();
+  const deckSearchEnabled = featureFlags?.deckWizardSearch !== false;
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const compact = isCompactViewport(windowWidth);
   const tablet = isTabletViewport(windowWidth);
@@ -156,6 +162,7 @@ export function LiveGameConfigurator({
   const currentSeat = editingSeat === null ? null : seats[editingSeat];
   const [draftPlayer, setDraftPlayer] = useState<ParticipantKey | null>(null);
   const [draftDeck, setDraftDeck] = useState<string | null>(null);
+  const [deckSearch, setDeckSearch] = useState('');
   const participantByKey = useMemo(
     () => new Map(participants.map((participant) => [participant.key, participant])),
     [participants],
@@ -166,6 +173,7 @@ export function LiveGameConfigurator({
     setEditingSeat(index);
     setDraftPlayer(seat?.participantKey ?? null);
     setDraftDeck(seat?.deckId ?? null);
+    setDeckSearch('');
   };
 
   const selectPlayer = (participant: SetupParticipant) => {
@@ -176,9 +184,15 @@ export function LiveGameConfigurator({
         ? participant.preferredDeckId
         : null;
     setDraftDeck(preferred);
+    setDeckSearch('');
   };
 
   const selectedParticipant = draftPlayer ? participantByKey.get(draftPlayer) ?? null : null;
+  const filteredDecks = useMemo(() => {
+    if (!selectedParticipant) return [];
+    if (!deckSearchEnabled) return selectedParticipant.decks;
+    return selectedParticipant.decks.filter((deck) => matchesLiveGameDeckSearch(deck, deckSearch));
+  }, [deckSearch, deckSearchEnabled, selectedParticipant]);
   const occupiedElsewhere = new Set(
     seats
       .filter((_seat, index) => index !== editingSeat)
@@ -196,10 +210,7 @@ export function LiveGameConfigurator({
         </View>
         <Pressable
           style={({ pressed }) => [styles.resetButton, pressed && styles.interactivePressed]}
-          onPress={() => {
-            onReset();
-            setStep(0);
-          }}
+          onPress={onReset}
         >
           <Ionicons name="refresh-outline" size={15} color={colors.muted} />
           <Text style={styles.resetText}>{labels.reset}</Text>
@@ -387,8 +398,32 @@ export function LiveGameConfigurator({
           {selectedParticipant ? (
             <View style={[styles.deckSection, tablet && styles.deckSectionTablet]}>
               <Text style={styles.deckSectionTitle}>{labels.chooseDeck}</Text>
+              {deckSearchEnabled ? <View style={styles.deckSearchWrap}>
+                <Ionicons name="search-outline" size={18} color={colors.muted} />
+                <TextInput
+                  value={deckSearch}
+                  onChangeText={setDeckSearch}
+                  placeholder={labels.searchDecks}
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  accessibilityLabel={labels.searchDecks}
+                  style={styles.deckSearchInput}
+                />
+                {deckSearch ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={labels.searchDecks}
+                    onPress={() => setDeckSearch('')}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="close-circle" size={18} color={colors.muted} />
+                  </Pressable>
+                ) : null}
+              </View> : null}
               <ScrollView style={[styles.deckList, tablet && styles.deckListTablet]} contentContainerStyle={styles.optionListContent} nestedScrollEnabled>
-                {selectedParticipant.decks.map((deck) => (
+                {filteredDecks.map((deck) => (
                   <CompactDeckCard
                     key={deck.id}
                     artUri={deck.commander_image}
@@ -404,6 +439,9 @@ export function LiveGameConfigurator({
                     />}
                   />
                 ))}
+                {filteredDecks.length === 0 ? (
+                  <Text style={styles.emptyDeckSearch}>{labels.noDecksMatchSearch}</Text>
+                ) : null}
               </ScrollView>
             </View>
           ) : null}
@@ -496,6 +534,9 @@ const styles = StyleSheet.create({
   deckSection: { gap: spacing.sm },
   deckSectionTablet: { flex: 1, minWidth: 0 },
   deckSectionTitle: { color: colors.muted, fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
+  deckSearchWrap: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardInset },
+  deckSearchInput: { flex: 1, minWidth: 0, color: colors.foreground, fontSize: 14 },
+  emptyDeckSearch: { paddingVertical: spacing.lg, color: colors.muted, fontSize: 13, textAlign: 'center' },
   deckList: { gap: spacing.xs, maxHeight: 245 },
   deckListTablet: { maxHeight: 310 },
   deckOptionActive: { borderColor: colors.primaryLight },

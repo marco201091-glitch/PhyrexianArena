@@ -17,6 +17,15 @@ type NotificationInput = {
   dedupeKey?: string;
 };
 
+export function classifyExpoPushResult(result: { status?: string; details?: { error?: string } } | undefined) {
+  if (result?.status === 'ok') return { status: 'sent' as const, providerCode: null };
+  const providerCode = result?.details?.error ?? 'UnknownProviderError';
+  return {
+    status: providerCode === 'DeviceNotRegistered' ? 'permanent_error' as const : 'retryable_error' as const,
+    providerCode,
+  };
+}
+
 export async function notifyUsers(
   admin: SupabaseClient,
   userIds: string[],
@@ -78,12 +87,12 @@ export async function notifyUsers(
 
   const localizedTokenResult = await admin
     .from('push_tokens')
-    .select('id, expo_push_token, locale')
+    .select('id, user_id, expo_push_token, locale')
     .in('user_id', pushRecipients);
   const tokenResult = localizedTokenResult.error
-    ? await admin.from('push_tokens').select('id, expo_push_token').in('user_id', pushRecipients)
+    ? await admin.from('push_tokens').select('id, user_id, expo_push_token').in('user_id', pushRecipients)
     : localizedTokenResult;
-  const tokens = (tokenResult.data ?? []) as Array<{ id: string; expo_push_token: string; locale?: string }>;
+  const tokens = (tokenResult.data ?? []) as Array<{ id: string; user_id: string; expo_push_token: string; locale?: string }>;
   if (tokenResult.error || !tokens.length) return;
 
   const messages = tokens.map((token) => {
@@ -97,6 +106,7 @@ export async function notifyUsers(
       data: { type: notification.type, ...(notification.data ?? {}) },
     };
   });
+  const deliveryStartedAt = Date.now();
   const response = await fetch('https://exp.host/--/api/v2/push/send', {
     method: 'POST',
     headers: {
@@ -106,10 +116,30 @@ export async function notifyUsers(
     },
     body: JSON.stringify(messages),
   }).catch(() => null);
-  if (!response?.ok) return;
+  const latencyMs = Date.now() - deliveryStartedAt;
+  if (!response?.ok) {
+    await admin.from('notification_delivery_attempts').insert(tokens.map((token) => ({
+      user_id: token.user_id,
+      provider: 'expo',
+      status: 'retryable_error',
+      provider_code: response ? `HTTP_${response.status}` : 'NETWORK_ERROR',
+      latency_ms: latencyMs,
+    }))).then(() => undefined);
+    return;
+  }
   const payload = await response.json().catch(() => null) as {
     data?: Array<{ status?: string; details?: { error?: string } }>;
   } | null;
+  await admin.from('notification_delivery_attempts').insert(tokens.map((token, index) => {
+    const classified = classifyExpoPushResult(payload?.data?.[index]);
+    return {
+      user_id: token.user_id,
+      provider: 'expo',
+      status: classified.status,
+      provider_code: classified.providerCode,
+      latency_ms: latencyMs,
+    };
+  })).then(() => undefined);
   const invalidIds = tokens
     .filter((_token, index) => payload?.data?.[index]?.details?.error === 'DeviceNotRegistered')
     .map((token) => token.id);

@@ -25,12 +25,21 @@ export type LiveGameRecapPlayer = {
   damageDealt: number;
   lifeGained: number;
   eliminationsCaused: number;
+  lifeLost: number;
+  commanderDamageDealt: number;
+  commanderDamageTaken: number;
+  infectDealt: number;
+  infectReceived: number;
 };
 
 export type LiveGameRecap = {
   totalEvents: number;
   startedAt: string | null;
   endedAt: string | null;
+  durationSeconds: number | null;
+  startingPlayerKey: ParticipantKey | null;
+  startingPlayerName: string | null;
+  startingDirection: 'clockwise' | 'counterclockwise' | null;
   players: LiveGameRecapPlayer[];
   highlights: LiveGameEvent[];
 };
@@ -130,9 +139,11 @@ export function buildHistoricalLiveGameRecord(match: HistoricalMatchSnapshot): L
 }
 
 export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
-  const orderedEvents = [...record.state.events].sort((left, right) => (
-    left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id)
-  ));
+  const orderedEvents = [...record.state.events]
+    .filter((event) => !event.isCorrection && event.type !== 'correction')
+    .sort((left, right) => (
+      left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id)
+    ));
   const players = record.state.players.map((player) => {
     const metrics = record.state.summary?.byParticipant[player.participantKey];
     return {
@@ -143,16 +154,29 @@ export function buildLiveGameRecap(record: LiveGameRecord): LiveGameRecap {
       finalLife: player.life,
       finalInfect: player.infect,
       eliminatedAt: player.eliminatedAt,
-      events: metrics?.eventCount ?? 0,
+      events: Math.max(0, (metrics?.eventCount ?? 0) - (metrics?.corrections ?? 0)),
       damageDealt: metrics?.lifeDamageDealt ?? 0,
       lifeGained: metrics?.lifeGained ?? 0,
       eliminationsCaused: metrics?.eliminationsCaused ?? 0,
+      lifeLost: metrics?.lifeLost ?? 0,
+      commanderDamageDealt: metrics?.commanderDamageDealt ?? 0,
+      commanderDamageTaken: metrics?.commanderDamageTaken ?? 0,
+      infectDealt: metrics?.infectDealt ?? 0,
+      infectReceived: metrics?.infectReceived ?? 0,
     };
   });
+  const durationSeconds = record.started_at && record.ended_at
+    ? Math.max(0, Math.round((new Date(record.ended_at).getTime() - new Date(record.started_at).getTime()) / 1000))
+    : null;
+  const startingPlayerKey = record.state.startingPlayerKey ?? null;
   return {
-    totalEvents: record.state.summary?.totalEvents ?? orderedEvents.length,
+    totalEvents: orderedEvents.length,
     startedAt: record.started_at,
     endedAt: record.ended_at,
+    durationSeconds,
+    startingPlayerKey,
+    startingPlayerName: players.find((player) => player.participantKey === startingPlayerKey)?.displayName ?? null,
+    startingDirection: record.state.startingDirection ?? null,
     players,
     highlights: orderedEvents.slice(-12),
   };
