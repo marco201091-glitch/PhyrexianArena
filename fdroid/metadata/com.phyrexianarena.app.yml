@@ -60,6 +60,7 @@ Builds:
       - expo/node_modules/react-native-safe-area-context/android/build.gradle
       - expo/node_modules/react-native-screens/android/build.gradle
       - expo/node_modules/react-native-svg/android/build.gradle
+      - expo/node_modules/react-native-view-shot/android/build.gradle
       - expo/node_modules/react-native-webview/android/build.gradle
       - expo/node_modules/react-native/ReactAndroid/publish.gradle
     scandelete:
