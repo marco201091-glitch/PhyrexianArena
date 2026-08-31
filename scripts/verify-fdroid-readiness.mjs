@@ -8,10 +8,13 @@ const failures = [];
 
 const appConfig = read('expo/app.config.js');
 const androidLogin = read('expo/app/(auth)/login.tsx');
+const appLayout = read('expo/app/_layout.tsx');
+const appNotificationListener = read('expo/components/app-notification-listener.tsx');
 const sentryRuntime = read('expo/lib/sentry.ts');
 const env = read('expo/lib/env.ts');
 const fdroidReleasePlugin = read('expo/plugins/with-fdroid-release-build.js');
 const fdroidPermissionsPlugin = read('expo/plugins/with-fdroid-blocked-permissions.js');
+const fdroidReferenceWorkflow = read('.github/workflows/fdroid-reproducible-release.yml');
 const fdroidDocs = read('docs/FDROID_RELEASE_READINESS.md');
 const metadata = read('fastlane/metadata/android/en-US/full_description.txt');
 const fdroidMetadata = read('fdroid/metadata/com.phyrexianarena.app.yml');
@@ -37,8 +40,14 @@ if (!sentryRuntime.includes('sentryEnabled = false')) {
 if (!androidLogin.includes("Platform.OS === 'android' && !isFdroidBuild()")) {
   failures.push('Google login must be hidden in Android F-Droid builds');
 }
-if (!read('expo/app/_layout.tsx').includes('!isFdroidBuild()')) {
-  failures.push('Expo Push notifications must be disabled in F-Droid builds');
+if (!appLayout.includes('<AppNotificationListener />')) {
+  failures.push('F-Droid app layout must mount the in-app notification listener');
+}
+if (!appNotificationListener.includes('app_notifications')) {
+  failures.push('F-Droid notification listener must use Supabase in-app notifications');
+}
+if (appNotificationListener.includes('expo-notifications')) {
+  failures.push('F-Droid notification listener must not import Expo Push notifications');
 }
 if (read('expo/package.json').includes('@sentry/react-native')) {
   failures.push('F-Droid branch must not depend on @sentry/react-native');
@@ -87,10 +96,62 @@ for (const text of [
 if (!metadata.includes('MTG Tracker & Analytics')) {
   failures.push('Fastlane metadata must use the Android display name');
 }
-for (const text of ['NonFreeNet', 'REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA', 'app-release-unsigned.apk']) {
+for (const text of [
+  'NonFreeNet',
+  'AuthorName: blackistoostrong',
+  'AuthorEmail: support@phyrexianarena.dpdns.org',
+  'AuthorWebSite: https://github.com/marco201091-glitch',
+  'WebSite: https://app.phyrexianarena.dpdns.org',
+  'IssueTracker: https://github.com/marco201091-glitch/PhyrexianArena/issues',
+  'Changelog: https://github.com/marco201091-glitch/PhyrexianArena/releases',
+  'app-release-unsigned.apk',
+  'AutoUpdateMode: Version',
+  'UpdateCheckMode: Tags fdroid-v[0-9.]+$',
+  'UpdateCheckData: expo/app.json',
+  'Binaries:',
+  'https://github.com/marco201091-glitch/PhyrexianArena/releases/download/fdroid-v%v/mtg-tracker-fdroid-v%v.apk',
+  'AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab3002106',
+]) {
   if (!fdroidMetadata.includes(text)) {
     failures.push(`F-Droid metadata draft must mention ${text}`);
   }
+}
+if (!/\n\s+commit:\s+[0-9a-f]{40}\s*\n/.test(fdroidMetadata)) {
+  failures.push('F-Droid metadata must pin the release to a full source commit SHA');
+}
+if ((fdroidReferenceWorkflow.match(/-PreactNativeArchitectures=arm64-v8a/g) ?? []).length !== 2) {
+  failures.push('F-Droid reference workflow must restrict both reproducibility builds to arm64-v8a');
+}
+if ((fdroidReferenceWorkflow.match(/-PreactNativeDevServerIp=localhost/g) ?? []).length !== 2) {
+  failures.push('F-Droid reference workflow must use a deterministic React Native dev-server IP');
+}
+for (const text of [
+  '/home/vagrant/build/com.phyrexianarena.app',
+  "echo 'ANDROID_HOME=/opt/android-sdk'",
+  "echo 'ANDROID_SDK_ROOT=/opt/android-sdk'",
+  'GRADLE_USER_HOME: /home/vagrant/.gradle',
+  'node-version: 20.19.2',
+  'npm@9.2.0',
+  'node scripts/patch-fdroid-reproducibility.mjs',
+]) {
+  if (!fdroidReferenceWorkflow.includes(text)) {
+    failures.push(`F-Droid reference workflow must include ${text}`);
+  }
+}
+for (const text of [
+  '-PreactNativeArchitectures=arm64-v8a',
+  '-PreactNativeDevServerIp=localhost',
+  'node scripts/patch-fdroid-reproducibility.mjs',
+  "sed -i 's/-Xmx2048m/-Xmx4g/' android/gradle.properties",
+  "sed -i 's/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties",
+  'org.gradle.workers.max=1',
+]) {
+  if (!fdroidMetadata.includes(text)) {
+    failures.push(`F-Droid metadata must include ${text}`);
+  }
+}
+if (/^\s+- .*?(?:&&|;)\s+/m.test(fdroidMetadata)) {
+  failures.push('F-Droid metadata commands must be separate YAML list entries, without && or ; chaining');
 }
 
 if (failures.length) {

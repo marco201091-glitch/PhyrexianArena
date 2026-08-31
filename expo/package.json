@@ -4,14 +4,23 @@
   "private": true,
   "packageManager": "npm@11.16.0",
   "engines": {
-    "node": ">=24.0.0 <25",
-    "npm": ">=11.0.0 <12"
+    "node": ">=20.19.4 <25",
+    "npm": ">=10.0.0 <12"
   },
   "overrides": {
     "metro": "0.84.5",
     "metro-config": "0.84.5",
     "metro-transform-worker": "0.84.5",
     "uuid": "11.1.1"
+  },
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          ".*"
+        ]
+      }
+    }
   },
   "main": "expo-router/entry",
   "scripts": {
@@ -66,7 +75,6 @@
     "@hookform/resolvers": "^3.10.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "12.0.1",
-    "@sentry/react-native": "~7.11.0",
     "@shopify/flash-list": "2.0.2",
     "@supabase/supabase-js": "^2.112.3",
     "@tanstack/react-query": "^5.101.4",
@@ -81,7 +89,6 @@
     "expo-image": "~57.0.3",
     "expo-keep-awake": "~57.0.1",
     "expo-linking": "~57.0.8",
-    "expo-notifications": "~57.0.15",
     "expo-router": "~57.0.17",
     "expo-screen-orientation": "~57.0.2",
     "expo-secure-store": "~57.0.2",
@@ -124,7 +131,6 @@
     "vitest": "3.2.7"
   },
   "allowScripts": {
-    "@sentry/cli@2.58.4": true,
     "esbuild@0.28.1": true,
     "unrs-resolver@1.12.2": true
   }
