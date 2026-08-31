@@ -1,8 +1,8 @@
 # F-Droid-style release readiness
 
 Version 8.2.0 is prepared for the official F-Droid `fdroiddata` merge request.
-The source build, reproducibility check, and upstream pipeline must pass before
-the update is announced to F-Droid maintainers.
+The source build and byte-for-byte reproducibility check pass; the upstream
+pipeline must pass before the update is announced to F-Droid maintainers.
 
 ## Current assessment
 
