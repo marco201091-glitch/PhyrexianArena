@@ -95,6 +95,7 @@ import {
   formatArenaSeasonDate,
   formatArenaSeasonLabel,
   getArenaSeasonArchiveHighlights,
+  getArenaSeasonPlayerRecord,
   setArenaSeasonSettings,
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
@@ -2453,26 +2454,42 @@ export default function TablePage() {
                   <span className="text-xs text-muted-foreground">
                     {t({ it: 'Nessuna stagione archiviata', en: 'No archived seasons' })}
                   </span>
-                ) : seasonContext.archives.map((archive) => (
-                  <div key={archive.id} className="rounded-lg border border-border/70 bg-background/35 px-3 py-2 text-xs">
-                    <span className="font-semibold text-foreground">
-                      {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
-                    </span>
-                    <span className="ml-2 text-muted-foreground">
-                      {Number(archive.summary.totalMatches ?? 0)} {t({ it: 'partite', en: 'games' })}
-                      {' · '}{Number(archive.summary.matches?.draws ?? 0)} {t({ it: 'pareggi', en: 'draws' })}
-                      {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {t({ it: 'tracciate', en: 'tracked' })}
-                    </span>
-                    {getArenaSeasonArchiveHighlights(archive).topPlayer ? (
-                      <span className="mt-1 block text-muted-foreground">
-                        {t({ it: 'Leader', en: 'Leader' })}: {getArenaSeasonArchiveHighlights(archive).topPlayer?.display_name}
-                        {getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name
-                          ? ` · ${t({ it: 'Mazzo', en: 'Deck' })}: ${getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name}`
-                          : ''}
+                ) : seasonContext.archives.map((archive) => {
+                  const highlights = getArenaSeasonArchiveHighlights(archive);
+                  return (
+                    <div key={archive.id} className="w-full rounded-lg border border-border/70 bg-background/35 px-3 py-2 text-xs sm:min-w-72 sm:w-auto">
+                      <span className="font-semibold text-foreground">
+                        {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
                       </span>
-                    ) : null}
-                  </div>
-                ))}
+                      <span className="ml-2 text-muted-foreground">
+                        {Number(archive.summary.totalMatches ?? 0)} {t({ it: 'partite', en: 'games' })}
+                        {' · '}{Number(archive.summary.matches?.draws ?? 0)} {t({ it: 'pareggi', en: 'draws' })}
+                        {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {t({ it: 'tracciate', en: 'tracked' })}
+                      </span>
+                      {highlights.topPlayers.length > 0 ? (
+                        <div className="mt-2 border-t border-border/50 pt-2">
+                          <p className="font-semibold text-foreground">{t({ it: 'Top 10 giocatori', en: 'Top 10 players' })}</p>
+                          <ol className="mt-1 space-y-1">
+                            {highlights.topPlayers.map((player, index) => {
+                              const record = getArenaSeasonPlayerRecord(player);
+                              return (
+                                <li key={`${player.display_name ?? 'player'}-${index}`} className="flex items-center justify-between gap-4 text-muted-foreground">
+                                  <span className="min-w-0 truncate">{index + 1}. {player.display_name || t({ it: 'Giocatore', en: 'Player' })}</span>
+                                  <span className="shrink-0 tabular-nums">{record.wins}W / {record.losses}L · {record.winRate}%</span>
+                                </li>
+                              );
+                            })}
+                          </ol>
+                        </div>
+                      ) : null}
+                      {highlights.topDeck?.deck_name ? (
+                        <span className="mt-2 block text-muted-foreground">
+                          {t({ it: 'Mazzo', en: 'Deck' })}: {highlights.topDeck.deck_name}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

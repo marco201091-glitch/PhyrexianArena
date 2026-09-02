@@ -84,6 +84,7 @@ import {
   formatArenaSeasonDate,
   formatArenaSeasonLabel,
   getArenaSeasonArchiveHighlights,
+  getArenaSeasonPlayerRecord,
   setArenaSeasonSettings,
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
@@ -736,26 +737,42 @@ export default function TableScreen() {
             </Text>
             {seasonContext.archives.length === 0 ? (
               <Text style={styles.seasonArchiveText}>{copy('seasonArchiveEmpty')}</Text>
-            ) : seasonContext.archives.map((archive) => (
-              <View key={archive.id} style={styles.seasonArchiveRow}>
-                <Text style={styles.seasonArchiveName}>
-                  {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
-                </Text>
-                <Text style={styles.seasonArchiveText}>
-                  {Number(archive.summary.totalMatches ?? 0)} {copy('seasonArchivedGames')}
-                  {' · '}{Number(archive.summary.matches?.draws ?? 0)} {copy('seasonArchivedDraws')}
-                  {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {copy('trackedGames')}
-                </Text>
-                {getArenaSeasonArchiveHighlights(archive).topPlayer ? (
-                  <Text style={styles.seasonArchiveText}>
-                    {copy('currentLeader')}: {getArenaSeasonArchiveHighlights(archive).topPlayer?.display_name}
-                    {getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name
-                      ? ` · ${copy('deckSingular')}: ${getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name}`
-                      : ''}
+            ) : seasonContext.archives.map((archive) => {
+              const highlights = getArenaSeasonArchiveHighlights(archive);
+              return (
+                <View key={archive.id} style={styles.seasonArchiveRow}>
+                  <Text style={styles.seasonArchiveName}>
+                    {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
                   </Text>
-                ) : null}
-              </View>
-            ))}
+                  <Text style={styles.seasonArchiveText}>
+                    {Number(archive.summary.totalMatches ?? 0)} {copy('seasonArchivedGames')}
+                    {' · '}{Number(archive.summary.matches?.draws ?? 0)} {copy('seasonArchivedDraws')}
+                    {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {copy('trackedGames')}
+                  </Text>
+                  {highlights.topPlayers.length > 0 ? (
+                    <View style={styles.seasonArchiveLeaderboard}>
+                      <Text style={styles.seasonArchiveLeaderboardTitle}>{copy('topPlayers')}</Text>
+                      {highlights.topPlayers.map((player, index) => {
+                        const record = getArenaSeasonPlayerRecord(player);
+                        return (
+                          <View key={`${player.display_name ?? 'player'}-${index}`} style={styles.seasonArchivePlayerRow}>
+                            <Text numberOfLines={1} style={styles.seasonArchivePlayerName}>
+                              {index + 1}. {player.display_name || (language === 'it' ? 'Giocatore' : 'Player')}
+                            </Text>
+                            <Text style={styles.seasonArchivePlayerRecord}>
+                              {record.wins}W / {record.losses}L · {record.winRate}%
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+                  {highlights.topDeck?.deck_name ? (
+                    <Text style={styles.seasonArchiveText}>{copy('deckSingular')}: {highlights.topDeck.deck_name}</Text>
+                  ) : null}
+                </View>
+              );
+            })}
           </PhyrexianPanel>
         ) : null}
         <ArenaTabBar
@@ -1404,8 +1421,6 @@ const styles = StyleSheet.create({
   },
   seasonDates: { color: colors.muted, fontSize: 12 },
   seasonArchiveRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 6,
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -1414,6 +1429,16 @@ const styles = StyleSheet.create({
   },
   seasonArchiveName: { color: colors.foreground, fontSize: 12, fontWeight: '700' },
   seasonArchiveText: { color: colors.muted, fontSize: 12 },
+  seasonArchiveLeaderboard: {
+    gap: 3,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 6,
+  },
+  seasonArchiveLeaderboardTitle: { color: colors.foreground, fontSize: 12, fontWeight: '700' },
+  seasonArchivePlayerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  seasonArchivePlayerName: { flex: 1, color: colors.muted, fontSize: 12 },
+  seasonArchivePlayerRecord: { color: colors.muted, fontSize: 12, fontVariant: ['tabular-nums'] },
   seasonEditor: {
     gap: 8,
     borderRadius: 12,

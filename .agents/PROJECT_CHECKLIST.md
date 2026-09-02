@@ -9,6 +9,8 @@
 
 ## Completed
 
+- [x] Mostrare negli archivi delle season la top 10 giocatori completa con record W/L su web ed Expo.
+
 - [x] Validare integralmente la release 8.2.0, promuovere `Dev` su `main` e pubblicare web/APK Obtainium.
 
 - [x] Integrare la 8.2.0 completa su `Dev`, verificare test web/app e compilare una APK development locale 8.2.0 firmata.
