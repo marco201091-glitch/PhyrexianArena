@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatArenaSeasonLabel,
   getArenaSeasonArchiveHighlights,
+  getArenaSeasonPlayerRecord,
   getArenaSeasonPeriod,
   laterIsoDate,
   parseArenaSeasonContext,
@@ -32,17 +33,29 @@ describe('arena seasons', () => {
     });
   });
 
-  it('derives archive leaders without mutating the saved rollups', () => {
-    const players = [
-      { display_name: 'A', games_played: 10, wins: 5 },
-      { display_name: 'B', games_played: 4, wins: 3 },
-    ];
+  it('derives the top ten archive players without mutating the saved rollups', () => {
+    const players = Array.from({ length: 12 }, (_, index) => ({
+      display_name: String.fromCharCode(65 + index),
+      games_played: 20,
+      wins: index,
+    }));
     const highlights = getArenaSeasonArchiveHighlights({
       id: 'archive', seasonStart: '2025-01-01', seasonEnd: '2026-01-01', resetMonth: 1,
       archivedAt: '2026-01-01T00:00:00Z', summary: { players },
     });
-    expect(highlights.topPlayer?.display_name).toBe('B');
+    expect(highlights.topPlayer?.display_name).toBe('L');
+    expect(highlights.topPlayers).toHaveLength(10);
+    expect(highlights.topPlayers.at(-1)?.display_name).toBe('C');
     expect(players[0].display_name).toBe('A');
+  });
+
+  it('formats a stable W/L record from archived player totals', () => {
+    expect(getArenaSeasonPlayerRecord({ games_played: 8, wins: 5 })).toEqual({
+      gamesPlayed: 8,
+      wins: 5,
+      losses: 3,
+      winRate: 63,
+    });
   });
 
   it('maps disabled seasons to all-time mode and accepts pre-flag payloads', () => {
