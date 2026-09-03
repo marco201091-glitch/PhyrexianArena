@@ -9,6 +9,8 @@
 
 ## Completed
 
+- [x] Spostare lo storico season sotto le partite recenti con Top 10 giocatori/mazzi per win rate e minimo 5 partite.
+
 - [x] Mostrare negli archivi delle season la top 10 giocatori completa con record W/L su web ed Expo.
 
 - [x] Validare integralmente la release 8.2.0, promuovere `Dev` su `main` e pubblicare web/APK Obtainium.

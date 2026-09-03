@@ -3,6 +3,7 @@ import {
   formatArenaSeasonLabel,
   getArenaSeasonArchiveHighlights,
   getArenaSeasonPlayerRecord,
+  getArenaSeasonRecord,
   getArenaSeasonPeriod,
   laterIsoDate,
   parseArenaSeasonContext,
@@ -55,6 +56,29 @@ describe('arena seasons', () => {
       wins: 5,
       losses: 3,
       winRate: 63,
+    });
+  });
+
+  it('ranks only players and decks with at least five games by win rate', () => {
+    const highlights = getArenaSeasonArchiveHighlights({
+      id: 'archive', seasonStart: '2025-01-01', seasonEnd: '2026-01-01', resetMonth: 1,
+      archivedAt: '2026-01-01T00:00:00Z',
+      summary: {
+        players: [
+          { display_name: 'Too few', games_played: 4, wins: 4 },
+          { display_name: 'Eligible', games_played: 5, wins: 3 },
+        ],
+        decks: [
+          { deck_name: 'Too few', games_played: 4, wins: 4 },
+          { deck_name: 'Second', games_played: 10, wins: 6 },
+          { deck_name: 'First', games_played: 5, wins: 4 },
+        ],
+      },
+    });
+    expect(highlights.topPlayers.map((player) => player.display_name)).toEqual(['Eligible']);
+    expect(highlights.topDecks.map((deck) => deck.deck_name)).toEqual(['First', 'Second']);
+    expect(getArenaSeasonRecord(highlights.topDecks[0])).toEqual({
+      gamesPlayed: 5, wins: 4, losses: 1, winRate: 80,
     });
   });
 
