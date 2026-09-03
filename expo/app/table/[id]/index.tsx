@@ -20,6 +20,7 @@ import { ArenaFilterPanel } from '@/components/table/arena-filter-panel';
 import { ArenaTabBar } from '@/components/table/arena-tab-bar';
 import { ArenaCommandPanel } from '@/components/table/arena-command-panel';
 import { ArenaSeasonSettings } from '@/components/table/arena-season-settings';
+import { PreviousSeasonsPanel } from '@/components/table/previous-seasons-panel';
 import { TableArenaManagement } from '@/components/table/table-arena-management';
 import { TableDecksTab } from '@/components/table/table-decks-tab';
 import { TableGuestsSection } from '@/components/table/table-guests-section';
@@ -83,8 +84,6 @@ import {
   fetchArenaSeasonContext,
   formatArenaSeasonDate,
   formatArenaSeasonLabel,
-  getArenaSeasonArchiveHighlights,
-  getArenaSeasonPlayerRecord,
   setArenaSeasonSettings,
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
@@ -735,44 +734,6 @@ export default function TableScreen() {
               {' – '}
               {formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
             </Text>
-            {seasonContext.archives.length === 0 ? (
-              <Text style={styles.seasonArchiveText}>{copy('seasonArchiveEmpty')}</Text>
-            ) : seasonContext.archives.map((archive) => {
-              const highlights = getArenaSeasonArchiveHighlights(archive);
-              return (
-                <View key={archive.id} style={styles.seasonArchiveRow}>
-                  <Text style={styles.seasonArchiveName}>
-                    {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
-                  </Text>
-                  <Text style={styles.seasonArchiveText}>
-                    {Number(archive.summary.totalMatches ?? 0)} {copy('seasonArchivedGames')}
-                    {' · '}{Number(archive.summary.matches?.draws ?? 0)} {copy('seasonArchivedDraws')}
-                    {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {copy('trackedGames')}
-                  </Text>
-                  {highlights.topPlayers.length > 0 ? (
-                    <View style={styles.seasonArchiveLeaderboard}>
-                      <Text style={styles.seasonArchiveLeaderboardTitle}>{copy('topPlayers')}</Text>
-                      {highlights.topPlayers.map((player, index) => {
-                        const record = getArenaSeasonPlayerRecord(player);
-                        return (
-                          <View key={`${player.display_name ?? 'player'}-${index}`} style={styles.seasonArchivePlayerRow}>
-                            <Text numberOfLines={1} style={styles.seasonArchivePlayerName}>
-                              {index + 1}. {player.display_name || (language === 'it' ? 'Giocatore' : 'Player')}
-                            </Text>
-                            <Text style={styles.seasonArchivePlayerRecord}>
-                              {record.wins}W / {record.losses}L · {record.winRate}%
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ) : null}
-                  {highlights.topDeck?.deck_name ? (
-                    <Text style={styles.seasonArchiveText}>{copy('deckSingular')}: {highlights.topDeck.deck_name}</Text>
-                  ) : null}
-                </View>
-              );
-            })}
           </PhyrexianPanel>
         ) : null}
         <ArenaTabBar
@@ -816,28 +777,31 @@ export default function TableScreen() {
         />
 
         {activeTab === 'matches' ? (
-          <TableMatchesList
-            dayGroups={matchDayGroups}
-            expandedDayKeys={expandedDayKeys}
-            emptyTitle={copy('noMatchesTitle')}
-            emptyBody={copy('noMatchesBody')}
-            recordBattleLabel={copy('recordBattle')}
-            matchCountLabel={(count) => copy(count === 1 ? 'matchSingular' : 'matchPlural')}
-            onToggleDay={toggleDayGroup}
-            onEditMatch={setEditingMatch}
-            onShareMatch={handleShareMatch}
-            onDeleteMatch={handleDeleteMatch}
-            onDetailsMatch={setDetailsMatch}
-            onRecordBattle={() => setShowRecordModal(true)}
-            exportDayLabel={copy('exportDay')}
-            drawLabel={copy('liveGameDraw')}
-            onExportDay={openDayExportModal}
-            hasMore={hasMoreMatches}
-            loadingMore={loadingMoreMatches}
-            loadMoreLabel={copy('loadOlderMatches')}
-            loadingMoreLabel={copy('loadingOlderMatches')}
-            onLoadMore={loadMoreMatches}
-          />
+          <View style={styles.matchesContent}>
+            <TableMatchesList
+              dayGroups={matchDayGroups}
+              expandedDayKeys={expandedDayKeys}
+              emptyTitle={copy('noMatchesTitle')}
+              emptyBody={copy('noMatchesBody')}
+              recordBattleLabel={copy('recordBattle')}
+              matchCountLabel={(count) => copy(count === 1 ? 'matchSingular' : 'matchPlural')}
+              onToggleDay={toggleDayGroup}
+              onEditMatch={setEditingMatch}
+              onShareMatch={handleShareMatch}
+              onDeleteMatch={handleDeleteMatch}
+              onDetailsMatch={setDetailsMatch}
+              onRecordBattle={() => setShowRecordModal(true)}
+              exportDayLabel={copy('exportDay')}
+              drawLabel={copy('liveGameDraw')}
+              onExportDay={openDayExportModal}
+              hasMore={hasMoreMatches}
+              loadingMore={loadingMoreMatches}
+              loadMoreLabel={copy('loadOlderMatches')}
+              loadingMoreLabel={copy('loadingOlderMatches')}
+              onLoadMore={loadMoreMatches}
+            />
+            {seasonContext ? <PreviousSeasonsPanel archives={seasonContext.archives} /> : null}
+          </View>
         ) : null}
 
         {activeTab === 'players' ? (
@@ -1420,25 +1384,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   seasonDates: { color: colors.muted, fontSize: 12 },
-  seasonArchiveRow: {
-    gap: 6,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 8,
-    marginTop: 4,
-  },
-  seasonArchiveName: { color: colors.foreground, fontSize: 12, fontWeight: '700' },
-  seasonArchiveText: { color: colors.muted, fontSize: 12 },
-  seasonArchiveLeaderboard: {
-    gap: 3,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 6,
-  },
-  seasonArchiveLeaderboardTitle: { color: colors.foreground, fontSize: 12, fontWeight: '700' },
-  seasonArchivePlayerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  seasonArchivePlayerName: { flex: 1, color: colors.muted, fontSize: 12 },
-  seasonArchivePlayerRecord: { color: colors.muted, fontSize: 12, fontVariant: ['tabular-nums'] },
+  matchesContent: { gap: spacing.md },
   seasonEditor: {
     gap: 8,
     borderRadius: 12,
