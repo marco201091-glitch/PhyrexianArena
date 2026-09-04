@@ -22,6 +22,7 @@ import { AppProfileButton } from '@/components/navigation/app-profile-button';
 import { DeckImage } from '@/components/deck-image';
 import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
 import { ArenaInviteQrDialog } from '@/components/arena/arena-invite-qr-dialog';
+import { PreviousSeasonsPanel } from '@/components/arena/previous-seasons-panel';
 import { useLanguage } from '@/components/language-provider';
 import { usePlatformAdmin } from '@/hooks/use-platform-admin';
 
@@ -94,7 +95,6 @@ import {
   fetchArenaSeasonContext,
   formatArenaSeasonDate,
   formatArenaSeasonLabel,
-  getArenaSeasonArchiveHighlights,
   setArenaSeasonSettings,
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
@@ -2433,7 +2433,7 @@ export default function TablePage() {
 
         {seasonContext ? (
           <Card className="mb-5 border-emerald-500/25 bg-emerald-950/15">
-            <CardContent className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+            <CardContent className="py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
                   {formatArenaSeasonLabel(
@@ -2447,32 +2447,6 @@ export default function TablePage() {
                   {' – '}
                   {formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
                 </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {seasonContext.archives.length === 0 ? (
-                  <span className="text-xs text-muted-foreground">
-                    {t({ it: 'Nessuna stagione archiviata', en: 'No archived seasons' })}
-                  </span>
-                ) : seasonContext.archives.map((archive) => (
-                  <div key={archive.id} className="rounded-lg border border-border/70 bg-background/35 px-3 py-2 text-xs">
-                    <span className="font-semibold text-foreground">
-                      {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
-                    </span>
-                    <span className="ml-2 text-muted-foreground">
-                      {Number(archive.summary.totalMatches ?? 0)} {t({ it: 'partite', en: 'games' })}
-                      {' · '}{Number(archive.summary.matches?.draws ?? 0)} {t({ it: 'pareggi', en: 'draws' })}
-                      {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {t({ it: 'tracciate', en: 'tracked' })}
-                    </span>
-                    {getArenaSeasonArchiveHighlights(archive).topPlayer ? (
-                      <span className="mt-1 block text-muted-foreground">
-                        {t({ it: 'Leader', en: 'Leader' })}: {getArenaSeasonArchiveHighlights(archive).topPlayer?.display_name}
-                        {getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name
-                          ? ` · ${t({ it: 'Mazzo', en: 'Deck' })}: ${getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name}`
-                          : ''}
-                      </span>
-                    ) : null}
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
@@ -2723,6 +2697,7 @@ export default function TablePage() {
                 })}
               </div>
             )}
+            {seasonContext ? <PreviousSeasonsPanel archives={seasonContext.archives} /> : null}
           </TabsContent>
 
           <TabsContent value="awards">

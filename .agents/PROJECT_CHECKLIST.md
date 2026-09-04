@@ -2,12 +2,20 @@
 
 ## In progress
 
+- [x] Compilare e verificare APK Dev locale 8.3.0 per test Android (prebuild e Gradle eseguiti su junction C:\\pa83 per riprodurre il percorso breve storico; CMake 3.31.6; packaging riuscito; package/version verificati; APK Dev firmata con certificato debug come previsto e salvata in `artifacts/apk/phyrexian-arena-dev-v8.3.0.apk`; mapping P: e junction rimossi).
+
 ## External follow-up
 
 - [ ] Monitor the official F-Droid merge request until approval.
 - [ ] PM verification of the Dokploy production build.
 
 ## Completed
+
+- [x] Spostare lo storico season sotto le partite recenti con Top 10 giocatori/mazzi per win rate e minimo 5 partite.
+
+- [x] Mostrare negli archivi delle season la top 10 giocatori completa con record W/L su web ed Expo.
+
+- [x] Validare integralmente la release 8.2.0, promuovere `Dev` su `main` e pubblicare web/APK Obtainium.
 
 - [x] Integrare la 8.2.0 completa su `Dev`, verificare test web/app e compilare una APK development locale 8.2.0 firmata.
 

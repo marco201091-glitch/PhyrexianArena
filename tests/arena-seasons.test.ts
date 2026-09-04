@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   formatArenaSeasonLabel,
   getArenaSeasonArchiveHighlights,
+  getArenaSeasonPlayerRecord,
+  getArenaSeasonRecord,
   getArenaSeasonPeriod,
   laterIsoDate,
   parseArenaSeasonContext,
@@ -32,17 +34,52 @@ describe('arena seasons', () => {
     });
   });
 
-  it('derives archive leaders without mutating the saved rollups', () => {
-    const players = [
-      { display_name: 'A', games_played: 10, wins: 5 },
-      { display_name: 'B', games_played: 4, wins: 3 },
-    ];
+  it('derives the top ten archive players without mutating the saved rollups', () => {
+    const players = Array.from({ length: 12 }, (_, index) => ({
+      display_name: String.fromCharCode(65 + index),
+      games_played: 20,
+      wins: index,
+    }));
     const highlights = getArenaSeasonArchiveHighlights({
       id: 'archive', seasonStart: '2025-01-01', seasonEnd: '2026-01-01', resetMonth: 1,
       archivedAt: '2026-01-01T00:00:00Z', summary: { players },
     });
-    expect(highlights.topPlayer?.display_name).toBe('B');
+    expect(highlights.topPlayer?.display_name).toBe('L');
+    expect(highlights.topPlayers).toHaveLength(10);
+    expect(highlights.topPlayers.at(-1)?.display_name).toBe('C');
     expect(players[0].display_name).toBe('A');
+  });
+
+  it('formats a stable W/L record from archived player totals', () => {
+    expect(getArenaSeasonPlayerRecord({ games_played: 8, wins: 5 })).toEqual({
+      gamesPlayed: 8,
+      wins: 5,
+      losses: 3,
+      winRate: 63,
+    });
+  });
+
+  it('ranks only players and decks with at least five games by win rate', () => {
+    const highlights = getArenaSeasonArchiveHighlights({
+      id: 'archive', seasonStart: '2025-01-01', seasonEnd: '2026-01-01', resetMonth: 1,
+      archivedAt: '2026-01-01T00:00:00Z',
+      summary: {
+        players: [
+          { display_name: 'Too few', games_played: 4, wins: 4 },
+          { display_name: 'Eligible', games_played: 5, wins: 3 },
+        ],
+        decks: [
+          { deck_name: 'Too few', games_played: 4, wins: 4 },
+          { deck_name: 'Second', games_played: 10, wins: 6 },
+          { deck_name: 'First', games_played: 5, wins: 4 },
+        ],
+      },
+    });
+    expect(highlights.topPlayers.map((player) => player.display_name)).toEqual(['Eligible']);
+    expect(highlights.topDecks.map((deck) => deck.deck_name)).toEqual(['First', 'Second']);
+    expect(getArenaSeasonRecord(highlights.topDecks[0])).toEqual({
+      gamesPlayed: 5, wins: 4, losses: 1, winRate: 80,
+    });
   });
 
   it('maps disabled seasons to all-time mode and accepts pre-flag payloads', () => {

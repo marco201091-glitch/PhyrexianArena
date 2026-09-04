@@ -20,6 +20,7 @@ import { ArenaFilterPanel } from '@/components/table/arena-filter-panel';
 import { ArenaTabBar } from '@/components/table/arena-tab-bar';
 import { ArenaCommandPanel } from '@/components/table/arena-command-panel';
 import { ArenaSeasonSettings } from '@/components/table/arena-season-settings';
+import { PreviousSeasonsPanel } from '@/components/table/previous-seasons-panel';
 import { TableArenaManagement } from '@/components/table/table-arena-management';
 import { TableDecksTab } from '@/components/table/table-decks-tab';
 import { TableGuestsSection } from '@/components/table/table-guests-section';
@@ -83,7 +84,6 @@ import {
   fetchArenaSeasonContext,
   formatArenaSeasonDate,
   formatArenaSeasonLabel,
-  getArenaSeasonArchiveHighlights,
   setArenaSeasonSettings,
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
@@ -734,28 +734,6 @@ export default function TableScreen() {
               {' – '}
               {formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
             </Text>
-            {seasonContext.archives.length === 0 ? (
-              <Text style={styles.seasonArchiveText}>{copy('seasonArchiveEmpty')}</Text>
-            ) : seasonContext.archives.map((archive) => (
-              <View key={archive.id} style={styles.seasonArchiveRow}>
-                <Text style={styles.seasonArchiveName}>
-                  {formatArenaSeasonLabel(archive.seasonStart, archive.seasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
-                </Text>
-                <Text style={styles.seasonArchiveText}>
-                  {Number(archive.summary.totalMatches ?? 0)} {copy('seasonArchivedGames')}
-                  {' · '}{Number(archive.summary.matches?.draws ?? 0)} {copy('seasonArchivedDraws')}
-                  {' · '}{Number(archive.summary.matches?.trackedMatches ?? 0)} {copy('trackedGames')}
-                </Text>
-                {getArenaSeasonArchiveHighlights(archive).topPlayer ? (
-                  <Text style={styles.seasonArchiveText}>
-                    {copy('currentLeader')}: {getArenaSeasonArchiveHighlights(archive).topPlayer?.display_name}
-                    {getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name
-                      ? ` · ${copy('deckSingular')}: ${getArenaSeasonArchiveHighlights(archive).topDeck?.deck_name}`
-                      : ''}
-                  </Text>
-                ) : null}
-              </View>
-            ))}
           </PhyrexianPanel>
         ) : null}
         <ArenaTabBar
@@ -799,28 +777,31 @@ export default function TableScreen() {
         />
 
         {activeTab === 'matches' ? (
-          <TableMatchesList
-            dayGroups={matchDayGroups}
-            expandedDayKeys={expandedDayKeys}
-            emptyTitle={copy('noMatchesTitle')}
-            emptyBody={copy('noMatchesBody')}
-            recordBattleLabel={copy('recordBattle')}
-            matchCountLabel={(count) => copy(count === 1 ? 'matchSingular' : 'matchPlural')}
-            onToggleDay={toggleDayGroup}
-            onEditMatch={setEditingMatch}
-            onShareMatch={handleShareMatch}
-            onDeleteMatch={handleDeleteMatch}
-            onDetailsMatch={setDetailsMatch}
-            onRecordBattle={() => setShowRecordModal(true)}
-            exportDayLabel={copy('exportDay')}
-            drawLabel={copy('liveGameDraw')}
-            onExportDay={openDayExportModal}
-            hasMore={hasMoreMatches}
-            loadingMore={loadingMoreMatches}
-            loadMoreLabel={copy('loadOlderMatches')}
-            loadingMoreLabel={copy('loadingOlderMatches')}
-            onLoadMore={loadMoreMatches}
-          />
+          <View style={styles.matchesContent}>
+            <TableMatchesList
+              dayGroups={matchDayGroups}
+              expandedDayKeys={expandedDayKeys}
+              emptyTitle={copy('noMatchesTitle')}
+              emptyBody={copy('noMatchesBody')}
+              recordBattleLabel={copy('recordBattle')}
+              matchCountLabel={(count) => copy(count === 1 ? 'matchSingular' : 'matchPlural')}
+              onToggleDay={toggleDayGroup}
+              onEditMatch={setEditingMatch}
+              onShareMatch={handleShareMatch}
+              onDeleteMatch={handleDeleteMatch}
+              onDetailsMatch={setDetailsMatch}
+              onRecordBattle={() => setShowRecordModal(true)}
+              exportDayLabel={copy('exportDay')}
+              drawLabel={copy('liveGameDraw')}
+              onExportDay={openDayExportModal}
+              hasMore={hasMoreMatches}
+              loadingMore={loadingMoreMatches}
+              loadMoreLabel={copy('loadOlderMatches')}
+              loadingMoreLabel={copy('loadingOlderMatches')}
+              onLoadMore={loadMoreMatches}
+            />
+            {seasonContext ? <PreviousSeasonsPanel archives={seasonContext.archives} /> : null}
+          </View>
         ) : null}
 
         {activeTab === 'players' ? (
@@ -1403,17 +1384,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   seasonDates: { color: colors.muted, fontSize: 12 },
-  seasonArchiveRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 8,
-    marginTop: 4,
-  },
-  seasonArchiveName: { color: colors.foreground, fontSize: 12, fontWeight: '700' },
-  seasonArchiveText: { color: colors.muted, fontSize: 12 },
+  matchesContent: { gap: spacing.md },
   seasonEditor: {
     gap: 8,
     borderRadius: 12,

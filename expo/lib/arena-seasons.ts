@@ -24,6 +24,26 @@ export type ArenaSeasonArchive = {
   archivedAt: string;
 };
 
+export type ArenaSeasonArchivePlayer = NonNullable<ArenaSeasonArchive['summary']['players']>[number];
+export type ArenaSeasonArchiveDeck = NonNullable<ArenaSeasonArchive['summary']['decks']>[number];
+
+export const ARENA_SEASON_RANKING_MIN_GAMES = 5;
+
+export function getArenaSeasonRecord(entry: { games_played?: number; wins?: number }) {
+  const gamesPlayed = Math.max(0, Number(entry.games_played ?? 0));
+  const wins = Math.min(gamesPlayed, Math.max(0, Number(entry.wins ?? 0)));
+  return {
+    gamesPlayed,
+    wins,
+    losses: gamesPlayed - wins,
+    winRate: gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0,
+  };
+}
+
+export function getArenaSeasonPlayerRecord(player: ArenaSeasonArchivePlayer) {
+  return getArenaSeasonRecord(player);
+}
+
 export function getArenaSeasonArchiveHighlights(archive: ArenaSeasonArchive) {
   const byPerformance = <T extends { games_played?: number; wins?: number }>(left: T, right: T) => {
     const leftGames = Number(left.games_played ?? 0);
@@ -34,9 +54,21 @@ export function getArenaSeasonArchiveHighlights(archive: ArenaSeasonArchive) {
     const rightRate = rightGames > 0 ? rightWins / rightGames : 0;
     return rightRate - leftRate || rightWins - leftWins || rightGames - leftGames;
   };
+  const topPlayers = [...(archive.summary.players ?? [])]
+    .filter((player) => Number(player.games_played ?? 0) >= ARENA_SEASON_RANKING_MIN_GAMES)
+    .sort((left, right) => byPerformance(left, right)
+      || String(left.display_name ?? '').localeCompare(String(right.display_name ?? '')))
+    .slice(0, 10);
+  const topDecks = [...(archive.summary.decks ?? [])]
+    .filter((deck) => Number(deck.games_played ?? 0) >= ARENA_SEASON_RANKING_MIN_GAMES)
+    .sort((left, right) => byPerformance(left, right)
+      || String(left.deck_name ?? '').localeCompare(String(right.deck_name ?? '')))
+    .slice(0, 10);
   return {
-    topPlayer: [...(archive.summary.players ?? [])].sort(byPerformance)[0] ?? null,
-    topDeck: [...(archive.summary.decks ?? [])].sort(byPerformance)[0] ?? null,
+    topPlayers,
+    topPlayer: topPlayers[0] ?? null,
+    topDecks,
+    topDeck: topDecks[0] ?? null,
   };
 }
 
