@@ -95,7 +95,7 @@
     "react-error-boundary": "^6.1.2",
     "react-hook-form": "^7.85.0",
     "react-native": "0.86.3",
-    "react-native-gesture-handler": "~2.32.0",
+    "react-native-gesture-handler": "~3.2.1",
     "react-native-get-random-values": "~1.11.0",
     "react-native-keyboard-controller": "1.21.9",
     "react-native-qrcode-svg": "6.3.21",
