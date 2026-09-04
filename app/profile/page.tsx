@@ -2415,17 +2415,6 @@ export default function ProfilePage() {
                       {t({ it: 'Password', en: 'Password' })}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className={accountActionButtonClass(false)}
-                    onClick={() => void exportAccountData()}
-                    disabled={exportingAccount}
-                  >
-                    <Download className="h-4 w-4 shrink-0 text-emerald-300/90" />
-                    {exportingAccount
-                      ? t({ it: 'Esportazione...', en: 'Exporting...' })
-                      : t({ it: 'Esporta dati', en: 'Export data' })}
-                  </button>
                 </div>
               </div>
               <div className="min-w-0 flex-1 sm:pt-1">
