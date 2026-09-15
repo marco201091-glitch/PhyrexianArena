@@ -1,0 +1,11 @@
+# Gli script di shell devono avere LF anche quando il checkout avviene su
+# Windows, dove core.autocrlf converte in CRLF.
+#
+# Con CRLF la prima riga diventa "#!/bin/bash\r": il kernel cerca un
+# interprete che si chiama letteralmente "/bin/bash\r", non lo trova, e
+# fallisce con "bad interpreter: No such file or directory" — un errore
+# fuorviante, perche' il file sembra corretto.
+#
+# Questi script vengono copiati sulla VM Linux, quindi il fine-riga fa parte
+# del contratto del file, non e' una preferenza locale.
+*.sh text eol=lf

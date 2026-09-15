@@ -1,49 +1,120 @@
-#!/usr/bin/env bash
+#!/bin/bash
+#
+# Phyrexian Arena - backup giornaliero del database Supabase di produzione.
+#
+# Cosa fa:
+#   - dump del database in formato custom (ripristinabile con pg_restore)
+#   - archivio dello Storage
+#   - checksum SHA-256 e manifest dentro ogni backup
+#   - conserva gli ultimi 7 backup completi
+#   - scrive il marker "last-success" solo a backup riuscito
+#   - invia un'email di alert se il backup fallisce
+#
+# I backup restano sulla VM: NON esiste una copia off-site.
+#
+# Nessuna password e' contenuta in questo file: pg_dump e tar girano dentro i
+# container e si autenticano localmente. L'unico segreto usato e' la chiave
+# Resend per gli alert, letta da /etc/phyrexian-health-alert.env (0600 root).
+#
 set -euo pipefail
 
-backup_root=${SUPABASE_BACKUP_ROOT:-/var/backups/phyrexianarena}
-compose_project=${SUPABASE_COMPOSE_PROJECT:?SUPABASE_COMPOSE_PROJECT is required}
-age_recipient=${SUPABASE_BACKUP_AGE_RECIPIENT:?SUPABASE_BACKUP_AGE_RECIPIENT is required}
-rclone_remote=${SUPABASE_BACKUP_RCLONE_REMOTE:?SUPABASE_BACKUP_RCLONE_REMOTE is required}
-retention_days=${SUPABASE_BACKUP_LOCAL_RETENTION_DAYS:-7}
+BACKUP_DIR=${BACKUP_DIR:-/var/backups/phyrexianarena}
+RETENTION=${RETENTION:-7}
+DB_CONTAINER=${DB_CONTAINER:-supabase-db}
+STORAGE_CONTAINER=${STORAGE_CONTAINER:-supabase-storage}
+HEALTH_ENV=${HEALTH_ENV:-/etc/phyrexian-health-alert.env}
+MAIL_FROM=${MAIL_FROM:-Phyrexian Arena <noreply@phyrexianarena.dpdns.org>}
 
-install -d -m 0700 "$backup_root"
-work_dir=$(mktemp -d "$backup_root/.tmp.XXXXXX")
-cleanup() {
-  case "$work_dir" in
-    "$backup_root"/.tmp.*) find "$work_dir" -depth -delete 2>/dev/null || true ;;
-  esac
+if [[ -r "$HEALTH_ENV" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$HEALTH_ENV"
+  set +a
+fi
+
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+NAME="supabase-production-$STAMP"
+WORK_DIR=""
+
+alert() {
+  local subject=$1 body=$2
+  logger -t supabase-backup -p daemon.err "$body"
+  if [[ -z "${RESEND_API_KEY:-}" || -z "${ALERT_EMAIL:-}" ]]; then
+    logger -t supabase-backup -p daemon.warning "alert email non configurato: $HEALTH_ENV"
+    return 0
+  fi
+  curl --silent --show-error --max-time 15 \
+    --request POST https://api.resend.com/emails \
+    --header "Authorization: Bearer $RESEND_API_KEY" \
+    --header 'Content-Type: application/json' \
+    --data "$(printf '{"from":"%s","to":"%s","subject":"%s","text":"%s"}' \
+        "$MAIL_FROM" "$ALERT_EMAIL" "$subject" "$body")" \
+    >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
 
-db_container=$(docker ps -q \
-  --filter "label=com.docker.compose.project=$compose_project" \
-  --filter 'label=com.docker.compose.service=db' | head -n 1)
-storage_container=$(docker ps -q \
-  --filter "label=com.docker.compose.project=$compose_project" \
-  --filter 'label=com.docker.compose.service=storage' | head -n 1)
-test -n "$db_container"
-test -n "$storage_container"
+last_success() {
+  if [[ -r "$BACKUP_DIR/last-success" ]]; then
+    date -u -d "@$(cat "$BACKUP_DIR/last-success")" '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo sconosciuto
+  else
+    echo mai
+  fi
+}
 
-stamp=$(date -u +%Y%m%dT%H%M%SZ)
-name="supabase-production-$stamp"
-docker exec "$db_container" pg_dump -U supabase_admin -d postgres \
-  --format=custom --no-owner --no-privileges > "$work_dir/$name.dump"
-docker exec "$storage_container" tar -C /var/lib/storage -czf - . > "$work_dir/$name.storage.tar.gz"
+finish() {
+  local rc=$?
+  # Rimuove solo la propria directory temporanea, e solo se e' davvero dentro
+  # BACKUP_DIR: un percorso vuoto o inatteso non deve mai finire in un rm -rf.
+  if [[ -n "$WORK_DIR" && "$WORK_DIR" == "$BACKUP_DIR"/.work.* ]]; then
+    rm -rf -- "$WORK_DIR"
+  fi
+  if (( rc != 0 )); then
+    alert "[ALERT] Backup Supabase fallito" \
+      "Il backup $NAME e' fallito (exit $rc) su $(hostname). Ultimo backup riuscito: $(last_success)."
+  fi
+}
+trap finish EXIT
 
-for source in "$work_dir/$name.dump" "$work_dir/$name.storage.tar.gz"; do
-  age --recipient "$age_recipient" --output "$source.age" "$source"
-  sha256sum "$source.age" > "$source.age.sha256"
-  rm -- "$source"
+install -d -m 0700 "$BACKUP_DIR"
+chmod 0700 "$BACKUP_DIR"
+
+WORK_DIR=$(mktemp -d "$BACKUP_DIR/.work.XXXXXX")
+
+# 1. Dump del database.
+#    Utente supabase_admin: e' il vero superuser del cluster. Con "postgres"
+#    il dump non copre gli schemi di proprieta' di supabase_admin (vault e
+#    altri), che restano fuori dal backup.
+docker exec "$DB_CONTAINER" pg_dump -U supabase_admin -d postgres \
+  --format=custom --no-owner --no-privileges > "$WORK_DIR/database.dump"
+
+# 2. Archivio dello Storage.
+docker exec "$STORAGE_CONTAINER" tar -C /var/lib/storage -czf - . > "$WORK_DIR/storage.tar.gz"
+
+# 3. Integrita' e metadati.
+(cd "$WORK_DIR" && sha256sum database.dump storage.tar.gz > SHA256SUMS)
+
+db_bytes=$(stat -c %s "$WORK_DIR/database.dump")
+printf '{"name":"%s","createdAt":"%s","databaseBytes":%s,"retention":%s}\n' \
+  "$NAME" "$STAMP" "$db_bytes" "$RETENTION" > "$WORK_DIR/manifest.json"
+
+chmod 0600 "$WORK_DIR"/*
+
+# 4. Pubblicazione atomica: il backup diventa visibile solo se e' completo.
+mv -- "$WORK_DIR" "$BACKUP_DIR/$NAME"
+WORK_DIR=""
+
+date -u +%s > "$BACKUP_DIR/last-success.tmp"
+chmod 0600 "$BACKUP_DIR/last-success.tmp"
+mv -- "$BACKUP_DIR/last-success.tmp" "$BACKUP_DIR/last-success"
+
+# 5. Retention: conserva solo i backup completi piu' recenti.
+mapfile -t stale < <(
+  find "$BACKUP_DIR" -maxdepth 1 -type d -name 'supabase-production-*' -printf '%f\n' \
+    | sort -r | tail -n "+$((RETENTION + 1))"
+)
+for dir in "${stale[@]:-}"; do
+  [[ -n "$dir" ]] || continue
+  rm -rf -- "$BACKUP_DIR/$dir"
 done
 
-printf '{"createdAt":"%s","composeProject":"%s","database":"%s.dump.age","storage":"%s.storage.tar.gz.age"}\n' \
-  "$stamp" "$compose_project" "$name" "$name" > "$work_dir/$name.manifest.json"
-
-rclone copy "$work_dir" "$rclone_remote/$name" --immutable --checkers 4 --transfers 2
-install -m 0600 "$work_dir/$name.manifest.json" "$backup_root/$name.manifest.json"
-date -u +%s > "$backup_root/last-success"
-find "$backup_root" -maxdepth 1 -type f -name 'supabase-production-*.manifest.json' \
-  -mtime "+$retention_days" -delete
-
-echo "Encrypted database and Storage backup uploaded: $name"
+kept=$(find "$BACKUP_DIR" -maxdepth 1 -type d -name 'supabase-production-*' | wc -l)
+echo "[$(date -u '+%Y-%m-%d %H:%M UTC')] Backup completato: $NAME (db $(numfmt --to=iec "$db_bytes")) — conservati $kept/$RETENTION"
