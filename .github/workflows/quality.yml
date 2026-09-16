@@ -85,6 +85,13 @@ jobs:
       - run: npm ci
       - run: npm run audit:production
       - run: npm run quality
-      - run: npm run doctor
+      # doctor:ci esegue expo-doctor per intero e blocca su qualunque controllo
+      # fallito e su qualunque scostamento di major/minor. Non blocca solo per
+      # una differenza di patch, che e' compatibile per definizione e durante il
+      # rilascio di SDK 57 cambia piu' volte al giorno: il 2026-09-15
+      # expo@57.0.23 e' stato pubblicato un minuto e mezzo dopo il merge di una
+      # PR che aveva allineato le stesse dipendenze, rendendo rosso un branch
+      # gia' verde. `npm run doctor` resta il controllo completo, senza filtri.
+      - run: npm run doctor:ci
       - run: npm run android:bundle:check
       - run: npm run verify:bundle-budget
