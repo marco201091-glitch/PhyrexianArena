@@ -26,6 +26,9 @@ function fillAllColorStats(data: ArenaColorStat[]): ArenaColorStat[] {
     color,
     appearances: 0,
     wins: 0,
+    losses: 0,
+    draws: 0,
+    decisiveGames: 0,
     percentage: 0,
     winRate: 0,
   });

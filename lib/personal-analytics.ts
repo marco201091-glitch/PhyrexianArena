@@ -1,4 +1,5 @@
 import { getDeckDisplayColors } from '@/lib/deck-metadata';
+import { buildMatchRecord, type MatchRecord } from '@/lib/win-rate';
 
 export interface PersonalDeckSnapshot {
   id: string;
@@ -12,15 +13,12 @@ export interface PersonalDeckSnapshot {
   ownerUsername?: string | null;
 }
 
-export interface PersonalDeckAnalytics {
+export interface PersonalDeckAnalytics extends MatchRecord {
   id: string;
   name: string;
   commander: string;
   commanderImage: string | null;
   ownerUsername?: string | null;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
   colors: string[];
 }
 
@@ -29,16 +27,11 @@ export interface BracketWinStat {
   wins: number;
 }
 
-export interface ColorWinStat {
+export interface ColorWinStat extends MatchRecord {
   color: string;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
 }
 
-export interface PersonalAnalytics {
-  gamesPlayed: number;
-  wins: number;
+export interface PersonalAnalytics extends MatchRecord {
   uniqueDecks: number;
   topDecks: PersonalDeckAnalytics[];
   colorStats: Array<{ color: string; gamesPlayed: number; percentage: number }>;
@@ -54,21 +47,20 @@ export interface PersonalMatchParticipantRow {
   is_winner: boolean;
   deck_id: string;
   played_at?: string | null;
+  is_draw?: boolean | null;
   win_condition?: string | null;
 }
 
-export interface DeckWinRateSnapshot {
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
-}
+export type DeckWinRateSnapshot = MatchRecord;
+
+/** A draw is neutral: it neither extends nor breaks a run of wins. */
+export type MatchOutcome = 'win' | 'loss' | 'draw';
 
 export const PERSONAL_BEST_DECK_MIN_GAMES = 3;
 
 export function emptyPersonalAnalytics(): PersonalAnalytics {
   return {
-    gamesPlayed: 0,
-    wins: 0,
+    ...buildMatchRecord({ gamesPlayed: 0, wins: 0 }),
     uniqueDecks: 0,
     topDecks: [],
     colorStats: [],
@@ -89,13 +81,11 @@ export function buildDeckWinRateMap(
   participants.forEach((row) => {
     if (!row.deck_id) return;
 
-    const current = deckMap.get(row.deck_id) || { gamesPlayed: 0, wins: 0, winRate: 0 };
+    const current = deckMap.get(row.deck_id) || { gamesPlayed: 0, wins: 0, draws: 0 };
     current.gamesPlayed += 1;
+    if (row.is_draw) current.draws += 1;
     if (row.is_winner) current.wins += 1;
-    current.winRate = current.gamesPlayed > 0
-      ? Math.round((current.wins / current.gamesPlayed) * 100)
-      : 0;
-    deckMap.set(row.deck_id, current);
+    deckMap.set(row.deck_id, { ...current, ...buildMatchRecord(current) });
   });
 
   return deckMap;
@@ -110,27 +100,43 @@ export function resolveDeckColorsForAnalytics(
   return getDeckDisplayColors(deck);
 }
 
-export function calculateWinStreaks(outcomes: boolean[]) {
+export function calculateWinStreaks(outcomes: MatchOutcome[]) {
   let longest = 0;
   let run = 0;
 
-  outcomes.forEach((won) => {
-    if (won) {
+  outcomes.forEach((outcome) => {
+    if (outcome === 'draw') return;
+    if (outcome === 'win') {
       run += 1;
       longest = Math.max(longest, run);
-    } else {
-      run = 0;
+      return;
     }
+    run = 0;
   });
 
   let current = 0;
   for (let index = outcomes.length - 1; index >= 0; index -= 1) {
-    if (!outcomes[index]) break;
+    const outcome = outcomes[index];
+    if (outcome === 'draw') continue;
+    if (outcome !== 'win') break;
     current += 1;
   }
 
   return { longest, current };
 }
+
+function toMatchOutcome(row: PersonalMatchParticipantRow): MatchOutcome {
+  if (row.is_winner) return 'win';
+  return row.is_draw ? 'draw' : 'loss';
+}
+
+/** Running counters; the derived fields arrive together in `buildMatchRecord`. */
+type DeckAccumulator = Omit<
+  PersonalDeckAnalytics,
+  'losses' | 'draws' | 'decisiveGames' | 'winRate'
+> & { gamesPlayed: number; wins: number; draws: number };
+
+type ColorAccumulator = { gamesPlayed: number; wins: number; draws: number };
 
 function sortParticipantsChronologically(participants: PersonalMatchParticipantRow[]) {
   return [...participants].sort((left, right) => {
@@ -146,9 +152,9 @@ export function buildPersonalAnalytics(
   decksById: Map<string, PersonalDeckSnapshot>,
   colorOverrides: Map<string, string[]> = new Map(),
 ): PersonalAnalytics {
-  const deckMap = new Map<string, PersonalDeckAnalytics>();
+  const deckMap = new Map<string, DeckAccumulator>();
   const colorMap = new Map<string, number>();
-  const colorWinMap = new Map<string, { gamesPlayed: number; wins: number }>();
+  const colorWinMap = new Map<string, ColorAccumulator>();
   const bracketWinMap = new Map<string, number>();
 
   participants.forEach((row) => {
@@ -166,19 +172,21 @@ export function buildPersonalAnalytics(
       ownerUsername: deck.ownerUsername ?? null,
       gamesPlayed: 0,
       wins: 0,
-      winRate: 0,
+      draws: 0,
       colors,
     };
 
     current.gamesPlayed += 1;
+    if (row.is_draw) current.draws += 1;
     if (row.is_winner) current.wins += 1;
     current.colors = colors;
     deckMap.set(deck.id, current);
 
     colors.forEach((color) => {
       colorMap.set(color, (colorMap.get(color) || 0) + 1);
-      const colorEntry = colorWinMap.get(color) || { gamesPlayed: 0, wins: 0 };
+      const colorEntry = colorWinMap.get(color) || { gamesPlayed: 0, wins: 0, draws: 0 };
       colorEntry.gamesPlayed += 1;
+      if (row.is_draw) colorEntry.draws += 1;
       if (row.is_winner) colorEntry.wins += 1;
       colorWinMap.set(color, colorEntry);
     });
@@ -191,13 +199,19 @@ export function buildPersonalAnalytics(
   const playedDecks = Array.from(deckMap.values())
     .map((deck) => ({
       ...deck,
-      winRate: deck.gamesPlayed > 0 ? Math.round((deck.wins / deck.gamesPlayed) * 100) : 0,
+      ...buildMatchRecord(deck),
     }))
     .sort((a, b) => b.winRate - a.winRate || b.gamesPlayed - a.gamesPlayed || b.wins - a.wins);
 
   const topDecks = playedDecks.slice(0, 10);
-  const gamesPlayed = playedDecks.reduce((total, deck) => total + deck.gamesPlayed, 0);
-  const wins = playedDecks.reduce((total, deck) => total + deck.wins, 0);
+  const totals = playedDecks.reduce(
+    (total, deck) => ({
+      gamesPlayed: total.gamesPlayed + deck.gamesPlayed,
+      wins: total.wins + deck.wins,
+      draws: total.draws + deck.draws,
+    }),
+    { gamesPlayed: 0, wins: 0, draws: 0 },
+  );
   const colorTotal = Array.from(colorMap.values()).reduce((total, count) => total + count, 0);
   const colorStats = Array.from(colorMap.entries())
     .map(([color, count]) => ({
@@ -210,9 +224,7 @@ export function buildPersonalAnalytics(
   const colorWinStats = Array.from(colorWinMap.entries())
     .map(([color, stats]) => ({
       color,
-      gamesPlayed: stats.gamesPlayed,
-      wins: stats.wins,
-      winRate: stats.gamesPlayed > 0 ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0,
+      ...buildMatchRecord(stats),
     }))
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || b.gamesPlayed - a.gamesPlayed);
 
@@ -225,7 +237,7 @@ export function buildPersonalAnalytics(
   const hasChronologicalData = chronologicalParticipants.length > 0
     && chronologicalParticipants.every((row) => row.played_at);
   const { longest: longestWinStreak, current: currentWinStreak } = hasChronologicalData
-    ? calculateWinStreaks(chronologicalParticipants.map((row) => row.is_winner))
+    ? calculateWinStreaks(chronologicalParticipants.map(toMatchOutcome))
     : { longest: 0, current: 0 };
 
   const bestDeck = playedDecks
@@ -246,8 +258,7 @@ export function buildPersonalAnalytics(
     .sort((left, right) => right.wins - left.wins || left.condition.localeCompare(right.condition));
 
   return {
-    gamesPlayed,
-    wins,
+    ...buildMatchRecord(totals),
     uniqueDecks: deckMap.size,
     topDecks,
     colorStats,

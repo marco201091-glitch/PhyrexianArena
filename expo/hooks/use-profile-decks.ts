@@ -28,6 +28,7 @@ import {
   type PersonalDeckSnapshot,
   type PersonalMatchParticipantRow,
 } from '@/lib/personal-analytics';
+import { buildMatchRecord, type MatchRecord } from '@/lib/win-rate';
 import { getDeckDisplayColors } from '@/lib/deck-metadata';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
@@ -96,7 +97,7 @@ export function useProfileDecks(userId: string | undefined) {
       // V6 compatibility while production is waiting for the aggregate RPC.
       const { data: participantRows, error: participantsError } = await supabase
         .from('match_participants')
-        .select('is_winner, deck_id, placement, life_lost, life_gained, life_damage_dealt, commander_damage_dealt, infect_dealt, eliminations_caused, matches (duration_seconds, tracking_version)')
+        .select('is_winner, deck_id, placement, life_lost, life_gained, life_damage_dealt, commander_damage_dealt, infect_dealt, eliminations_caused, matches (is_draw, duration_seconds, tracking_version)')
         .in('deck_id', deckIds);
 
       if (participantsError) {
@@ -133,25 +134,31 @@ export function useProfileDecks(userId: string | undefined) {
         nextWinRates[deck.id] = {
           gamesPlayed: deck.gamesPlayed,
           wins: deck.wins,
+          losses: deck.losses,
+          draws: deck.draws,
+          decisiveGames: deck.decisiveGames,
           winRate: deck.winRate,
         };
       });
       setWinRates(nextWinRates);
 
-      const performanceMap: Record<string, DeckPerformance & { winningDurations?: number[] }> = {};
+      type PerformanceAccumulator = Omit<DeckPerformance, keyof MatchRecord>
+        & { gamesPlayed: number; wins: number; draws: number; winningDurations?: number[] };
+      const performanceMap: Record<string, PerformanceAccumulator> = {};
       ((participantRows || []) as Array<Record<string, unknown>>).forEach((raw) => {
         const deckId = raw.deck_id as string | null;
         if (!deckId) return;
         const relation = Array.isArray(raw.matches) ? raw.matches[0] : raw.matches;
-        const match = (relation || {}) as { duration_seconds?: number | null; tracking_version?: number | null };
+        const match = (relation || {}) as { is_draw?: boolean | null; duration_seconds?: number | null; tracking_version?: number | null };
         const tracked = match.tracking_version != null || match.duration_seconds != null;
         const current = performanceMap[deckId] || {
-          gamesPlayed: 0, wins: 0, winRate: 0, masteryPoints: 0, trackedGames: 0, trackingCoverage: 0,
+          gamesPlayed: 0, wins: 0, draws: 0, masteryPoints: 0, trackedGames: 0, trackingCoverage: 0,
           secondPlaces: 0, damageDealt: 0, damageTaken: 0, lifeGained: 0,
           commanderDamage: 0, infectDealt: 0, eliminations: 0,
           medianWinningDurationSeconds: null, winningDurations: [],
         };
         current.gamesPlayed += 1;
+        if (match.is_draw) current.draws += 1;
         if (raw.is_winner) current.wins += 1;
         if (raw.placement === 2) current.secondPlaces += 1;
         if (tracked) {
@@ -166,18 +173,26 @@ export function useProfileDecks(userId: string | undefined) {
         }
         performanceMap[deckId] = current;
       });
-      Object.values(performanceMap).forEach((entry) => {
-        entry.winRate = entry.gamesPlayed ? Math.round((entry.wins / entry.gamesPlayed) * 100) : 0;
-        entry.masteryPoints = entry.gamesPlayed + entry.wins * 2;
-        entry.trackingCoverage = entry.gamesPlayed ? Math.round((entry.trackedGames / entry.gamesPlayed) * 100) : 0;
-        const values = [...(entry.winningDurations || [])].sort((a, b) => a - b);
-        if (values.length) {
-          const middle = Math.floor(values.length / 2);
-          entry.medianWinningDurationSeconds = values.length % 2 ? values[middle] : Math.round((values[middle - 1] + values[middle]) / 2);
-        }
-        delete entry.winningDurations;
+      const nextPerformance: Record<string, DeckPerformance> = {};
+      Object.entries(performanceMap).forEach(([deckId, entry]) => {
+        const { winningDurations = [], ...rest } = entry;
+        const values = [...winningDurations].sort((a, b) => a - b);
+        const middle = Math.floor(values.length / 2);
+        nextPerformance[deckId] = {
+          ...rest,
+          ...buildMatchRecord(entry),
+          masteryPoints: entry.gamesPlayed + entry.wins * 2,
+          trackingCoverage: entry.gamesPlayed
+            ? Math.round((entry.trackedGames / entry.gamesPlayed) * 100)
+            : 0,
+          medianWinningDurationSeconds: values.length
+            ? (values.length % 2
+              ? values[middle]
+              : Math.round((values[middle - 1] + values[middle]) / 2))
+            : null,
+        };
       });
-      setPerformance(performanceMap);
+      setPerformance(nextPerformance);
     } catch (error) {
       console.error('Error fetching decks:', getSupabaseErrorMessage(error, 'Failed to fetch decks'));
       setDecks([]);

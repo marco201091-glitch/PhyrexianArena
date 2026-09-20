@@ -1,5 +1,6 @@
 import { getParticipantDeckId, getParticipantDeckSnapshot, getParticipantDisplayName } from '@/lib/arena-participants';
 import type { ArenaMatch } from '@/lib/types/arena';
+import { buildMatchRecord } from '@/lib/win-rate';
 
 export interface CommanderStats {
   key: string;
@@ -7,10 +8,20 @@ export interface CommanderStats {
   ownerDisplayName: string;
   commanderImageUrl: string | null;
   bracket: string | null;
+  /** Every match, draws included. */
   gamesPlayed: number;
   wins: number;
+  losses: number;
+  draws: number;
+  /** Matches that produced a winner: the win rate denominator. */
+  decisiveGames: number;
   winRate: number;
 }
+
+type CommanderStatsAccumulator = Omit<
+  CommanderStats,
+  'losses' | 'draws' | 'decisiveGames' | 'winRate'
+>;
 
 export type DeckStatsSort = 'winRate' | 'gamesPlayed';
 
@@ -28,7 +39,7 @@ export function calculateCommanderStats(
   bracketFilter = 'all',
   deckStatsSort: DeckStatsSort = 'winRate',
 ): CommanderStats[] {
-  const deckMap = new Map<string, CommanderStats>();
+  const deckMap = new Map<string, CommanderStatsAccumulator & { draws: number }>();
 
   matches.forEach((match) => {
     match.match_participants.forEach((participant) => {
@@ -48,19 +59,20 @@ export function calculateCommanderStats(
           bracket: deck.bracket,
           gamesPlayed: 0,
           wins: 0,
-          winRate: 0,
+          draws: 0,
         });
       }
 
       const stats = deckMap.get(key)!;
       stats.gamesPlayed += 1;
+      if (match.is_draw) stats.draws += 1;
       if (participant.is_winner) stats.wins += 1;
     });
   });
 
   const withRates = Array.from(deckMap.values()).map((stats) => ({
     ...stats,
-    winRate: stats.gamesPlayed > 0 ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0,
+    ...buildMatchRecord(stats),
   }));
 
   return sortCommanderStats(withRates, deckStatsSort);

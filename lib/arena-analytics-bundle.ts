@@ -8,6 +8,9 @@ import {
 import type { ArenaColorAnalytics } from '@/lib/arena-color-analytics';
 import type { DeckPerformanceStats } from '@/lib/deck-performance-analytics';
 import type { CommanderStatsRow, PlayerStatsRow } from '@/lib/arena-stats-fetch';
+import { buildMatchRecord, winRate } from '@/lib/win-rate';
+
+type ColorTally = { appearances: number; wins: number; draws: number };
 
 type PlayerRollup = {
   key: string;
@@ -17,6 +20,7 @@ type PlayerRollup = {
   is_guest: boolean;
   games_played: number;
   wins: number;
+  draws: number;
 };
 
 type CommanderRollup = {
@@ -25,6 +29,7 @@ type CommanderRollup = {
   bracket: string | null;
   games_played: number;
   wins: number;
+  draws: number;
 };
 
 type ColorRollup = {
@@ -32,6 +37,7 @@ type ColorRollup = {
   bracket: string | null;
   appearances: number;
   wins: number;
+  draws: number;
 };
 
 type DeckRollup = {
@@ -46,6 +52,7 @@ type DeckRollup = {
   games_played: number;
   tracked_games: number;
   wins: number;
+  draws: number;
   second_places: number;
   total_damage_dealt: number;
   total_damage_taken: number;
@@ -96,9 +103,11 @@ export function buildArenaAnalyticsBundle(
       username: row.display_name,
       display_name: row.display_name,
     } : null,
-    gamesPlayed: row.games_played,
-    wins: row.wins,
-    winRate: percentage(row.wins, row.games_played),
+    ...buildMatchRecord({
+      gamesPlayed: row.games_played,
+      wins: row.wins,
+      draws: row.draws,
+    }),
   })).sort((left, right) => right.winRate - left.winRate || right.wins - left.wins);
 
   const commanders = (payload.commanders || [])
@@ -108,9 +117,11 @@ export function buildArenaAnalyticsBundle(
       commander: row.commander,
       commanderImageUrl: row.commander_image,
       bracket: row.bracket,
-      gamesPlayed: row.games_played,
-      wins: row.wins,
-      winRate: percentage(row.wins, row.games_played),
+      ...buildMatchRecord({
+        gamesPlayed: row.games_played,
+        wins: row.wins,
+        draws: row.draws,
+      }),
     }))
     .sort((left, right) => commanderSort === 'gamesPlayed'
       ? right.gamesPlayed - left.gamesPlayed || right.wins - left.wins
@@ -119,37 +130,43 @@ export function buildArenaAnalyticsBundle(
   const filteredColors = (payload.colors || []).filter(
     (row) => bracketFilter === 'all' || row.bracket === bracketFilter,
   );
-  const colorMap = new Map<string, { appearances: number; wins: number }>(MANA_COLOR_ORDER.map((color) => [
+  const colorMap = new Map<string, ColorTally>(MANA_COLOR_ORDER.map((color) => [
     color,
-    { appearances: 0, wins: 0 },
+    { appearances: 0, wins: 0, draws: 0 },
   ]));
-  const pairMap = new Map<string, { colors: string[]; appearances: number; wins: number }>();
+  const pairMap = new Map<string, { colors: string[] } & ColorTally>();
   let totalColorAppearances = 0;
   filteredColors.forEach((row) => {
     const colors = getPlayableManaColors(row.color_identity || []);
     colors.forEach((color) => {
-      const current = colorMap.get(color) || { appearances: 0, wins: 0 };
+      const current = colorMap.get(color) || { appearances: 0, wins: 0, draws: 0 };
       current.appearances += row.appearances;
       current.wins += row.wins;
+      current.draws += row.draws || 0;
       totalColorAppearances += row.appearances;
       colorMap.set(color, current);
     });
     const pairKey = getColorIdentityGroupKey(colors);
     if (pairKey) {
-      const current = pairMap.get(pairKey) || { colors, appearances: 0, wins: 0 };
+      const current = pairMap.get(pairKey) || { colors, appearances: 0, wins: 0, draws: 0 };
       current.appearances += row.appearances;
       current.wins += row.wins;
+      current.draws += row.draws || 0;
       pairMap.set(pairKey, current);
     }
   });
   const played = MANA_COLOR_ORDER.map((color) => {
-    const current = colorMap.get(color) || { appearances: 0, wins: 0 };
+    const current = colorMap.get(color) || { appearances: 0, wins: 0, draws: 0 };
+    const decisiveGames = Math.max(0, current.appearances - current.draws);
     return {
       color,
       appearances: current.appearances,
       wins: current.wins,
+      losses: Math.max(0, decisiveGames - current.wins),
+      draws: current.draws,
+      decisiveGames,
       percentage: percentage(current.appearances, totalColorAppearances),
-      winRate: percentage(current.wins, current.appearances),
+      winRate: winRate(current.wins, current.appearances, current.draws),
     };
   }).filter((row) => row.appearances > 0);
   const wonTotal = played.reduce((total, row) => total + row.wins, 0);
@@ -158,20 +175,29 @@ export function buildArenaAnalyticsBundle(
     won: played.filter((row) => row.wins > 0).map((row) => ({
       ...row,
       appearances: row.wins,
+      losses: 0,
+      draws: 0,
+      decisiveGames: row.wins,
       percentage: percentage(row.wins, wonTotal),
       winRate: 100,
     })),
     winRates: [...played]
       .filter((row) => row.appearances >= 3)
       .sort((left, right) => right.winRate - left.winRate || right.appearances - left.appearances),
-    pairs: Array.from(pairMap.entries()).map(([key, row]) => ({
-      key,
-      colors: row.colors,
-      guildName: getColorIdentityLabel(row.colors),
-      appearances: row.appearances,
-      wins: row.wins,
-      winRate: percentage(row.wins, row.appearances),
-    })).sort((left, right) => right.appearances - left.appearances || right.winRate - left.winRate).slice(0, 5),
+    pairs: Array.from(pairMap.entries()).map(([key, row]) => {
+      const decisiveGames = Math.max(0, row.appearances - row.draws);
+      return {
+        key,
+        colors: row.colors,
+        guildName: getColorIdentityLabel(row.colors),
+        appearances: row.appearances,
+        wins: row.wins,
+        losses: Math.max(0, decisiveGames - row.wins),
+        draws: row.draws,
+        decisiveGames,
+        winRate: winRate(row.wins, row.appearances, row.draws),
+      };
+    }).sort((left, right) => right.appearances - left.appearances || right.winRate - left.winRate).slice(0, 5),
     missingColorGames: 0,
     totalGamesWithColors: payload.totalMatches || 0,
   };
@@ -185,11 +211,13 @@ export function buildArenaAnalyticsBundle(
     commanderImage: row.commander_image,
     bracket: row.bracket,
     ownerDisplayName: row.owner_display_name,
-    gamesPlayed: row.games_played,
+    ...buildMatchRecord({
+      gamesPlayed: row.games_played,
+      wins: row.wins,
+      draws: row.draws,
+    }),
     trackedGames: row.tracked_games,
     trackingCoverage: percentage(row.tracked_games, row.games_played),
-    wins: row.wins,
-    winRate: percentage(row.wins, row.games_played),
     secondPlaces: row.second_places,
     totalDamageDealt: row.total_damage_dealt,
     averageDamageDealt: row.tracked_games > 0

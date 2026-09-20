@@ -12,10 +12,10 @@ describe('arena share', () => {
   it('limits long sections and keeps optional details readable', () => {
     const text = buildArenaShareText({
       arenaName: 'Friday Night', periodLabel: 'All time', totalMatches: 12,
-      topPlayers: Array.from({ length: 6 }, (_, index) => ({ displayName: `P${index}`, gamesPlayed: 10, wins: 5, winRate: 50 })),
+      topPlayers: Array.from({ length: 6 }, (_, index) => ({ displayName: `P${index}`, gamesPlayed: 10, wins: 5, losses: 5, draws: 0, decisiveGames: 10, winRate: 50 })),
       topDecks: [
-        { commander: 'Atraxa', gamesPlayed: 5, wins: 3, winRate: 60, bracket: '3' },
-        { commander: 'Krenko', gamesPlayed: 2, wins: 1, winRate: 50 },
+        { commander: 'Atraxa', gamesPlayed: 5, wins: 3, losses: 2, draws: 0, decisiveGames: 5, winRate: 60, bracket: '3' },
+        { commander: 'Krenko', gamesPlayed: 2, wins: 1, losses: 1, draws: 0, decisiveGames: 2, winRate: 50 },
       ],
       topColors: [{ label: 'Esper', gamesPlayed: 4, percentage: 33 }],
       recentMatches: [{

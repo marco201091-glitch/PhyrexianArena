@@ -1,3 +1,5 @@
+import { formatMatchRecord, type MatchRecord } from '@/lib/win-rate';
+
 export interface ArenaShareParticipant {
   displayName: string;
   commander?: string | null;
@@ -13,19 +15,13 @@ export interface ArenaShareMatch {
   participants: ArenaShareParticipant[];
 }
 
-export interface ArenaSharePlayerStat {
+export interface ArenaSharePlayerStat extends MatchRecord {
   displayName: string;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
 }
 
-export interface ArenaShareCommanderStat {
+export interface ArenaShareCommanderStat extends MatchRecord {
   commander: string;
   ownerDisplayName?: string | null;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
   bracket?: string | null;
 }
 
@@ -78,14 +74,14 @@ export function buildArenaShareText(payload: ArenaSharePayload, labels: ArenaSha
   ];
 
   payload.topPlayers.slice(0, 5).forEach((player, index) => {
-    lines.push(`${index + 1}. ${player.displayName} - ${player.winRate}% (${player.wins}W / ${player.gamesPlayed}G)`);
+    lines.push(`${index + 1}. ${player.displayName} - ${player.winRate}% (${formatMatchRecord(player)})`);
   });
 
   lines.push('', labels.topDecks);
   payload.topDecks.slice(0, 5).forEach((deck, index) => {
     const bracket = deck.bracket ? ` [B${deck.bracket}]` : '';
     const owner = deck.ownerDisplayName?.trim() ? ` — ${deck.ownerDisplayName.trim()}` : '';
-    lines.push(`${index + 1}. ${deck.commander}${owner}${bracket} - ${deck.winRate}% (${deck.wins}W / ${deck.gamesPlayed}G)`);
+    lines.push(`${index + 1}. ${deck.commander}${owner}${bracket} - ${deck.winRate}% (${formatMatchRecord(deck)})`);
   });
 
   if (payload.topColors.length > 0) {
