@@ -1,4 +1,5 @@
 import type { CommanderMetadataOption } from '@/lib/deck-metadata';
+import type { MatchRecord } from '@/lib/win-rate';
 
 export interface ProfileRow {
   id: string;
@@ -28,11 +29,7 @@ export interface ProfileDeck {
   updated_at: string;
 }
 
-export interface DeckWinRate {
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
-}
+export type DeckWinRate = MatchRecord;
 
 export interface DeckPerformance extends DeckWinRate {
   masteryPoints: number;

@@ -57,6 +57,7 @@ import {
   ServerCog,
 } from 'lucide-react';
 import Link from 'next/link';
+import { formatMatchRecord } from '@/lib/win-rate';
 
 interface Group {
   id: string;
@@ -633,7 +634,7 @@ export default function DashboardPage() {
                             <p className="truncate text-sm text-emerald-300">{deck.commander}</p>
                           </div>
                           <div className="ml-auto shrink-0 text-right text-sm sm:hidden">
-                            <p className="font-semibold text-foreground">{deck.gamesPlayed}G / {deck.wins}W</p>
+                            <p className="font-semibold text-foreground">{formatMatchRecord(deck)}</p>
                             <p className="text-xs text-muted-foreground">{deck.winRate}% {t({ it: 'win', en: 'win' })}</p>
                           </div>
                         </div>
@@ -650,7 +651,7 @@ export default function DashboardPage() {
                         </div>
                         <ManaColorPills colors={deck.colors} size="xs" gap="tight" className="sm:hidden" />
                         <div className="hidden text-right sm:block">
-                          <p className="text-sm font-semibold text-foreground">{deck.gamesPlayed}G / {deck.wins}W</p>
+                          <p className="text-sm font-semibold text-foreground">{formatMatchRecord(deck)}</p>
                           <p className="text-xs text-muted-foreground">{deck.winRate}% {t({ it: 'win', en: 'win' })}</p>
                         </div>
                       </div>
@@ -686,7 +687,7 @@ export default function DashboardPage() {
                     <CardContent className="p-4">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{t({ it: 'Win rate', en: 'Win rate' })}</p>
                       <p className="mt-1 text-2xl font-bold text-foreground">
-                        {Math.round((personalAnalytics.wins / personalAnalytics.gamesPlayed) * 100)}%
+                        {personalAnalytics.winRate}%
                       </p>
                     </CardContent>
                   </Card>
@@ -734,7 +735,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="shrink-0 text-right">
                           <p className="text-sm font-semibold text-foreground">
-                            {personalAnalytics.bestDeck.gamesPlayed}G / {personalAnalytics.bestDeck.wins}W
+                            {formatMatchRecord(personalAnalytics.bestDeck)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {personalAnalytics.bestDeck.winRate}% {t({ it: 'win', en: 'win' })}

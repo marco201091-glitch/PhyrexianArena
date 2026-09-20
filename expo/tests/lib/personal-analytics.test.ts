@@ -49,8 +49,25 @@ describe('personal analytics', () => {
   });
 
   it('calculates longest and current streak independently', () => {
-    expect(calculateWinStreaks([true, true, false, true])).toEqual({ longest: 2, current: 1 });
+    expect(calculateWinStreaks(['win', 'win', 'loss', 'win'])).toEqual({ longest: 2, current: 1 });
     expect(calculateWinStreaks([])).toEqual({ longest: 0, current: 0 });
+  });
+
+  it('treats a draw as neutral in the streak and the win rate', () => {
+    expect(calculateWinStreaks(['win', 'draw', 'win'])).toEqual({ longest: 2, current: 2 });
+    // The trailing draw is skipped, then the loss ends the current run.
+    expect(calculateWinStreaks(['win', 'loss', 'draw'])).toEqual({ longest: 1, current: 0 });
+
+    const analytics = buildPersonalAnalytics([
+      { deck_id: 'a', is_winner: true },
+      { deck_id: 'a', is_winner: false },
+      { deck_id: 'a', is_winner: false, is_draw: true },
+    ], decks);
+
+    // One win, one loss, one draw: decisive games are 2, so 50% — not 33%.
+    expect(analytics).toMatchObject({
+      gamesPlayed: 3, wins: 1, losses: 1, draws: 1, decisiveGames: 2, winRate: 50,
+    });
   });
 
   it('uses win rate as the primary ranking and summarizes win conditions', () => {

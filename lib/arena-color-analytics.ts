@@ -1,4 +1,5 @@
 import { getColorIdentityGroupKey, getColorIdentityLabel, getPlayableManaColors, MANA_COLOR_ORDER } from '@/lib/mana-colors';
+import { winRate } from '@/lib/win-rate';
 
 export interface ArenaColorParticipant {
   deck_id: string | null;
@@ -17,13 +18,19 @@ export interface ArenaColorParticipant {
 }
 
 export interface ArenaColorMatch {
+  is_draw?: boolean | null;
   match_participants: ArenaColorParticipant[];
 }
 
 export interface ArenaColorStat {
   color: string;
+  /** Colour appearances, draws included. */
   appearances: number;
   wins: number;
+  losses: number;
+  draws: number;
+  /** Appearances that produced a winner: the win rate denominator. */
+  decisiveGames: number;
   percentage: number;
   winRate: number;
 }
@@ -32,8 +39,12 @@ export interface ArenaColorPairStat {
   key: string;
   colors: string[];
   guildName: { it: string; en: string } | null;
+  /** Colour-pair appearances, draws included. */
   appearances: number;
   wins: number;
+  losses: number;
+  draws: number;
+  decisiveGames: number;
   winRate: number;
 }
 
@@ -46,22 +57,28 @@ export interface ArenaColorAnalytics {
   totalGamesWithColors: number;
 }
 
+type ColorTally = { appearances: number; wins: number; draws: number };
+
 function buildColorMap() {
-  return new Map<string, { appearances: number; wins: number }>(
-    MANA_COLOR_ORDER.map((color) => [color, { appearances: 0, wins: 0 }])
+  return new Map<string, ColorTally>(
+    MANA_COLOR_ORDER.map((color) => [color, { appearances: 0, wins: 0, draws: 0 }]),
   );
 }
 
-function finalizeColorStats(colorMap: Map<string, { appearances: number; wins: number }>, total: number) {
+function finalizeColorStats(colorMap: Map<string, ColorTally>, total: number) {
   return MANA_COLOR_ORDER
     .map((color) => {
-      const entry = colorMap.get(color) || { appearances: 0, wins: 0 };
+      const entry = colorMap.get(color) || { appearances: 0, wins: 0, draws: 0 };
+      const decisiveGames = Math.max(0, entry.appearances - entry.draws);
       return {
         color,
         appearances: entry.appearances,
         wins: entry.wins,
+        losses: Math.max(0, decisiveGames - entry.wins),
+        draws: entry.draws,
+        decisiveGames,
         percentage: total > 0 ? Math.round((entry.appearances / total) * 100) : 0,
-        winRate: entry.appearances > 0 ? Math.round((entry.wins / entry.appearances) * 100) : 0,
+        winRate: winRate(entry.wins, entry.appearances, entry.draws),
       };
     })
     .filter((entry) => entry.appearances > 0);
@@ -87,11 +104,11 @@ function resolveDeckColors(
 export function computeArenaColorAnalytics(
   matches: ArenaColorMatch[],
   colorOverrides: Map<string, string[]>,
-  bracketFilter: string
+  bracketFilter: string,
 ): ArenaColorAnalytics {
   const playedMap = buildColorMap();
   const wonMap = buildColorMap();
-  const pairMap = new Map<string, { colors: string[]; appearances: number; wins: number }>();
+  const pairMap = new Map<string, { colors: string[] } & ColorTally>();
 
   let totalColorAppearances = 0;
   let missingColorGames = 0;
@@ -113,14 +130,15 @@ export function computeArenaColorAnalytics(
 
       matchHadResolvableColors = true;
       colors.forEach((color) => {
-        const playedEntry = playedMap.get(color) || { appearances: 0, wins: 0 };
+        const playedEntry = playedMap.get(color) || { appearances: 0, wins: 0, draws: 0 };
         playedEntry.appearances += 1;
         totalColorAppearances += 1;
+        if (match.is_draw) playedEntry.draws += 1;
         if (participant.is_winner) playedEntry.wins += 1;
         playedMap.set(color, playedEntry);
 
         if (participant.is_winner) {
-          const wonEntry = wonMap.get(color) || { appearances: 0, wins: 0 };
+          const wonEntry = wonMap.get(color) || { appearances: 0, wins: 0, draws: 0 };
           wonEntry.appearances += 1;
           wonEntry.wins += 1;
           wonMap.set(color, wonEntry);
@@ -130,8 +148,9 @@ export function computeArenaColorAnalytics(
       const identityKey = getColorIdentityGroupKey(colors);
       if (identityKey) {
         const identityColors = getPlayableManaColors(colors);
-        const current = pairMap.get(identityKey) || { colors: identityColors, appearances: 0, wins: 0 };
+        const current = pairMap.get(identityKey) || { colors: identityColors, appearances: 0, wins: 0, draws: 0 };
         current.appearances += 1;
+        if (match.is_draw) current.draws += 1;
         if (participant.is_winner) current.wins += 1;
         pairMap.set(identityKey, current);
       }
@@ -162,14 +181,20 @@ export function computeArenaColorAnalytics(
     .sort((a, b) => b.winRate - a.winRate || b.appearances - a.appearances);
 
   const pairs = Array.from(pairMap.entries())
-    .map(([key, entry]) => ({
-      key,
-      colors: entry.colors,
-      guildName: getColorIdentityLabel(entry.colors),
-      appearances: entry.appearances,
-      wins: entry.wins,
-      winRate: entry.appearances > 0 ? Math.round((entry.wins / entry.appearances) * 100) : 0,
-    }))
+    .map(([key, entry]) => {
+      const decisiveGames = Math.max(0, entry.appearances - entry.draws);
+      return {
+        key,
+        colors: entry.colors,
+        guildName: getColorIdentityLabel(entry.colors),
+        appearances: entry.appearances,
+        wins: entry.wins,
+        losses: Math.max(0, decisiveGames - entry.wins),
+        draws: entry.draws,
+        decisiveGames,
+        winRate: winRate(entry.wins, entry.appearances, entry.draws),
+      };
+    })
     .sort((a, b) => b.appearances - a.appearances || b.winRate - a.winRate)
     .slice(0, 5);
 

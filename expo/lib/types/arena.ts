@@ -64,7 +64,12 @@ export interface PlayerStats {
   displayName: string;
   isGuest: boolean;
   profile: ArenaProfile | null;
+  /** Every match, draws included. */
   gamesPlayed: number;
   wins: number;
+  losses: number;
+  draws: number;
+  /** Matches that produced a winner: the win rate denominator. */
+  decisiveGames: number;
   winRate: number;
 }

@@ -6,8 +6,8 @@ describe('public Arena analytics', () => {
     const result = buildPublicArenaAnalytics({
       totalMatches: 12,
       players: [
-        { key: 'user:1', user_id: '1', guest_id: null, display_name: 'A', is_guest: false, games_played: 5, wins: 4 },
-        { key: 'user:2', user_id: '2', guest_id: null, display_name: 'B', is_guest: false, games_played: 7, wins: 2 },
+        { key: 'user:1', user_id: '1', guest_id: null, display_name: 'A', is_guest: false, games_played: 5, wins: 4, draws: 1 },
+        { key: 'user:2', user_id: '2', guest_id: null, display_name: 'B', is_guest: false, games_played: 7, wins: 2, draws: 0 },
       ],
       decks: [{
         key: 'deck:1',
@@ -21,6 +21,7 @@ describe('public Arena analytics', () => {
         games_played: 5,
         tracked_games: 0,
         wins: 4,
+        draws: 1,
         second_places: 0,
         total_damage_dealt: 0,
         total_damage_taken: 0,
@@ -32,12 +33,13 @@ describe('public Arena analytics', () => {
         group_damage_events: 0,
         median_winning_duration_seconds: null,
       }],
-      colors: [{ color_identity: ['W', 'U'], bracket: '3', appearances: 5, wins: 4 }],
+      colors: [{ color_identity: ['W', 'U'], bracket: '3', appearances: 5, wins: 4, draws: 1 }],
     });
 
     expect(result.summary).toEqual({ totalMatches: 12, totalPlayers: 2 });
-    expect(result.topPlayers[0]).toMatchObject({ displayName: 'A', winRate: 80 });
-    expect(result.topDecks[0]).toMatchObject({ name: 'Atraxa counters', winRate: 80 });
+    // 4 wins over 5 games including one draw: the decisive pool is 4, so 100%.
+    expect(result.topPlayers[0]).toMatchObject({ displayName: 'A', draws: 1, winRate: 100 });
+    expect(result.topDecks[0]).toMatchObject({ name: 'Atraxa counters', draws: 1, winRate: 100 });
     expect(result.topColors).toHaveLength(2);
   });
 });
