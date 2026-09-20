@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
+// Normalise line endings: the working copy is CRLF on Windows and LF on CI,
+// and several assertions below deliberately span lines.
 const sql = readFileSync(
   'supabase/migrations/20260919120000_draw_neutral_win_rate.sql',
   'utf8',
-).toLowerCase();
+).replace(/\r\n/g, '\n').toLowerCase();
 
 describe('draw-neutral win-rate migration', () => {
   it('exposes the draw counter wherever a win rate is derived', () => {
