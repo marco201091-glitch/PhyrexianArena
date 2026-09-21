@@ -1,6 +1,9 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { ManaColorBadge } from '@/components/ui/mana-color-pills';
-import { colors, radii } from '@/constants/theme';
+import { colors, radii, touch, touchSlop } from '@/constants/theme';
+
+// Matches the chip style's own minimum box.
+const CHIP_HEIGHT = touch.minHeight - 4;
 
 type ManaColorFilterChipProps = {
   color?: string;
@@ -19,6 +22,7 @@ export function ManaColorFilterChip({
     <Pressable
       style={[styles.chip, active && styles.chipActive]}
       onPress={onPress}
+      hitSlop={touchSlop(CHIP_HEIGHT)}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
     >

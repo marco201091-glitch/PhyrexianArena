@@ -20,7 +20,7 @@ import { TableSeat, type TableSeatLabels } from '@/components/live-game/table-se
 import { PlayerDamageSheet } from '@/components/live-game/player-damage-sheet';
 import { Modal } from '@/components/ui/modal';
 import { ModalHeader } from '@/components/ui/modal-header';
-import { colors, radii, spacing } from '@/constants/theme';
+import { colors, radii, spacing, touchSlop } from '@/constants/theme';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import {
   findPodAtPoint,
@@ -834,6 +834,7 @@ export function TableArena({
               accessibilityRole="button"
               accessibilityLabel={language === 'it' ? 'Chiudi guida' : 'Close guide'}
               onPress={() => { void AsyncStorage.setItem('live-onboarding-v1', 'done'); setLiveOnboardingOpen(false); }}
+              hitSlop={touchSlop(30)}
               style={styles.onboardingClose}
             ><Ionicons name="close" size={17} color={colors.foreground} /></Pressable>
           </View>
