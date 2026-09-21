@@ -5,6 +5,9 @@ import {
   type MatchParticipantRecord,
 } from '@/lib/arena-participants';
 import type { ArenaMatch, PlayerStats } from '@/lib/types/arena';
+import { buildMatchRecord } from '@/lib/win-rate';
+
+type PlayerStatsAccumulator = Omit<PlayerStats, 'losses' | 'draws' | 'decisiveGames' | 'winRate'>;
 
 export function getPlayerRank(stats: PlayerStats[], index: number): number {
   const entry = stats[index];
@@ -25,7 +28,7 @@ export function getPlayerRank(stats: PlayerStats[], index: number): number {
 }
 
 export function calculatePlayerStats(matches: ArenaMatch[]): PlayerStats[] {
-  const playerMap = new Map<string, PlayerStats>();
+  const playerMap = new Map<string, PlayerStatsAccumulator & { draws: number }>();
 
   matches.forEach((match) => {
     match.match_participants.forEach((participant) => {
@@ -41,12 +44,13 @@ export function calculatePlayerStats(matches: ArenaMatch[]): PlayerStats[] {
           profile: isGuest ? null : (participant.profiles || null),
           gamesPlayed: 0,
           wins: 0,
-          winRate: 0,
+          draws: 0,
         });
       }
 
       const stats = playerMap.get(participantKey)!;
       stats.gamesPlayed += 1;
+      if (match.is_draw) stats.draws += 1;
       if (participant.is_winner) stats.wins += 1;
     });
   });
@@ -54,7 +58,7 @@ export function calculatePlayerStats(matches: ArenaMatch[]): PlayerStats[] {
   return Array.from(playerMap.values())
     .map((stats) => ({
       ...stats,
-      winRate: stats.gamesPlayed > 0 ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0,
+      ...buildMatchRecord(stats),
     }))
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || b.gamesPlayed - a.gamesPlayed);
 }

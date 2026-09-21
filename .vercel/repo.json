@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_HQ9y9HCTK3qyXcbzUBn8NF4XR8Fc",
+      "name": "phyrexian-arena",
+      "directory": ".",
+      "orgId": "team_0IEiebOSGO2LkMoRARIg9rIi"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { cardRowGap, colors, radii, spacing } from '@/constants/theme';
 import { getPlayerRank } from '@/lib/arena-stats';
 import type { ArenaProfile, PlayerStats } from '@/lib/types/arena';
+import { formatMatchRecord } from '@/lib/win-rate';
 
 type TablePlayersTabProps = {
   filteredMatchCount: number;
@@ -116,7 +117,7 @@ export function TablePlayersTab({
                       ) : null}
                     </View>
                     <Text style={styles.playerMeta}>
-                      {stats.gamesPlayed} {labels.games} · {stats.wins}W-{stats.gamesPlayed - stats.wins}L
+                      {stats.gamesPlayed} {labels.games} · {formatMatchRecord(stats)}
                     </Text>
                   </View>
                   <View style={styles.winRateBlock}>

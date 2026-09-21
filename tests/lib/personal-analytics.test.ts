@@ -50,8 +50,31 @@ describe('personal-analytics', () => {
     ];
 
     const map = buildDeckWinRateMap(participants);
-    expect(map.get('deck-a')).toEqual({ gamesPlayed: 2, wins: 1, winRate: 50 });
-    expect(map.get('deck-b')).toEqual({ gamesPlayed: 1, wins: 1, winRate: 100 });
+    expect(map.get('deck-a')).toEqual({
+      gamesPlayed: 2, wins: 1, losses: 1, draws: 0, decisiveGames: 2, winRate: 50,
+    });
+    expect(map.get('deck-b')).toEqual({
+      gamesPlayed: 1, wins: 1, losses: 0, draws: 0, decisiveGames: 1, winRate: 100,
+    });
+  });
+
+  it('treats a draw as neutral in the win rate', () => {
+    const participants: PersonalMatchParticipantRow[] = [
+      { deck_id: 'deck-a', is_winner: true, is_draw: false },
+      { deck_id: 'deck-a', is_winner: false, is_draw: false },
+      { deck_id: 'deck-a', is_winner: false, is_draw: true },
+    ];
+
+    const map = buildDeckWinRateMap(participants);
+    expect(map.get('deck-a')).toMatchObject({
+      gamesPlayed: 3, wins: 1, losses: 1, draws: 1, decisiveGames: 2, winRate: 50,
+    });
+
+    const analytics = buildPersonalAnalytics(participants, new Map([['deck-a', deckA]]));
+    expect(analytics).toMatchObject({
+      gamesPlayed: 3, wins: 1, losses: 1, draws: 1, decisiveGames: 2, winRate: 50,
+    });
+    expect(analytics.topDecks[0]).toMatchObject({ gamesPlayed: 3, draws: 1, winRate: 50 });
   });
 
   it('aggregates personal analytics', () => {
@@ -130,14 +153,20 @@ describe('personal-analytics', () => {
   });
 
   it('calculates streak helpers directly', () => {
-    expect(calculateWinStreaks([true, true, false, true])).toEqual({
+    expect(calculateWinStreaks(['win', 'win', 'loss', 'win'])).toEqual({
       longest: 2,
       current: 1,
     });
-    expect(calculateWinStreaks([false, false])).toEqual({
+    expect(calculateWinStreaks(['loss', 'loss'])).toEqual({
       longest: 0,
       current: 0,
     });
+  });
+
+  it('keeps a draw from breaking or extending a win streak', () => {
+    expect(calculateWinStreaks(['win', 'draw', 'win'])).toEqual({ longest: 2, current: 2 });
+    expect(calculateWinStreaks(['win', 'win', 'draw'])).toEqual({ longest: 2, current: 2 });
+    expect(calculateWinStreaks(['loss', 'draw', 'win'])).toEqual({ longest: 1, current: 1 });
   });
 
   it('ranks by win rate before games played and aggregates winning conditions', () => {

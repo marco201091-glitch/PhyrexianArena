@@ -11,6 +11,7 @@ import {
   filterDeckRankings,
   isProvisionalDeckRanking,
 } from '@/lib/deck-ranking-visibility';
+import { formatMatchRecord } from '@/lib/win-rate';
 
 type TableDecksTabProps = {
   commanderStats: CommanderStats[];
@@ -75,7 +76,7 @@ export function TableDecksTab({ commanderStats, labels }: TableDecksTabProps) {
               deck.bracket ? `${labels.bracket} ${deck.bracket}` : null,
               isProvisionalDeckRanking(deck.gamesPlayed) ? labels.provisionalDeckSample : null,
             ].filter(Boolean).join(' · ') || labels.deckRankings}
-            meta={`${deck.gamesPlayed} ${labels.games} · ${deck.wins}W`}
+            meta={`${deck.gamesPlayed} ${labels.games} · ${formatMatchRecord(deck)}`}
             badge={index + 1}
             gamesPlayed={deck.gamesPlayed}
             wins={deck.wins}

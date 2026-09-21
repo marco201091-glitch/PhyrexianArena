@@ -1,6 +1,6 @@
 {
   "name": "phyrexian-arena-app",
-  "version": "8.4.0",
+  "version": "8.5.0",
   "private": true,
   "packageManager": "npm@11.16.0",
   "engines": {
@@ -20,6 +20,7 @@
     "dev:reset": "node scripts/reset-metro.mjs && node scripts/adb-reverse.mjs && expo start --clear",
     "dev:android": "node scripts/adb-reverse.mjs && node scripts/start-android.mjs",
     "doctor": "expo-doctor",
+    "doctor:ci": "node ../scripts/expo-doctor-ci.mjs",
     "android": "expo run:android",
     "android:bundle:check": "expo export --platform android --output-dir .qa-android-export --clear",
     "audit:production": "npm audit --omit=dev --audit-level=high",

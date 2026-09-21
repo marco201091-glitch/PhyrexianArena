@@ -1,7 +1,13 @@
 import { computeArenaColorAnalytics, type ArenaColorMatch } from '@/lib/arena-color-analytics';
 import { getParticipantKey, type MatchParticipantRecord } from '@/lib/arena-participants';
 import type { ParticipantKey } from '@/lib/participant-keys';
+import { buildMatchRecord, type MatchRecord } from '@/lib/win-rate';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+/** Running counters; the derived fields arrive together in `buildMatchRecord`. */
+type StatsCounters = { gamesPlayed: number; wins: number; draws: number };
+type PlayerStatsAccumulator = Omit<PlayerStatsRow, keyof MatchRecord> & StatsCounters;
+type CommanderStatsAccumulator = Omit<CommanderStatsRow, keyof MatchRecord> & StatsCounters;
 
 export interface ArenaStatsParticipantRow {
   match_id: string;
@@ -43,7 +49,7 @@ export interface ArenaStatsParticipantRow {
   guest_deck_color_identity: string[] | null;
 }
 
-export interface PlayerStatsRow {
+export interface PlayerStatsRow extends MatchRecord {
   key: ParticipantKey;
   displayName: string;
   isGuest: boolean;
@@ -52,19 +58,13 @@ export interface PlayerStatsRow {
     username: string;
     display_name: string | null;
   } | null;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
 }
 
-export interface CommanderStatsRow {
+export interface CommanderStatsRow extends MatchRecord {
   key: string;
   commander: string;
   commanderImageUrl: string | null;
   bracket: string | null;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
 }
 
 function rowToParticipant(row: ArenaStatsParticipantRow): MatchParticipantRecord {
@@ -216,7 +216,7 @@ export async function fetchArenaStatsParticipants(
 export function buildPlayerStatsFromRows(
   rows: ArenaStatsParticipantRow[],
 ): PlayerStatsRow[] {
-  const map = new Map<ParticipantKey, PlayerStatsRow>();
+  const map = new Map<ParticipantKey, PlayerStatsAccumulator>();
 
   rows.forEach((row) => {
     const participant = rowToParticipant(row);
@@ -237,19 +237,20 @@ export function buildPlayerStatsFromRows(
             },
         gamesPlayed: 0,
         wins: 0,
-        winRate: 0,
+        draws: 0,
       });
     }
 
     const stats = map.get(key)!;
     stats.gamesPlayed += 1;
+    if (row.is_draw) stats.draws += 1;
     if (row.is_winner) stats.wins += 1;
   });
 
   return Array.from(map.values())
     .map((entry) => ({
       ...entry,
-      winRate: entry.gamesPlayed > 0 ? Math.round((entry.wins / entry.gamesPlayed) * 100) : 0,
+      ...buildMatchRecord(entry),
     }))
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins);
 }
@@ -259,7 +260,7 @@ export function buildCommanderStatsFromRows(
   bracketFilter: string,
   sort: 'winRate' | 'gamesPlayed' = 'winRate',
 ): CommanderStatsRow[] {
-  const map = new Map<string, CommanderStatsRow>();
+  const map = new Map<string, CommanderStatsAccumulator>();
 
   rows.forEach((row) => {
     const commander = row.deck_commander || row.guest_deck_commander;
@@ -277,18 +278,19 @@ export function buildCommanderStatsFromRows(
         bracket,
         gamesPlayed: 0,
         wins: 0,
-        winRate: 0,
+        draws: 0,
       });
     }
 
     const stats = map.get(key)!;
     stats.gamesPlayed += 1;
+    if (row.is_draw) stats.draws += 1;
     if (row.is_winner) stats.wins += 1;
   });
 
   const results = Array.from(map.values()).map((entry) => ({
     ...entry,
-    winRate: entry.gamesPlayed > 0 ? Math.round((entry.wins / entry.gamesPlayed) * 100) : 0,
+    ...buildMatchRecord(entry),
   }));
 
   return results.sort((a, b) => {
@@ -309,7 +311,10 @@ export function buildColorAnalyticsFromRows(
     const bracket = row.deck_bracket || row.guest_deck_bracket;
     if (bracketFilter !== 'all' && bracket !== bracketFilter) return;
 
-    const existing = matchesMap.get(row.match_id) || { match_participants: [] };
+    const existing = matchesMap.get(row.match_id) || {
+      is_draw: row.is_draw,
+      match_participants: [],
+    };
     existing.match_participants.push(participant);
     matchesMap.set(row.match_id, existing);
   });

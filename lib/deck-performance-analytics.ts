@@ -1,3 +1,5 @@
+import { buildMatchRecord, type MatchRecord } from '@/lib/win-rate';
+
 export const AWARD_MIN_TRACKED_GAMES = 3;
 
 export interface DeckPerformanceInputRow {
@@ -10,6 +12,7 @@ export interface DeckPerformanceInputRow {
   deck_commander_image: string | null;
   guest_deck_commander_image: string | null;
   is_winner: boolean;
+  is_draw: boolean;
   placement: number | null;
   duration_seconds: number | null;
   tracking_version: number | null;
@@ -23,7 +26,11 @@ export interface DeckPerformanceInputRow {
   group_damage_events: number;
 }
 
-export interface DeckPerformanceStats {
+/** Running counters; the derived fields arrive together in `buildMatchRecord`. */
+type DeckPerformanceAccumulator = Omit<DeckPerformanceStats, keyof MatchRecord>
+  & { gamesPlayed: number; wins: number; draws: number; winningDurations: number[] };
+
+export interface DeckPerformanceStats extends MatchRecord {
   key: string;
   deckId: string;
   isGuestDeck: boolean;
@@ -32,11 +39,8 @@ export interface DeckPerformanceStats {
   commanderImage: string | null;
   bracket: string | null;
   ownerDisplayName: string;
-  gamesPlayed: number;
   trackedGames: number;
   trackingCoverage: number;
-  wins: number;
-  winRate: number;
   secondPlaces: number;
   totalDamageDealt: number;
   averageDamageDealt: number;
@@ -86,14 +90,14 @@ function isTracked(row: DeckPerformanceInputRow) {
 }
 
 export function buildDeckPerformanceStats(rows: DeckPerformanceInputRow[]) {
-  const entries = new Map<string, DeckPerformanceStats & { winningDurations: number[] }>();
+  const entries = new Map<string, DeckPerformanceAccumulator>();
 
   rows.forEach((row) => {
     const deckId = row.deck_id || row.guest_deck_id;
     if (!deckId) return;
     const isGuestDeck = Boolean(row.guest_deck_id);
     const key = `${isGuestDeck ? 'guest' : 'deck'}:${deckId}`;
-    const current = entries.get(key) || {
+    const current: DeckPerformanceAccumulator = entries.get(key) || {
       key,
       deckId,
       isGuestDeck,
@@ -106,7 +110,7 @@ export function buildDeckPerformanceStats(rows: DeckPerformanceInputRow[]) {
       trackedGames: 0,
       trackingCoverage: 0,
       wins: 0,
-      winRate: 0,
+      draws: 0,
       secondPlaces: 0,
       totalDamageDealt: 0,
       averageDamageDealt: 0,
@@ -126,6 +130,7 @@ export function buildDeckPerformanceStats(rows: DeckPerformanceInputRow[]) {
     };
 
     current.gamesPlayed += 1;
+    if (row.is_draw) current.draws += 1;
     if (row.is_winner) current.wins += 1;
     if (row.placement === 2) current.secondPlaces += 1;
     if (isTracked(row)) {
@@ -147,10 +152,10 @@ export function buildDeckPerformanceStats(rows: DeckPerformanceInputRow[]) {
 
   return Array.from(entries.values()).map(({ winningDurations, ...entry }) => ({
     ...entry,
+    ...buildMatchRecord(entry),
     trackingCoverage: entry.gamesPlayed > 0
       ? Math.round((entry.trackedGames / entry.gamesPlayed) * 100)
       : 0,
-    winRate: entry.gamesPlayed > 0 ? Math.round((entry.wins / entry.gamesPlayed) * 100) : 0,
     averageDamageDealt: entry.trackedGames > 0
       ? Math.round(entry.totalDamageDealt / entry.trackedGames)
       : 0,

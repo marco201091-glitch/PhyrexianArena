@@ -7,18 +7,18 @@ describe('arena analytics bundle', () => {
       totalMatches: 4,
       players: [{
         key: 'user:a', user_id: 'a', guest_id: null, display_name: 'Alice',
-        is_guest: false, games_played: 4, wins: 2,
+        is_guest: false, games_played: 4, wins: 2, draws: 0,
       }],
       commanders: [{
-        commander: 'Atraxa', commander_image: null, bracket: '4', games_played: 4, wins: 2,
+        commander: 'Atraxa', commander_image: null, bracket: '4', games_played: 4, wins: 2, draws: 0,
       }],
       colors: [{
-        color_identity: ['W', 'U'], bracket: '4', appearances: 4, wins: 2,
+        color_identity: ['W', 'U'], bracket: '4', appearances: 4, wins: 2, draws: 0,
       }],
       decks: [{
         key: 'deck:d', deck_id: 'd', is_guest_deck: false, deck_name: 'Counters',
         commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Alice', games_played: 4, tracked_games: 3,
-        wins: 2, second_places: 1, total_damage_dealt: 90, total_damage_taken: 70,
+        wins: 2, draws: 0, second_places: 1, total_damage_dealt: 90, total_damage_taken: 70,
         total_life_gained: 20, commander_damage_dealt: 12, infect_dealt: 4,
         eliminations: 3, group_damage_dealt: 30, group_damage_events: 2,
         median_winning_duration_seconds: 1800,
@@ -41,9 +41,9 @@ describe('arena analytics bundle', () => {
   it('keeps similarly named decks distinct and applies both bracket and sort filters', () => {
     const payload = {
       decks: [
-        { key: 'deck:a', deck_id: 'a', is_guest_deck: false, deck_name: 'Shared Name', commander: 'Atraxa', commander_image: null, bracket: '3', owner_display_name: 'Alice', games_played: 2, tracked_games: 0, wins: 2, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
-        { key: 'deck:b', deck_id: 'b', is_guest_deck: false, deck_name: 'Shared Name', commander: 'Atraxa', commander_image: null, bracket: '3', owner_display_name: 'Bob', games_played: 5, tracked_games: 0, wins: 2, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
-        { key: 'deck:c', deck_id: 'c', is_guest_deck: false, deck_name: 'Other', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Cara', games_played: 9, tracked_games: 0, wins: 9, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
+        { key: 'deck:a', deck_id: 'a', is_guest_deck: false, deck_name: 'Shared Name', commander: 'Atraxa', commander_image: null, bracket: '3', owner_display_name: 'Alice', games_played: 2, tracked_games: 0, wins: 2, draws: 0, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
+        { key: 'deck:b', deck_id: 'b', is_guest_deck: false, deck_name: 'Shared Name', commander: 'Atraxa', commander_image: null, bracket: '3', owner_display_name: 'Bob', games_played: 5, tracked_games: 0, wins: 2, draws: 0, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
+        { key: 'deck:c', deck_id: 'c', is_guest_deck: false, deck_name: 'Other', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Cara', games_played: 9, tracked_games: 0, wins: 9, draws: 0, second_places: 0, total_damage_dealt: 0, total_damage_taken: 0, total_life_gained: 0, commander_damage_dealt: 0, infect_dealt: 0, eliminations: 0, group_damage_dealt: 0, group_damage_events: 0, median_winning_duration_seconds: null },
       ],
     };
 
@@ -52,5 +52,29 @@ describe('arena analytics bundle', () => {
       ['b', 'Bob'],
       ['a', 'Alice'],
     ]);
+  });
+
+  it('keeps a draw out of both sides of the win rate', () => {
+    const bundle = buildArenaAnalyticsBundle({
+      totalMatches: 3,
+      players: [{
+        key: 'user:a', user_id: 'a', guest_id: null, display_name: 'Alice',
+        is_guest: false, games_played: 3, wins: 1, draws: 1,
+      }],
+      colors: [{
+        color_identity: ['W'], bracket: null, appearances: 3, wins: 1, draws: 1,
+      }],
+    });
+
+    // One win, one loss, one draw: decisive games are 2, so 50% — not 33%.
+    expect(bundle.players[0]).toMatchObject({
+      gamesPlayed: 3,
+      wins: 1,
+      losses: 1,
+      draws: 1,
+      decisiveGames: 2,
+      winRate: 50,
+    });
+    expect(bundle.colors.played[0]).toMatchObject({ appearances: 3, draws: 1, winRate: 50 });
   });
 });
