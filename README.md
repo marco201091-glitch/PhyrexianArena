@@ -4,55 +4,83 @@
 [![Android](https://img.shields.io/badge/Android-v8.5.0-7c3aed?style=flat-square)](https://github.com/marco201091-glitch/PhyrexianArena/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-Track Commander games, manage your playgroup, and turn match history into useful statistics—without spreadsheets.
+Track Commander games, manage your playgroup, and turn match history into statistics that actually mean something — without a spreadsheet.
 
-## Try or install the app
+## What it is
 
-### Web app
+A tracker for Commander pods. You run the game on a phone or tablet on the table, and the result lands in a shared history your playgroup can look back at: who is winning, with which deck, in which bracket, and why.
 
-Open [app.phyrexianarena.dpdns.org](https://app.phyrexianarena.dpdns.org) in any modern browser. No installation is required.
+Every game is one tap away from being recorded, and every recorded game feeds the same analytics, so the numbers stay honest without anyone maintaining them by hand.
+
+## What you get
+
+**Run the game**
+
+- Life, commander damage, infect, and eliminations for 2–6 players
+- Undo at any point, and recovery if the app closes mid-game
+- Win conditions are recorded, not just the winner: last standing, combo, concession, alternate win card
+- Draws are tracked as their own outcome and never counted as a loss
+
+**Keep the group together**
+
+- Private playgroups with invitations and guests — nobody needs an account to sit at the table
+- Shared match history that everyone sees
+- Optional public results page to share the standings outside the group
+
+**Understand the meta**
+
+- Rankings across players, decks, and commanders
+- Deck and commander performance with brackets, colours, and trends
+- Personal analytics: your decks, your streaks, your win rate
+- Playgroup awards for the memorable stuff — fastest win, most damage, best comeback
+
+**Bring your decks**
+
+- Import from Archidekt or Moxfield
+- Deck metadata, commanders, and colour identity resolved automatically
+
+English and Italian interfaces throughout.
+
+## Install
+
+### Web
+
+Open **[app.phyrexianarena.dpdns.org](https://app.phyrexianarena.dpdns.org)** in any modern browser. Nothing to install.
 
 ### Android with Obtainium
 
-1. Install [Obtainium](https://obtainium.imranr.dev/).
-2. In Obtainium, choose **Add App**.
-3. Paste this repository URL:
+[Obtainium](https://obtainium.imranr.dev/) keeps the app updated straight from this repository's releases — no store account.
+
+1. Install Obtainium.
+2. Choose **Add App** and paste this repository URL:
 
    `https://github.com/marco201091-glitch/PhyrexianArena`
 
-4. Confirm the detected release and install the APK.
+3. Confirm the detected release and install the APK.
 
-Obtainium will notify you when a new signed release is available. You can also download the APK directly from [GitHub Releases](https://github.com/marco201091-glitch/PhyrexianArena/releases/latest).
+Obtainium will tell you when a new signed release is available. You can also grab the APK from [GitHub Releases](https://github.com/marco201091-glitch/PhyrexianArena/releases/latest), where each release ships a SHA-256 checksum so you can verify it before installing.
 
-### F-Droid and iOS
+### iOS
 
-- The official F-Droid submission is currently under review.
-- A public iOS build is not available yet.
+A public build is not available yet. An unsigned IPA can be built from source and sideloaded.
 
-## Main features
+### F-Droid
 
-- Live Commander tracker for 2–6 players, with life, commander damage, infect, eliminations, undo, and game recovery.
-- Private playgroups, invitations, guests, shared match history, and optional public result pages.
-- Deck management and imports from Archidekt or Moxfield.
-- Rankings, deck and commander performance, color trends, personal analytics, and playgroup awards.
-- English and Italian interfaces.
-- Email/password authentication and optional Google sign-in in the web and standard Android versions.
-
-## Screenshots
-
-| Desktop | Mobile |
-|---|---|
-| ![Desktop home screen](tests/e2e/snapshots/public-ui.spec.ts/desktop/landing.png) | ![Mobile home screen](tests/e2e/snapshots/public-ui.spec.ts/mobile/landing.png) |
+The official F-Droid submission is under review. The F-Droid edition keeps the same core tracking and analytics, but uses email/password authentication only and omits Google sign-in, push notifications, and Sentry, to comply with the F-Droid build policy.
 
 ## How it works
 
-The web app and the standard Android app use the same hosted account and data service. Matches, decks, playgroups, and statistics stay synchronized when you sign in on another supported device.
+The web app and the Android app share one hosted account and data service, so matches, decks, playgroups, and statistics stay in sync across whatever you sign in on.
 
-The F-Droid edition keeps the same core tracking and analytics features, but uses email/password authentication and omits Google sign-in, push notifications, and Sentry integration to comply with the F-Droid build policy.
+Sign-in is email/password, with optional Google sign-in on the web and the standard Android build. An internet connection is needed for account sync, multiplayer data, and external deck or card services.
 
-An internet connection is required for account synchronization, multiplayer data, and external deck or card services.
+## Project
 
-## Privacy and legal information
+- Built with Next.js for the web, Expo/React Native for mobile, and a self-hosted Supabase backend.
+- Every migration, deploy script, and release workflow lives in this repository.
+- Contributions, bug reports, and feature requests are welcome through [issues](https://github.com/marco201091-glitch/PhyrexianArena/issues).
+
+## Privacy and legal
 
 - [Privacy policy](https://app.phyrexianarena.dpdns.org/legal/privacy)
 - [Terms of service](https://app.phyrexianarena.dpdns.org/legal/terms)
