@@ -128,3 +128,16 @@ export const touch = {
   minHeight: 44,
   minWidth: 44,
 } as const;
+
+/**
+ * Touch-target slop for controls drawn smaller than the platform minimum.
+ *
+ * iOS resolves a Pressable's `hitSlop` inside the parent's bounds, so a compact
+ * control can borrow the missing area instead of being redesigned larger. A
+ * 32pt chip gains 6pt on every side and accepts the same imprecise tap as a
+ * 44pt button while looking unchanged.
+ */
+export function touchSlop(size: number, minimum: number = touch.minHeight) {
+  const pad = Math.max(0, Math.ceil((minimum - size) / 2));
+  return { top: pad, bottom: pad, left: pad, right: pad };
+}

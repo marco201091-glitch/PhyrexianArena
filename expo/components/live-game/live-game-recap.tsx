@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import { buildLiveGameRecap } from '@/lib/live-game-recap';
 import type { LiveGameRecord } from '@/lib/live-game';
-import { colors, radii, spacing } from '@/constants/theme';
+import { colors, radii, spacing, touchSlop } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
 
 const PLAYER_COLORS = ['#72d17b', '#22d3ee', '#fb7185', '#fbbf24', '#4ade80', '#f472b6'];
@@ -39,7 +39,7 @@ export function LiveGameRecapView({
     <View style={styles.summaryRow}>
       <Text style={styles.summaryChip}>⏱ {duration}</Text>
       {recap.startingPlayerName ? <Text style={styles.summaryChip}>① {recap.startingPlayerName} · {recap.startingDirection === 'clockwise' ? '↻' : '↺'}</Text> : null}
-      {!sharing ? <Pressable onPress={() => void shareRecap().catch(() => undefined)} accessibilityRole="button" accessibilityLabel={language === 'it' ? 'Condividi riepilogo' : 'Share recap'} style={styles.shareButton}><Ionicons name="share-social-outline" size={15} color="#a7f3d0" /></Pressable> : null}
+      {!sharing ? <Pressable onPress={() => void shareRecap().catch(() => undefined)} hitSlop={touchSlop(32)} accessibilityRole="button" accessibilityLabel={language === 'it' ? 'Condividi riepilogo' : 'Share recap'} style={styles.shareButton}><Ionicons name="share-social-outline" size={15} color="#a7f3d0" /></Pressable> : null}
     </View>
     <Text style={styles.title}>{labels.timeline}</Text>
     {recap.players.map((player, index) => (
