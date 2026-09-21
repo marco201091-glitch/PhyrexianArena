@@ -1,5 +1,8 @@
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
-import { colors, radii, typography } from '@/constants/theme';
+import { colors, radii, touchSlop, typography } from '@/constants/theme';
+
+// caption line height (16) plus the chip's own vertical padding (8 + 8).
+const CHIP_HEIGHT = 32;
 
 type FilterChipProps = {
   label: string;
@@ -13,6 +16,7 @@ export function FilterChip({ label, active = false, onPress, style }: FilterChip
     <Pressable
       style={[styles.chip, active && styles.chipActive, style]}
       onPress={onPress}
+      hitSlop={touchSlop(CHIP_HEIGHT)}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
     >
