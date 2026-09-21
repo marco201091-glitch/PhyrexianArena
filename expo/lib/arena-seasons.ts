@@ -1,7 +1,17 @@
+import { buildMatchRecord } from '@/lib/win-rate';
+
 type ArenaSeasonRpcResult = PromiseLike<{ data: unknown; error: unknown }>;
 
 type ArenaSeasonClient = {
   rpc: (functionName: string, parameters: Record<string, unknown>) => ArenaSeasonRpcResult;
+};
+
+/** A player or deck row inside an archived season summary. */
+export type ArenaSeasonArchiveEntry = {
+  games_played?: number;
+  wins?: number;
+  /** Present from payload version 2 on; older archives predate the counter. */
+  draws?: number;
 };
 
 export type ArenaSeasonArchive = {
@@ -11,8 +21,8 @@ export type ArenaSeasonArchive = {
   resetMonth: number;
   summary: Record<string, unknown> & {
     totalMatches?: number;
-    players?: Array<{ display_name?: string; games_played?: number; wins?: number }>;
-    decks?: Array<{ deck_name?: string; commander?: string; games_played?: number; wins?: number }>;
+    players?: Array<ArenaSeasonArchiveEntry & { display_name?: string }>;
+    decks?: Array<ArenaSeasonArchiveEntry & { deck_name?: string; commander?: string }>;
     matches?: {
       draws?: number;
       trackedMatches?: number;
@@ -29,15 +39,12 @@ export type ArenaSeasonArchiveDeck = NonNullable<ArenaSeasonArchive['summary']['
 
 export const ARENA_SEASON_RANKING_MIN_GAMES = 5;
 
-export function getArenaSeasonRecord(entry: { games_played?: number; wins?: number }) {
-  const gamesPlayed = Math.max(0, Number(entry.games_played ?? 0));
-  const wins = Math.min(gamesPlayed, Math.max(0, Number(entry.wins ?? 0)));
-  return {
-    gamesPlayed,
-    wins,
-    losses: gamesPlayed - wins,
-    winRate: gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0,
-  };
+export function getArenaSeasonRecord(entry: ArenaSeasonArchiveEntry) {
+  return buildMatchRecord({
+    gamesPlayed: Number(entry.games_played ?? 0),
+    wins: Number(entry.wins ?? 0),
+    draws: Number(entry.draws ?? 0),
+  });
 }
 
 export function getArenaSeasonPlayerRecord(player: ArenaSeasonArchivePlayer) {
@@ -45,14 +52,12 @@ export function getArenaSeasonPlayerRecord(player: ArenaSeasonArchivePlayer) {
 }
 
 export function getArenaSeasonArchiveHighlights(archive: ArenaSeasonArchive) {
-  const byPerformance = <T extends { games_played?: number; wins?: number }>(left: T, right: T) => {
-    const leftGames = Number(left.games_played ?? 0);
-    const rightGames = Number(right.games_played ?? 0);
-    const leftWins = Number(left.wins ?? 0);
-    const rightWins = Number(right.wins ?? 0);
-    const leftRate = leftGames > 0 ? leftWins / leftGames : 0;
-    const rightRate = rightGames > 0 ? rightWins / rightGames : 0;
-    return rightRate - leftRate || rightWins - leftWins || rightGames - leftGames;
+  const byPerformance = (left: ArenaSeasonArchiveEntry, right: ArenaSeasonArchiveEntry) => {
+    const leftRecord = getArenaSeasonRecord(left);
+    const rightRecord = getArenaSeasonRecord(right);
+    return rightRecord.winRate - leftRecord.winRate
+      || rightRecord.wins - leftRecord.wins
+      || rightRecord.gamesPlayed - leftRecord.gamesPlayed;
   };
   const topPlayers = [...(archive.summary.players ?? [])]
     .filter((player) => Number(player.games_played ?? 0) >= ARENA_SEASON_RANKING_MIN_GAMES)

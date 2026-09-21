@@ -10,6 +10,7 @@ describe('profile deck performance', () => {
       deck_id: 'deck-1',
       games_played: 12,
       wins: 4,
+      draws: 2,
       mastery_points: 20,
       tracked_games: 9,
       second_places: 2,
@@ -22,7 +23,10 @@ describe('profile deck performance', () => {
       median_winning_duration_seconds: 2700,
     }]);
 
-    expect(result.winRates['deck-1']).toEqual({ gamesPlayed: 12, wins: 4, winRate: 33 });
+    // 4 wins over 10 decisive games — the 2 draws stay out of the rate.
+    expect(result.winRates['deck-1']).toEqual({
+      gamesPlayed: 12, wins: 4, losses: 6, draws: 2, decisiveGames: 10, winRate: 40,
+    });
     expect(result.performance['deck-1']).toMatchObject({
       trackedGames: 9,
       trackingCoverage: 75,

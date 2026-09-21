@@ -1,10 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DeckPerformance, DeckWinRate } from '@/lib/types/profile';
+import { buildMatchRecord } from '@/lib/win-rate';
 
 export type ProfileDeckPerformanceRow = {
   deck_id: string;
   games_played: number;
   wins: number;
+  draws: number;
   mastery_points: number;
   tracked_games: number;
   second_places: number;
@@ -29,19 +31,21 @@ export function buildProfileDeckPerformanceMaps(
   const performance: Record<string, DeckPerformance> = {};
 
   rows.forEach((row) => {
-    const gamesPlayed = Number(row.games_played || 0);
-    const wins = Number(row.wins || 0);
+    const record = buildMatchRecord({
+      gamesPlayed: Number(row.games_played || 0),
+      wins: Number(row.wins || 0),
+      draws: Number(row.draws || 0),
+    });
     const trackedGames = Number(row.tracked_games || 0);
-    const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
-    winRates[row.deck_id] = { gamesPlayed, wins, winRate };
+    winRates[row.deck_id] = record;
     performance[row.deck_id] = {
-      gamesPlayed,
-      wins,
-      winRate,
-      masteryPoints: Number(row.mastery_points || (wins * 3 + Math.max(0, gamesPlayed - wins))),
+      ...record,
+      masteryPoints: Number(
+        row.mastery_points || (record.wins * 3 + Math.max(0, record.gamesPlayed - record.wins)),
+      ),
       trackedGames,
-      trackingCoverage: gamesPlayed > 0
-        ? Math.round((trackedGames / gamesPlayed) * 100)
+      trackingCoverage: record.gamesPlayed > 0
+        ? Math.round((trackedGames / record.gamesPlayed) * 100)
         : 0,
       secondPlaces: Number(row.second_places || 0),
       damageDealt: Number(row.damage_dealt || 0),

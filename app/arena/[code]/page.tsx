@@ -14,6 +14,8 @@ import { ManaColorBadge } from '@/components/ui/mana-color-pills';
 import { ArrowLeft, CalendarDays, Copy, Link2, Palette, Swords, Trophy, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatArenaSeasonDate, formatArenaSeasonLabel } from '@/lib/arena-seasons';
+import type { ArenaColorAnalytics } from '@/lib/arena-color-analytics';
+import { formatMatchRecord, type MatchRecord } from '@/lib/win-rate';
 
 import { format } from 'date-fns';
 
@@ -31,21 +33,13 @@ interface PublicArenaResponse {
     totalMatches: number;
     totalPlayers: number;
   };
-  topPlayers: Array<{
-    displayName: string;
-    gamesPlayed: number;
-    wins: number;
-    winRate: number;
-  }>;
-  topDecks: Array<{
+  topPlayers: Array<MatchRecord & { displayName: string }>;
+  topDecks: Array<MatchRecord & {
     name: string;
     commander: string;
     commanderImage: string | null;
     bracket: string | null;
     ownerDisplayName: string;
-    gamesPlayed: number;
-    wins: number;
-    winRate: number;
   }>;
   topColors: Array<{
     color: string;
@@ -54,13 +48,9 @@ interface PublicArenaResponse {
     percentage: number;
     winRate: number;
   }>;
-  colorMeta: {
-    played: Array<{ color: string; appearances: number; wins: number; percentage: number; winRate: number }>;
-    won: Array<{ color: string; appearances: number; wins: number; percentage: number; winRate: number }>;
-    winRates: Array<{ color: string; appearances: number; wins: number; percentage: number; winRate: number }>;
-    pairs: Array<{ key: string; colors: string[]; guildName: { it: string; en: string } | null; appearances: number; wins: number; winRate: number }>;
-    missingColorGames: number;
-  };
+  // Reuse the shared shape so this response type cannot drift from the payload
+  // the API actually returns.
+  colorMeta: ArenaColorAnalytics;
   recentMatches: Array<{
     id: string;
     playedAt: string;
@@ -213,7 +203,7 @@ export default function PublicArenaPage() {
                   </div>
                   <p className="truncate text-xl font-bold text-foreground">{data.topPlayers[0].displayName}</p>
                   <p className="text-sm text-muted-foreground">
-                    {data.topPlayers[0].winRate}% · {data.topPlayers[0].wins}W / {data.topPlayers[0].gamesPlayed}G
+                    {data.topPlayers[0].winRate}% · {formatMatchRecord(data.topPlayers[0])}
                   </p>
                 </CardContent>
               </Card>
@@ -234,7 +224,7 @@ export default function PublicArenaPage() {
                     <p className="truncate font-semibold text-foreground">{data.topDecks[0].name}</p>
                     <p className="truncate text-xs text-muted-foreground">{data.topDecks[0].ownerDisplayName}</p>
                     <p className="text-sm text-muted-foreground">
-                      {data.topDecks[0].winRate}% · {data.topDecks[0].wins}W / {data.topDecks[0].gamesPlayed}G
+                      {data.topDecks[0].winRate}% · {formatMatchRecord(data.topDecks[0])}
                     </p>
                   </div>
                 </CardContent>
@@ -310,7 +300,7 @@ export default function PublicArenaPage() {
                     <span className="font-medium text-foreground">{player.displayName}</span>
                   </div>
                   <span className="text-sm text-muted-foreground">
-                    {player.winRate}% · {player.wins}W / {player.gamesPlayed}G
+                    {player.winRate}% · {formatMatchRecord(player)}
                   </span>
                 </div>
               ))}
@@ -346,7 +336,7 @@ export default function PublicArenaPage() {
                       <span className="shrink-0 text-sm text-emerald-300">{deck.winRate}%</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {deck.wins}W / {deck.gamesPlayed}G
+                      {formatMatchRecord(deck)}
                     </p>
                   </div>
                 </div>

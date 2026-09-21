@@ -55,7 +55,20 @@ describe('arena seasons', () => {
       gamesPlayed: 8,
       wins: 5,
       losses: 3,
+      draws: 0,
+      decisiveGames: 8,
       winRate: 63,
+    });
+  });
+
+  it('keeps archived draws out of the win rate', () => {
+    expect(getArenaSeasonPlayerRecord({ games_played: 8, wins: 5, draws: 2 })).toEqual({
+      gamesPlayed: 8,
+      wins: 5,
+      losses: 1,
+      draws: 2,
+      decisiveGames: 6,
+      winRate: 83,
     });
   });
 
@@ -78,7 +91,7 @@ describe('arena seasons', () => {
     expect(highlights.topPlayers.map((player) => player.display_name)).toEqual(['Eligible']);
     expect(highlights.topDecks.map((deck) => deck.deck_name)).toEqual(['First', 'Second']);
     expect(getArenaSeasonRecord(highlights.topDecks[0])).toEqual({
-      gamesPlayed: 5, wins: 4, losses: 1, winRate: 80,
+      gamesPlayed: 5, wins: 4, losses: 1, draws: 0, decisiveGames: 5, winRate: 80,
     });
   });
 

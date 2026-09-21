@@ -22,6 +22,8 @@ import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { apiGet } from '@/lib/api';
 import { getSiteUrl } from '@/lib/env';
 import { MANA_CHART_COLORS, MANA_COLOR_LABELS } from '@/lib/mana-colors';
+import type { ArenaColorAnalytics } from '@/lib/arena-color-analytics';
+import { formatMatchRecord, type MatchRecord } from '@/lib/win-rate';
 
 interface PublicArenaResponse {
   arena: {
@@ -34,22 +36,14 @@ interface PublicArenaResponse {
     totalMatches: number;
     totalPlayers: number;
   };
-  topPlayers: {
-    displayName: string;
-    gamesPlayed: number;
-    wins: number;
-    winRate: number;
-  }[];
-  topDecks: {
+  topPlayers: (MatchRecord & { displayName: string })[];
+  topDecks: (MatchRecord & {
     name: string;
     commander: string;
     commanderImage: string | null;
     bracket: string | null;
     ownerDisplayName: string;
-    gamesPlayed: number;
-    wins: number;
-    winRate: number;
-  }[];
+  })[];
   topColors: {
     color: string;
     label: { it: string; en: string };
@@ -57,13 +51,9 @@ interface PublicArenaResponse {
     percentage: number;
     winRate: number;
   }[];
-  colorMeta: {
-    played: { color: string; appearances: number; wins: number; percentage: number; winRate: number }[];
-    won: { color: string; appearances: number; wins: number; percentage: number; winRate: number }[];
-    winRates: { color: string; appearances: number; wins: number; percentage: number; winRate: number }[];
-    pairs: { key: string; colors: string[]; guildName: { it: string; en: string } | null; appearances: number; wins: number; winRate: number }[];
-    missingColorGames: number;
-  };
+  // Reuse the shared shape so this response type cannot drift from the payload
+  // the API actually returns.
+  colorMeta: ArenaColorAnalytics;
   recentMatches: {
     id: string;
     playedAt: string;
@@ -214,7 +204,7 @@ export default function PublicArenaScreen() {
                 <Text style={styles.highlightLabel}>{copy('currentLeader')}</Text>
                 <Text style={styles.highlightValue}>{data.topPlayers[0].displayName}</Text>
                 <Text style={styles.highlightHint}>
-                  {data.topPlayers[0].winRate}% · {data.topPlayers[0].wins}W / {data.topPlayers[0].gamesPlayed}G
+                  {data.topPlayers[0].winRate}% · {formatMatchRecord(data.topPlayers[0])}
                 </Text>
               </PhyrexianPanel>
             ) : null}
@@ -232,7 +222,7 @@ export default function PublicArenaScreen() {
                     <Text style={styles.highlightValue}>{data.topDecks[0].commander}</Text>
                     <Text style={styles.highlightHint}>{data.topDecks[0].ownerDisplayName}</Text>
                     <Text style={styles.highlightHint}>
-                      {data.topDecks[0].winRate}% · {data.topDecks[0].wins}W / {data.topDecks[0].gamesPlayed}G
+                      {data.topDecks[0].winRate}% · {formatMatchRecord(data.topDecks[0])}
                     </Text>
                   </View>
                 </View>
@@ -260,7 +250,7 @@ export default function PublicArenaScreen() {
               <Text style={styles.rank}>{index + 1}</Text>
               <Text style={styles.listPrimary}>{player.displayName}</Text>
               <Text style={styles.listSecondary}>
-                {player.winRate}% · {player.wins}W / {player.gamesPlayed}G
+                {player.winRate}% · {formatMatchRecord(player)}
               </Text>
             </View>
           ))}
@@ -280,7 +270,7 @@ export default function PublicArenaScreen() {
                 <Text style={styles.listPrimary}>{deck.commander}</Text>
                 <Text style={styles.listSecondary}>{deck.ownerDisplayName}</Text>
                 <Text style={styles.listSecondary}>
-                  {deck.winRate}% · {deck.wins}W / {deck.gamesPlayed}G
+                  {deck.winRate}% · {formatMatchRecord(deck)}
                 </Text>
               </View>
             </View>

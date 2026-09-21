@@ -112,6 +112,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { formatMatchRecord } from '@/lib/win-rate';
 
 interface Deck {
   id: string;
@@ -868,13 +869,14 @@ export default function ProfilePage() {
           eliminations_caused,
           group_damage_dealt,
           group_damage_events,
-          matches (duration_seconds, tracking_version)
+          matches (is_draw, duration_seconds, tracking_version)
         `)
         .in('deck_id', deckIds);
 
       if (error) throw error;
 
       const decksById = new Map(loadedDecks.map((deck) => [deck.id, deck]));
+      type PerformanceMatch = { is_draw?: boolean | null; duration_seconds?: number | null; tracking_version?: number | null };
       const performanceRows = ((data || []) as Array<{
         is_winner: boolean;
         deck_id: string;
@@ -887,7 +889,7 @@ export default function ProfilePage() {
         eliminations_caused?: number;
         group_damage_dealt?: number;
         group_damage_events?: number;
-        matches?: { duration_seconds?: number | null; tracking_version?: number | null } | Array<{ duration_seconds?: number | null; tracking_version?: number | null }> | null;
+        matches?: PerformanceMatch | PerformanceMatch[] | null;
       }>).map((row): DeckPerformanceInputRow => {
         const deck = decksById.get(row.deck_id);
         const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
@@ -901,6 +903,7 @@ export default function ProfilePage() {
           deck_commander_image: deck?.commander_image || null,
           guest_deck_commander_image: null,
           is_winner: row.is_winner,
+          is_draw: Boolean(match?.is_draw),
           placement: row.placement ?? null,
           duration_seconds: match?.duration_seconds ?? null,
           tracking_version: match?.tracking_version ?? null,
@@ -916,11 +919,7 @@ export default function ProfilePage() {
       });
       const performance = buildDeckPerformanceStats(performanceRows);
       setDeckPerformance(new Map(performance.map((entry) => [entry.deckId, entry])));
-      setDeckWinRates(new Map(performance.map((entry) => [entry.deckId, {
-        gamesPlayed: entry.gamesPlayed,
-        wins: entry.wins,
-        winRate: entry.winRate,
-      }])));
+      setDeckWinRates(new Map(performance.map((entry) => [entry.deckId, entry])));
     } catch (error) {
       console.error('Error fetching deck win rates:', error);
       setDeckWinRates(new Map());
@@ -2279,7 +2278,7 @@ export default function ProfilePage() {
       >
         <Trophy className="h-3 w-3" />
         {stats.winRate}%
-        <span className="opacity-75">· {stats.wins}W/{stats.gamesPlayed}G</span>
+        <span className="opacity-75">· {formatMatchRecord(stats)}</span>
       </span>
     );
   };

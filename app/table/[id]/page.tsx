@@ -153,6 +153,7 @@ import {
   Shield,
   Flag,
 } from 'lucide-react';
+import { formatMatchRecord, type MatchRecord } from '@/lib/win-rate';
 
 const ARENA_DECK_PICKER_COLUMNS = `
   id,
@@ -325,14 +326,11 @@ interface Group {
   }>;
 }
 
-interface PlayerStats {
+interface PlayerStats extends MatchRecord {
   key: ParticipantKey;
   displayName: string;
   isGuest: boolean;
   profile: Profile | null;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
 }
 
 function getPlayerRank(stats: PlayerStats[], index: number) {
@@ -1948,6 +1946,9 @@ export default function TablePage() {
         displayName: player.displayName,
         gamesPlayed: player.gamesPlayed,
         wins: player.wins,
+        losses: player.losses,
+        draws: player.draws,
+        decisiveGames: player.decisiveGames,
         winRate: player.winRate,
       })),
       topDecks: deckStats.slice(0, 5).map((deck) => ({
@@ -1956,6 +1957,9 @@ export default function TablePage() {
         ownerDisplayName: deck.ownerDisplayName,
         gamesPlayed: deck.gamesPlayed,
         wins: deck.wins,
+        losses: deck.losses,
+        draws: deck.draws,
+        decisiveGames: deck.decisiveGames,
         winRate: deck.winRate,
         bracket: deck.bracket,
       })),
@@ -2914,7 +2918,7 @@ export default function TablePage() {
                             </div>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span>{player.gamesPlayed} {t({ it: player.gamesPlayed === 1 ? 'partita' : 'partite', en: player.gamesPlayed === 1 ? 'game' : 'games' })}</span>
-                              <span>{player.wins}W - {player.gamesPlayed - player.wins}L</span>
+                              <span>{formatMatchRecord(player)}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 sm:justify-end">
@@ -3214,7 +3218,7 @@ export default function TablePage() {
                               </div>
                               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 <span>{deck.gamesPlayed} {t({ it: deck.gamesPlayed === 1 ? 'partita' : 'partite', en: deck.gamesPlayed === 1 ? 'game' : 'games' })}</span>
-                                <span>{deck.wins}W - {deck.gamesPlayed - deck.wins}L</span>
+                                <span>{formatMatchRecord(deck)}</span>
                               </div>
                               <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
                                 <div

@@ -16,6 +16,7 @@ function row(overrides: Partial<DeckPerformanceInputRow> = {}): DeckPerformanceI
     deck_commander_image: null,
     guest_deck_commander_image: null,
     is_winner: false,
+    is_draw: false,
     placement: null,
     duration_seconds: 3600,
     tracking_version: 2,

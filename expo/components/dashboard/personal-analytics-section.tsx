@@ -16,6 +16,7 @@ import {
   filterDeckRankings,
   isProvisionalDeckRanking,
 } from '@/lib/deck-ranking-visibility';
+import { formatMatchRecord } from '@/lib/win-rate';
 
 type PersonalAnalyticsSectionProps = {
   analytics: PersonalAnalytics | null;
@@ -90,7 +91,7 @@ export function PersonalAnalyticsSection({
               { label: trackedGamesLabel, value: analytics.gamesPlayed },
               { label: decksPlayedLabel, value: analytics.uniqueDecks },
               { label: winsLabel, value: analytics.wins },
-              { label: winRateLabel, value: `${Math.round((analytics.wins / analytics.gamesPlayed) * 100)}%` },
+              { label: winRateLabel, value: `${analytics.winRate}%` },
             ].map((item) => (
               <StatCard
                 key={item.label}
@@ -127,7 +128,7 @@ export function PersonalAnalyticsSection({
                 artUri={analytics.bestDeck.commanderImage}
                 title={analytics.bestDeck.name}
                 commander={analytics.bestDeck.commander}
-                meta={`${analytics.bestDeck.gamesPlayed}G · ${analytics.bestDeck.wins}W`}
+                meta={formatMatchRecord(analytics.bestDeck)}
                 gamesPlayed={analytics.bestDeck.gamesPlayed}
                 wins={analytics.bestDeck.wins}
                 trailing={<Text style={styles.deckWinRate}>{analytics.bestDeck.winRate}%</Text>}
@@ -152,7 +153,7 @@ export function PersonalAnalyticsSection({
                   title={deck.name}
                   commander={deck.commander}
                   eyebrow={isProvisionalDeckRanking(deck.gamesPlayed) ? provisionalDeckSampleLabel : undefined}
-                  meta={`${deck.gamesPlayed}G · ${deck.wins}W`}
+                  meta={formatMatchRecord(deck)}
                   badge={index + 1}
                   gamesPlayed={deck.gamesPlayed}
                   wins={deck.wins}

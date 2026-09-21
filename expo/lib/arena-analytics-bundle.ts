@@ -11,6 +11,9 @@ import {
 } from '@/lib/mana-colors-core';
 import type { PlayerStats } from '@/lib/types/arena';
 import { laterIsoDate } from '@/lib/arena-seasons';
+import { buildMatchRecord, winRate } from '@/lib/win-rate';
+
+type ColorTally = { appearances: number; wins: number; draws: number };
 
 type PlayerRollup = {
   key: string;
@@ -19,6 +22,7 @@ type PlayerRollup = {
   is_guest: boolean;
   games_played: number;
   wins: number;
+  draws: number;
 };
 
 type CommanderRollup = {
@@ -27,6 +31,7 @@ type CommanderRollup = {
   bracket: string | null;
   games_played: number;
   wins: number;
+  draws: number;
 };
 
 type ColorRollup = {
@@ -34,6 +39,7 @@ type ColorRollup = {
   bracket: string | null;
   appearances: number;
   wins: number;
+  draws: number;
 };
 
 type DeckRollup = {
@@ -47,6 +53,7 @@ type DeckRollup = {
   games_played: number;
   tracked_games: number;
   wins: number;
+  draws: number;
   second_places: number;
   first_eliminations: number;
   comeback_wins: number;
@@ -164,9 +171,11 @@ export function buildArenaAnalyticsView(
       username: row.display_name,
       display_name: row.display_name,
     } : null,
-    gamesPlayed: row.games_played,
-    wins: row.wins,
-    winRate: percentage(row.wins, row.games_played),
+    ...buildMatchRecord({
+      gamesPlayed: row.games_played,
+      wins: row.wins,
+      draws: row.draws,
+    }),
   })).sort((left, right) => (
     right.winRate - left.winRate
     || right.wins - left.wins
@@ -181,9 +190,11 @@ export function buildArenaAnalyticsView(
       ownerDisplayName: row.owner_display_name,
       commanderImageUrl: row.commander_image,
       bracket: row.bracket,
-      gamesPlayed: row.games_played,
-      wins: row.wins,
-      winRate: percentage(row.wins, row.games_played),
+      ...buildMatchRecord({
+        gamesPlayed: row.games_played,
+        wins: row.wins,
+        draws: row.draws,
+      }),
     }))
     .sort((left, right) => deckStatsSort === 'gamesPlayed'
       ? right.gamesPlayed - left.gamesPlayed || right.wins - left.wins || left.key.localeCompare(right.key)
@@ -192,36 +203,42 @@ export function buildArenaAnalyticsView(
   const filteredColors = (payload.colors ?? []).filter(
     (row) => bracketFilter === 'all' || row.bracket === bracketFilter,
   );
-  const colorMap = new Map<string, { appearances: number; wins: number }>(
-    MANA_COLOR_ORDER.map((color) => [color, { appearances: 0, wins: 0 }]),
+  const colorMap = new Map<string, ColorTally>(
+    MANA_COLOR_ORDER.map((color) => [color, { appearances: 0, wins: 0, draws: 0 }]),
   );
-  const pairMap = new Map<string, { colors: string[]; appearances: number; wins: number }>();
+  const pairMap = new Map<string, { colors: string[] } & ColorTally>();
   let totalColorAppearances = 0;
   filteredColors.forEach((row) => {
     const identity = getPlayableManaColors(row.color_identity ?? []);
     identity.forEach((color) => {
-      const current = colorMap.get(color) ?? { appearances: 0, wins: 0 };
+      const current = colorMap.get(color) ?? { appearances: 0, wins: 0, draws: 0 };
       current.appearances += row.appearances;
       current.wins += row.wins;
+      current.draws += row.draws ?? 0;
       totalColorAppearances += row.appearances;
       colorMap.set(color, current);
     });
     const key = getColorIdentityGroupKey(identity);
     if (key) {
-      const current = pairMap.get(key) ?? { colors: identity, appearances: 0, wins: 0 };
+      const current = pairMap.get(key) ?? { colors: identity, appearances: 0, wins: 0, draws: 0 };
       current.appearances += row.appearances;
       current.wins += row.wins;
+      current.draws += row.draws ?? 0;
       pairMap.set(key, current);
     }
   });
   const played = MANA_COLOR_ORDER.map((color) => {
-    const current = colorMap.get(color) ?? { appearances: 0, wins: 0 };
+    const current = colorMap.get(color) ?? { appearances: 0, wins: 0, draws: 0 };
+    const decisiveGames = Math.max(0, current.appearances - current.draws);
     return {
       color,
       appearances: current.appearances,
       wins: current.wins,
+      losses: Math.max(0, decisiveGames - current.wins),
+      draws: current.draws,
+      decisiveGames,
       percentage: percentage(current.appearances, totalColorAppearances),
-      winRate: percentage(current.wins, current.appearances),
+      winRate: winRate(current.wins, current.appearances, current.draws),
     };
   }).filter((row) => row.appearances > 0);
   const wonTotal = played.reduce((total, row) => total + row.wins, 0);
@@ -230,20 +247,29 @@ export function buildArenaAnalyticsView(
     won: played.filter((row) => row.wins > 0).map((row) => ({
       ...row,
       appearances: row.wins,
+      losses: 0,
+      draws: 0,
+      decisiveGames: row.wins,
       percentage: percentage(row.wins, wonTotal),
       winRate: 100,
     })),
     winRates: [...played]
       .filter((row) => row.appearances >= 3)
       .sort((left, right) => right.winRate - left.winRate || right.appearances - left.appearances),
-    pairs: Array.from(pairMap.entries()).map(([key, row]) => ({
-      key,
-      colors: row.colors,
-      guildName: getColorIdentityLabel(row.colors),
-      appearances: row.appearances,
-      wins: row.wins,
-      winRate: percentage(row.wins, row.appearances),
-    })).sort((left, right) => right.appearances - left.appearances).slice(0, 5),
+    pairs: Array.from(pairMap.entries()).map(([key, row]) => {
+      const decisiveGames = Math.max(0, row.appearances - row.draws);
+      return {
+        key,
+        colors: row.colors,
+        guildName: getColorIdentityLabel(row.colors),
+        appearances: row.appearances,
+        wins: row.wins,
+        losses: Math.max(0, decisiveGames - row.wins),
+        draws: row.draws,
+        decisiveGames,
+        winRate: winRate(row.wins, row.appearances, row.draws),
+      };
+    }).sort((left, right) => right.appearances - left.appearances).slice(0, 5),
     missingColorGames: 0,
     totalGamesWithColors: payload.totalMatches ?? 0,
   };

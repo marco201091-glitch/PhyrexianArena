@@ -21,8 +21,8 @@ describe('arena-share', () => {
       arenaName: 'Friday Night',
       periodLabel: 'All time',
       totalMatches: 12,
-      topPlayers: [{ displayName: 'Marco', gamesPlayed: 10, wins: 6, winRate: 60 }],
-      topDecks: [{ commander: 'Atraxa', gamesPlayed: 5, wins: 3, winRate: 60, bracket: '3' }],
+      topPlayers: [{ displayName: 'Marco', gamesPlayed: 10, wins: 6, losses: 3, draws: 1, decisiveGames: 9, winRate: 67 }],
+      topDecks: [{ commander: 'Atraxa', gamesPlayed: 5, wins: 3, losses: 2, draws: 0, decisiveGames: 5, winRate: 60, bracket: '3' }],
       topColors: [{ label: 'Esper', gamesPlayed: 4, percentage: 33 }],
       recentMatches: [{
         playedAt: '2026-07-08T20:00:00.000Z',
@@ -40,7 +40,8 @@ describe('arena-share', () => {
     }, labels);
 
     expect(text).toContain('Friday Night');
-    expect(text).toContain('Marco - 60%');
+    // 6 wins over 9 decisive games — the single draw is not a loss.
+    expect(text).toContain('Marco - 67% (6W-3L-1D)');
     expect(text).toContain('Atraxa [B3]');
     expect(text).toContain('Public page: https://example.com/arena/PHY123');
     expect(text).toContain('Long game');

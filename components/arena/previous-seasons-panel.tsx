@@ -12,6 +12,7 @@ import {
   getArenaSeasonRecord,
   type ArenaSeasonArchive,
 } from '@/lib/arena-seasons';
+import { formatMatchRecord } from '@/lib/win-rate';
 
 type RankingView = 'players' | 'decks';
 
@@ -132,7 +133,7 @@ export function PreviousSeasonsPanel({ archives }: { archives: ArenaSeasonArchiv
                             </span>
                             <span className="shrink-0 text-right tabular-nums">
                               <span className="block text-sm font-bold text-emerald-300">{record.winRate}%</span>
-                              <span className="block text-[11px] text-muted-foreground">{record.wins}W / {record.losses}L</span>
+                              <span className="block text-[11px] text-muted-foreground">{formatMatchRecord(record)}</span>
                             </span>
                           </div>
                         </li>

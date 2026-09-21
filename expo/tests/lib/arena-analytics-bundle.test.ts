@@ -10,14 +10,14 @@ describe('arena analytics bundle', () => {
     const view = buildArenaAnalyticsView({
       totalMatches: 1200,
       players: [
-        { key: 'user:a', user_id: 'a', display_name: 'Alice', is_guest: false, games_played: 10, wins: 7 },
-        { key: 'user:b', user_id: 'b', display_name: 'Bob', is_guest: false, games_played: 10, wins: 3 },
+        { key: 'user:a', user_id: 'a', display_name: 'Alice', is_guest: false, games_played: 10, wins: 7, draws: 0 },
+        { key: 'user:b', user_id: 'b', display_name: 'Bob', is_guest: false, games_played: 10, wins: 3, draws: 0 },
       ],
       commanders: [
-        { commander: 'Atraxa', commander_image: 'https://img.test/a.jpg', bracket: '4', games_played: 10, wins: 7 },
+        { commander: 'Atraxa', commander_image: 'https://img.test/a.jpg', bracket: '4', games_played: 10, wins: 7, draws: 0 },
       ],
       colors: [
-        { color_identity: ['W', 'U', 'B', 'G'], bracket: '4', appearances: 10, wins: 7 },
+        { color_identity: ['W', 'U', 'B', 'G'], bracket: '4', appearances: 10, wins: 7, draws: 0 },
       ],
       decks: [
         {
@@ -31,6 +31,7 @@ describe('arena analytics bundle', () => {
           games_played: 10,
           tracked_games: 10,
           wins: 7,
+          draws: 0,
           second_places: 2,
           first_eliminations: 1,
           comeback_wins: 2,
@@ -62,6 +63,7 @@ describe('arena analytics bundle', () => {
       games_played: 3,
       tracked_games: 3,
       wins: 0,
+      draws: 0,
       second_places: 0,
       first_eliminations: 0,
       comeback_wins: 0,
@@ -84,8 +86,8 @@ describe('arena analytics bundle', () => {
   it('keeps identical commanders separate by physical deck and owner', () => {
     const view = buildArenaAnalyticsView({
       decks: [
-        { key: 'deck:a', deck_id: 'a', deck_name: 'A', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Alice', games_played: 4, tracked_games: 4, wins: 3, second_places: 0, first_eliminations: 0, comeback_wins: 0, combo_wins: 0, alternate_wins: 0, eliminations: 0, group_damage_dealt: 0, median_winning_duration_seconds: null },
-        { key: 'deck:b', deck_id: 'b', deck_name: 'B', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Bob', games_played: 5, tracked_games: 5, wins: 2, second_places: 0, first_eliminations: 0, comeback_wins: 0, combo_wins: 0, alternate_wins: 0, eliminations: 0, group_damage_dealt: 0, median_winning_duration_seconds: null },
+        { key: 'deck:a', deck_id: 'a', deck_name: 'A', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Alice', games_played: 4, tracked_games: 4, wins: 3, draws: 0, second_places: 0, first_eliminations: 0, comeback_wins: 0, combo_wins: 0, alternate_wins: 0, eliminations: 0, group_damage_dealt: 0, median_winning_duration_seconds: null },
+        { key: 'deck:b', deck_id: 'b', deck_name: 'B', commander: 'Atraxa', commander_image: null, bracket: '4', owner_display_name: 'Bob', games_played: 5, tracked_games: 5, wins: 2, draws: 0, second_places: 0, first_eliminations: 0, comeback_wins: 0, combo_wins: 0, alternate_wins: 0, eliminations: 0, group_damage_dealt: 0, median_winning_duration_seconds: null },
       ],
     }, '4', 'gamesPlayed');
 
