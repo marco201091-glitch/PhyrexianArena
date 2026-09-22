@@ -131,6 +131,14 @@ export default function ProfileScreen() {
     }).format(new Date(profile.created_at));
   }, [language, profile]);
 
+  const personalSnapshot = useMemo(() => {
+    const entries = Object.values(performance);
+    const games = entries.reduce((sum, item) => sum + item.gamesPlayed, 0);
+    const wins = entries.reduce((sum, item) => sum + item.wins, 0);
+    const favorite = decks.find((deck) => deck.is_favorite) || decks[0];
+    return { games, winRate: games ? Math.round((wins / games) * 100) : 0, favorite };
+  }, [decks, performance]);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await refresh();
@@ -230,6 +238,17 @@ export default function ProfileScreen() {
               ) : null}
             </View>
           </View>
+        </PhyrexianPanel>
+
+        <PhyrexianPanel style={styles.commandZone}>
+          <Text style={styles.commandZoneEyebrow}>{language === 'it' ? 'SCHEDA GIOCATORE' : 'PLAYER CARD'}</Text>
+          <Text style={styles.commandZoneTitle}>{language === 'it' ? 'La tua Command Zone' : 'Your Command Zone'}</Text>
+          <View style={styles.snapshotRow}>
+            <View style={styles.snapshot}><Text style={styles.snapshotLabel}>{language === 'it' ? 'Partite' : 'Matches'}</Text><Text style={styles.snapshotValue}>{personalSnapshot.games}</Text></View>
+            <View style={styles.snapshot}><Text style={styles.snapshotLabel}>Win rate</Text><Text style={styles.snapshotValue}>{personalSnapshot.winRate}%</Text></View>
+            <View style={styles.snapshot}><Text style={styles.snapshotLabel}>{language === 'it' ? 'Mazzi' : 'Decks'}</Text><Text style={styles.snapshotValue}>{decks.length}</Text></View>
+          </View>
+          {personalSnapshot.favorite ? <Text style={styles.favorite}>{language === 'it' ? 'Preferito' : 'Favorite'} · {personalSnapshot.favorite.name}</Text> : null}
         </PhyrexianPanel>
 
         {decks.length > 0 ? (
@@ -564,6 +583,14 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  commandZone: { gap: spacing.xs, borderColor: 'rgba(34,211,238,0.28)', backgroundColor: 'rgba(8,47,73,0.35)' },
+  commandZoneEyebrow: { color: '#67e8f9', fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
+  commandZoneTitle: { color: colors.foreground, fontSize: 19, fontWeight: '900' },
+  snapshotRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  snapshot: { flex: 1, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.05)', padding: 10 },
+  snapshotLabel: { color: colors.muted, fontSize: 11 },
+  snapshotValue: { color: colors.foreground, fontSize: 20, fontWeight: '900', marginTop: 2 },
+  favorite: { color: '#fde68a', fontSize: 12, fontWeight: '700', marginTop: spacing.xs },
   listHeader: {
     gap: sectionStackGap,
   },

@@ -27,6 +27,7 @@ import { TableGuestsSection } from '@/components/table/table-guests-section';
 import { TableMatchesList } from '@/components/table/table-matches-list';
 import { TableMetaTab } from '@/components/table/table-meta-tab';
 import { TableAwardsTab } from '@/components/table/table-awards-tab';
+import { PlayerAwardsTab } from '@/components/table/player-awards-tab';
 import { TablePlayersTab } from '@/components/table/table-players-tab';
 import { TableUserManagement } from '@/components/table/table-user-management';
 import { RecordMatchModal } from '@/components/table/record-match-modal';
@@ -69,6 +70,7 @@ import { groupMatchesByDay } from '@/lib/arena-session';
 import { buildArenaShareText } from '@/lib/arena-share';
 import { calculatePlayerStats, getMatchWinnerName } from '@/lib/arena-stats';
 import { calculateArenaAwards } from '@/lib/arena-awards';
+import { buildPlayerAwards } from '@/lib/player-awards';
 import { getSiteUrl } from '@/lib/env';
 import { apiPost } from '@/lib/api';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
@@ -135,6 +137,7 @@ export default function TableScreen() {
   } = useArena(groupId, user?.id);
 
   const [activeTab, setActiveTab] = useState<ArenaTab>('matches');
+  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('players');
   const { scrollContentStyle } = useScreenInsets();
   const { showToast } = useToast();
   const [dateFilter, setDateFilter] = useState<ArenaDateFilter>('all');
@@ -311,6 +314,7 @@ export default function TableScreen() {
       : calculateArenaAwards(matches),
     [allTimeAnalyticsPayload, matches],
   );
+  const playerAwards = useMemo(() => buildPlayerAwards(matches), [matches]);
   const reportedMatchCount = analyticsView?.totalMatches ?? filteredMatches.length;
 
   const matchDayGroups = useMemo(() => {
@@ -868,7 +872,11 @@ export default function TableScreen() {
         ) : null}
 
         {activeTab === 'awards' ? (
-          <TableAwardsTab
+          <View style={styles.awardsSection}>
+          <View style={styles.awardsToggle}>
+            {(['players', 'decks'] as const).map((view) => <Pressable key={view} onPress={() => setAwardsView(view)} style={[styles.awardsToggleButton, awardsView === view && styles.awardsToggleButtonActive]}><Text style={[styles.awardsToggleText, awardsView === view && styles.awardsToggleTextActive]}>{view === 'players' ? (language === 'it' ? 'Giocatori' : 'Players') : (language === 'it' ? 'Mazzi' : 'Decks')}</Text></Pressable>)}
+          </View>
+          {awardsView === 'players' ? <PlayerAwardsTab awards={playerAwards} language={language} /> : <TableAwardsTab
             awards={arenaAwards}
             labels={{
               emptyTitle: copy('awardsEmptyTitle'),
@@ -892,7 +900,8 @@ export default function TableScreen() {
               games: copy('games'),
               wins: copy('wins'),
             }}
-          />
+          />}
+          </View>
         ) : null}
 
         {activeTab === 'meta' ? (
@@ -1378,6 +1387,12 @@ export default function TableScreen() {
 }
 
 const styles = StyleSheet.create({
+  awardsSection: { gap: spacing.md },
+  awardsToggle: { flexDirection: 'row', gap: spacing.sm, padding: 4, borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.surfaceMuted },
+  awardsToggleButton: { flex: 1, alignItems: 'center', borderRadius: 8, paddingVertical: 9 },
+  awardsToggleButtonActive: { backgroundColor: colors.primarySurface },
+  awardsToggleText: { color: colors.muted, fontWeight: '700' },
+  awardsToggleTextActive: { color: colors.primaryLight },
   seasonPanel: {
     gap: spacing.xs,
     borderColor: 'rgba(16, 185, 129, 0.28)',
