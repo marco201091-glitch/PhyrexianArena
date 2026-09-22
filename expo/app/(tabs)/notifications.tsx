@@ -11,7 +11,7 @@ import { localizeNotification } from '@/lib/notification-copy';
 
 type NotificationItem = {
   id: string;
-  type: 'arena_invite' | 'arena_member_joined' | 'match_completed';
+  type: 'arena_invite' | 'arena_member_joined' | 'match_completed' | 'season_completed';
   title: string;
   body: string;
   data: Record<string, unknown> & { groupId?: string };
@@ -62,9 +62,10 @@ export default function NotificationsScreen() {
         {!items.length && !refreshing ? <Text style={styles.empty}>{copy('notificationInboxEmpty')}</Text> : null}
         {items.map((item) => {
           const localized = localizeNotification(item, language);
+          const accent = item.type === 'season_completed' ? '#d946ef' : item.type === 'match_completed' ? '#f59e0b' : item.type === 'arena_invite' ? '#8b5cf6' : '#38bdf8';
           return (
-            <Pressable key={item.id} onPress={() => void openItem(item)} style={[styles.item, !item.read_at && styles.unread]}>
-              <Text style={styles.itemTitle}>{localized.title}</Text>
+            <Pressable key={item.id} onPress={() => void openItem(item)} style={[styles.item, { borderLeftColor: accent }, !item.read_at && styles.unread]}>
+              <View style={styles.itemTop}><Text style={[styles.dot, { color: accent }]}>{item.type === 'season_completed' ? '♛' : item.type === 'match_completed' ? '⚔' : item.type === 'arena_invite' ? '✦' : '◉'}</Text><Text style={styles.itemTitle}>{localized.title}</Text>{!item.read_at ? <View style={styles.unreadDot} /> : null}</View>
               <Text style={styles.itemBody}>{localized.body}</Text>
               <Text style={styles.time}>{new Date(item.created_at).toLocaleString(language === 'it' ? 'it-IT' : 'en-US')}</Text>
             </Pressable>
@@ -80,8 +81,11 @@ const styles = StyleSheet.create({
   title: { flex: 1, color: colors.foreground, fontSize: 28, fontWeight: '800' },
   list: { gap: spacing.sm },
   empty: { color: colors.muted, textAlign: 'center', padding: spacing.xl },
-  item: { borderRadius: radii.lg, borderWidth: 1, borderColor: colors.borderSoft, backgroundColor: colors.card, padding: spacing.md },
+  item: { borderRadius: radii.lg, borderWidth: 1, borderLeftWidth: 4, borderColor: colors.borderSoft, backgroundColor: colors.card, padding: spacing.md },
   unread: { borderColor: colors.primary, backgroundColor: 'rgba(16, 185, 129, 0.10)' },
+  itemTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  dot: { fontSize: 18, fontWeight: '800' },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
   itemTitle: { color: colors.foreground, fontWeight: '700', marginBottom: 4 },
   itemBody: { color: colors.muted, lineHeight: 20 },
   time: { color: colors.muted, fontSize: 11, marginTop: spacing.sm },
