@@ -3854,7 +3854,7 @@ export default function TablePage() {
               </Button>
             </div>
             <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-border/70 bg-background/35 p-3">
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />{t({ it: 'Durata', en: 'Duration' })}</p>
                   <p className="mt-1 font-bold text-foreground">{detailsMatch.duration_seconds != null ? formatGameDuration(detailsMatch.duration_seconds) : '—'}</p>
@@ -3862,10 +3862,6 @@ export default function TablePage() {
                 <div className="rounded-xl border border-border/70 bg-background/35 p-3">
                   <p className="text-xs text-muted-foreground">{t({ it: 'Vittoria', en: 'Win condition' })}</p>
                   <p className="mt-1 font-bold text-foreground">{detailsMatch.is_draw ? t({ it: 'Patta', en: 'Draw' }) : getWinConditionLabel(detailsMatch.win_condition)}</p>
-                </div>
-                <div className="col-span-2 rounded-xl border border-border/70 bg-background/35 p-3 sm:col-span-1">
-                  <p className="text-xs text-muted-foreground">{t({ it: 'Eventi registrati', en: 'Tracked events' })}</p>
-                  <p className="mt-1 font-bold text-foreground">{detailsMatch.match_participants.reduce((total, participant) => total + (participant.tracked_event_count || 0), 0)}</p>
                 </div>
               </div>
 
@@ -3879,6 +3875,12 @@ export default function TablePage() {
                   .map((participant) => {
                     const deck = getParticipantDeckSnapshot(participant);
                     const impact = (participant.life_damage_dealt || 0) + (participant.commander_damage_dealt || 0) + (participant.infect_dealt || 0);
+                    const damage = participant.life_damage_dealt || 0;
+                    const gained = participant.life_gained || 0;
+                    const lost = participant.life_lost || 0;
+                    const activity = Math.max(1, damage + gained + lost);
+                    const damageEnd = (damage / activity) * 100;
+                    const gainedEnd = damageEnd + (gained / activity) * 100;
                     const maxImpact = Math.max(1, ...detailsMatch.match_participants.map((entry) => (
                       (entry.life_damage_dealt || 0) + (entry.commander_damage_dealt || 0) + (entry.infect_dealt || 0)
                     )));
@@ -3893,6 +3895,12 @@ export default function TablePage() {
                               {participant.was_starting_player ? <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-200">{t({ it: 'Ha iniziato', en: 'Started' })}</span> : null}
                             </div>
                             <p className="line-clamp-1 text-xs text-emerald-300">{deck?.name || deck?.commander}</p>
+                          </div>
+                          <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
+                            <div className="grid h-14 w-14 place-items-center rounded-full" style={{ background: `conic-gradient(#fb7185 0 ${damageEnd}%, #34d399 ${damageEnd}% ${gainedEnd}%, #38bdf8 ${gainedEnd}% 100%)` }}>
+                              <div className="grid h-9 w-9 place-items-center rounded-full bg-card text-[10px] font-black text-foreground">{activity}</div>
+                            </div>
+                            <div className="text-[10px] leading-4 text-muted-foreground"><p><span className="text-rose-300">●</span> {t({ it: 'danni', en: 'damage' })}</p><p><span className="text-emerald-300">●</span> {t({ it: 'cura', en: 'healing' })}</p><p><span className="text-sky-300">●</span> {t({ it: 'subiti', en: 'taken' })}</p></div>
                           </div>
                         </div>
                         <div className="mb-3 rounded-lg border border-border/60 bg-background/35 p-2.5">
