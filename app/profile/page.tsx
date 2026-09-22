@@ -89,6 +89,7 @@ import {
   ExternalLink,
   Swords,
   Trophy,
+  Crown,
   Loader2,
   Search,
   Mail,
@@ -1005,6 +1006,15 @@ export default function ProfilePage() {
       return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
     });
   }, [deckColorFilter, deckPerformance, deckSearchQuery, deckSort, visibleDecks]);
+
+  const personalSnapshot = useMemo(() => {
+    const performances = visibleDecks.map((deck) => deckPerformance.get(deck.id)).filter((entry): entry is DeckPerformanceStats => Boolean(entry));
+    const games = performances.reduce((total, entry) => total + entry.gamesPlayed, 0);
+    const wins = performances.reduce((total, entry) => total + entry.wins, 0);
+    const favorite = visibleDecks.find((deck) => deck.is_favorite) || visibleDecks[0];
+    const mostPlayed = [...visibleDecks].sort((a, b) => (deckPerformance.get(b.id)?.gamesPlayed || 0) - (deckPerformance.get(a.id)?.gamesPlayed || 0))[0];
+    return { games, wins, winRate: games ? Math.round((wins / games) * 100) : 0, favorite, mostPlayed };
+  }, [deckPerformance, visibleDecks]);
 
   const toggleDeckFavorite = useCallback(async (deck: Deck) => {
     if (!user || deck.user_id !== user.id) return;
@@ -2636,6 +2646,23 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {!adminMode && (
+          <section className="mb-8 overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-950/45 via-background to-violet-950/35 p-4 shadow-[0_16px_42px_rgba(6,182,212,0.08)] sm:p-5" aria-label={t({ it: 'La tua scheda giocatore', en: 'Your player card' })}>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/70">{t({ it: 'Scheda giocatore', en: 'Player card' })}</p><h2 className="mt-1 text-xl font-bold text-foreground">{t({ it: 'La tua Command Zone', en: 'Your Command Zone' })}</h2></div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/25 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-100"><Crown className="h-3.5 w-3.5 text-violet-300" />{personalSnapshot.games ? t({ it: 'Statistiche personali', en: 'Personal stats' }) : t({ it: 'Pronto a giocare', en: 'Ready to play' })}</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { label: t({ it: 'Partite giocate', en: 'Matches played' }), value: personalSnapshot.games, tone: 'from-cyan-500/20 to-cyan-950/10', icon: Swords },
+                { label: t({ it: 'Win rate', en: 'Win rate' }), value: `${personalSnapshot.winRate}%`, tone: 'from-emerald-500/20 to-emerald-950/10', icon: Trophy },
+                { label: t({ it: 'Mazzi attivi', en: 'Active decks' }), value: visibleDecks.length, tone: 'from-violet-500/20 to-violet-950/10', icon: Star },
+              ].map(({ label, value, tone, icon: Icon }) => <div key={label} className={`rounded-xl border border-white/10 bg-gradient-to-br ${tone} p-3`}><div className="flex items-center justify-between text-xs text-muted-foreground"><span>{label}</span><Icon className="h-4 w-4 text-white/70" /></div><p className="mt-2 text-2xl font-bold text-foreground">{value}</p></div>)}
+            </div>
+            {personalSnapshot.favorite || personalSnapshot.mostPlayed ? <div className="mt-3 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-amber-300/15 bg-amber-500/5 p-3"><p className="text-xs text-amber-200/70">{t({ it: 'Mazzo preferito', en: 'Favorite deck' })}</p><p className="mt-1 truncate font-semibold text-foreground">{personalSnapshot.favorite?.name || '—'}</p></div><div className="rounded-xl border border-cyan-300/15 bg-cyan-500/5 p-3"><p className="text-xs text-cyan-200/70">{t({ it: 'Più giocato', en: 'Most played' })}</p><p className="mt-1 truncate font-semibold text-foreground">{personalSnapshot.mostPlayed?.name || '—'}</p></div></div> : null}
+          </section>
         )}
 
         {/* Decks Section */}

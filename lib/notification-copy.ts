@@ -1,7 +1,7 @@
 export type NotificationLanguage = 'en' | 'it';
 
 export type LocalizableNotification = {
-  type?: 'arena_invite' | 'arena_member_joined' | 'match_completed';
+  type?: 'arena_invite' | 'arena_member_joined' | 'match_completed' | 'season_completed';
   title: string;
   body: string;
   data?: Record<string, unknown> | null;
@@ -18,6 +18,7 @@ export function localizeNotification(item: LocalizableNotification, language: No
     arena_invite: { title: 'Playgroup invitation', body: 'You received a new playgroup invitation.' },
     arena_member_joined: { title: 'New playgroup member', body: 'A new member joined your playgroup.' },
     match_completed: { title: 'Match completed', body: 'A match has been completed.' },
+    season_completed: { title: 'Season completed', body: 'Your playgroup season is ready to review.' },
   } as const;
   return item.type ? fallback[item.type] : { title: 'Notification', body: '' };
 }
