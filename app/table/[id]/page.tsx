@@ -2724,7 +2724,7 @@ export default function TablePage() {
               <div className="flex w-fit rounded-xl border border-border bg-background/40 p-1">
                 {(['players', 'decks'] as const).map((view) => <Button key={view} size="sm" variant={awardsView === view ? 'default' : 'ghost'} onClick={() => setAwardsView(view)}>{view === 'players' ? t({ it: 'Giocatori', en: 'Players' }) : t({ it: 'Mazzi', en: 'Decks' })}</Button>)}
               </div>
-              {awardsView === 'players' ? <PlayerAwards awards={playerAwards} /> : (arenaAwards.length === 0 ? (
+              {awardsView === 'players' ? <PlayerAwards awards={playerAwards} language={language} /> : (arenaAwards.length === 0 ? (
                 <Card className="phyrexian-panel">
                   <CardContent className="py-12 text-center">
                     <Award className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
