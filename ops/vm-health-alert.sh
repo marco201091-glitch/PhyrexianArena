@@ -18,6 +18,7 @@ flock -n 9 || exit 0
 
 DISK_THRESHOLD_PERCENT=${DISK_THRESHOLD_PERCENT:-80}
 BACKUP_MARKER=${BACKUP_MARKER:-/var/backups/phyrexianarena/last-success}
+OFFSITE_BACKUP_MARKER=${OFFSITE_BACKUP_MARKER:-/var/backups/phyrexianarena/offsite-last-success}
 BACKUP_MAX_AGE_HOURS=${BACKUP_MAX_AGE_HOURS:-30}
 STATE_FILE=/run/phyrexian-health-alert.state
 HEALTH_ENV=/etc/phyrexian-health-alert.env
@@ -31,6 +32,15 @@ if [[ -r "$HEALTH_ENV" ]]; then
 fi
 
 failures=()
+
+if [[ ! -r "$OFFSITE_BACKUP_MARKER" ]]; then
+  failures+=("backup off-site: marker assente")
+else
+  offsite_age_seconds=$(( $(date -u +%s) - $(cat "$OFFSITE_BACKUP_MARKER" 2>/dev/null || echo 0) ))
+  if (( offsite_age_seconds > BACKUP_MAX_AGE_HOURS * 3600 )); then
+    failures+=("backup off-site fermo da $(( offsite_age_seconds / 3600 ))h")
+  fi
+fi
 
 disk_percent=$(df --output=pcent / | tail -n 1 | tr -dc '0-9')
 if (( disk_percent >= DISK_THRESHOLD_PERCENT )); then

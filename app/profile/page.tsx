@@ -2943,6 +2943,11 @@ export default function ProfilePage() {
         <SheetContent side="right" className="w-full overflow-y-auto border-border bg-card p-0 sm:max-w-xl">
           {detailsDeck ? (() => {
             const performance = deckPerformance.get(detailsDeck.id);
+            const gamesPlayed = performance?.gamesPlayed ?? 0;
+            const wins = performance?.wins ?? 0;
+            const draws = performance?.draws ?? 0;
+            const losses = performance?.losses ?? 0;
+            const winRate = performance?.winRate ?? 0;
             return (
               <>
                 <div className="relative overflow-hidden border-b border-border">
@@ -2959,21 +2964,33 @@ export default function ProfilePage() {
                 </div>
                 <div className="space-y-6 p-5">
                   <section>
-                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground"><BarChart3 className="h-4 w-4 text-emerald-300" />Overview</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        [t({ it: 'Partite', en: 'Games' }), performance?.gamesPlayed ?? 0],
-                        [t({ it: 'Vittorie', en: 'Wins' }), performance?.wins ?? 0],
-                        ['Win rate', `${performance?.winRate ?? 0}%`],
-                        [t({ it: 'Secondi posti', en: 'Runner-up' }), performance?.secondPlaces ?? 0],
-                        [t({ it: 'Danno medio', en: 'Avg damage' }), performance?.averageDamageDealt ?? 0],
-                        [t({ it: 'Vittoria mediana', en: 'Median win' }), performance?.medianWinningDurationSeconds != null ? formatGameDuration(performance.medianWinningDurationSeconds) : '—'],
-                      ].map(([label, value]) => (
-                        <div key={String(label)} className="rounded-xl border border-border/70 bg-background/35 p-3">
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-                          <p className="mt-1 text-lg font-bold text-foreground">{value}</p>
+                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground"><BarChart3 className="h-4 w-4 text-emerald-300" />{t({ it: 'Impronta del mazzo', en: 'Deck fingerprint' })}</h3>
+                    <div className="grid gap-3 rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 via-background/35 to-cyan-500/5 p-4 sm:grid-cols-[9rem_1fr]">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="grid h-28 w-28 place-items-center rounded-full" style={{ background: `conic-gradient(#34d399 ${winRate}%, #475569 ${winRate}% ${Math.max(winRate, winRate + (draws / Math.max(gamesPlayed, 1)) * 100)}%, #1e293b 0)` }}>
+                          <div className="grid h-20 w-20 place-items-center rounded-full bg-card text-center shadow-inner">
+                            <strong className="text-2xl text-emerald-300">{winRate}%</strong>
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">win rate</span>
+                          </div>
                         </div>
-                      ))}
+                        <p className="mt-2 text-xs text-muted-foreground">{gamesPlayed} {t({ it: 'partite', en: 'games' })}</p>
+                      </div>
+                      <div className="space-y-3 self-center">
+                        {[
+                          [t({ it: 'Vittorie', en: 'Wins' }), wins, 'bg-emerald-400'],
+                          [t({ it: 'Patte', en: 'Draws' }), draws, 'bg-cyan-400'],
+                          [t({ it: 'Sconfitte', en: 'Losses' }), losses, 'bg-slate-500'],
+                        ].map(([label, value, color]) => (
+                          <div key={String(label)}>
+                            <div className="mb-1 flex justify-between text-xs"><span className="text-muted-foreground">{label}</span><span className="font-semibold text-foreground">{value}</span></div>
+                            <div className="h-2 overflow-hidden rounded-full bg-secondary"><div className={`h-full rounded-full ${color}`} style={{ width: `${(Number(value) / Math.max(gamesPlayed, 1)) * 100}%` }} /></div>
+                          </div>
+                        ))}
+                        <div className="grid grid-cols-2 gap-2 pt-1 text-center">
+                          <div className="rounded-lg bg-background/45 p-2"><p className="text-[10px] uppercase text-muted-foreground">{t({ it: 'Podî', en: 'Podiums' })}</p><p className="font-bold text-foreground">{wins + (performance?.secondPlaces ?? 0)}</p></div>
+                          <div className="rounded-lg bg-background/45 p-2"><p className="text-[10px] uppercase text-muted-foreground">{t({ it: 'Vittoria tipica', en: 'Typical win' })}</p><p className="font-bold text-foreground">{performance?.medianWinningDurationSeconds != null ? formatGameDuration(performance.medianWinningDurationSeconds) : '—'}</p></div>
+                        </div>
+                      </div>
                     </div>
                   </section>
 

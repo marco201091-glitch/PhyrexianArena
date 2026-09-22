@@ -99,6 +99,8 @@ import {
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
 import { ArenaSeasonSettings } from '@/components/arena-season-settings';
+import { PlayerAwards } from '@/components/arena/player-awards';
+import { buildPlayerAwards } from '@/lib/player-awards';
 import {
   isoToMatchDateValue,
   matchDateToIso,
@@ -433,6 +435,7 @@ export default function TablePage() {
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
+  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('players');
   const [activeLiveGameId, setActiveLiveGameId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
   const [bracketFilter, setBracketFilter] = useState('all');
@@ -1107,6 +1110,7 @@ export default function TablePage() {
     () => buildArenaAwards(allTimeAwardsDeckPerformance),
     [allTimeAwardsDeckPerformance],
   );
+  const playerAwards = useMemo(() => buildPlayerAwards(matches), [matches]);
   const arenaAwardGroups = useMemo(() => {
     const groups = new Map<DeckArenaAward['kind'], DeckArenaAward[]>();
     arenaAwards.forEach((award) => {
@@ -2717,7 +2721,10 @@ export default function TablePage() {
                   })}
                 </p>
               </div>
-              {arenaAwards.length === 0 ? (
+              <div className="flex w-fit rounded-xl border border-border bg-background/40 p-1">
+                {(['players', 'decks'] as const).map((view) => <Button key={view} size="sm" variant={awardsView === view ? 'default' : 'ghost'} onClick={() => setAwardsView(view)}>{view === 'players' ? t({ it: 'Giocatori', en: 'Players' }) : t({ it: 'Mazzi', en: 'Decks' })}</Button>)}
+              </div>
+              {awardsView === 'players' ? <PlayerAwards awards={playerAwards} /> : (arenaAwards.length === 0 ? (
                 <Card className="phyrexian-panel">
                   <CardContent className="py-12 text-center">
                     <Award className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
@@ -2805,7 +2812,7 @@ export default function TablePage() {
                     );
                   })}
                 </div>
-              )}
+              ))}
             </div>
           </TabsContent>
 
@@ -3871,6 +3878,10 @@ export default function TablePage() {
                   .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))
                   .map((participant) => {
                     const deck = getParticipantDeckSnapshot(participant);
+                    const impact = (participant.life_damage_dealt || 0) + (participant.commander_damage_dealt || 0) + (participant.infect_dealt || 0);
+                    const maxImpact = Math.max(1, ...detailsMatch.match_participants.map((entry) => (
+                      (entry.life_damage_dealt || 0) + (entry.commander_damage_dealt || 0) + (entry.infect_dealt || 0)
+                    )));
                     return (
                       <div key={participant.id} className={`rounded-xl border p-3 ${participant.is_winner ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/70 bg-background/25'}`}>
                         <div className="mb-3 flex items-center gap-3">
@@ -3882,6 +3893,15 @@ export default function TablePage() {
                               {participant.was_starting_player ? <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-200">{t({ it: 'Ha iniziato', en: 'Started' })}</span> : null}
                             </div>
                             <p className="line-clamp-1 text-xs text-emerald-300">{deck?.name || deck?.commander}</p>
+                          </div>
+                        </div>
+                        <div className="mb-3 rounded-lg border border-border/60 bg-background/35 p-2.5">
+                          <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+                            <span>{t({ it: 'Pressione sul tavolo', en: 'Table pressure' })}</span>
+                            <span className="font-bold text-foreground">{impact}</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                            <div className={`h-full rounded-full ${participant.is_winner ? 'bg-emerald-400' : 'bg-cyan-400'}`} style={{ width: `${(impact / maxImpact) * 100}%` }} />
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">

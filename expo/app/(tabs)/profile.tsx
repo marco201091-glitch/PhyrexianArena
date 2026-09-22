@@ -544,6 +544,8 @@ export default function ProfileScreen() {
           title: copy('deckPerformance'),
           games: copy('games'),
           wins: copy('wins'),
+          draws: language === 'it' ? 'Patte' : 'Draws',
+          losses: language === 'it' ? 'Sconfitte' : 'Losses',
           winRate: copy('winRate'),
           secondPlaces: copy('secondPlaces'),
           damageDealt: copy('damageDealt'),
