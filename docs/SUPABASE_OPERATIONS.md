@@ -44,10 +44,9 @@ containers — not an incident.
 
 ## Production backup
 
-Backups run on the VM and stay on the VM. **There is no off-site copy**: losing
-the VM loses the backups with it. This protects against accidental data loss (a
-bad migration, a wrong delete), not against host or provider failure. Treat the
-absence of an off-site destination as an open risk, not as a design choice.
+The local backup protects against accidental data loss. Configure the optional
+encrypted off-site copy before relying on it for host or provider failure; see
+[`OFFSITE_BACKUP_SETUP.md`](OFFSITE_BACKUP_SETUP.md).
 
 `/etc/cron.d/supabase-backup` runs `ops/supabase-backup.sh` daily at 03:00 UTC
 as root. Each run writes one dated directory under `/var/backups/phyrexianarena`
@@ -63,9 +62,9 @@ containing:
 - `manifest.json` — name, timestamp, size, retention.
 
 The directory is published atomically and `/var/backups/phyrexianarena/last-success`
-is refreshed only after that. Retention keeps the 7 most recent complete
-backups. A run that fails part-way never appears as a complete backup and never
-refreshes the marker.
+is refreshed only after that. When rclone crypt is configured, a second marker
+`offsite-last-success` is refreshed only after the encrypted remote copy. Both
+retain the 7 most recent complete backups by default.
 
 `ops/vm-health-alert.sh` (cron, every 5 minutes) warns when the marker is
 missing or older than `BACKUP_MAX_AGE_HOURS` (default 30). It also covers disk

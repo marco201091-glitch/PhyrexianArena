@@ -11,6 +11,8 @@ type Labels = Record<
   | 'title'
   | 'games'
   | 'wins'
+  | 'draws'
+  | 'losses'
   | 'winRate'
   | 'secondPlaces'
   | 'damageDealt'
@@ -57,6 +59,12 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
   ] as const;
 
   const coverage = performance?.trackingCoverage || 0;
+  const gamesPlayed = performance?.gamesPlayed || 0;
+  const outcomes = [
+    [labels.wins, performance?.wins || 0, colors.primaryMuted],
+    [labels.draws, performance?.draws || 0, '#38bdf8'],
+    [labels.losses, performance?.losses || 0, '#64748b'],
+  ] as const;
 
   return (
     <Modal visible={visible} onClose={onClose} presentation="dialog" maxWidth={620}>
@@ -69,6 +77,16 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
             <Text style={styles.subtitle}>{performance?.trackedGames || 0} / {performance?.gamesPlayed || 0}</Text>
           </View>
         </View>
+
+        <PhyrexianPanel variant="inset" style={styles.fingerprint}>
+          <View style={styles.rateCircle}><Text style={styles.rateValue}>{performance?.winRate || 0}%</Text><Text style={styles.rateLabel}>{labels.winRate}</Text></View>
+          <View style={styles.outcomes}>
+            {outcomes.map(([label, value, color]) => <View key={label} style={styles.outcome}>
+              <View style={styles.outcomeHeader}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.outcomeValue}>{value}</Text></View>
+              <View style={styles.track}><View style={[styles.outcomeFill, { width: `${(value / Math.max(gamesPlayed, 1)) * 100}%`, backgroundColor: color }]} /></View>
+            </View>)}
+          </View>
+        </PhyrexianPanel>
 
         <View style={styles.metrics}>
           {metrics.map(([label, value], index) => (
@@ -107,6 +125,15 @@ const styles = StyleSheet.create({
   heroCopy: { flex: 1, gap: 3 },
   title: { color: colors.foreground, fontSize: 17, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 12 },
+  fingerprint: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  rateCircle: { width: 82, height: 82, borderRadius: 41, borderWidth: 7, borderColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center' },
+  rateValue: { color: colors.foreground, fontSize: 20, fontWeight: '900' },
+  rateLabel: { color: colors.muted, fontSize: 9, textTransform: 'uppercase' },
+  outcomes: { flex: 1, gap: 7 },
+  outcome: { gap: 3 },
+  outcomeHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  outcomeValue: { color: colors.foreground, fontSize: 12, fontWeight: '800' },
+  outcomeFill: { height: '100%', borderRadius: 99 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   metric: { width: '31%', minWidth: 96, minHeight: 80, flexGrow: 1, justifyContent: 'space-between' },
   metricPhone: { width: '48%', minWidth: 0 },

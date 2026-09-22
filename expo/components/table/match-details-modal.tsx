@@ -11,7 +11,7 @@ import { buildHistoricalLiveGameRecord } from '@/lib/live-game-recap';
 import type { ArenaMatch } from '@/lib/types/arena';
 import type { LiveGameRecord } from '@/lib/live-game';
 
-type Props = { visible: boolean; match: ArenaMatch | null; liveGame: LiveGameRecord | null; recapLoading: boolean; onClose: () => void; labels: Record<'title' | 'duration' | 'damageDealt' | 'lifeLost' | 'lifeGained' | 'commander' | 'infect' | 'started' | 'timeline' | 'highlights' | 'empty' | 'recap', string> };
+type Props = { visible: boolean; match: ArenaMatch | null; liveGame: LiveGameRecord | null; recapLoading: boolean; onClose: () => void; labels: Record<'title' | 'duration' | 'damageDealt' | 'lifeLost' | 'lifeGained' | 'commander' | 'infect' | 'started' | 'timeline' | 'highlights' | 'empty' | 'recap' | 'tablePressure', string> };
 
 export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onClose, labels }: Props) {
   const { width } = useWindowDimensions();
@@ -27,6 +27,10 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
       {recapRecord ? <LiveGameRecapView record={recapRecord} labels={{ timeline: labels.timeline, highlights: labels.highlights, empty: labels.empty }} /> : null}
       {match.match_participants.slice().sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99)).map((participant) => {
         const deck = getParticipantDeckSnapshot(participant);
+        const impact = (participant.life_damage_dealt || 0) + (participant.commander_damage_dealt || 0) + (participant.infect_dealt || 0);
+        const maxImpact = Math.max(1, ...match.match_participants.map((entry) => (
+          (entry.life_damage_dealt || 0) + (entry.commander_damage_dealt || 0) + (entry.infect_dealt || 0)
+        )));
         return <PhyrexianPanel key={participant.id} variant="inset" style={styles.player}>
           <CompactDeckCard
             artUri={deck?.commander_image}
@@ -36,6 +40,10 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
             badge={participant.placement ? `#${participant.placement}` : undefined}
             winner={participant.is_winner}
           />
+          <View style={styles.pressure}>
+            <View style={styles.pressureHeader}><Text style={styles.meta}>{labels.tablePressure}</Text><Text style={styles.pressureValue}>{impact}</Text></View>
+            <View style={styles.track}><View style={[styles.pressureFill, { width: `${(impact / maxImpact) * 100}%`, backgroundColor: participant.is_winner ? colors.primaryMuted : '#38bdf8' }]} /></View>
+          </View>
           <View style={styles.metrics}>{[
             [labels.damageDealt, participant.life_damage_dealt || 0], [labels.lifeLost, participant.life_lost || 0], [labels.lifeGained, participant.life_gained || 0], ['KO', participant.eliminations_caused || 0], [labels.commander, participant.commander_damage_dealt || 0], [labels.infect, participant.infect_dealt || 0],
           ].map(([label, value]) => <View key={String(label)} style={[styles.metric, phoneLayout && styles.metricPhone]}><Text style={styles.meta} numberOfLines={2}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
@@ -45,4 +53,4 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
   </Modal>;
 }
 
-const styles = StyleSheet.create({ list: { gap: spacing.sm }, summary: { alignItems: 'center' }, recapLoading: { minHeight: 72, alignItems: 'center', justifyContent: 'center', gap: spacing.xs }, summaryValue: { color: colors.foreground, fontSize: 22, fontWeight: '800' }, player: { gap: spacing.sm }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, metric: { width: '31%', minWidth: 88, minHeight: 66, justifyContent: 'space-between', backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: spacing.sm }, metricPhone: { width: '48%', minWidth: 0, flexGrow: 1 }, meta: { color: colors.muted, fontSize: 10, lineHeight: 13, textTransform: 'uppercase' }, value: { color: colors.foreground, fontSize: 18, fontWeight: '800', marginTop: 4 } });
+const styles = StyleSheet.create({ list: { gap: spacing.sm }, summary: { alignItems: 'center' }, recapLoading: { minHeight: 72, alignItems: 'center', justifyContent: 'center', gap: spacing.xs }, summaryValue: { color: colors.foreground, fontSize: 22, fontWeight: '800' }, player: { gap: spacing.sm }, pressure: { gap: 5, padding: spacing.sm, borderRadius: 8, backgroundColor: colors.surfaceMuted }, pressureHeader: { flexDirection: 'row', justifyContent: 'space-between' }, pressureValue: { color: colors.foreground, fontSize: 12, fontWeight: '800' }, pressureFill: { height: '100%', borderRadius: 99 }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, metric: { width: '31%', minWidth: 88, minHeight: 66, justifyContent: 'space-between', backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: spacing.sm }, metricPhone: { width: '48%', minWidth: 0, flexGrow: 1 }, meta: { color: colors.muted, fontSize: 10, lineHeight: 13, textTransform: 'uppercase' }, value: { color: colors.foreground, fontSize: 18, fontWeight: '800', marginTop: 4 }, track: { height: 4, borderRadius: 99, backgroundColor: '#1e293b', overflow: 'hidden' } });

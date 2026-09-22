@@ -1158,6 +1158,7 @@ export default function TableScreen() {
           highlights: copy('liveGameHighlights'),
           empty: copy('liveGameLogEmpty'),
           recap: copy('liveGameRecap'),
+          tablePressure: language === 'it' ? 'Pressione sul tavolo' : 'Table pressure',
         }}
       />
 

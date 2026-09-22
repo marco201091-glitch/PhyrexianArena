@@ -1,11 +1,30 @@
 # Project checklist
 
+Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checklist.
+
 ## In progress
+
+- [ ] Roadmap 9: validazione fisica E2E Android su APK Dev. F-Droid dopo una 9 stabile.
+
+- [x] Backup off-site: rclone crypt/Google Drive, retention e alert implementati; configurazione VM documentata.
+- [x] Runtime 9 e diagnostica migrazioni: migrazione applicata e verificata su Supabase staging; verifica CI implementata.
+- [x] Sicurezza Expo: vulnerabilità URI risolta con override compatibile `decode-uri-component` 0.5.0; audit produzione verde.
+- [x] Retrocompatibilità: client dalla 8.1 restano supportati; modifiche e migrazioni v9 additive.
+- [x] Dashboard salute e analytics: diagnostica admin presente; staging conferma gli indici analytics necessari. Alert backup off-site corretto.
+- [x] E2E Android: comando Maestro con controllo dispositivo implementato.
+- [x] UI v9: Details mazzo con impronta visiva W/P/S; Details partita con pressione relativa dei giocatori, web e Android.
+- [x] Player Awards web: 10 premi concordati, podio Top 3, calcolo su partite disponibili e schede Giocatori/Mazzi.
+
+- [x] Preparata 9.0.0 su Dev: dipendenze compatibili e major web aggiornate; qualità, build, bundle Android e smoke staging verificati; nessun deploy o mutazione produzione.
+- [x] Ripristolta risoluzione DNS locale disattivando WARP: Expo Doctor 21/21 verde.
+
+- [x] Audit Dev/main e release 8.5 completato: docs/AUDIT_2026-09-22.md; CI verde, 501 test locali superati, follow-up nel report.
 
 - [x] Compilare e verificare APK Dev locale 8.3.0 per test Android (prebuild e Gradle eseguiti su junction C:\\pa83 per riprodurre il percorso breve storico; CMake 3.31.6; packaging riuscito; package/version verificati; APK Dev firmata con certificato debug come previsto e salvata in `artifacts/apk/phyrexian-arena-dev-v8.3.0.apk`; mapping P: e junction rimossi).
 
 ## External follow-up
 
+- [ ] Alla pubblicazione 9 in produzione: configurare e verificare backup off-site rclone crypt/Google Drive.
 - [ ] Monitor the official F-Droid merge request until approval.
 - [ ] PM verification of the Dokploy production build.
 
