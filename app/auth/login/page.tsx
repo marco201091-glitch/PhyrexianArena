@@ -132,8 +132,10 @@ function LoginForm() {
               </label>
               <Input
                 id="loginIdentifier"
+                name="username"
                 type="text"
                 autoComplete="username"
+                autoCapitalize="none"
                 placeholder={t({ it: 'Username o email', en: 'Username or email' })}
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
@@ -155,7 +157,11 @@ function LoginForm() {
               </div>
               <Input
                 id="password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
+                autoCapitalize="none"
+                spellCheck={false}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

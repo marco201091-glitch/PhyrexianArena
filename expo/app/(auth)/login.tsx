@@ -92,6 +92,9 @@ export default function LoginScreen() {
           <Input
             label={copy('emailOrUsername')}
             autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="username"
+            importantForAutofill="yes"
             testID="login-identifier"
             value={loginIdentifier}
             onChangeText={setLoginIdentifier}
@@ -99,6 +102,10 @@ export default function LoginScreen() {
           <Input
             label={copy('password')}
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="current-password"
+            importantForAutofill="yes"
             testID="login-password"
             value={password}
             onChangeText={setPassword}

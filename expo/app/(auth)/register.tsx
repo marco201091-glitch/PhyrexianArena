@@ -91,9 +91,9 @@ export default function RegisterScreen() {
 
       <PhyrexianPanel variant="strong" style={styles.formPanel}>
         <View style={styles.form}>
-          <Controller control={control} name="username" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('username')} autoCapitalize="none" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.username ? copy('invalidUsername') : undefined} />} />
-          <Controller control={control} name="email" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('email')} autoCapitalize="none" keyboardType="email-address" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.email ? copy('invalidEmail') : undefined} />} />
-          <Controller control={control} name="password" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('password')} secureTextEntry value={value} onChangeText={onChange} onBlur={onBlur} error={errors.password ? copy('weakPassword') : undefined} />} />
+          <Controller control={control} name="username" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('username')} autoCapitalize="none" autoCorrect={false} autoComplete="username" importantForAutofill="yes" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.username ? copy('invalidUsername') : undefined} />} />
+          <Controller control={control} name="email" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('email')} autoCapitalize="none" autoCorrect={false} autoComplete="email" importantForAutofill="yes" keyboardType="email-address" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.email ? copy('invalidEmail') : undefined} />} />
+          <Controller control={control} name="password" render={({ field: { onChange, onBlur, value } }) => <Input label={copy('password')} secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="new-password" importantForAutofill="yes" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.password ? copy('weakPassword') : undefined} />} />
           <PasswordRequirements password={password} />
           <TurnstileField
             resetSignal={captchaResetSignal}

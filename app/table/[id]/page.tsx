@@ -2758,6 +2758,23 @@ export default function TablePage() {
                                     ? { icon: Flame, title: 'I think I won', tone: 'text-teal-300', badge: 'border-teal-300/40 bg-teal-400/10 shadow-teal-400/20' }
                                     : { icon: Trophy, title: 'Junk Master', tone: 'text-lime-300', badge: 'border-lime-300/40 bg-lime-400/10 shadow-lime-400/20' };
                     const Icon = presentation.icon;
+                    const awardDescription = leadAward.kind === 'fastest'
+                      ? t({ it: 'Le vittorie più rapide tra i mazzi tracciati.', en: 'Fastest wins among tracked decks.' })
+                      : leadAward.kind === 'group_slugger'
+                        ? t({ it: 'Il mazzo che ha inflitto più danni al tavolo.', en: 'The deck that dealt the most damage to the table.' })
+                        : leadAward.kind === 'executioner'
+                          ? t({ it: 'Il mazzo con più eliminazioni.', en: 'The deck with the most eliminations.' })
+                          : leadAward.kind === 'runner_up'
+                            ? t({ it: 'Il mazzo arrivato più spesso al secondo posto.', en: 'The deck that finished second most often.' })
+                            : leadAward.kind === 'archenemy'
+                              ? t({ it: 'Il mazzo sconfitto per primo più spesso.', en: 'The deck eliminated first most often.' })
+                              : leadAward.kind === 'comebacker'
+                                ? t({ it: 'Le vittorie ottenute dopo essere stato in svantaggio.', en: 'Wins earned after falling behind.' })
+                                : leadAward.kind === 'one_trick'
+                                  ? t({ it: 'Il mazzo portato al tavolo più spesso.', en: 'The deck brought to the table most often.' })
+                                  : leadAward.kind === 'combo_winner'
+                                    ? t({ it: 'Le vittorie concluse con una combo.', en: 'Wins completed with a combo.' })
+                                    : t({ it: 'Le vittorie ottenute con condizioni alternative.', en: 'Wins achieved through alternate conditions.' });
                     return (
                       <Card key={leadAward.kind} className="phyrexian-panel overflow-hidden border-white/10 bg-card/70">
                         <CardContent className="p-4">
@@ -2774,6 +2791,7 @@ export default function TablePage() {
                               {awards.length}/3
                             </span>
                           </div>
+                          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">{awardDescription}</p>
                           <div className="space-y-3">
                             {awards.map((award) => {
                               const podium = award.rank === 1
