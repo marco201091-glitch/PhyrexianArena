@@ -680,8 +680,8 @@ export function TableArena({
         accessibilityLabel={labels.randomAll}
       >
         <View style={styles.groupRandomIcon}>
-          <Ionicons name="people-outline" size={22} color={colors.foreground} />
-          <Ionicons name="shuffle" size={11} color={colors.primaryLight} style={styles.iconBadge} />
+          <Ionicons name="dice-outline" size={23} color={colors.foreground} />
+          <Ionicons name="people" size={11} color="#99f6e4" style={styles.iconBadge} />
         </View>
       </Pressable>
 
@@ -697,8 +697,8 @@ export function TableArena({
         accessibilityLabel={labels.randomOpponents}
       >
         <View style={styles.opponentRandomIcon}>
-          <Ionicons name="finger-print-outline" size={22} color={colors.foreground} />
-          <Ionicons name="shuffle" size={11} color={colors.primaryLight} style={styles.iconBadge} />
+          <Ionicons name="dice-outline" size={23} color={colors.foreground} />
+          <Ionicons name="locate" size={11} color="#fbbf24" style={styles.iconBadge} />
         </View>
       </Pressable>
 

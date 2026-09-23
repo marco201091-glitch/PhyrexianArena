@@ -329,6 +329,7 @@ export function TableSeat({
 
             <HoldPressable
               style={[styles.edgeButton, styles.minusButton, isIPad && styles.edgeButtonIPad]}
+              hitSlop={18}
               onShort={() => onAdjust(-1)}
               onLong={() => onAdjust(-10)}
               accessibilityRole="button"
@@ -339,6 +340,7 @@ export function TableSeat({
 
             <HoldPressable
               style={[styles.edgeButton, styles.plusButton, isIPad && styles.edgeButtonIPad]}
+              hitSlop={18}
               onShort={() => onAdjust(1)}
               onLong={() => onAdjust(10)}
               accessibilityRole="button"
@@ -577,9 +579,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     zIndex: 8,
-    width: 48,
-    height: 64,
-    marginTop: -32,
+    width: 58,
+    height: 76,
+    marginTop: -38,
     alignItems: 'center',
     justifyContent: 'center',
   },

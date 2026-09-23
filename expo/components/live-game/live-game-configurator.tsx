@@ -80,8 +80,10 @@ function LayoutPreview({
   const height = orientation === 'landscape' ? 94 : 136;
   const layouts = getSquareTableLayouts(count, width, height, variant, orientation);
   const toolbar = getCenterToolbarBand(count, width, height, variant, orientation);
+  const arrowForRole = (role: string) => role.includes('Left') ? '←' : role.includes('Right') ? '→' : role === 'top' || role === 'capotavola' ? '↑' : '↓';
   return (
     <View style={[styles.layoutPreview, { width, height }]}>
+      <View style={styles.layoutFelt}><Text style={styles.layoutFeltText}>TABLE</Text></View>
       {layouts.map((layout, index) => (
         <View
           key={`${variant}-${index}`}
@@ -89,7 +91,7 @@ function LayoutPreview({
             styles.layoutSeat,
             { left: layout.left, top: layout.top, width: layout.width, height: layout.height },
           ]}
-        ><Text style={styles.layoutSeatNumber}>{index + 1}</Text></View>
+        ><Text style={styles.layoutSeatNumber}>{index + 1}</Text><Text style={styles.layoutSeatArrow}>{arrowForRole(layout.role)}</Text></View>
       ))}
       {toolbar ? (
         <View style={[
@@ -97,7 +99,6 @@ function LayoutPreview({
           toolbar.axis === 'vertical' && styles.layoutToolbarVertical,
           { left: toolbar.left, top: toolbar.top, width: toolbar.width, height: toolbar.height },
         ]}>
-          <Text style={styles.layoutTableLabel}>TABLE</Text>
           <View style={styles.layoutToolbarDot} />
           <View style={styles.layoutToolbarDot} />
           <View style={styles.layoutToolbarDot} />
@@ -107,13 +108,6 @@ function LayoutPreview({
   );
 }
 
-function describeLayout(count: number, variant: TableLayoutVariant, orientation: TableOrientation) {
-  if (orientation === 'landscape') return count === 4 ? '2 players left · 2 right' : 'Players face each other across the table';
-  if (count === 4 && variant === 'classic') return '2 players above · 2 below';
-  if (count === 4 && variant === 'opposed') return '1 above · 2 centre · 1 below';
-  if (count === 2) return variant === 'classic' ? '1 above · 1 below' : '1 left · 1 right';
-  return 'Seat positions shown in the preview';
-}
 
 export function LiveGameConfigurator({
   playerCount,
@@ -301,7 +295,6 @@ export function LiveGameConfigurator({
                 color={layoutVariant === variant ? colors.primaryLight : colors.muted}
               />
             </View>
-            <Text style={styles.layoutDescription}>{describeLayout(playerCount, variant, previewOrientation)}</Text>
           </Pressable>
         ))}
       </View> : null}
@@ -513,17 +506,18 @@ const styles = StyleSheet.create({
   layoutOptions: { flexDirection: 'row', gap: spacing.sm },
   layoutOption: { flex: 1, alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardInset },
   layoutOptionActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTint, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3 },
-  layoutPreview: { position: 'relative', backgroundColor: '#06060a', borderRadius: radii.md, overflow: 'hidden' },
-  layoutSeat: { position: 'absolute', borderRadius: 4, borderWidth: 1, borderColor: 'rgba(167, 227, 172,0.35)', backgroundColor: 'rgba(66, 159, 74,0.22)' },
-  layoutSeatNumber: { color: '#d1fae5', fontSize: 8, fontWeight: '900', textAlign: 'center', marginTop: 2 },
+  layoutPreview: { position: 'relative', backgroundColor: '#06060a', borderRadius: radii.md, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(45,212,191,0.22)' },
+  layoutFelt: { position: 'absolute', left: '22%', right: '22%', top: '27%', bottom: '27%', borderRadius: 999, borderWidth: 1, borderColor: 'rgba(45,212,191,0.35)', backgroundColor: 'rgba(15,118,110,0.19)', alignItems: 'center', justifyContent: 'center' },
+  layoutFeltText: { color: 'rgba(153,246,228,0.68)', fontSize: 6, fontWeight: '900', letterSpacing: 1 },
+  layoutSeat: { position: 'absolute', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(167, 227, 172,0.5)', backgroundColor: 'rgba(22,163,74,0.34)', alignItems: 'center', justifyContent: 'center' },
+  layoutSeatNumber: { color: '#ecfdf5', fontSize: 9, fontWeight: '900' },
+  layoutSeatArrow: { color: '#99f6e4', fontSize: 8, fontWeight: '900', marginTop: -2 },
   layoutToolbar: { position: 'absolute', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#12121a' },
   layoutToolbarVertical: { flexDirection: 'column' },
   layoutToolbarDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primaryMuted },
-  layoutTableLabel: { color: 'rgba(167,227,172,0.62)', fontSize: 6, fontWeight: '900', letterSpacing: 1 },
   layoutLabelRow: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   layoutLabel: { color: colors.muted, fontSize: 12, fontWeight: '800' },
   layoutLabelActive: { color: colors.foreground },
-  layoutDescription: { alignSelf: 'stretch', color: colors.muted, fontSize: 10, lineHeight: 14, textAlign: 'center' },
   tablePreview: { position: 'relative', alignSelf: 'center', borderRadius: radii.lg, overflow: 'hidden', backgroundColor: '#050508', borderWidth: 1, borderColor: colors.border },
   seatButton: { position: 'absolute', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', padding: 5, borderRadius: 7, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.selectionBorder, backgroundColor: 'rgba(66, 159, 74,0.08)' },
   seatButtonAssigned: { borderStyle: 'solid', borderColor: 'rgba(167, 227, 172,0.62)', shadowColor: colors.primary, shadowOpacity: 0.24, shadowRadius: 6, elevation: 3 },
