@@ -329,7 +329,7 @@ export default function SettingsScreen() {
         />
       </CollapsiblePanel>
 
-      <PhyrexianPanel style={styles.card}>
+      <PhyrexianPanel style={[styles.card, styles.accessibilityCard]}>
         <SectionHeader title={copy('accessibility')} />
         <View style={styles.preferenceRow}>
           <View style={styles.preferenceCopy}>
@@ -594,6 +594,9 @@ const styles = StyleSheet.create({
   preferenceHint: {
     color: colors.muted,
     fontSize: 12,
+  },
+  accessibilityCard: {
+    marginTop: spacing.md,
   },
   archidektSave: {
     marginTop: spacing.sm,
