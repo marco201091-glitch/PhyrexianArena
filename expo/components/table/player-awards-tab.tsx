@@ -19,7 +19,7 @@ function MetalMedal({ rank }: { rank: number }) {
 }
 function MetalPlate({ rank }: { rank: number }) {
   const tone = medal[rank - 1] ?? medal[2];
-  return <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={`plate-${tone.id}`} x1="0" y1="0" x2="1" y2="1">{tone.stops.map((color, index) => <Stop key={color} offset={`${[0, 16, 46, 76, 100][index]}%`} stopColor={color} />)}</LinearGradient></Defs><Rect x="0" y="0" width="100%" height="100%" rx="12" fill={`url(#plate-${tone.id})`} opacity={0.98} /></Svg>;
+  return <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={`plate-${tone.id}`} x1="0" y1="0" x2="1" y2="0">{tone.stops.map((color, index) => <Stop key={color} offset={`${[0, 16, 46, 76, 100][index]}%`} stopColor={color} />)}</LinearGradient></Defs><Rect x="0" y="0" width="100%" height="100%" rx="12" fill={`url(#plate-${tone.id})`} opacity={0.98} /></Svg>;
 }
 export function PlayerAwardsTab({ awards, language }: { awards: PlayerAward[]; language: 'it' | 'en' }) {
   const groups = Array.from(awards.filter((award) => award.kind !== 'berserker').reduce((map, award) => { const rows = map.get(award.kind) ?? []; rows.push(award); map.set(award.kind, rows); return map; }, new Map<PlayerAwardKind, PlayerAward[]>()).values());
