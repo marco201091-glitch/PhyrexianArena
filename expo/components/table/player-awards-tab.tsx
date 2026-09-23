@@ -15,12 +15,18 @@ const medal = [
 ];
 function MetalMedal({ rank }: { rank: number }) {
   const tone = medal[rank - 1] ?? medal[2];
-  const shape = rank === 1
-    ? '17,1 21,10 32,11 24,19 26,31 17,26 8,31 10,19 2,11 13,10'
-    : rank === 2
-      ? '8,2 26,2 26,8 31,8 31,26 26,26 26,32 8,32 8,26 3,26 3,8 8,8'
-      : '17,2 31,17 17,32 3,17';
-  return <View style={styles.medal}><Svg width={38} height={38} viewBox="0 0 34 34"><Defs><LinearGradient id={`medal-${tone.id}`} x1="2" y1="2" x2="32" y2="32">{tone.badge.map((color, index) => <Stop key={color} offset={`${[0, 28, 50, 76, 100][index]}%`} stopColor={color} />)}</LinearGradient></Defs><Polygon points={shape} fill={`url(#medal-${tone.id})`} stroke="rgba(255,255,255,0.78)" strokeWidth={1.2} /><Circle cx={17} cy={17} r={rank === 1 ? 8.5 : 7.5} fill="none" stroke="rgba(28,20,10,0.3)" strokeWidth={1} /><Circle cx={13} cy={12} r={2.4} fill="#fff" opacity={0.28} /></Svg><Text style={[styles.plateRank, { color: tone.text }]}>{rank}</Text></View>;
+  const rosette = '17,1 20,5 25,3 27,8 32,9 31,14 34,17 31,20 32,25 27,26 25,31 20,29 17,34 14,29 9,31 7,26 2,25 3,20 0,17 3,14 2,9 7,8 9,3 14,5';
+  const coin = '17,1 21,3 26,2 29,6 33,9 32,14 34,17 32,21 33,26 29,29 26,32 21,31 17,34 13,31 8,32 5,29 1,26 2,21 0,17 2,13 1,8 5,5 8,2 13,3';
+  const shield = '6,2 28,2 29,16 26,24 17,33 8,24 5,16';
+  const innerShield = '9,5 25,5 25,16 23,22 17,28 11,22 9,16';
+  return <View style={styles.medal}><Svg width={40} height={40} viewBox="0 0 34 36"><Defs><LinearGradient id={`medal-${tone.id}`} x1="2" y1="2" x2="32" y2="32">{tone.badge.map((color, index) => <Stop key={color} offset={`${[0, 28, 50, 76, 100][index]}%`} stopColor={color} />)}</LinearGradient></Defs>
+    {rank === 3 ? <><Polygon points="6,17 14,20 12,35 7,31 3,34" fill="#7d4a2a" stroke="rgba(255,255,255,0.42)" strokeWidth={0.7} /><Polygon points="28,17 20,20 22,35 27,31 31,34" fill="#7d4a2a" stroke="rgba(255,255,255,0.42)" strokeWidth={0.7} /></> : null}
+    <Polygon points={rank === 1 ? rosette : rank === 2 ? coin : shield} fill={`url(#medal-${tone.id})`} stroke="rgba(255,255,255,0.82)" strokeWidth={1.1} />
+    {rank === 1 ? <><Circle cx={17} cy={17} r={10.5} fill="none" stroke="rgba(70,48,8,0.72)" strokeWidth={1} /><Circle cx={17} cy={17} r={8.2} fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={0.8} /><Circle cx={17} cy={5.5} r={0.8} fill="#fff6d4" /><Circle cx={28.5} cy={17} r={0.8} fill="#fff6d4" /><Circle cx={17} cy={28.5} r={0.8} fill="#fff6d4" /><Circle cx={5.5} cy={17} r={0.8} fill="#fff6d4" /></> : null}
+    {rank === 2 ? <><Circle cx={17} cy={17} r={11} fill="none" stroke="rgba(55,67,80,0.72)" strokeWidth={1} /><Circle cx={17} cy={17} r={8.5} fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth={0.8} /><Circle cx={6} cy={17} r={0.8} fill="#fff" /><Circle cx={28} cy={17} r={0.8} fill="#fff" /></> : null}
+    {rank === 3 ? <Polygon points={innerShield} fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth={0.9} /> : null}
+    <Circle cx={12} cy={9} r={2.5} fill="#fff" opacity={0.32} />
+  </Svg><Text style={[styles.plateRank, { color: tone.text }]}>{rank}</Text></View>;
 }
 function MetalPlate({ rank }: { rank: number }) {
   const tone = medal[rank - 1] ?? medal[2];
