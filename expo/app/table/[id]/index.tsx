@@ -729,6 +729,11 @@ export default function TableScreen() {
           name={group.name}
           description={group.description}
           inviteCode={group.invite_code}
+          season={seasonContext ? {
+            title: formatArenaSeasonLabel(seasonContext.currentSeasonStart, seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US'),
+            dates: `${formatArenaSeasonDate(seasonContext.currentSeasonStart, language === 'it' ? 'it-IT' : 'en-US')} – ${formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}`,
+            label: language === 'it' ? 'Season corrente' : 'Current season',
+          } : undefined}
           labels={{
             invite: copy('invite'),
             playGame: copy('playGame'),
@@ -737,22 +742,6 @@ export default function TableScreen() {
           onPlayGame={() => router.push(`/table/${groupId}/play`)}
           onRecordBattle={() => setShowRecordModal(true)}
         />
-        {seasonContext ? (
-          <PhyrexianPanel style={styles.seasonPanel}>
-            <Text style={styles.seasonTitle}>
-              {formatArenaSeasonLabel(
-                seasonContext.currentSeasonStart,
-                seasonContext.currentSeasonEnd,
-                language === 'it' ? 'it-IT' : 'en-US',
-              )}
-            </Text>
-            <Text style={styles.seasonDates}>
-              {formatArenaSeasonDate(seasonContext.currentSeasonStart, language === 'it' ? 'it-IT' : 'en-US')}
-              {' – '}
-              {formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
-            </Text>
-          </PhyrexianPanel>
-        ) : null}
         <ArenaTabBar
           activeTab={activeTab}
           labels={{
@@ -1400,19 +1389,6 @@ const styles = StyleSheet.create({
   awardsToggleButtonActive: { backgroundColor: colors.primarySurface },
   awardsToggleText: { color: colors.muted, fontWeight: '700' },
   awardsToggleTextActive: { color: colors.primaryLight },
-  seasonPanel: {
-    gap: spacing.xs,
-    borderColor: 'rgba(16, 185, 129, 0.28)',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-  },
-  seasonTitle: {
-    color: '#a7f3d0',
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  seasonDates: { color: colors.muted, fontSize: 12 },
   matchesContent: { gap: spacing.md },
   seasonEditor: {
     gap: 8,
