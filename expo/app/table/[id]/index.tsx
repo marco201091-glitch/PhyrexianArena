@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -107,7 +107,7 @@ const DECK_SORT_KEYS: Record<DeckStatsSort, 'deckSortWinRate' | 'deckSortGamesPl
 };
 
 export default function TableScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, matchId } = useLocalSearchParams<{ id: string; matchId?: string }>();
   const groupId = Array.isArray(id) ? id[0] : id;
   const { user } = useAuth();
   const { copy, language } = useLanguage();
@@ -157,6 +157,13 @@ export default function TableScreen() {
   const [showInviteQr, setShowInviteQr] = useState(false);
   const [editingMatch, setEditingMatch] = useState<ArenaMatch | null>(null);
   const [detailsMatch, setDetailsMatch] = useState<ArenaMatch | null>(null);
+  const notificationPage = useRef('');
+  useEffect(() => {
+    if (!matchId || loading) return;
+    const target = matches.find((match) => match.id === matchId);
+    if (target) { setActiveTab('matches'); setDetailsMatch(target); router.setParams({ matchId: undefined }); }
+    else if (hasMoreMatches && !loadingMoreMatches && notificationPage.current !== `${matchId}:${matches.length}`) { notificationPage.current = `${matchId}:${matches.length}`; void loadMoreMatches(); }
+  }, [matchId, loading, matches, hasMoreMatches, loadingMoreMatches, loadMoreMatches, router]);
   const [detailsLiveGame, setDetailsLiveGame] = useState<LiveGameRecord | null>(null);
   const [detailsRecapLoading, setDetailsRecapLoading] = useState(false);
   const [exportDayKey, setExportDayKey] = useState<string | null>(null);

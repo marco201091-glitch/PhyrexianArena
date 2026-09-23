@@ -1,3 +1,5 @@
+import { ReportRing } from '@/components/ui/report-ring';
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { CommanderArt } from '@/components/deck/commander-art';
 import { Modal } from '@/components/ui/modal';
@@ -63,12 +65,12 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
           <CommanderArt uri={deck.commander_image} alt={deck.commander} size="hero" />
           <View style={styles.heroCopy}>
             <Text style={styles.title}>{labels.title}</Text>
-            <Text style={styles.subtitle}>{labels.games}</Text>
+            <Text style={styles.subtitle}>{gamesPlayed} {labels.games}</Text>
           </View>
         </View>
 
         <PhyrexianPanel variant="inset" style={styles.fingerprint}>
-          <View style={styles.rateCircle}><Text style={styles.rateValue}>{performance?.winRate || 0}%</Text><Text style={styles.rateLabel}>{labels.winRate}</Text></View>
+          <ReportRing value={performance?.winRate || 0} label={labels.winRate} />
           <View style={styles.outcomes}>
             {outcomes.map(([label, value, color]) => <View key={label} style={styles.outcome}>
               <View style={styles.outcomeHeader}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.outcomeValue}>{value}</Text></View>
@@ -77,6 +79,7 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
           </View>
         </PhyrexianPanel>
 
+        <CollapsiblePanel key={deck.id} title={labels.title}>
         <View style={styles.metrics}>
           {metrics.map(([label, value], index) => (
             <PhyrexianPanel
@@ -103,6 +106,7 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
             <View style={[styles.fill, { width: `${coverage}%` }]} />
           </View>
         </View>
+        </CollapsiblePanel>
       </View>
     </Modal>
   );
@@ -116,9 +120,6 @@ const styles = StyleSheet.create({
   title: { color: colors.foreground, fontSize: 17, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 12 },
   fingerprint: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  rateCircle: { width: 82, height: 82, borderRadius: 41, borderWidth: 7, borderColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center' },
-  rateValue: { color: colors.foreground, fontSize: 20, fontWeight: '900' },
-  rateLabel: { color: colors.muted, fontSize: 9, textTransform: 'uppercase' },
   outcomes: { flex: 1, gap: 7 },
   outcome: { gap: 3 },
   outcomeHeader: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
   metric: { width: '31%', minWidth: 96, minHeight: 80, flexGrow: 1, justifyContent: 'space-between' },
   metricPhone: { width: '48%', minWidth: 0 },
   metricWidePhone: { width: '100%' },
-  metricLabel: { color: colors.muted, fontSize: 10, lineHeight: 13, textTransform: 'uppercase' },
+  metricLabel: { color: colors.muted, fontSize: 12, lineHeight: 17, textTransform: 'uppercase' },
   metricValue: { color: colors.foreground, fontSize: 19, fontWeight: '800', marginTop: 3 },
   coverageBlock: { gap: spacing.xs, marginTop: spacing.xs },
   coverageHeader: { flexDirection: 'row', justifyContent: 'space-between' },

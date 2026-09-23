@@ -1,3 +1,5 @@
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
+import { useLanguage } from '@/contexts/language-context';
 import { type ReactNode } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { FilterChip } from '@/components/ui/filter-chip';
@@ -54,6 +56,7 @@ export function ArenaFilterPanel({
   onBracketFilterChange,
   onDeckStatsSortChange,
 }: ArenaFilterPanelProps) {
+  const { language } = useLanguage();
   const groups: FilterPanelGroup[] = [];
 
   if (activeTab !== 'awards') {
@@ -118,7 +121,7 @@ export function ArenaFilterPanel({
     });
   }
 
-  return groups.length > 0 ? <FilterPanel groups={groups} /> : null;
+  return groups.length > 0 ? <CollapsiblePanel title={language === 'it' ? 'Filtri e ordinamento' : 'Filters and sorting'} meta={[dateFilterLabels[dateFilter], bracketFilter === 'all' ? labels.allBrackets : bracketFilter, activeTab === 'decks' ? deckSortLabels[deckStatsSort] : null].filter(Boolean).join(' · ')}><FilterPanel groups={groups} /></CollapsiblePanel> : null;
 }
 
 const styles = StyleSheet.create({

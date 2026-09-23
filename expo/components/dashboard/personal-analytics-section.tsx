@@ -1,3 +1,5 @@
+import { ReportRing } from '@/components/ui/report-ring';
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
@@ -86,12 +88,12 @@ export function PersonalAnalyticsSection({
         <EmptyState icon="bar-chart-outline" title={emptyTitle} body={emptyBody} />
       ) : (
         <View style={styles.content}>
+          <View style={{ alignItems: 'center', paddingVertical: 12 }}><ReportRing value={analytics.winRate} label={winRateLabel} /></View>
           <View style={styles.summaryRow}>
             {[
               { label: trackedGamesLabel, value: analytics.gamesPlayed },
               { label: decksPlayedLabel, value: analytics.uniqueDecks },
               { label: winsLabel, value: analytics.wins },
-              { label: winRateLabel, value: `${analytics.winRate}%` },
             ].map((item) => (
               <StatCard
                 key={item.label}
@@ -103,6 +105,7 @@ export function PersonalAnalyticsSection({
             ))}
           </View>
 
+          <CollapsiblePanel title={language === 'it' ? 'Serie di vittorie' : 'Winning streaks'}>
           <View style={styles.summaryRow}>
             <StatCard
               label={currentWinStreakLabel}
@@ -119,6 +122,7 @@ export function PersonalAnalyticsSection({
               valueColor={analytics.longestWinStreak > 0 ? colors.amber : undefined}
             />
           </View>
+          </CollapsiblePanel>
 
           {analytics.bestDeck ? (
             <PhyrexianPanel>
@@ -280,7 +284,8 @@ const styles = StyleSheet.create({
     gap: cardRowGap,
   },
   summaryCard: {
-    minWidth: 140,
+    minWidth: 90,
+    flex: 1,
   },
   cardTitle: {
     color: colors.foreground,

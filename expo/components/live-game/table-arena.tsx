@@ -430,11 +430,11 @@ export function TableArena({
     ? centerToolbarBand?.height ?? 0
     : centerToolbarBand?.width ?? 0;
   const toolbarButtonSize = centerToolbarBand
-    ? Math.max(30, Math.min(56, (centerToolbarMainSize - 98) / 8))
+    ? Math.max(30, Math.min(56, (centerToolbarMainSize - 94) / 7))
     : 44;
   const toolbarButtonStyle = {
     width: toolbarButtonSize,
-    height: toolbarButtonSize,
+    height: isVerticalCenterToolbar ? toolbarButtonSize : 48,
     borderRadius: toolbarButtonSize / 2,
   };
 
@@ -665,7 +665,7 @@ export function TableArena({
         accessibilityLabel={labels.dieOrCoin}
       >
         <View style={styles.randomizerToolIcon}>
-          <Ionicons name="dice-outline" size={22} color={colors.foreground} />
+          <Ionicons name="diamond-outline" size={25} color="#ddd6fe" />
           <View style={styles.coinToolBadge} />
         </View>
       </Pressable>

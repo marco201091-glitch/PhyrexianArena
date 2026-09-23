@@ -168,6 +168,6 @@ const styles = StyleSheet.create({
   rowSubtitle: { marginTop: 1, color: colors.muted, fontSize: 11 },
   record: { alignItems: 'flex-end' },
   rate: { color: colors.primaryMuted, fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  wl: { color: colors.muted, fontSize: 10, fontVariant: ['tabular-nums'] },
-  footer: { color: colors.muted, fontSize: 10, textAlign: 'center' },
+  wl: { color: colors.muted, fontSize: 12, fontVariant: ['tabular-nums'] },
+  footer: { color: colors.muted, fontSize: 12, textAlign: 'center' },
 });

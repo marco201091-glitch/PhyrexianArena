@@ -28,8 +28,8 @@ export type SquareSeatLayout = {
 const GRID_PADDING = 4;
 const GRID_GAP = 2;
 /** Tool strip between the two sides of the table. */
-export const CENTER_TOOLBAR_HEIGHT = 56;
-export const CENTER_TOOLBAR_WIDTH = 64;
+export const CENTER_TOOLBAR_HEIGHT = 66;
+export const CENTER_TOOLBAR_WIDTH = 72;
 
 export type CenterToolbarBand = {
   left: number;

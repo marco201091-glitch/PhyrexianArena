@@ -1,3 +1,4 @@
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { LiveGameRecapView } from '@/components/live-game/live-game-recap';
 import { CompactDeckCard } from '@/components/deck/compact-deck-card';
@@ -25,6 +26,7 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
     <View style={styles.list}>
       {recapLoading ? <View style={styles.recapLoading}><ActivityIndicator color={colors.primaryMuted} /><Text style={styles.meta}>{labels.recap}</Text></View> : null}
       {recapRecord ? <LiveGameRecapView record={recapRecord} labels={{ timeline: labels.timeline, highlights: labels.highlights, empty: labels.empty }} /> : null}
+      <CollapsiblePanel key={match.id} title={labels.tablePressure}>
       {match.match_participants.slice().sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99)).map((participant) => {
         const deck = getParticipantDeckSnapshot(participant);
         const impact = (participant.life_damage_dealt || 0) + (participant.commander_damage_dealt || 0) + (participant.infect_dealt || 0);
@@ -49,8 +51,9 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
           ].filter(([, value]) => Number(value) > 0).map(([label, value]) => <View key={String(label)} style={[styles.metric, phoneLayout && styles.metricPhone]}><Text style={styles.meta} numberOfLines={2}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
         </PhyrexianPanel>;
       })}
+      </CollapsiblePanel>
     </View>
   </Modal>;
 }
 
-const styles = StyleSheet.create({ list: { gap: spacing.sm }, summary: { alignItems: 'center' }, recapLoading: { minHeight: 72, alignItems: 'center', justifyContent: 'center', gap: spacing.xs }, summaryValue: { color: colors.foreground, fontSize: 22, fontWeight: '800' }, player: { gap: spacing.sm }, pressure: { gap: 5, padding: spacing.sm, borderRadius: 8, backgroundColor: colors.surfaceMuted }, pressureHeader: { flexDirection: 'row', justifyContent: 'space-between' }, pressureValue: { color: colors.foreground, fontSize: 12, fontWeight: '800' }, pressureFill: { height: '100%', borderRadius: 99 }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, metric: { width: '31%', minWidth: 88, minHeight: 66, justifyContent: 'space-between', backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: spacing.sm }, metricPhone: { width: '48%', minWidth: 0, flexGrow: 1 }, meta: { color: colors.muted, fontSize: 10, lineHeight: 13, textTransform: 'uppercase' }, value: { color: colors.foreground, fontSize: 18, fontWeight: '800', marginTop: 4 }, track: { height: 4, borderRadius: 99, backgroundColor: '#1e293b', overflow: 'hidden' } });
+const styles = StyleSheet.create({ list: { gap: spacing.sm }, summary: { alignItems: 'center' }, recapLoading: { minHeight: 72, alignItems: 'center', justifyContent: 'center', gap: spacing.xs }, summaryValue: { color: colors.foreground, fontSize: 22, fontWeight: '800' }, player: { gap: spacing.sm }, pressure: { gap: 5, padding: spacing.sm, borderRadius: 8, backgroundColor: colors.surfaceMuted }, pressureHeader: { flexDirection: 'row', justifyContent: 'space-between' }, pressureValue: { color: colors.foreground, fontSize: 12, fontWeight: '800' }, pressureFill: { height: '100%', borderRadius: 99 }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, metric: { width: '31%', minWidth: 88, minHeight: 66, justifyContent: 'space-between', backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: spacing.sm }, metricPhone: { width: '48%', minWidth: 0, flexGrow: 1 }, meta: { color: colors.muted, fontSize: 12, lineHeight: 17, textTransform: 'uppercase' }, value: { color: colors.foreground, fontSize: 18, fontWeight: '800', marginTop: 4 }, track: { height: 4, borderRadius: 99, backgroundColor: '#1e293b', overflow: 'hidden' } });

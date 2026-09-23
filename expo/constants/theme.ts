@@ -69,17 +69,17 @@ export const radii = {
 export const shadows = {
   panel: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 18 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.32,
-    shadowRadius: 30,
-    elevation: 12,
+    shadowRadius: 6,
+    elevation: 2,
   },
   panelStrong: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 22 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.42,
-    shadowRadius: 40,
-    elevation: 16,
+    shadowRadius: 8,
+    elevation: 3,
   },
   modal: {
     shadowColor: '#000',

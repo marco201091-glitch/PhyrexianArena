@@ -1,3 +1,4 @@
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { useCallback, useMemo, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import {
@@ -238,11 +239,7 @@ export default function ProfileScreen() {
               ) : null}
             </View>
           </View>
-        </PhyrexianPanel>
 
-        <PhyrexianPanel style={styles.commandZone}>
-          <Text style={styles.commandZoneEyebrow}>{language === 'it' ? 'SCHEDA GIOCATORE' : 'PLAYER CARD'}</Text>
-          <Text style={styles.commandZoneTitle}>{language === 'it' ? 'La tua Command Zone' : 'Your Command Zone'}</Text>
           <View style={styles.snapshotRow}>
             <View style={styles.snapshot}><Text style={styles.snapshotLabel}>{language === 'it' ? 'Partite' : 'Matches'}</Text><Text style={styles.snapshotValue}>{personalSnapshot.games}</Text></View>
             <View style={styles.snapshot}><Text style={styles.snapshotLabel}>Win rate</Text><Text style={styles.snapshotValue}>{personalSnapshot.winRate}%</Text></View>
@@ -252,7 +249,9 @@ export default function ProfileScreen() {
         </PhyrexianPanel>
 
         {decks.length > 0 ? (
+          <CollapsiblePanel title={language === 'it' ? 'Analisi collezione' : 'Collection insights'}>
           <DeckCollectionInsights
+            initiallyExpanded
             decks={decks}
             language={language}
             labels={{
@@ -273,6 +272,7 @@ export default function ProfileScreen() {
               sourceOther: copy('sourceOther'),
             }}
           />
+          </CollapsiblePanel>
         ) : null}
 
         <View style={styles.sectionHeader}>
@@ -583,9 +583,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  commandZone: { gap: spacing.xs, borderColor: 'rgba(34,211,238,0.28)', backgroundColor: 'rgba(8,47,73,0.35)' },
-  commandZoneEyebrow: { color: '#67e8f9', fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
-  commandZoneTitle: { color: colors.foreground, fontSize: 19, fontWeight: '900' },
   snapshotRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   snapshot: { flex: 1, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.05)', padding: 10 },
   snapshotLabel: { color: colors.muted, fontSize: 11 },
