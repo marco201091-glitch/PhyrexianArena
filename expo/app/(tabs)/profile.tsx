@@ -1,3 +1,4 @@
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { useCallback, useMemo, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import {
@@ -73,7 +74,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
   const [searchQuery, setSearchQuery] = useState('');
-  const [deckColorFilter, setDeckColorFilter] = useState('all');
+  const [deckColorFilter, setDeckColorFilter] = useState<string[]>([]);
   const [deckSort, setDeckSort] = useState<'alpha' | 'mastery'>('alpha');
   const [detailsDeck, setDetailsDeck] = useState<ProfileDeck | null>(null);
   const [refreshingAllDecks, setRefreshingAllDecks] = useState(false);
@@ -98,9 +99,9 @@ export default function ProfileScreen() {
         if (!matchesQuery) return false;
       }
 
-      if (deckColorFilter !== 'all') {
+      if (deckColorFilter.length) {
         const colors = getDeckDisplayColors(deck);
-        if (!colors.includes(deckColorFilter)) return false;
+        if (!deckColorFilter.every((color) => colors.includes(color))) return false;
       }
 
       return true;
@@ -130,6 +131,14 @@ export default function ProfileScreen() {
       year: 'numeric',
     }).format(new Date(profile.created_at));
   }, [language, profile]);
+
+  const personalSnapshot = useMemo(() => {
+    const entries = Object.values(performance);
+    const games = entries.reduce((sum, item) => sum + item.gamesPlayed, 0);
+    const wins = entries.reduce((sum, item) => sum + item.wins, 0);
+    const favorite = decks.find((deck) => deck.is_favorite) || decks[0];
+    return { games, winRate: games ? Math.round((wins / games) * 100) : 0, favorite };
+  }, [decks, performance]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -230,10 +239,19 @@ export default function ProfileScreen() {
               ) : null}
             </View>
           </View>
+
+          <View style={styles.snapshotRow}>
+            <View style={styles.snapshot}><Text style={styles.snapshotLabel}>{language === 'it' ? 'Partite' : 'Matches'}</Text><Text style={styles.snapshotValue}>{personalSnapshot.games}</Text></View>
+            <View style={styles.snapshot}><Text style={styles.snapshotLabel}>Win rate</Text><Text style={styles.snapshotValue}>{personalSnapshot.winRate}%</Text></View>
+            <View style={styles.snapshot}><Text style={styles.snapshotLabel}>{language === 'it' ? 'Mazzi' : 'Decks'}</Text><Text style={styles.snapshotValue}>{decks.length}</Text></View>
+          </View>
+          {personalSnapshot.favorite ? <Text style={styles.favorite}>{language === 'it' ? 'Preferito' : 'Favorite'} · {personalSnapshot.favorite.name}</Text> : null}
         </PhyrexianPanel>
 
         {decks.length > 0 ? (
+          <CollapsiblePanel title={language === 'it' ? 'Analisi collezione' : 'Collection insights'}>
           <DeckCollectionInsights
+            initiallyExpanded
             decks={decks}
             language={language}
             labels={{
@@ -254,6 +272,7 @@ export default function ProfileScreen() {
               sourceOther: copy('sourceOther'),
             }}
           />
+          </CollapsiblePanel>
         ) : null}
 
         <View style={styles.sectionHeader}>
@@ -315,15 +334,15 @@ export default function ProfileScreen() {
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
                     <ManaColorFilterChip
                       label={copy('allColors')}
-                      active={deckColorFilter === 'all'}
-                      onPress={() => setDeckColorFilter('all')}
+                      active={deckColorFilter.length === 0}
+                      onPress={() => setDeckColorFilter([])}
                     />
                     {MANA_COLOR_ORDER.map((color) => (
                       <ManaColorFilterChip
                         key={color}
                         color={color}
-                        active={deckColorFilter === color}
-                        onPress={() => setDeckColorFilter(color)}
+                        active={deckColorFilter.includes(color)}
+                        onPress={() => setDeckColorFilter((current) => current.includes(color) ? current.filter((item) => item !== color) : [...current, color])}
                       />
                     ))}
                   </ScrollView>
@@ -564,6 +583,11 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  snapshotRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  snapshot: { flex: 1, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.05)', padding: 10 },
+  snapshotLabel: { color: colors.muted, fontSize: 11 },
+  snapshotValue: { color: colors.foreground, fontSize: 20, fontWeight: '900', marginTop: 2 },
+  favorite: { color: '#fde68a', fontSize: 12, fontWeight: '700', marginTop: spacing.xs },
   listHeader: {
     gap: sectionStackGap,
   },

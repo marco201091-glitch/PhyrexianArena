@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   guestBadge: {
     color: colors.amber,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   },
   winRateLabel: {
     color: colors.muted,
-    fontSize: 10,
+    fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },

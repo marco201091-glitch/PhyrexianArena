@@ -16,6 +16,7 @@ import type { AppLanguage } from '@/lib/i18n/types';
 type DeckCollectionInsightsProps = {
   decks: DeckCollectionSnapshot[];
   language: AppLanguage;
+  initiallyExpanded?: boolean;
   labels: {
     avgBracket: string;
     avgCommanderCmc: string;
@@ -41,8 +42,8 @@ const SOURCE_LABEL_KEYS = {
   other: 'sourceOther',
 } as const;
 
-export function DeckCollectionInsights({ decks, language, labels }: DeckCollectionInsightsProps) {
-  const [expanded, setExpanded] = useState(false);
+export function DeckCollectionInsights({ decks, language, labels, initiallyExpanded = false }: DeckCollectionInsightsProps) {
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const analytics = useMemo(() => buildDeckCollectionAnalytics(decks), [decks]);
   const averageCmc = useMemo(() => buildAverageCommanderCmc(decks), [decks]);
 

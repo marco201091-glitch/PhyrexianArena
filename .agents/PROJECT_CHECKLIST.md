@@ -4,6 +4,22 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 
 ## In progress
 
+- [x] UI v9: palette awards player attenuata per tema scuro; coccarde con pieghe e nastri oro/argento/bronzo a decrescente rilievo; typecheck web/Expo OK. Storico completo e spaziatura Archidekt corretta.
+- [x] Home Android: card playgroup arricchite con emblema, conteggio membri e icone statistiche; typecheck Expo OK.
+- [x] Home Android: rimosso codice invito e tasto condivisione; card riprogettata con due statistiche leggibili e apertura compatta.
+- [x] Arena Android: season corrente integrata nella card playgroup, sopra alle azioni; typecheck Expo OK.
+- [x] Filtri arena Android: ripristinato filtro bracket su tutte le schede non Awards, applicato a storico e statistiche; risolto separatore non UTF-8 nel riepilogo. Typecheck/lint OK.
+- [x] Edit Battle Android: aumentata l'altezza del solo modal di modifica per usare meglio lo schermo, mantenendo scroll e footer fissi; typecheck OK.
+- [x] Winning streaks nelle statistiche profilo sempre espanse.
+
+- [x] UI Android: stile, profilo, azioni mazzi, report, storico, moduli, leggibilita, notifiche, filtri e accesso/impostazioni aggiornati. Typecheck, lint e 25 test OK; app avviata su Pixel_9 con Metro/Fast Refresh. Validazione visiva completa PM da effettuare; nessun push.
+
+- [x] Wizard Android uniforme: preview partecipanti, vita iniziale, assegnazione posti; 2 giocatori solo layout classico. Toolbar live ampliata e icona dado distinta. Typecheck/lint OK.
+
+- [x] Scelta layout Android ridisegnata: tavoli separati, giocatori esterni, carte orientate secondo il runtime; typecheck OK. Validazione visiva PM in corso.
+
+- [x] Roadmap 9: rifinitura awards giocatori, report Details, filtri mazzo multipli e wizard tavolo.
+
 - [x] Roadmap 9: notifiche intelligenti (partita, inviti, fine stagione) e scheda personale profilo su Dev/Staging.
 - [ ] Roadmap 9: validazione fisica E2E Android su APK Dev. F-Droid dopo una 9 stabile.
 

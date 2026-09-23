@@ -1,3 +1,4 @@
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { Link, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -248,9 +249,9 @@ export default function SettingsScreen() {
     <Screen>
       <View style={styles.branding}>
         <ManaLogo
-          size="md"
+          size="sm"
           showText
-          layout="stacked"
+          layout="horizontal"
           centered
           subtitle={copy('appSubtitle')}
         />
@@ -296,8 +297,7 @@ export default function SettingsScreen() {
         />
       </PhyrexianPanel>
 
-      <PhyrexianPanel style={styles.card}>
-        <SectionHeader title={copy('archidektSync')} />
+      <CollapsiblePanel title={copy('archidektSync')}>
         <Text style={styles.preferenceHint}>{copy('archidektPublicHint')}</Text>
         <Input
           label={copy('archidektUsername')}
@@ -325,10 +325,11 @@ export default function SettingsScreen() {
           label={savingArchidektSettings ? copy('saving') : copy('save')}
           onPress={() => void saveArchidektSettings()}
           disabled={savingArchidektSettings}
+          style={styles.archidektSave}
         />
-      </PhyrexianPanel>
+      </CollapsiblePanel>
 
-      <PhyrexianPanel style={styles.card}>
+      <PhyrexianPanel style={[styles.card, styles.accessibilityCard]}>
         <SectionHeader title={copy('accessibility')} />
         <View style={styles.preferenceRow}>
           <View style={styles.preferenceCopy}>
@@ -343,13 +344,12 @@ export default function SettingsScreen() {
         </View>
       </PhyrexianPanel>
 
-      <PhyrexianPanel style={styles.card}>
-        <SectionHeader title={copy('legalDocuments')} />
+      <CollapsiblePanel title={copy('legalDocuments')}>
         <Link href={{ pathname: '/legal/[slug]', params: { slug: 'privacy' } }} style={styles.legalLink}>{copy('privacyPolicy')}</Link>
         <Link href={{ pathname: '/legal/[slug]', params: { slug: 'terms' } }} style={styles.legalLink}>{copy('termsOfUse')}</Link>
         <Link href={{ pathname: '/legal/[slug]', params: { slug: 'cookies' } }} style={styles.legalLink}>{copy('cookiePolicy')}</Link>
         <Text style={styles.legalNotice}>{FAN_CONTENT_NOTICE}</Text>
-      </PhyrexianPanel>
+      </CollapsiblePanel>
 
       <Button
         label={exportingAccount ? copy('exportingAccount') : copy('exportAccount')}
@@ -395,7 +395,20 @@ export default function SettingsScreen() {
         />
       </Modal>
 
-      <Modal visible={showPasswordModal} onClose={() => setShowPasswordModal(false)}>
+      <Modal visible={showPasswordModal} onClose={() => setShowPasswordModal(false)} footer={(        <View style={styles.modalActions}>
+          <Button
+            label={copy('cancel')}
+            variant="ghost"
+            onPress={() => setShowPasswordModal(false)}
+            style={styles.modalButton}
+          />
+          <Button
+            label={savingPassword ? copy('saving') : copy('changePassword')}
+            onPress={handleChangePassword}
+            disabled={savingPassword || !canSavePassword}
+            style={styles.modalButton}
+          />
+        </View>)}>
         <Text style={styles.modalTitle}>{copy('changePassword')}</Text>
         <Input
           label={copy('currentPassword')}
@@ -422,31 +435,10 @@ export default function SettingsScreen() {
         {confirmNewPassword.length > 0 && !passwordsMatch ? (
           <Text style={styles.error}>{copy('passwordsDoNotMatch')}</Text>
         ) : null}
-        <View style={styles.modalActions}>
-          <Button
-            label={copy('cancel')}
-            variant="ghost"
-            onPress={() => setShowPasswordModal(false)}
-            style={styles.modalButton}
-          />
-          <Button
-            label={savingPassword ? copy('saving') : copy('changePassword')}
-            onPress={handleChangePassword}
-            disabled={savingPassword || !canSavePassword}
-            style={styles.modalButton}
-          />
-        </View>
+
       </Modal>
 
-      <Modal visible={showEditNameModal} onClose={() => setShowEditNameModal(false)}>
-        <Text style={styles.modalTitle}>{copy('editDisplayName')}</Text>
-        <Input
-          label={copy('displayName')}
-          value={displayNameDraft}
-          onChangeText={setDisplayNameDraft}
-          placeholder={copy('displayNamePlaceholder')}
-        />
-        <View style={styles.modalActions}>
+      <Modal visible={showEditNameModal} onClose={() => setShowEditNameModal(false)} footer={(        <View style={styles.modalActions}>
           <Button label={copy('cancel')} variant="ghost" onPress={() => setShowEditNameModal(false)} style={styles.modalButton} />
           <Button
             label={savingName ? copy('saving') : copy('save')}
@@ -454,7 +446,15 @@ export default function SettingsScreen() {
             onPress={handleSaveName}
             style={styles.modalButton}
           />
-        </View>
+        </View>)}>
+        <Text style={styles.modalTitle}>{copy('editDisplayName')}</Text>
+        <Input
+          label={copy('displayName')}
+          value={displayNameDraft}
+          onChangeText={setDisplayNameDraft}
+          placeholder={copy('displayNamePlaceholder')}
+        />
+
       </Modal>
 
       <Modal
@@ -594,5 +594,11 @@ const styles = StyleSheet.create({
   preferenceHint: {
     color: colors.muted,
     fontSize: 12,
+  },
+  accessibilityCard: {
+    marginTop: spacing.md,
+  },
+  archidektSave: {
+    marginTop: spacing.sm,
   },
 });

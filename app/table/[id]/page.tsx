@@ -435,7 +435,7 @@ export default function TablePage() {
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
-  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('players');
+  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('decks');
   const [activeLiveGameId, setActiveLiveGameId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
   const [bracketFilter, setBracketFilter] = useState('all');
@@ -2722,9 +2722,9 @@ export default function TablePage() {
                 </p>
               </div>
               <div className="flex w-fit rounded-xl border border-border bg-background/40 p-1">
-                {(['players', 'decks'] as const).map((view) => <Button key={view} size="sm" variant={awardsView === view ? 'default' : 'ghost'} onClick={() => setAwardsView(view)}>{view === 'players' ? t({ it: 'Giocatori', en: 'Players' }) : t({ it: 'Mazzi', en: 'Decks' })}</Button>)}
+                {(['decks', 'players'] as const).map((view) => <Button key={view} size="sm" variant={awardsView === view ? 'default' : 'ghost'} onClick={() => setAwardsView(view)}>{view === 'players' ? t({ it: 'Giocatori', en: 'Players' }) : t({ it: 'Mazzi', en: 'Decks' })}</Button>)}
               </div>
-              {awardsView === 'players' ? <PlayerAwards awards={playerAwards} language={language} /> : (arenaAwards.length === 0 ? (
+              {awardsView === 'decks' ? (arenaAwards.length === 0 ? (
                 <Card className="phyrexian-panel">
                   <CardContent className="py-12 text-center">
                     <Award className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
@@ -2812,7 +2812,7 @@ export default function TablePage() {
                     );
                   })}
                 </div>
-              ))}
+              )) : <PlayerAwards awards={playerAwards} language={language} />}
             </div>
           </TabsContent>
 
@@ -3915,14 +3915,10 @@ export default function TablePage() {
                         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                           {[
                             [t({ it: 'Danni inflitti', en: 'Damage dealt' }), participant.life_damage_dealt || 0],
-                            [t({ it: 'Vita persa', en: 'Life lost' }), participant.life_lost || 0],
-                            [t({ it: 'Vita guadagnata', en: 'Life gained' }), participant.life_gained || 0],
                             ['KO', participant.eliminations_caused || 0],
                             [t({ it: 'Danno commander', en: 'Commander damage' }), participant.commander_damage_dealt || 0],
-                            [t({ it: 'Commander subito', en: 'Commander taken' }), participant.commander_damage_taken || 0],
                             [t({ it: 'Infect inflitto', en: 'Infect dealt' }), participant.infect_dealt || 0],
-                            [t({ it: 'Infect subito', en: 'Infect received' }), participant.infect_received || 0],
-                          ].map(([label, value]) => (
+                          ].filter(([, value]) => Number(value) > 0).map(([label, value]) => (
                             <div key={String(label)} className="rounded-lg bg-secondary/45 px-2.5 py-2">
                               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
                               <p className="font-bold text-foreground">{value}</p>

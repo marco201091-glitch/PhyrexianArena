@@ -53,6 +53,13 @@ export function filterMatchesByDate<T extends { played_at: string }>(
   return matches.filter((match) => new Date(match.played_at).getTime() > relativeThreshold);
 }
 
+export function filterMatchesByBracket<T extends ArenaMatch>(matches: T[], bracket: string): T[] {
+  if (bracket === 'all') return matches;
+  return matches.filter((match) => match.match_participants.some((participant) => (
+    getParticipantDeckSnapshot(participant)?.bracket === bracket
+  )));
+}
+
 export function getArenaPeriodLabel(dateFilter: ArenaDateFilter, language: AppLanguage) {
   if (dateFilter === '7d') return language === 'it' ? 'Ultimi 7 giorni' : 'Last 7 days';
   if (dateFilter === '30d') return language === 'it' ? 'Ultimi 30 giorni' : 'Last 30 days';

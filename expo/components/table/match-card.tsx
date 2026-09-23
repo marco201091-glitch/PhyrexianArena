@@ -1,3 +1,4 @@
+import { formatGameDuration } from '@/lib/live-game-duration';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +31,8 @@ function getWinConditionIcon(condition: ArenaMatch['win_condition']): keyof type
 }
 
 export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete, onDetails }: MatchCardProps) {
-  const { copy } = useLanguage();
+  const { copy, language } = useLanguage();
+  const visibleParticipants = match.match_participants;
   return (
     <PhyrexianPanel variant="inset" padded={false}>
       {match.is_draw ? (
@@ -38,8 +40,13 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
           <Text style={styles.drawBadgeText}>{drawLabel}</Text>
         </View>
       ) : null}
+      <View style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Ionicons name="people-outline" size={18} color={colors.primaryMuted} />
+        <Text style={{ color: colors.foreground, flex: 1 }}>{match.match_participants.length} {language === 'it' ? 'giocatori' : 'players'}{match.duration_seconds != null ? ` � ${formatGameDuration(match.duration_seconds)}` : ''}</Text>
+        {match.win_condition ? <Text style={{ color: colors.muted, flexShrink: 1 }}>{({ last_standing: 'Last Standing', combo: 'Combo', concession: language === 'it' ? 'Concessione' : 'Concession', alternate_card: language === 'it' ? 'Vittoria alternativa' : 'Alternate win', other: language === 'it' ? 'Altra vittoria' : 'Other win' })[match.win_condition]}</Text> : null}
+      </View>
       <View style={styles.participants}>
-        {match.match_participants.map((participant) => {
+        {visibleParticipants.map((participant) => {
           const deck = getParticipantDeckSnapshot(participant);
           const name = getParticipantDisplayName(participant);
           const isWinner = participant.is_winner;
@@ -74,13 +81,13 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
 
       <View style={styles.actions}>
         {onDetails ? <Pressable onPress={onDetails} hitSlop={8} style={styles.detailsButton} accessibilityRole="button"><Ionicons name="stats-chart-outline" size={16} color={colors.primaryMuted} /><Text style={styles.detailsText}>{copy('details')}</Text></Pressable> : null}
-        <Pressable onPress={onShare} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
+        <Pressable accessibilityLabel={language === 'it' ? 'Condividi partita' : 'Share match'} onPress={onShare} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
           <Ionicons name="share-outline" size={18} color={colors.muted} />
         </Pressable>
-        <Pressable onPress={onEdit} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
+        <Pressable accessibilityLabel={language === 'it' ? 'Modifica partita' : 'Edit match'} onPress={onEdit} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
           <Ionicons name="pencil-outline" size={18} color={colors.muted} />
         </Pressable>
-        <Pressable onPress={onDelete} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
+        <Pressable accessibilityLabel={language === 'it' ? 'Elimina partita' : 'Delete match'} onPress={onDelete} hitSlop={8} style={styles.actionButton} accessibilityRole="button">
           <Ionicons name="trash-outline" size={18} color={colors.muted} />
         </Pressable>
       </View>
@@ -132,11 +139,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   actionButton: {
-    minWidth: touch.minWidth - 8,
-    minHeight: 40,
+    minWidth: touch.minWidth,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  detailsButton: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.sm, marginRight: 'auto' },
+  detailsButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.sm, marginRight: 'auto' },
   detailsText: { color: colors.primaryMuted, fontSize: 12, fontWeight: '700' },
 });

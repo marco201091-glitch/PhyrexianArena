@@ -2,7 +2,7 @@ import { getParticipantDisplayName, getParticipantKey, type MatchParticipantReco
 import { buildMatchRecord } from '@/lib/win-rate';
 
 export type PlayerAwardKind = 'veteran' | 'eternal_second' | 'arena_king' | 'hitman' | 'berserker' | 'archenemy' | 'combo' | 'last_standing' | 'concession' | 'true_skills';
-export type PlayerAward = { kind: PlayerAwardKind; rank: number; name: string; value: number; gamesPlayed: number; winRate: number };
+export type PlayerAward = { kind: PlayerAwardKind; rank: number; name: string; value: number };
 type Match = { is_draw?: boolean; win_condition?: string | null; match_participants: MatchParticipantRecord[] };
 
 export function buildPlayerAwards(matches: Match[]): PlayerAward[] {
@@ -19,8 +19,6 @@ export function buildPlayerAwards(matches: Match[]): PlayerAward[] {
     }
   }
   const rows = Array.from(players.values()).map((row) => ({ ...row, ...buildMatchRecord({ gamesPlayed: row.games, wins: row.wins, draws: row.draws }) }));
-  const definitions: Array<[PlayerAwardKind, (row: typeof rows[number]) => number, boolean]> = [
-    ['veteran', r => r.games, false], ['eternal_second', r => r.second, false], ['arena_king', r => r.winRate, true], ['hitman', r => r.eliminations, false], ['archenemy', r => r.first, false], ['combo', r => r.combo, false], ['last_standing', r => r.last, false], ['concession', r => r.concession, false], ['true_skills', r => r.skills, false],
-  ];
-  return definitions.flatMap(([kind, score, minimumFive]) => rows.filter((row) => (!minimumFive || row.games >= 5) && score(row) > 0).sort((a, b) => score(b) - score(a) || b.games - a.games || a.name.localeCompare(b.name)).slice(0, 3).map((row, index) => ({ kind, rank: index + 1, name: row.name, value: score(row), gamesPlayed: row.games, winRate: row.winRate })));
+  const definitions: Array<[PlayerAwardKind, (row: typeof rows[number]) => number, boolean]> = [['veteran', r => r.games, false], ['eternal_second', r => r.second, false], ['arena_king', r => r.winRate, true], ['hitman', r => r.eliminations, false], ['archenemy', r => r.first, false], ['combo', r => r.combo, false], ['last_standing', r => r.last, false], ['concession', r => r.concession, false], ['true_skills', r => r.skills, false]];
+  return definitions.flatMap(([kind, score, minimumFive]) => rows.filter((row) => (!minimumFive || row.games >= 5) && score(row) > 0).sort((a, b) => score(b) - score(a) || b.games - a.games || a.name.localeCompare(b.name)).slice(0, 3).map((row, index) => ({ kind, rank: index + 1, name: row.name, value: score(row) })));
 }

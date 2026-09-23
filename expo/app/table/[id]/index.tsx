@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -27,6 +27,7 @@ import { TableGuestsSection } from '@/components/table/table-guests-section';
 import { TableMatchesList } from '@/components/table/table-matches-list';
 import { TableMetaTab } from '@/components/table/table-meta-tab';
 import { TableAwardsTab } from '@/components/table/table-awards-tab';
+import { PlayerAwardsTab } from '@/components/table/player-awards-tab';
 import { TablePlayersTab } from '@/components/table/table-players-tab';
 import { TableUserManagement } from '@/components/table/table-user-management';
 import { RecordMatchModal } from '@/components/table/record-match-modal';
@@ -54,6 +55,7 @@ import {
 } from '@/lib/arena-analytics-bundle';
 import {
   filterMatchesByDate,
+  filterMatchesByBracket,
   getArenaPeriodLabel,
   getBracketOptionsFromMatches,
   type ArenaDateFilter,
@@ -69,6 +71,7 @@ import { groupMatchesByDay } from '@/lib/arena-session';
 import { buildArenaShareText } from '@/lib/arena-share';
 import { calculatePlayerStats, getMatchWinnerName } from '@/lib/arena-stats';
 import { calculateArenaAwards } from '@/lib/arena-awards';
+import { buildPlayerAwards } from '@/lib/player-awards';
 import { getSiteUrl } from '@/lib/env';
 import { apiPost } from '@/lib/api';
 import { isLeaveArenaConfirmationValid } from '@/lib/leave-arena-confirm';
@@ -105,7 +108,7 @@ const DECK_SORT_KEYS: Record<DeckStatsSort, 'deckSortWinRate' | 'deckSortGamesPl
 };
 
 export default function TableScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, matchId } = useLocalSearchParams<{ id: string; matchId?: string }>();
   const groupId = Array.isArray(id) ? id[0] : id;
   const { user } = useAuth();
   const { copy, language } = useLanguage();
@@ -135,6 +138,7 @@ export default function TableScreen() {
   } = useArena(groupId, user?.id);
 
   const [activeTab, setActiveTab] = useState<ArenaTab>('matches');
+  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('decks');
   const { scrollContentStyle } = useScreenInsets();
   const { showToast } = useToast();
   const [dateFilter, setDateFilter] = useState<ArenaDateFilter>('all');
@@ -154,6 +158,13 @@ export default function TableScreen() {
   const [showInviteQr, setShowInviteQr] = useState(false);
   const [editingMatch, setEditingMatch] = useState<ArenaMatch | null>(null);
   const [detailsMatch, setDetailsMatch] = useState<ArenaMatch | null>(null);
+  const notificationPage = useRef('');
+  useEffect(() => {
+    if (!matchId || loading) return;
+    const target = matches.find((match) => match.id === matchId);
+    if (target) { setActiveTab('matches'); setDetailsMatch(target); router.setParams({ matchId: undefined }); }
+    else if (hasMoreMatches && !loadingMoreMatches && notificationPage.current !== `${matchId}:${matches.length}`) { notificationPage.current = `${matchId}:${matches.length}`; void loadMoreMatches(); }
+  }, [matchId, loading, matches, hasMoreMatches, loadingMoreMatches, loadMoreMatches, router]);
   const [detailsLiveGame, setDetailsLiveGame] = useState<LiveGameRecord | null>(null);
   const [detailsRecapLoading, setDetailsRecapLoading] = useState(false);
   const [exportDayKey, setExportDayKey] = useState<string | null>(null);
@@ -272,9 +283,13 @@ export default function TableScreen() {
   });
   const canLeave = canLeaveArena(members.length, isMember);
 
-  const filteredMatches = useMemo(
+  const periodMatches = useMemo(
     () => filterMatchesByDate(matches, dateFilter, seasonContext?.currentSeasonStart),
     [dateFilter, matches, seasonContext?.currentSeasonStart],
+  );
+  const filteredMatches = useMemo(
+    () => filterMatchesByBracket(periodMatches, bracketFilter),
+    [bracketFilter, periodMatches],
   );
 
   const analyticsView = useMemo(
@@ -285,8 +300,8 @@ export default function TableScreen() {
   );
 
   const playerStats = useMemo(
-    () => analyticsView?.players ?? calculatePlayerStats(filteredMatches),
-    [analyticsView?.players, filteredMatches],
+    () => (bracketFilter === 'all' ? analyticsView?.players : null) ?? calculatePlayerStats(filteredMatches),
+    [analyticsView?.players, bracketFilter, filteredMatches],
   );
 
   const commanderStats = useMemo(
@@ -296,8 +311,8 @@ export default function TableScreen() {
   );
 
   const bracketOptions = useMemo(
-    () => analyticsView?.brackets ?? getBracketOptionsFromMatches(filteredMatches),
-    [analyticsView?.brackets, filteredMatches],
+    () => getBracketOptionsFromMatches(periodMatches),
+    [periodMatches],
   );
 
   const colorAnalytics = useMemo(
@@ -311,7 +326,10 @@ export default function TableScreen() {
       : calculateArenaAwards(matches),
     [allTimeAnalyticsPayload, matches],
   );
-  const reportedMatchCount = analyticsView?.totalMatches ?? filteredMatches.length;
+  const playerAwards = useMemo(() => buildPlayerAwards(matches), [matches]);
+  const reportedMatchCount = bracketFilter === 'all'
+    ? analyticsView?.totalMatches ?? filteredMatches.length
+    : filteredMatches.length;
 
   const matchDayGroups = useMemo(() => {
     const locale = language === 'it' ? 'it-IT' : 'en-US';
@@ -718,6 +736,11 @@ export default function TableScreen() {
           name={group.name}
           description={group.description}
           inviteCode={group.invite_code}
+          season={seasonContext ? {
+            title: formatArenaSeasonLabel(seasonContext.currentSeasonStart, seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US'),
+            dates: `${formatArenaSeasonDate(seasonContext.currentSeasonStart, language === 'it' ? 'it-IT' : 'en-US')} – ${formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}`,
+            label: language === 'it' ? 'Season corrente' : 'Current season',
+          } : undefined}
           labels={{
             invite: copy('invite'),
             playGame: copy('playGame'),
@@ -726,22 +749,6 @@ export default function TableScreen() {
           onPlayGame={() => router.push(`/table/${groupId}/play`)}
           onRecordBattle={() => setShowRecordModal(true)}
         />
-        {seasonContext ? (
-          <PhyrexianPanel style={styles.seasonPanel}>
-            <Text style={styles.seasonTitle}>
-              {formatArenaSeasonLabel(
-                seasonContext.currentSeasonStart,
-                seasonContext.currentSeasonEnd,
-                language === 'it' ? 'it-IT' : 'en-US',
-              )}
-            </Text>
-            <Text style={styles.seasonDates}>
-              {formatArenaSeasonDate(seasonContext.currentSeasonStart, language === 'it' ? 'it-IT' : 'en-US')}
-              {' – '}
-              {formatArenaSeasonDate(seasonContext.currentSeasonEnd, language === 'it' ? 'it-IT' : 'en-US')}
-            </Text>
-          </PhyrexianPanel>
-        ) : null}
         <ArenaTabBar
           activeTab={activeTab}
           labels={{
@@ -868,7 +875,11 @@ export default function TableScreen() {
         ) : null}
 
         {activeTab === 'awards' ? (
-          <TableAwardsTab
+          <View style={styles.awardsSection}>
+          <View style={styles.awardsToggle}>
+            {(['decks', 'players'] as const).map((view) => <Pressable key={view} onPress={() => setAwardsView(view)} style={[styles.awardsToggleButton, awardsView === view && styles.awardsToggleButtonActive]}><Text style={[styles.awardsToggleText, awardsView === view && styles.awardsToggleTextActive]}>{view === 'players' ? (language === 'it' ? 'Giocatori' : 'Players') : (language === 'it' ? 'Mazzi' : 'Decks')}</Text></Pressable>)}
+          </View>
+          {awardsView === 'decks' ? <TableAwardsTab
             awards={arenaAwards}
             labels={{
               emptyTitle: copy('awardsEmptyTitle'),
@@ -892,7 +903,8 @@ export default function TableScreen() {
               games: copy('games'),
               wins: copy('wins'),
             }}
-          />
+          /> : <PlayerAwardsTab awards={playerAwards} language={language} />}
+          </View>
         ) : null}
 
         {activeTab === 'meta' ? (
@@ -1378,19 +1390,12 @@ export default function TableScreen() {
 }
 
 const styles = StyleSheet.create({
-  seasonPanel: {
-    gap: spacing.xs,
-    borderColor: 'rgba(16, 185, 129, 0.28)',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-  },
-  seasonTitle: {
-    color: '#a7f3d0',
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  seasonDates: { color: colors.muted, fontSize: 12 },
+  awardsSection: { gap: spacing.md },
+  awardsToggle: { flexDirection: 'row', gap: spacing.sm, padding: 4, borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.surfaceMuted },
+  awardsToggleButton: { flex: 1, alignItems: 'center', borderRadius: 8, paddingVertical: 9 },
+  awardsToggleButtonActive: { backgroundColor: colors.primarySurface },
+  awardsToggleText: { color: colors.muted, fontWeight: '700' },
+  awardsToggleTextActive: { color: colors.primaryLight },
   matchesContent: { gap: spacing.md },
   seasonEditor: {
     gap: 8,
