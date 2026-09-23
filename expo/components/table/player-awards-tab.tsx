@@ -9,9 +9,9 @@ const meta: Record<PlayerAwardKind, { it: string; en: string; hintIt: string; hi
   veteran: { it: 'Veterano', en: 'Veteran', hintIt: 'Più partite giocate', hintEn: 'Most games played', icon: 'medal-outline', color: '#7dd3fc' }, eternal_second: { it: 'Eterno secondo', en: 'Eternal runner-up', hintIt: 'Più secondi posti', hintEn: 'Most second places', icon: 'ribbon-outline', color: '#e2e8f0' }, arena_king: { it: 'Re dell’arena', en: 'Arena king', hintIt: 'Miglior win rate · minimo 5 partite', hintEn: 'Best win rate · 5-game minimum', icon: 'trophy-outline', color: '#fcd34d' }, hitman: { it: 'Sicario', en: 'Hitman', hintIt: 'Più eliminazioni', hintEn: 'Most eliminations', icon: 'locate-outline', color: '#fda4af' }, berserker: { it: 'Berserker', en: 'Berserker', hintIt: 'Più danni inflitti', hintEn: 'Most damage dealt', icon: 'flame-outline', color: '#fdba74' }, archenemy: { it: 'Archenemy', en: 'Archenemy', hintIt: 'Più volte eliminato per primo', hintEn: 'Most first eliminations', icon: 'skull-outline', color: '#fca5a5' }, combo: { it: 'How about a magic trick?', en: 'How about a magic trick?', hintIt: 'Più vittorie per combo', hintEn: 'Most combo wins', icon: 'sparkles-outline', color: '#c4b5fd' }, last_standing: { it: 'This will be a slaughter', en: 'This will be a slaughter', hintIt: 'Più vittorie Last Standing', hintEn: 'Most Last Standing wins', icon: 'flash-outline', color: '#f0abfc' }, concession: { it: 'FF at 20', en: 'FF at 20', hintIt: 'Più vittorie per concessione', hintEn: 'Most concession wins', icon: 'flag-outline', color: '#bef264' }, true_skills: { it: 'True display of skills', en: 'True display of skills', hintIt: 'Più vittorie alternate o other', hintEn: 'Most alternate or other wins', icon: 'shield-checkmark-outline', color: '#5eead4' },
 };
 const medal = [
-  { id: 'gold', stops: ['#765008', '#f6c744', '#fff1a4', '#bd7e12', '#5c3904'], text: '#241600' },
-  { id: 'silver', stops: ['#536171', '#c8d2de', '#ffffff', '#a4b0bf', '#455363'], text: '#17202a' },
-  { id: 'bronze', stops: ['#63300e', '#ca702c', '#ffd09b', '#a64c18', '#532409'], text: '#2a1005' },
+  { id: 'gold', stops: ['#654005', '#dc9c19', '#fff7bf', '#c17c10', '#513004'], text: '#241600' },
+  { id: 'silver', stops: ['#3f4c5d', '#aebdce', '#ffffff', '#8b9aac', '#354252'], text: '#17202a' },
+  { id: 'bronze', stops: ['#4e2108', '#b95719', '#ffe0b2', '#953b10', '#411a06'], text: '#2a1005' },
 ];
 function MetalMedal({ rank }: { rank: number }) {
   const tone = medal[rank - 1] ?? medal[2];
@@ -19,7 +19,7 @@ function MetalMedal({ rank }: { rank: number }) {
 }
 function MetalPlate({ rank }: { rank: number }) {
   const tone = medal[rank - 1] ?? medal[2];
-  return <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={`plate-${tone.id}`} x1="0" y1="0" x2="1" y2="1">{tone.stops.map((color, index) => <Stop key={color} offset={`${[0, 20, 48, 74, 100][index]}%`} stopColor={color} />)}</LinearGradient></Defs><Rect x="0" y="0" width="100%" height="100%" rx="12" fill={`url(#plate-${tone.id})`} opacity={0.94} /></Svg>;
+  return <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={`plate-${tone.id}`} x1="0" y1="0" x2="1" y2="1">{tone.stops.map((color, index) => <Stop key={color} offset={`${[0, 16, 46, 76, 100][index]}%`} stopColor={color} />)}</LinearGradient></Defs><Rect x="0" y="0" width="100%" height="100%" rx="12" fill={`url(#plate-${tone.id})`} opacity={0.98} /></Svg>;
 }
 export function PlayerAwardsTab({ awards, language }: { awards: PlayerAward[]; language: 'it' | 'en' }) {
   const groups = Array.from(awards.filter((award) => award.kind !== 'berserker').reduce((map, award) => { const rows = map.get(award.kind) ?? []; rows.push(award); map.set(award.kind, rows); return map; }, new Map<PlayerAwardKind, PlayerAward[]>()).values());
