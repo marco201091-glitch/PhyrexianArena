@@ -2496,10 +2496,13 @@ export default function ProfilePage() {
                       </label>
                       <Input
                         id="currentPassword"
+                        name="currentPassword"
                         type="password"
                         value={currentPassword}
                         onChange={(event) => setCurrentPassword(event.target.value)}
                         autoComplete="current-password"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         className={accountPanelInputClass}
                       />
                     </div>
@@ -2509,10 +2512,13 @@ export default function ProfilePage() {
                       </label>
                       <Input
                         id="newPassword"
+                        name="newPassword"
                         type="password"
                         value={newPassword}
                         onChange={(event) => setNewPassword(event.target.value)}
                         autoComplete="new-password"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         className={accountPanelInputClass}
                       />
                       <PasswordRequirements password={newPassword} />
@@ -2523,10 +2529,13 @@ export default function ProfilePage() {
                       </label>
                       <Input
                         id="confirmNewPassword"
+                        name="confirmNewPassword"
                         type="password"
                         value={confirmNewPassword}
                         onChange={(event) => setConfirmNewPassword(event.target.value)}
                         autoComplete="new-password"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         className={accountPanelInputClass}
                       />
                       {confirmNewPassword.length > 0 && confirmNewPassword !== newPassword ? (

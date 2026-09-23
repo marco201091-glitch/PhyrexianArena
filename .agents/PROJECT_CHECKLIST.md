@@ -2,6 +2,9 @@
 
 Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checklist.
 
+- [x] Login password manager: semantica username/current-password/new-password e disattivazione maiuscola automatica nei campi password web/Android; test Playwright, build web, typecheck/lint e test web/Expo OK.
+- [x] Awards deck: descrizioni dei premi sopra le righe del podio, allineate al layout dei player awards e tradotte IT/EN; typecheck OK.
+
 ## In progress
 
 - [x] UI v9: palette awards player attenuata per tema scuro; coccarde con pieghe e nastri oro/argento/bronzo a decrescente rilievo; typecheck web/Expo OK. Storico completo e spaziatura Archidekt corretta.

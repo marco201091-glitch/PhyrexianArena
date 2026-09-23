@@ -202,6 +202,8 @@ function RegisterForm() {
                 required
                 minLength={8}
                 autoComplete="new-password"
+                autoCapitalize="none"
+                spellCheck={false}
                 aria-invalid={Boolean(errors.password)}
                 className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
               />

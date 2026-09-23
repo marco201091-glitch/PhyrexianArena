@@ -413,24 +413,33 @@ export default function SettingsScreen() {
         <Input
           label={copy('currentPassword')}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           value={currentPassword}
           onChangeText={setCurrentPassword}
           autoComplete="current-password"
+          importantForAutofill="yes"
         />
         <Input
           label={copy('newPassword')}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           value={newPassword}
           onChangeText={setNewPassword}
           autoComplete="new-password"
+          importantForAutofill="yes"
         />
         <PasswordRequirements password={newPassword} />
         <Input
           label={copy('confirmNewPassword')}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           value={confirmNewPassword}
           onChangeText={setConfirmNewPassword}
           autoComplete="new-password"
+          importantForAutofill="yes"
         />
         {confirmNewPassword.length > 0 && !passwordsMatch ? (
           <Text style={styles.error}>{copy('passwordsDoNotMatch')}</Text>
@@ -469,10 +478,12 @@ export default function SettingsScreen() {
           label={deleteNeedsPassword ? copy('currentPassword') : copy('confirmAccountEmail')}
           secureTextEntry={deleteNeedsPassword}
           autoCapitalize="none"
+          autoCorrect={false}
           keyboardType={deleteNeedsPassword ? 'default' : 'email-address'}
           value={deleteConfirmation}
           onChangeText={setDeleteConfirmation}
           autoComplete={deleteNeedsPassword ? 'current-password' : 'email'}
+          importantForAutofill={deleteNeedsPassword ? 'yes' : 'auto'}
         />
         <View style={styles.modalActions}>
           <Button
