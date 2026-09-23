@@ -39,10 +39,15 @@ export function ArenaCard({
     <Pressable onPress={onOpen}>
       <PhyrexianPanel variant="strong">
         <View style={styles.header}>
+          <View style={styles.groupMark}>
+            <Ionicons name="people" size={23} color={colors.primaryLight} />
+            <View style={styles.groupMarkDot} />
+          </View>
           <View style={styles.headerText}>
-            <Text style={styles.meta}>
-              {arenaLabel} · {playerCount} {playersLabel}
-            </Text>
+            <View style={styles.eyebrowRow}>
+              <Text style={styles.meta}>{arenaLabel}</Text>
+              <View style={styles.memberPill}><Ionicons name="people-outline" size={12} color={colors.primaryMuted} /><Text style={styles.memberCount}>{playerCount}</Text></View>
+            </View>
             <Text style={styles.title}>{group.name}</Text>
             {group.description ? (
               <Text style={styles.description}>{group.description}</Text>
@@ -62,20 +67,20 @@ export function ArenaCard({
 
         <View style={styles.statsRow}>
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>{tableLabel}</Text>
+            <View style={styles.statHeading}><Ionicons name="people-outline" size={13} color={colors.primaryMuted} /><Text style={styles.statLabel}>{tableLabel}</Text></View>
             <View style={styles.statFooter}>
               <Text style={styles.statValue}>{playerCount}</Text>
               <Text style={styles.statHint}>{playersLabel}</Text>
             </View>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>{inviteLabel}</Text>
+            <View style={styles.statHeading}><Ionicons name="key-outline" size={13} color={colors.primaryMuted} /><Text style={styles.statLabel}>{inviteLabel}</Text></View>
             <View style={styles.statFooter}>
               <Text style={styles.inviteCode}>{group.invite_code}</Text>
             </View>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>{createdLabel}</Text>
+            <View style={styles.statHeading}><Ionicons name="calendar-outline" size={13} color={colors.primaryMuted} /><Text style={styles.statLabel}>{createdLabel}</Text></View>
             <View style={styles.statFooter}>
               <Text style={styles.statDate}>{formatDate(group.created_at)}</Text>
             </View>
@@ -97,12 +102,16 @@ export function ArenaCard({
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
   },
+  groupMark: { width: 48, height: 48, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.selectionTint, borderWidth: 1, borderColor: colors.selectionBorder },
+  groupMarkDot: { position: 'absolute', right: 5, top: 5, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primaryLight },
   headerText: {
     flex: 1,
     gap: 6,
   },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   meta: {
     color: colors.primaryMuted,
     fontSize: 11,
@@ -110,6 +119,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  memberPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: radii.pill, backgroundColor: colors.selectionTint, borderWidth: 1, borderColor: colors.selectionBorder },
+  memberCount: { color: colors.primaryMuted, fontSize: 11, fontWeight: '800' },
   title: {
     color: colors.foreground,
     fontSize: 22,
@@ -153,6 +164,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     gap: 2,
   },
+  statHeading: { minHeight: 16, flexDirection: 'row', alignItems: 'center', gap: 5 },
   statLabel: {
     color: colors.muted,
     fontSize: 12,
