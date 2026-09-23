@@ -73,7 +73,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { scrollContentStyle } = useScreenInsets();
   const [searchQuery, setSearchQuery] = useState('');
-  const [deckColorFilter, setDeckColorFilter] = useState('all');
+  const [deckColorFilter, setDeckColorFilter] = useState<string[]>([]);
   const [deckSort, setDeckSort] = useState<'alpha' | 'mastery'>('alpha');
   const [detailsDeck, setDetailsDeck] = useState<ProfileDeck | null>(null);
   const [refreshingAllDecks, setRefreshingAllDecks] = useState(false);
@@ -98,9 +98,9 @@ export default function ProfileScreen() {
         if (!matchesQuery) return false;
       }
 
-      if (deckColorFilter !== 'all') {
+      if (deckColorFilter.length) {
         const colors = getDeckDisplayColors(deck);
-        if (!colors.includes(deckColorFilter)) return false;
+        if (!deckColorFilter.every((color) => colors.includes(color))) return false;
       }
 
       return true;
@@ -334,15 +334,15 @@ export default function ProfileScreen() {
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
                     <ManaColorFilterChip
                       label={copy('allColors')}
-                      active={deckColorFilter === 'all'}
-                      onPress={() => setDeckColorFilter('all')}
+                      active={deckColorFilter.length === 0}
+                      onPress={() => setDeckColorFilter([])}
                     />
                     {MANA_COLOR_ORDER.map((color) => (
                       <ManaColorFilterChip
                         key={color}
                         color={color}
-                        active={deckColorFilter === color}
-                        onPress={() => setDeckColorFilter(color)}
+                        active={deckColorFilter.includes(color)}
+                        onPress={() => setDeckColorFilter((current) => current.includes(color) ? current.filter((item) => item !== color) : [...current, color])}
                       />
                     ))}
                   </ScrollView>

@@ -4,6 +4,8 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 
 ## In progress
 
+- [x] Roadmap 9: rifinitura awards giocatori, report Details, filtri mazzo multipli e wizard tavolo.
+
 - [x] Roadmap 9: notifiche intelligenti (partita, inviti, fine stagione) e scheda personale profilo su Dev/Staging.
 - [ ] Roadmap 9: validazione fisica E2E Android su APK Dev. F-Droid dopo una 9 stabile.
 

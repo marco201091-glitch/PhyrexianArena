@@ -40,22 +40,11 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
   const phoneLayout = width < 600;
 
   const metrics = [
-    [labels.games, performance?.gamesPlayed || 0],
-    [labels.wins, performance?.wins || 0],
-    [labels.winRate, `${performance?.winRate || 0}%`],
-    [labels.secondPlaces, performance?.secondPlaces || 0],
     [labels.damageDealt, performance?.damageDealt || 0],
-    [labels.lifeLost, performance?.damageTaken || 0],
-    [labels.lifeGained, performance?.lifeGained || 0],
     [labels.eliminations, performance?.eliminations || 0],
     [labels.commanderDamage, performance?.commanderDamage || 0],
     [labels.infectDealt, performance?.infectDealt || 0],
-    [
-      labels.fastestWin,
-      performance?.medianWinningDurationSeconds != null
-        ? formatGameDuration(performance.medianWinningDurationSeconds)
-        : '—',
-    ],
+    [labels.fastestWin, performance?.medianWinningDurationSeconds != null ? formatGameDuration(performance.medianWinningDurationSeconds) : '—'],
   ] as const;
 
   const coverage = performance?.trackingCoverage || 0;
@@ -74,7 +63,7 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
           <CommanderArt uri={deck.commander_image} alt={deck.commander} size="hero" />
           <View style={styles.heroCopy}>
             <Text style={styles.title}>{labels.title}</Text>
-            <Text style={styles.subtitle}>{performance?.trackedGames || 0} / {performance?.gamesPlayed || 0}</Text>
+            <Text style={styles.subtitle}>{labels.games}</Text>
           </View>
         </View>
 
@@ -118,6 +107,7 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
     </Modal>
   );
 }
+
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md },

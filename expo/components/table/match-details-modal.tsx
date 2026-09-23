@@ -45,8 +45,8 @@ export function MatchDetailsModal({ visible, match, liveGame, recapLoading, onCl
             <View style={styles.track}><View style={[styles.pressureFill, { width: `${(impact / maxImpact) * 100}%`, backgroundColor: participant.is_winner ? colors.primaryMuted : '#38bdf8' }]} /></View>
           </View>
           <View style={styles.metrics}>{[
-            [labels.damageDealt, participant.life_damage_dealt || 0], [labels.lifeLost, participant.life_lost || 0], [labels.lifeGained, participant.life_gained || 0], ['KO', participant.eliminations_caused || 0], [labels.commander, participant.commander_damage_dealt || 0], [labels.infect, participant.infect_dealt || 0],
-          ].map(([label, value]) => <View key={String(label)} style={[styles.metric, phoneLayout && styles.metricPhone]}><Text style={styles.meta} numberOfLines={2}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
+            [labels.damageDealt, participant.life_damage_dealt || 0], ['KO', participant.eliminations_caused || 0], [labels.commander, participant.commander_damage_dealt || 0], [labels.infect, participant.infect_dealt || 0],
+          ].filter(([, value]) => Number(value) > 0).map(([label, value]) => <View key={String(label)} style={[styles.metric, phoneLayout && styles.metricPhone]}><Text style={styles.meta} numberOfLines={2}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
         </PhyrexianPanel>;
       })}
     </View>

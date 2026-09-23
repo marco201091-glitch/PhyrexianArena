@@ -76,8 +76,8 @@ function LayoutPreview({
   variant: TableLayoutVariant;
   orientation: TableOrientation;
 }) {
-  const width = orientation === 'landscape' ? 136 : 106;
-  const height = orientation === 'landscape' ? 94 : 136;
+  const width = orientation === 'landscape' ? 160 : 132;
+  const height = orientation === 'landscape' ? 112 : 168;
   const layouts = getSquareTableLayouts(count, width, height, variant, orientation);
   const toolbar = getCenterToolbarBand(count, width, height, variant, orientation);
   const arrowForRole = (role: string) => role.includes('Left') ? '←' : role.includes('Right') ? '→' : role === 'top' || role === 'capotavola' ? '↑' : '↓';
@@ -91,7 +91,7 @@ function LayoutPreview({
             styles.layoutSeat,
             { left: layout.left, top: layout.top, width: layout.width, height: layout.height },
           ]}
-        ><Text style={styles.layoutSeatNumber}>{index + 1}</Text><Text style={styles.layoutSeatArrow}>{arrowForRole(layout.role)}</Text></View>
+        ><Ionicons name="person" size={10} color="#ecfdf5" /><Text style={styles.layoutSeatNumber}>{index + 1}</Text><Text style={styles.layoutSeatArrow}>{arrowForRole(layout.role)}</Text></View>
       ))}
       {toolbar ? (
         <View style={[
@@ -161,6 +161,7 @@ export function LiveGameConfigurator({
   const isCustomLife = !lifePresets.includes(startingLife);
   const setupComplete = seats.length === playerCount
     && seats.every((seat) => Boolean(seat.participantKey && seat.deckId));
+  const assignedSeats = seats.filter((seat) => Boolean(seat.participantKey && seat.deckId)).length;
   useEffect(() => setCustomLife(String(startingLife)), [startingLife]);
   const currentSeat = editingSeat === null ? null : seats[editingSeat];
   const [draftPlayer, setDraftPlayer] = useState<ParticipantKey | null>(null);
@@ -208,7 +209,7 @@ export function LiveGameConfigurator({
       <View style={styles.wizardHeader}>
         <View style={styles.progressRow}>
           {[0, 1, 2, 3].map((index) => (
-            <View key={index} style={[styles.progressBar, index <= step && styles.progressBarActive]} />
+            <View key={index} style={[styles.progressStep, index <= step && styles.progressStepActive]}><Text style={[styles.progressNumber, index <= step && styles.progressNumberActive]}>{index + 1}</Text></View>
           ))}
         </View>
         <Pressable
@@ -238,6 +239,7 @@ export function LiveGameConfigurator({
               pressed && styles.interactivePressed,
             ]}
           >
+            <Ionicons name="person" size={16} color={count === playerCount ? colors.primaryLight : colors.muted} />
             <Text style={[styles.countText, count === playerCount && styles.countTextActive]}>{count}</Text>
           </Pressable>
         ))}
@@ -255,7 +257,8 @@ export function LiveGameConfigurator({
                 pressed && styles.interactivePressed,
               ]}
             >
-              <Text style={[styles.countText, startingLife === life && styles.countTextActive]}>{life}</Text>
+                <Ionicons name="heart" size={14} color={startingLife === life ? '#fb7185' : colors.muted} />
+                <Text style={[styles.countText, startingLife === life && styles.countTextActive]}>{life}</Text>
             </Pressable>
           ))}
         </View>
@@ -299,7 +302,7 @@ export function LiveGameConfigurator({
         ))}
       </View> : null}
 
-      {step === 3 ? <View style={[styles.tablePreview, { width: previewWidth, height: previewHeight }]}>
+      {step === 3 ? <View style={styles.seatStage}><View style={styles.seatStageHeader}><Ionicons name="people" size={18} color={colors.primaryLight} /><Text style={styles.seatStageTitle}>{labels.seats}</Text><View style={styles.seatProgress}><Text style={styles.seatProgressText}>{assignedSeats}/{playerCount}</Text></View></View><View style={[styles.tablePreview, { width: previewWidth, height: previewHeight }]}>
         {layouts.map((layout, index) => {
           const seat = seats[index];
           const participant = seat?.participantKey ? participantByKey.get(seat.participantKey) : null;
@@ -342,7 +345,7 @@ export function LiveGameConfigurator({
             <Ionicons name="game-controller-outline" size={19} color={colors.primaryMuted} />
           </View>
         ) : null}
-      </View> : null}
+      </View></View> : null}
 
       <View style={styles.wizardActions}>
         {step > 0 ? (
@@ -483,8 +486,10 @@ const styles = StyleSheet.create({
   root: { gap: spacing.md },
   wizardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   progressRow: { flex: 1, flexDirection: 'row', gap: 5 },
-  progressBar: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.border },
-  progressBarActive: { backgroundColor: colors.primaryLight, shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 5, elevation: 2 },
+  progressStep: { flex: 1, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.border },
+  progressStepActive: { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 5, elevation: 2 },
+  progressNumber: { color: colors.muted, fontSize: 10, fontWeight: '900' },
+  progressNumberActive: { color: '#fff' },
   interactivePressed: { opacity: 0.9, transform: [{ scale: 0.985 }] },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   stepBadge: { width: 29, height: 29, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderWidth: 1, borderColor: colors.primaryLight, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 7, elevation: 4 },
@@ -495,22 +500,22 @@ const styles = StyleSheet.create({
   countRow: { flexDirection: 'row', gap: spacing.sm },
   lifeStep: { gap: spacing.md },
   lifeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  lifeButton: { minWidth: 58, minHeight: 46, paddingHorizontal: spacing.md, borderRadius: 23, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardInset },
+  lifeButton: { minWidth: 58, minHeight: 62, gap: 3, paddingHorizontal: spacing.md, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardInset },
   lifeButtonActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTintStrong, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 7, elevation: 2 },
   customLifeInput: { minHeight: 48, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, color: colors.foreground, backgroundColor: colors.cardInset, fontWeight: '800' },
   customLifeInputActive: { borderColor: colors.primaryLight },
-  countButton: { flex: 1, minHeight: 46, borderRadius: 23, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardInset },
+  countButton: { flex: 1, minHeight: 62, gap: 2, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardInset },
   countButtonActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTintStrong, shadowColor: colors.primary, shadowOpacity: 0.22, shadowRadius: 7, elevation: 2 },
   countText: { color: colors.muted, fontSize: 16, fontWeight: '800' },
   countTextActive: { color: colors.foreground },
   layoutOptions: { flexDirection: 'row', gap: spacing.sm },
-  layoutOption: { flex: 1, alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardInset },
+  layoutOption: { flex: 1, alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardInset },
   layoutOptionActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTint, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3 },
   layoutPreview: { position: 'relative', backgroundColor: '#06060a', borderRadius: radii.md, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(45,212,191,0.22)' },
   layoutFelt: { position: 'absolute', left: '22%', right: '22%', top: '27%', bottom: '27%', borderRadius: 999, borderWidth: 1, borderColor: 'rgba(45,212,191,0.35)', backgroundColor: 'rgba(15,118,110,0.19)', alignItems: 'center', justifyContent: 'center' },
   layoutFeltText: { color: 'rgba(153,246,228,0.68)', fontSize: 6, fontWeight: '900', letterSpacing: 1 },
   layoutSeat: { position: 'absolute', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(167, 227, 172,0.5)', backgroundColor: 'rgba(22,163,74,0.34)', alignItems: 'center', justifyContent: 'center' },
-  layoutSeatNumber: { color: '#ecfdf5', fontSize: 9, fontWeight: '900' },
+  layoutSeatNumber: { color: '#ecfdf5', fontSize: 9, fontWeight: '900', marginTop: -3 },
   layoutSeatArrow: { color: '#99f6e4', fontSize: 8, fontWeight: '900', marginTop: -2 },
   layoutToolbar: { position: 'absolute', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#12121a' },
   layoutToolbarVertical: { flexDirection: 'column' },
@@ -519,6 +524,11 @@ const styles = StyleSheet.create({
   layoutLabel: { color: colors.muted, fontSize: 12, fontWeight: '800' },
   layoutLabelActive: { color: colors.foreground },
   tablePreview: { position: 'relative', alignSelf: 'center', borderRadius: radii.lg, overflow: 'hidden', backgroundColor: '#050508', borderWidth: 1, borderColor: colors.border },
+  seatStage: { gap: spacing.sm, padding: spacing.sm, borderRadius: radii.lg, backgroundColor: colors.cardInset, borderWidth: 1, borderColor: colors.border },
+  seatStageHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  seatStageTitle: { flex: 1, color: colors.foreground, fontSize: 14, fontWeight: '900' },
+  seatProgress: { minWidth: 42, alignItems: 'center', borderRadius: 12, backgroundColor: colors.selectionTint, paddingHorizontal: 8, paddingVertical: 4 },
+  seatProgressText: { color: colors.primaryLight, fontSize: 11, fontWeight: '900' },
   seatButton: { position: 'absolute', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', padding: 5, borderRadius: 7, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.selectionBorder, backgroundColor: 'rgba(66, 159, 74,0.08)' },
   seatButtonAssigned: { borderStyle: 'solid', borderColor: 'rgba(167, 227, 172,0.62)', shadowColor: colors.primary, shadowOpacity: 0.24, shadowRadius: 6, elevation: 3 },
   seatButtonPressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },

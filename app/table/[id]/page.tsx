@@ -3915,14 +3915,10 @@ export default function TablePage() {
                         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                           {[
                             [t({ it: 'Danni inflitti', en: 'Damage dealt' }), participant.life_damage_dealt || 0],
-                            [t({ it: 'Vita persa', en: 'Life lost' }), participant.life_lost || 0],
-                            [t({ it: 'Vita guadagnata', en: 'Life gained' }), participant.life_gained || 0],
                             ['KO', participant.eliminations_caused || 0],
                             [t({ it: 'Danno commander', en: 'Commander damage' }), participant.commander_damage_dealt || 0],
-                            [t({ it: 'Commander subito', en: 'Commander taken' }), participant.commander_damage_taken || 0],
                             [t({ it: 'Infect inflitto', en: 'Infect dealt' }), participant.infect_dealt || 0],
-                            [t({ it: 'Infect subito', en: 'Infect received' }), participant.infect_received || 0],
-                          ].map(([label, value]) => (
+                          ].filter(([, value]) => Number(value) > 0).map(([label, value]) => (
                             <div key={String(label)} className="rounded-lg bg-secondary/45 px-2.5 py-2">
                               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
                               <p className="font-bold text-foreground">{value}</p>

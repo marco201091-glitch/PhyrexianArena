@@ -103,7 +103,6 @@ import {
   Lock,
   BarChart3,
   Crosshair,
-  HeartPulse,
   Shield,
   ChevronRight,
   Skull,
@@ -647,7 +646,7 @@ export default function ProfilePage() {
   const [linkDeckUrl, setLinkDeckUrl] = useState('');
   const [savingDeckLink, setSavingDeckLink] = useState(false);
   const [deckSearchQuery, setDeckSearchQuery] = useState('');
-  const [deckColorFilter, setDeckColorFilter] = useState('all');
+  const [deckColorFilter, setDeckColorFilter] = useState<string[]>([]);
   const [deckPlayerFilter, setDeckPlayerFilter] = useState('all');
   const [deckWinRates, setDeckWinRates] = useState<Map<string, DeckWinRateSnapshot>>(new Map());
   const [deckPerformance, setDeckPerformance] = useState<Map<string, DeckPerformanceStats>>(new Map());
@@ -975,9 +974,9 @@ export default function ProfilePage() {
     const normalizedQuery = deckSearchQuery.trim().toLowerCase();
 
     const matching = visibleDecks.filter((deck) => {
-      if (deckColorFilter !== 'all') {
+      if (deckColorFilter.length) {
         const colors = getDeckDisplayColors(deck);
-        if (!colors.includes(deckColorFilter)) {
+        if (!deckColorFilter.every((color) => colors.includes(color))) {
           return false;
         }
       }
@@ -2732,19 +2731,10 @@ export default function ProfilePage() {
                 className="border-border bg-background/50 pl-9 text-foreground placeholder:text-muted-foreground"
               />
             </div>
-            <Select value={deckColorFilter} onValueChange={setDeckColorFilter}>
-              <SelectTrigger className="border-border bg-background/50 text-foreground">
-                <SelectValue placeholder={t({ it: 'Colore', en: 'Color' })} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t({ it: 'Tutti i colori', en: 'All colors' })}</SelectItem>
-                {MANA_COLOR_ORDER.map((color) => (
-                  <SelectItem key={color} value={color}>
-                    {t(MANA_COLOR_LABELS[color])}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex min-h-10 items-center gap-1 rounded-md border border-border bg-background/50 px-2" aria-label={t({ it: 'Filtra per colori', en: 'Filter by colors' })}>
+              <button type="button" onClick={() => setDeckColorFilter([])} className={`rounded px-1.5 py-1 text-xs font-bold ${deckColorFilter.length === 0 ? 'bg-emerald-500/20 text-emerald-200' : 'text-muted-foreground'}`}>{t({ it: 'Tutti', en: 'All' })}</button>
+              {MANA_COLOR_ORDER.map((color) => <button key={color} type="button" onClick={() => setDeckColorFilter((current) => current.includes(color) ? current.filter((item) => item !== color) : [...current, color])} className={`grid h-7 w-7 place-items-center rounded-full text-xs font-black ${deckColorFilter.includes(color) ? 'bg-emerald-400 text-emerald-950' : 'bg-secondary text-muted-foreground'}`} title={t(MANA_COLOR_LABELS[color])}>{color}</button>)}
+            </div>
             <Select value={deckSort} onValueChange={(value) => setDeckSort(value as typeof deckSort)}>
               <SelectTrigger className="border-border bg-background/50 text-foreground">
                 <SelectValue placeholder={t({ it: 'Ordina per', en: 'Sort by' })} />
@@ -3027,8 +3017,6 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           [t({ it: 'Danni inflitti', en: 'Damage dealt' }), performance.totalDamageDealt, Swords],
-                          [t({ it: 'Danni subiti', en: 'Damage taken' }), performance.totalDamageTaken, Shield],
-                          [t({ it: 'Vita guadagnata', en: 'Life gained' }), performance.totalLifeGained, HeartPulse],
                           ['KO', performance.eliminations, Crosshair],
                           [t({ it: 'Danno commander', en: 'Commander damage' }), performance.commanderDamageDealt, Shield],
                           [t({ it: 'Infect inflitto', en: 'Infect dealt' }), performance.infectDealt, Skull],
