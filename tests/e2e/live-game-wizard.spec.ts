@@ -37,7 +37,6 @@ test('wizard layout previews represent every pod size and remain visually stable
   await page.getByRole('button', { name: /^4$/ }).click();
   await page.getByRole('button', { name: /Next|Avanti/ }).click();
   await page.getByRole('button', { name: /Next|Avanti/ }).click();
-  await page.getByRole('button', { name: /Opposing sides|Lati contrapposti/ }).click();
   const layoutStep = page.getByText(/The preview matches the game table|L’anteprima rispecchia il tavolo di gioco/)
     .locator('xpath=ancestor::section[1]');
   await expect(layoutStep).toHaveScreenshot('wizard-layouts-4-players.png', {
