@@ -10,6 +10,7 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 - [x] Arena Android: season corrente integrata nella card playgroup, sopra alle azioni; typecheck Expo OK.
 - [x] Filtri arena Android: ripristinato filtro bracket su tutte le schede non Awards, applicato a storico e statistiche; risolto separatore non UTF-8 nel riepilogo. Typecheck/lint OK.
 - [x] Edit Battle Android: aumentata l'altezza del solo modal di modifica per usare meglio lo schermo, mantenendo scroll e footer fissi; typecheck OK.
+- [x] Winning streaks nelle statistiche profilo sempre espanse.
 
 - [x] UI Android: stile, profilo, azioni mazzi, report, storico, moduli, leggibilita, notifiche, filtri e accesso/impostazioni aggiornati. Typecheck, lint e 25 test OK; app avviata su Pixel_9 con Metro/Fast Refresh. Validazione visiva completa PM da effettuare; nessun push.
 

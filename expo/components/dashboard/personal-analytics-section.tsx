@@ -1,5 +1,4 @@
 import { ReportRing } from '@/components/ui/report-ring';
-import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
@@ -105,24 +104,25 @@ export function PersonalAnalyticsSection({
             ))}
           </View>
 
-          <CollapsiblePanel title={language === 'it' ? 'Serie di vittorie' : 'Winning streaks'}>
-          <View style={styles.summaryRow}>
-            <StatCard
-              label={currentWinStreakLabel}
-              value={formatStreak(analytics.currentWinStreak)}
-              compact
-              style={styles.summaryCard}
-              valueColor={analytics.currentWinStreak > 0 ? colors.successBright : undefined}
-            />
-            <StatCard
-              label={longestWinStreakLabel}
-              value={formatStreak(analytics.longestWinStreak)}
-              compact
-              style={styles.summaryCard}
-              valueColor={analytics.longestWinStreak > 0 ? colors.amber : undefined}
-            />
-          </View>
-          </CollapsiblePanel>
+          <PhyrexianPanel>
+            <Text style={styles.cardTitle}>{language === 'it' ? 'Serie di vittorie' : 'Winning streaks'}</Text>
+            <View style={styles.summaryRow}>
+              <StatCard
+                label={currentWinStreakLabel}
+                value={formatStreak(analytics.currentWinStreak)}
+                compact
+                style={styles.summaryCard}
+                valueColor={analytics.currentWinStreak > 0 ? colors.successBright : undefined}
+              />
+              <StatCard
+                label={longestWinStreakLabel}
+                value={formatStreak(analytics.longestWinStreak)}
+                compact
+                style={styles.summaryCard}
+                valueColor={analytics.longestWinStreak > 0 ? colors.amber : undefined}
+              />
+            </View>
+          </PhyrexianPanel>
 
           {analytics.bestDeck ? (
             <PhyrexianPanel>
