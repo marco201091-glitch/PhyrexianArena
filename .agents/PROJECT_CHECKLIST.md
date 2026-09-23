@@ -4,7 +4,7 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 
 ## In progress
 
-- [x] UI v9: palette awards player attenuata per tema scuro, medaglie metalliche limitate ai badge; typecheck web/Expo OK. Storico completo e spaziatura Archidekt corretta.
+- [x] UI v9: palette awards player attenuata per tema scuro, badge podio con riflesso metallico più luminoso; typecheck web/Expo OK. Storico completo e spaziatura Archidekt corretta.
 
 - [x] UI Android: stile, profilo, azioni mazzi, report, storico, moduli, leggibilita, notifiche, filtri e accesso/impostazioni aggiornati. Typecheck, lint e 25 test OK; app avviata su Pixel_9 con Metro/Fast Refresh. Validazione visiva completa PM da effettuare; nessun push.
 
