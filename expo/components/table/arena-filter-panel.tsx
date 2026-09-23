@@ -78,7 +78,7 @@ export function ArenaFilterPanel({
     });
   }
 
-  if (activeTab === 'decks' || activeTab === 'meta') {
+  if (activeTab !== 'awards') {
     groups.push({
       key: 'bracket',
       title: labels.bracket,
@@ -121,7 +121,7 @@ export function ArenaFilterPanel({
     });
   }
 
-  return groups.length > 0 ? <CollapsiblePanel title={language === 'it' ? 'Filtri e ordinamento' : 'Filters and sorting'} meta={[dateFilterLabels[dateFilter], bracketFilter === 'all' ? labels.allBrackets : bracketFilter, activeTab === 'decks' ? deckSortLabels[deckStatsSort] : null].filter(Boolean).join(' · ')}><FilterPanel groups={groups} /></CollapsiblePanel> : null;
+  return groups.length > 0 ? <CollapsiblePanel title={language === 'it' ? 'Filtri e ordinamento' : 'Filters and sorting'} meta={[dateFilterLabels[dateFilter], bracketFilter === 'all' ? labels.allBrackets : bracketFilter, activeTab === 'decks' ? deckSortLabels[deckStatsSort] : null].filter(Boolean).join(' Â· ')}><FilterPanel groups={groups} /></CollapsiblePanel> : null;
 }
 
 const styles = StyleSheet.create({

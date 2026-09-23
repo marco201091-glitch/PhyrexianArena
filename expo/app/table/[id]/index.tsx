@@ -55,6 +55,7 @@ import {
 } from '@/lib/arena-analytics-bundle';
 import {
   filterMatchesByDate,
+  filterMatchesByBracket,
   getArenaPeriodLabel,
   getBracketOptionsFromMatches,
   type ArenaDateFilter,
@@ -282,9 +283,13 @@ export default function TableScreen() {
   });
   const canLeave = canLeaveArena(members.length, isMember);
 
-  const filteredMatches = useMemo(
+  const periodMatches = useMemo(
     () => filterMatchesByDate(matches, dateFilter, seasonContext?.currentSeasonStart),
     [dateFilter, matches, seasonContext?.currentSeasonStart],
+  );
+  const filteredMatches = useMemo(
+    () => filterMatchesByBracket(periodMatches, bracketFilter),
+    [bracketFilter, periodMatches],
   );
 
   const analyticsView = useMemo(
@@ -295,8 +300,8 @@ export default function TableScreen() {
   );
 
   const playerStats = useMemo(
-    () => analyticsView?.players ?? calculatePlayerStats(filteredMatches),
-    [analyticsView?.players, filteredMatches],
+    () => (bracketFilter === 'all' ? analyticsView?.players : null) ?? calculatePlayerStats(filteredMatches),
+    [analyticsView?.players, bracketFilter, filteredMatches],
   );
 
   const commanderStats = useMemo(
@@ -306,8 +311,8 @@ export default function TableScreen() {
   );
 
   const bracketOptions = useMemo(
-    () => analyticsView?.brackets ?? getBracketOptionsFromMatches(filteredMatches),
-    [analyticsView?.brackets, filteredMatches],
+    () => getBracketOptionsFromMatches(periodMatches),
+    [periodMatches],
   );
 
   const colorAnalytics = useMemo(
@@ -322,7 +327,9 @@ export default function TableScreen() {
     [allTimeAnalyticsPayload, matches],
   );
   const playerAwards = useMemo(() => buildPlayerAwards(matches), [matches]);
-  const reportedMatchCount = analyticsView?.totalMatches ?? filteredMatches.length;
+  const reportedMatchCount = bracketFilter === 'all'
+    ? analyticsView?.totalMatches ?? filteredMatches.length
+    : filteredMatches.length;
 
   const matchDayGroups = useMemo(() => {
     const locale = language === 'it' ? 'it-IT' : 'en-US';
