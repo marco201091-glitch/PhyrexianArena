@@ -325,6 +325,7 @@ export default function SettingsScreen() {
           label={savingArchidektSettings ? copy('saving') : copy('save')}
           onPress={() => void saveArchidektSettings()}
           disabled={savingArchidektSettings}
+          style={styles.archidektSave}
         />
       </CollapsiblePanel>
 
@@ -593,5 +594,8 @@ const styles = StyleSheet.create({
   preferenceHint: {
     color: colors.muted,
     fontSize: 12,
+  },
+  archidektSave: {
+    marginTop: spacing.sm,
   },
 });

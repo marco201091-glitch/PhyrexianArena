@@ -435,7 +435,7 @@ export default function TablePage() {
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
-  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('players');
+  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('decks');
   const [activeLiveGameId, setActiveLiveGameId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
   const [bracketFilter, setBracketFilter] = useState('all');
@@ -2722,9 +2722,9 @@ export default function TablePage() {
                 </p>
               </div>
               <div className="flex w-fit rounded-xl border border-border bg-background/40 p-1">
-                {(['players', 'decks'] as const).map((view) => <Button key={view} size="sm" variant={awardsView === view ? 'default' : 'ghost'} onClick={() => setAwardsView(view)}>{view === 'players' ? t({ it: 'Giocatori', en: 'Players' }) : t({ it: 'Mazzi', en: 'Decks' })}</Button>)}
+                {(['decks', 'players'] as const).map((view) => <Button key={view} size="sm" variant={awardsView === view ? 'default' : 'ghost'} onClick={() => setAwardsView(view)}>{view === 'players' ? t({ it: 'Giocatori', en: 'Players' }) : t({ it: 'Mazzi', en: 'Decks' })}</Button>)}
               </div>
-              {awardsView === 'players' ? <PlayerAwards awards={playerAwards} language={language} /> : (arenaAwards.length === 0 ? (
+              {awardsView === 'decks' ? (arenaAwards.length === 0 ? (
                 <Card className="phyrexian-panel">
                   <CardContent className="py-12 text-center">
                     <Award className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
@@ -2812,7 +2812,7 @@ export default function TablePage() {
                     );
                   })}
                 </div>
-              ))}
+              )) : <PlayerAwards awards={playerAwards} language={language} />}
             </div>
           </TabsContent>
 

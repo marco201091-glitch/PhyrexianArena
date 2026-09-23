@@ -1,5 +1,5 @@
 import { formatGameDuration } from '@/lib/live-game-duration';
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompactDeckCard } from '@/components/deck/compact-deck-card';
@@ -32,9 +32,7 @@ function getWinConditionIcon(condition: ArenaMatch['win_condition']): keyof type
 
 export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onShare, onDelete, onDetails }: MatchCardProps) {
   const { copy, language } = useLanguage();
-  const [expanded, setExpanded] = useState(false);
-  const winners = match.match_participants.filter((participant) => participant.is_winner);
-  const visibleParticipants = expanded ? match.match_participants : (winners.length ? winners : match.match_participants.slice(0, 1));
+  const visibleParticipants = match.match_participants;
   return (
     <PhyrexianPanel variant="inset" padded={false}>
       {match.is_draw ? (
@@ -42,11 +40,11 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
           <Text style={styles.drawBadgeText}>{drawLabel}</Text>
         </View>
       ) : null}
-      <Pressable onPress={() => setExpanded((value) => !value)} accessibilityRole="button" accessibilityState={{ expanded }} style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.primaryMuted} />
+      <View style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Ionicons name="people-outline" size={18} color={colors.primaryMuted} />
         <Text style={{ color: colors.foreground, flex: 1 }}>{match.match_participants.length} {language === 'it' ? 'giocatori' : 'players'}{match.duration_seconds != null ? ` � ${formatGameDuration(match.duration_seconds)}` : ''}</Text>
         {match.win_condition ? <Text style={{ color: colors.muted, flexShrink: 1 }}>{({ last_standing: 'Last Standing', combo: 'Combo', concession: language === 'it' ? 'Concessione' : 'Concession', alternate_card: language === 'it' ? 'Vittoria alternativa' : 'Alternate win', other: language === 'it' ? 'Altra vittoria' : 'Other win' })[match.win_condition]}</Text> : null}
-      </Pressable>
+      </View>
       <View style={styles.participants}>
         {visibleParticipants.map((participant) => {
           const deck = getParticipantDeckSnapshot(participant);
@@ -73,7 +71,7 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
         })}
       </View>
 
-      {expanded && match.notes ? (
+      {match.notes ? (
         <FormattedMarkdown
           value={match.notes}
           style={styles.notes}

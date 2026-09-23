@@ -137,7 +137,7 @@ export default function TableScreen() {
   } = useArena(groupId, user?.id);
 
   const [activeTab, setActiveTab] = useState<ArenaTab>('matches');
-  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('players');
+  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('decks');
   const { scrollContentStyle } = useScreenInsets();
   const { showToast } = useToast();
   const [dateFilter, setDateFilter] = useState<ArenaDateFilter>('all');
@@ -881,9 +881,9 @@ export default function TableScreen() {
         {activeTab === 'awards' ? (
           <View style={styles.awardsSection}>
           <View style={styles.awardsToggle}>
-            {(['players', 'decks'] as const).map((view) => <Pressable key={view} onPress={() => setAwardsView(view)} style={[styles.awardsToggleButton, awardsView === view && styles.awardsToggleButtonActive]}><Text style={[styles.awardsToggleText, awardsView === view && styles.awardsToggleTextActive]}>{view === 'players' ? (language === 'it' ? 'Giocatori' : 'Players') : (language === 'it' ? 'Mazzi' : 'Decks')}</Text></Pressable>)}
+            {(['decks', 'players'] as const).map((view) => <Pressable key={view} onPress={() => setAwardsView(view)} style={[styles.awardsToggleButton, awardsView === view && styles.awardsToggleButtonActive]}><Text style={[styles.awardsToggleText, awardsView === view && styles.awardsToggleTextActive]}>{view === 'players' ? (language === 'it' ? 'Giocatori' : 'Players') : (language === 'it' ? 'Mazzi' : 'Decks')}</Text></Pressable>)}
           </View>
-          {awardsView === 'players' ? <PlayerAwardsTab awards={playerAwards} language={language} /> : <TableAwardsTab
+          {awardsView === 'decks' ? <TableAwardsTab
             awards={arenaAwards}
             labels={{
               emptyTitle: copy('awardsEmptyTitle'),
@@ -907,7 +907,7 @@ export default function TableScreen() {
               games: copy('games'),
               wins: copy('wins'),
             }}
-          />}
+          /> : <PlayerAwardsTab awards={playerAwards} language={language} />}
           </View>
         ) : null}
 
