@@ -33,7 +33,7 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 - [x] Roadmap 9: rifinitura awards giocatori, report Details, filtri mazzo multipli e wizard tavolo.
 
 - [x] Roadmap 9: notifiche intelligenti (partita, inviti, fine stagione) e scheda personale profilo su Dev/Staging.
-- [ ] Roadmap 9: validazione fisica E2E Android su APK Dev. F-Droid dopo una 9 stabile.
+- [x] Roadmap 9: validazione fisica E2E Android su APK Dev. F-Droid dopo una 9 stabile.
 
 - [x] Backup off-site: rclone crypt/Google Drive, retention e alert implementati; configurazione VM documentata.
 - [x] Runtime 9 e diagnostica migrazioni: migrazione applicata e verificata su Supabase staging; verifica CI implementata.
@@ -53,7 +53,7 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 
 ## External follow-up
 
-- [ ] Alla pubblicazione 9 in produzione: configurare e verificare backup off-site rclone crypt/Google Drive.
+- [x] Backup off-site rclone crypt/Google Drive: primo upload e marker verificati il 2026-09-24.
 - [ ] Monitor the official F-Droid merge request until approval.
 - [ ] PM verification of the Dokploy production build.
 

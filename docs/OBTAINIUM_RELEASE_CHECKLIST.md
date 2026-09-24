@@ -7,8 +7,8 @@ For F-Droid-style publication, also follow `docs/FDROID_RELEASE_READINESS.md`.
 
 ## One-time setup
 
-- [ ] Replace every launcher, splash, favicon, and wordmark asset with the
-  approved original brand artwork.
+- [x] Replace every launcher, splash, favicon, and wordmark asset with the
+  approved 21Life brand artwork.
 - [ ] Record the author, source, and license of every distributed visual asset
   in `docs/ASSET_PROVENANCE.md`.
 - [ ] Create a permanent Android release keystore outside the repository.
@@ -39,5 +39,6 @@ For F-Droid-style publication, also follow `docs/FDROID_RELEASE_READINESS.md`.
 - Production environment pointing to Dev/Test services.
 - Missing legal pages or inaccessible account deletion.
 - APK signature different from the previous public release.
-- Store listing, package ID, domain, or app name using third-party trademarks in
-  a way that could imply official Wizards endorsement.
+- Store listing or app name using third-party trademarks in a way that could
+  imply official Wizards endorsement. Existing domain and package identifiers
+  remain technical compatibility identifiers for this release.

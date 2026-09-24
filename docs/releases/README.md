@@ -1,7 +1,7 @@
 # Release notes
 
-One file per release, named after the version the release will carry: `8.5.0.md`
-for tag `v8.5.0`.
+One file per release, named after the version the release will carry: `9.0.0.md`
+for tag `v9.0.0`.
 
 The Android release workflow reads `docs/releases/<version>.md` and uses it as
 the GitHub release body, appending the standard install and checksum trailer.
