@@ -87,7 +87,8 @@ copy_offsite() {
   }
 
   rclone copy "$BACKUP_DIR/$NAME" "$OFFSITE_DESTINATION/$NAME" \
-    --checksum --transfers 1 --checkers 4
+    --checksum --transfers 1 --checkers 4 --contimeout 15s --timeout 1m \
+    --retries 2 --low-level-retries 2
 
   # Elimina solo directory con il nome prodotto da questo script.
   mapfile -t offsite_stale < <(
