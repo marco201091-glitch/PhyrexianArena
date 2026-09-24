@@ -81,11 +81,11 @@ export function PlayerDamageSheet({
           <View key={counter} style={styles.counterRow}>
             <Ionicons name={icon} size={19} color={colors.primaryMuted} />
             <Text style={styles.counterLabel}>{label}</Text>
-            <HoldPressable style={styles.counterButton} onShort={() => onAdjustCounter?.(counter as PlayerCounter, -1)} onLong={() => onAdjustCounter?.(counter as PlayerCounter, -10)}>
+            <HoldPressable hitSlop={14} style={styles.counterButton} onShort={() => onAdjustCounter?.(counter as PlayerCounter, -1)} onLong={() => onAdjustCounter?.(counter as PlayerCounter, -10)}>
               <Ionicons name="remove" size={20} color={colors.foreground} />
             </HoldPressable>
             <Text style={styles.counterValue}>{player.counters[counter]}</Text>
-            <HoldPressable style={styles.counterButton} onShort={() => onAdjustCounter?.(counter as PlayerCounter, 1)} onLong={() => onAdjustCounter?.(counter as PlayerCounter, 10)}>
+            <HoldPressable hitSlop={14} style={styles.counterButton} onShort={() => onAdjustCounter?.(counter as PlayerCounter, 1)} onLong={() => onAdjustCounter?.(counter as PlayerCounter, 10)}>
               <Ionicons name="add" size={20} color={colors.foreground} />
             </HoldPressable>
           </View>
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   counterList: { gap: spacing.xs },
   counterRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, backgroundColor: colors.cardInset, padding: spacing.sm },
   counterLabel: { flex: 1, color: colors.foreground, fontSize: 13, fontWeight: '700' },
-  counterButton: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.04)' },
+  counterButton: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.04)' },
   counterValue: { width: 34, color: colors.foreground, fontSize: 20, fontWeight: '900', textAlign: 'center', fontVariant: ['tabular-nums'] },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, backgroundColor: colors.cardInset, padding: spacing.sm },
   sourceImageWrap: { width: 38, height: 52, borderRadius: radii.sm, overflow: 'hidden' },

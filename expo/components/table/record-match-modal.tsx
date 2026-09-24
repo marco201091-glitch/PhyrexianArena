@@ -229,7 +229,15 @@ export function RecordMatchModal({
   };
 
   return (
-    <Modal visible={visible} onClose={onClose}>
+    <Modal visible={visible} onClose={onClose} footer={(        <View style={styles.actions}>
+          <Button label={labels.cancel} variant="ghost" onPress={onClose} style={styles.actionButton} />
+          <Button
+            label={saving ? labels.saving : labels.save}
+            disabled={saving}
+            onPress={handleSave}
+            style={styles.actionButton}
+          />
+        </View>)} >
       <View style={styles.content}>
         <Text style={styles.title}>{labels.title}</Text>
         <Text style={styles.hint}>{labels.hint}</Text>
@@ -386,15 +394,7 @@ export function RecordMatchModal({
           hint={labels.richTextHint}
         />
 
-        <View style={styles.actions}>
-          <Button label={labels.cancel} variant="ghost" onPress={onClose} style={styles.actionButton} />
-          <Button
-            label={saving ? labels.saving : labels.save}
-            disabled={saving}
-            onPress={handleSave}
-            style={styles.actionButton}
-          />
-        </View>
+
       </View>
     </Modal>
   );

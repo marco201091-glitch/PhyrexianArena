@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Phyrexian Arena - health alert della VM.
+# 21Life - health alert della VM.
 #
 # Controlla disco, container, endpoint pubblici e freschezza del backup
 # Supabase. Notifica solo al cambio di stato, non a ogni esecuzione: lo stato
@@ -18,10 +18,11 @@ flock -n 9 || exit 0
 
 DISK_THRESHOLD_PERCENT=${DISK_THRESHOLD_PERCENT:-80}
 BACKUP_MARKER=${BACKUP_MARKER:-/var/backups/phyrexianarena/last-success}
+OFFSITE_BACKUP_MARKER=${OFFSITE_BACKUP_MARKER:-/var/backups/phyrexianarena/offsite-last-success}
 BACKUP_MAX_AGE_HOURS=${BACKUP_MAX_AGE_HOURS:-30}
 STATE_FILE=/run/phyrexian-health-alert.state
 HEALTH_ENV=/etc/phyrexian-health-alert.env
-MAIL_FROM=${MAIL_FROM:-Phyrexian Arena <noreply@phyrexianarena.dpdns.org>}
+MAIL_FROM=${MAIL_FROM:-21Life <noreply@phyrexianarena.dpdns.org>}
 
 if [[ -r "$HEALTH_ENV" ]]; then
   set -a
@@ -31,6 +32,15 @@ if [[ -r "$HEALTH_ENV" ]]; then
 fi
 
 failures=()
+
+if [[ ! -r "$OFFSITE_BACKUP_MARKER" ]]; then
+  failures+=("backup off-site: marker assente")
+else
+  offsite_age_seconds=$(( $(date -u +%s) - $(cat "$OFFSITE_BACKUP_MARKER" 2>/dev/null || echo 0) ))
+  if (( offsite_age_seconds > BACKUP_MAX_AGE_HOURS * 3600 )); then
+    failures+=("backup off-site fermo da $(( offsite_age_seconds / 3600 ))h")
+  fi
+fi
 
 disk_percent=$(df --output=pcent / | tail -n 1 | tr -dc '0-9')
 if (( disk_percent >= DISK_THRESHOLD_PERCENT )); then
@@ -102,8 +112,8 @@ if [[ -n "${PHYREXIAN_HEALTH_WEBHOOK_URL:-}" ]]; then
 fi
 
 if [[ -n "${RESEND_API_KEY:-}" && -n "${ALERT_EMAIL:-}" ]]; then
-  subject="[ALERT] VM Phyrexian Arena"
-  [[ "$current_state" == 'healthy' ]] && subject="[OK] VM Phyrexian Arena ripristinata"
+  subject="[ALERT] VM 21Life"
+  [[ "$current_state" == 'healthy' ]] && subject="[OK] VM 21Life ripristinata"
   curl --silent --show-error --max-time 15 \
     --request POST https://api.resend.com/emails \
     --header "Authorization: Bearer $RESEND_API_KEY" \

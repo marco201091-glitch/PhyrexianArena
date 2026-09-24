@@ -1,6 +1,17 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+test('login fields advertise credential autofill semantics', async ({ page }) => {
+  await page.goto('/auth/login');
+
+  await expect(page.locator('#loginIdentifier'))
+    .toHaveAttribute('autocomplete', 'username');
+  await expect(page.locator('#password'))
+    .toHaveAttribute('autocomplete', 'current-password');
+  await expect(page.locator('#password'))
+    .toHaveAttribute('autocapitalize', 'none');
+});
+
 test('public landing is accessible and visually stable', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');

@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     borderWidth: 1,
     borderColor: colors.selectionBorder,
-    backgroundColor: 'rgba(66, 159, 74,0.14)',
+    backgroundColor: colors.selectionTint,
     paddingHorizontal: spacing.md,
   },
   toggleButtonPressed: { opacity: 0.72 },
@@ -423,12 +423,12 @@ const styles = StyleSheet.create({
   },
   bracketBadge: {
     borderRadius: 4,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: colors.selectionTint,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   bracketText: {
-    color: '#6ee7b7',
+    color: colors.primaryMuted,
     fontSize: 11,
     fontWeight: '700',
   },

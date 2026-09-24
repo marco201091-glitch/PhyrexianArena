@@ -1,3 +1,4 @@
+import { ReportRing } from '@/components/ui/report-ring';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
@@ -86,12 +87,12 @@ export function PersonalAnalyticsSection({
         <EmptyState icon="bar-chart-outline" title={emptyTitle} body={emptyBody} />
       ) : (
         <View style={styles.content}>
+          <View style={{ alignItems: 'center', paddingVertical: 12 }}><ReportRing value={analytics.winRate} label={winRateLabel} /></View>
           <View style={styles.summaryRow}>
             {[
               { label: trackedGamesLabel, value: analytics.gamesPlayed },
               { label: decksPlayedLabel, value: analytics.uniqueDecks },
               { label: winsLabel, value: analytics.wins },
-              { label: winRateLabel, value: `${analytics.winRate}%` },
             ].map((item) => (
               <StatCard
                 key={item.label}
@@ -103,22 +104,25 @@ export function PersonalAnalyticsSection({
             ))}
           </View>
 
-          <View style={styles.summaryRow}>
-            <StatCard
-              label={currentWinStreakLabel}
-              value={formatStreak(analytics.currentWinStreak)}
-              compact
-              style={styles.summaryCard}
-              valueColor={analytics.currentWinStreak > 0 ? colors.successBright : undefined}
-            />
-            <StatCard
-              label={longestWinStreakLabel}
-              value={formatStreak(analytics.longestWinStreak)}
-              compact
-              style={styles.summaryCard}
-              valueColor={analytics.longestWinStreak > 0 ? colors.amber : undefined}
-            />
-          </View>
+          <PhyrexianPanel>
+            <Text style={styles.cardTitle}>{language === 'it' ? 'Serie di vittorie' : 'Winning streaks'}</Text>
+            <View style={styles.summaryRow}>
+              <StatCard
+                label={currentWinStreakLabel}
+                value={formatStreak(analytics.currentWinStreak)}
+                compact
+                style={styles.summaryCard}
+                valueColor={analytics.currentWinStreak > 0 ? colors.successBright : undefined}
+              />
+              <StatCard
+                label={longestWinStreakLabel}
+                value={formatStreak(analytics.longestWinStreak)}
+                compact
+                style={styles.summaryCard}
+                valueColor={analytics.longestWinStreak > 0 ? colors.amber : undefined}
+              />
+            </View>
+          </PhyrexianPanel>
 
           {analytics.bestDeck ? (
             <PhyrexianPanel>
@@ -280,7 +284,8 @@ const styles = StyleSheet.create({
     gap: cardRowGap,
   },
   summaryCard: {
-    minWidth: 140,
+    minWidth: 90,
+    flex: 1,
   },
   cardTitle: {
     color: colors.foreground,

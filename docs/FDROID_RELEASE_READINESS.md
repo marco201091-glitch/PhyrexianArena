@@ -29,7 +29,7 @@ waiting for F-Droid maintainer review.
   on those internal identifiers. If a store review rejects the app on this
   basis, prepare a follow-up flavor with neutral identifiers and replacement
   symbols.
-- App display name: Android now uses `MTG Tracker & Analytics`.
+- App display name: Android now uses `21Life`.
 - Repository name: a pure GitHub repository rename to `MTG_Tracker_Analytics`
   is low-impact for code and Git history. GitHub redirects normal web and git
   operations from the old repository URL, but existing local clones should still

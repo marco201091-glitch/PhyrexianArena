@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bell, CheckCheck, Settings2, X } from 'lucide-react';
+import { Bell, CheckCheck, Crown, Swords, Settings2, UserPlus, Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/components/language-provider';
@@ -11,7 +11,7 @@ import { localizeNotification } from '@/lib/notification-copy';
 
 type NotificationItem = {
   id: string;
-  type: 'arena_invite' | 'arena_member_joined' | 'match_completed';
+  type: 'arena_invite' | 'arena_member_joined' | 'match_completed' | 'season_completed';
   title: string;
   body: string;
   data: { groupId?: string };
@@ -23,6 +23,7 @@ type NotificationPreferences = {
   arena_invite: boolean;
   arena_member_joined: boolean;
   match_completed: boolean;
+  season_completed: boolean;
   push_enabled: boolean;
 };
 
@@ -30,6 +31,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   arena_invite: true,
   arena_member_joined: true,
   match_completed: true,
+  season_completed: true,
   push_enabled: true,
 };
 
@@ -43,6 +45,12 @@ export function NotificationCenter() {
   const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(false);
   const unread = useMemo(() => items.filter((item) => !item.read_at).length, [items]);
+  const notificationStyle = (type: NotificationItem['type']) => ({
+    arena_invite: { icon: UserPlus, className: 'border-violet-400/25 bg-violet-500/10 text-violet-200' },
+    arena_member_joined: { icon: Users, className: 'border-sky-400/25 bg-sky-500/10 text-sky-200' },
+    match_completed: { icon: Swords, className: 'border-amber-400/25 bg-amber-500/10 text-amber-100' },
+    season_completed: { icon: Crown, className: 'border-fuchsia-400/25 bg-fuchsia-500/10 text-fuchsia-100' },
+  })[type];
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -124,8 +132,8 @@ export function NotificationCenter() {
 
       {open && (
         <section className="mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background/95 shadow-2xl backdrop-blur" aria-label={copy({ it: 'Centro notifiche', en: 'Notification center' })}>
-          <header className="flex items-center gap-2 border-b border-border p-3">
-            <strong className="flex-1">{copy({ it: 'Notifiche', en: 'Notifications' })}</strong>
+          <header className="flex items-center gap-2 border-b border-border bg-gradient-to-r from-emerald-950/60 via-background to-cyan-950/30 p-3">
+            <div className="flex-1"><strong>{copy({ it: 'Notifiche', en: 'Notifications' })}</strong><p className="text-xs text-muted-foreground">{unread ? copy({ it: `${unread} da leggere`, en: `${unread} unread` }) : copy({ it: 'Tutto aggiornato', en: 'All caught up' })}</p></div>
             <button type="button" onClick={() => void patch({ action: 'readAll' })} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label={copy({ it: 'Segna tutte come lette', en: 'Mark all as read' })}><CheckCheck className="h-4 w-4" /></button>
             <button type="button" onClick={() => setShowSettings((value) => !value)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label={copy({ it: 'Preferenze', en: 'Preferences' })}><Settings2 className="h-4 w-4" /></button>
             <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label={copy({ it: 'Chiudi', en: 'Close' })}><X className="h-4 w-4" /></button>
@@ -137,6 +145,7 @@ export function NotificationCenter() {
                 ['arena_invite', { it: 'Inviti al playgroup', en: 'Playgroup invitations' }],
                 ['arena_member_joined', { it: 'Nuovi membri', en: 'New members' }],
                 ['match_completed', { it: 'Partite concluse', en: 'Completed matches' }],
+                ['season_completed', { it: 'Fine stagione', en: 'Season completed' }],
                 ['push_enabled', { it: 'Notifiche push', en: 'Push notifications' }],
               ] as const).map(([key, label]) => (
                 <label key={key} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg p-2 hover:bg-muted/50">
@@ -152,11 +161,11 @@ export function NotificationCenter() {
             {!loading && !items.length && <p className="p-5 text-center text-sm text-muted-foreground">{copy({ it: 'Nessuna notifica', en: 'No notifications' })}</p>}
             {items.map((item) => {
               const localized = localizeNotification(item, language);
+              const style = notificationStyle(item.type);
+              const Icon = style.icon;
               return (
-                <button key={item.id} type="button" onClick={() => void openItem(item)} className={`block w-full border-b border-border/60 p-4 text-left last:border-0 hover:bg-muted/40 ${item.read_at ? 'opacity-70' : 'bg-emerald-950/20'}`}>
-                  <span className="block text-sm font-semibold">{localized.title}</span>
-                  <span className="mt-1 block text-sm text-muted-foreground">{localized.body}</span>
-                  <time className="mt-2 block text-xs text-muted-foreground" dateTime={item.created_at}>{new Date(item.created_at).toLocaleString(language === 'it' ? 'it-IT' : 'en-US')}</time>
+                <button key={item.id} type="button" onClick={() => void openItem(item)} className={`block w-full border-b border-border/60 p-3 text-left last:border-0 hover:bg-muted/40 ${item.read_at ? 'opacity-70' : 'bg-emerald-950/20'}`}>
+                  <div className="flex gap-3"><span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${style.className}`}><Icon className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{localized.title}</span><span className="mt-1 block text-sm text-muted-foreground">{localized.body}</span><time className="mt-2 block text-xs text-muted-foreground" dateTime={item.created_at}>{new Date(item.created_at).toLocaleString(language === 'it' ? 'it-IT' : 'en-US')}</time></span>{!item.read_at && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />}</div>
                 </button>
               );
             })}

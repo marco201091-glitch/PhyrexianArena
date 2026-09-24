@@ -72,7 +72,7 @@ function exportRecap(state: LiveGameState, startedAt: string) {
   context.fillRect(0, 0, 1200, 630);
   context.fillStyle = '#a7e3ac';
   context.font = '700 28px system-ui';
-  context.fillText('TRACKER & ANALYTICS', 64, 70);
+  context.fillText('21LIFE', 64, 70);
   context.fillStyle = '#ffffff';
   context.font = '900 54px system-ui';
   context.fillText('Riepilogo partita', 64, 136);

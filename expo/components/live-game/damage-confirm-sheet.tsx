@@ -134,6 +134,7 @@ export function DamageConfirmSheet({
           <View style={[styles.stepperRow, widePhone && styles.stepperRowWide, isIPad && styles.stepperRowIPad]}>
             <HoldPressable
               style={[styles.stepButton, compactPhone && styles.stepButtonCompact, isIPad && styles.stepButtonIPad]}
+              hitSlop={18}
               onShort={() => setAmount((value) => Math.max(0, value - 1))}
               onLong={() => setAmount((value) => Math.max(0, value - 10))}
               accessibilityRole="button"
@@ -151,6 +152,7 @@ export function DamageConfirmSheet({
             </View>
             <HoldPressable
               style={[styles.stepButton, compactPhone && styles.stepButtonCompact, isIPad && styles.stepButtonIPad]}
+              hitSlop={18}
               onShort={() => setAmount((value) => Math.min(99, value + 1))}
               onLong={() => setAmount((value) => Math.min(99, value + 10))}
               accessibilityRole="button"
@@ -189,7 +191,6 @@ export function DamageConfirmSheet({
                   onPress={() => {
                     setMode(option.value);
                     if (option.value === 'commander') setScope('single');
-                    if (option.value === 'infect') setDrain(false);
                   }}
                 >
                   <Ionicons name={option.icon} size={isIPad ? 19 : (widePhone || straightPhone) ? 20 : 14} color={active ? colors.primaryForeground : colors.muted} />
@@ -238,8 +239,7 @@ export function DamageConfirmSheet({
             </View>
           ) : null}
 
-          {mode !== 'infect' ? (
-            <Pressable
+          <Pressable
               style={[styles.drainToggle, compactPhone && styles.drainToggleCompact, drain && styles.drainToggleActive]}
               onPress={() => {
                 setDrain((current) => {
@@ -248,8 +248,8 @@ export function DamageConfirmSheet({
                   return next;
                 });
               }}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: drain }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: drain }}
               accessibilityLabel={mode === 'commander' ? labels.lifelink : labels.drain}
             >
               <Ionicons name="water-outline" size={17} color={drain ? '#f5d0fe' : colors.muted} />
@@ -257,9 +257,8 @@ export function DamageConfirmSheet({
                 <Text style={[styles.drainLabel, drain && styles.drainLabelActive]}>{mode === 'commander' ? labels.lifelink : labels.drain}</Text>
                 {!compactPhone ? <Text style={styles.drainHint} numberOfLines={1}>{mode === 'commander' ? labels.lifelinkHint : labels.drainHint}</Text> : null}
               </View>
-              <Ionicons name={drain ? 'checkbox' : 'square-outline'} size={19} color={drain ? colors.primaryLight : colors.muted} />
+              <Ionicons name={drain ? 'flash' : 'flash-outline'} size={19} color={drain ? '#f5d0fe' : colors.muted} />
             </Pressable>
-          ) : null}
           </View>
           </View>
 
@@ -615,7 +614,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
   drainToggle: {
-    minHeight: 38,
+    minHeight: 46,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -624,15 +623,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.cardInset,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
+    paddingVertical: 8,
   },
   drainToggleCompact: {
     minHeight: 28,
     paddingVertical: 2,
   },
   drainToggleActive: {
-    borderColor: colors.selectionBorder,
-    backgroundColor: colors.selectionTintStrong,
+    borderColor: '#e879f9',
+    backgroundColor: 'rgba(192,38,211,0.22)',
   },
   drainCopy: {
     flex: 1,

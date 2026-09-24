@@ -33,12 +33,12 @@ export async function POST(request: Request) {
     type: 'match_completed',
     content: {
       it: {
-        title: `Partita conclusa · ${group?.name ?? 'Playgroup'}`,
-        body: match.is_draw ? 'Pareggio' : `Vince ${winnerName || 'un giocatore'}`,
+        title: `Partita salvata · ${group?.name ?? 'Playgroup'}`,
+        body: match.is_draw ? 'Hai partecipato a un pareggio' : `Hai partecipato · vince ${winnerName || 'un giocatore'}`,
       },
       en: {
-        title: `Match completed · ${group?.name ?? 'Playgroup'}`,
-        body: match.is_draw ? 'Draw' : `${winnerName || 'A player'} wins`,
+        title: `Match saved · ${group?.name ?? 'Playgroup'}`,
+        body: match.is_draw ? 'You played in a draw' : `You played · ${winnerName || 'A player'} wins`,
       },
     },
     data: { groupId: match.group_id, matchId: match.id },

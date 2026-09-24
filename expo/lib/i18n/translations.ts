@@ -2,7 +2,7 @@ import type { AppLanguage, TranslationKey, Translations } from '@/lib/i18n/types
 
 const EN: Translations = {
   confirm: 'Confirm',
-  appName: 'Magic The Gathering',
+  appName: '21Life',
   appSubtitle: 'Tracker & Analytics',
   login: 'Enter',
   register: 'Create account',
@@ -35,6 +35,7 @@ const EN: Translations = {
   arenaInviteNotifications: 'Playgroup invitations',
   memberJoinedNotifications: 'New playgroup members',
   matchCompletedNotifications: 'Completed matches',
+  seasonCompletedNotifications: 'Season completed',
   pushNotifications: 'Push notifications',
   archidektSync: 'Archidekt sync',
   autoUpdate: 'Auto-update',
@@ -122,7 +123,7 @@ const EN: Translations = {
   matchSingular: 'match',
   matchPlural: 'matches',
   shareMatchLog: 'Share log',
-  matchShareTitle: 'Tracker & Analytics match',
+  matchShareTitle: '21Life match',
   playersAndDecks: 'Players and decks:',
   noDeckSelected: 'No deck selected',
   comment: 'Comment',
@@ -663,7 +664,7 @@ const EN: Translations = {
 
 const IT: Translations = {
   confirm: 'Conferma',
-  appName: 'Magic The Gathering',
+  appName: '21Life',
   appSubtitle: 'Tracker & Analytics',
   login: 'Entra',
   register: 'Registrati',
@@ -696,6 +697,7 @@ const IT: Translations = {
   arenaInviteNotifications: 'Inviti al playgroup',
   memberJoinedNotifications: 'Nuovi membri del playgroup',
   matchCompletedNotifications: 'Partite concluse',
+  seasonCompletedNotifications: 'Fine stagione',
   pushNotifications: 'Notifiche push',
   archidektSync: 'Sincronizzazione Archidekt',
   autoUpdate: 'Aggiornamento automatico',
@@ -783,7 +785,7 @@ const IT: Translations = {
   matchSingular: 'partita',
   matchPlural: 'partite',
   shareMatchLog: 'Condividi log',
-  matchShareTitle: 'Partita Tracker & Analytics',
+  matchShareTitle: 'Partita 21Life',
   playersAndDecks: 'Partecipanti e mazzi:',
   noDeckSelected: 'Mazzo non indicato',
   comment: 'Commento',

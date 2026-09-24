@@ -38,7 +38,7 @@ export function LiveGameRecapView({
     ), 'image/png'));
     const file = new File([png], `mtg-game-recap-${safeId}.png`, { type: 'image/png' });
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ title: 'MTG Tracker & Analytics', files: [file] });
+      await navigator.share({ title: '21Life', files: [file] });
       return;
     }
     const url = URL.createObjectURL(file);

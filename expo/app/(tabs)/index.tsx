@@ -3,7 +3,6 @@ import { useCallback, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -13,7 +12,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { showAppAlert } from '@/lib/app-alert';
 import { ArenaCard } from '@/components/dashboard/arena-card';
 import { Button } from '@/components/ui/button';
-import { SharePreviewModal } from '@/components/ui/share-preview-modal';
 import { Input } from '@/components/ui/input';
 import { DashboardSkeleton } from '@/components/ui/screen-skeletons';
 import { Modal } from '@/components/ui/modal';
@@ -25,7 +23,6 @@ import { useLanguage } from '@/contexts/language-context';
 import { colors } from '@/constants/theme';
 import { useGroups } from '@/hooks/use-groups';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { getSiteUrl } from '@/lib/env';
 import { fetchGroupByInviteCode } from '@/lib/join-arena';
 import { getSupabaseErrorMessage } from '@/lib/supabase-errors';
 import { supabase } from '@/lib/supabase';
@@ -41,8 +38,6 @@ export default function DashboardScreen() {
   const { groups, loading: groupsLoading, refresh: refreshGroups } = useGroups(user?.id);
 
   const [refreshing, setRefreshing] = useState(false);
-  const [sharePreview, setSharePreview] = useState<{ title: string; message: string } | null>(null);
-  const [sharing, setSharing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -71,24 +66,6 @@ export default function DashboardScreen() {
     await refreshGroups();
     setRefreshing(false);
   }, [refreshGroups]);
-
-  const openInvitePreview = useCallback((code: string) => {
-    const url = `${getSiteUrl()}/join/${code}`;
-    setSharePreview({ title: copy('copyInviteLink'), message: url });
-  }, [copy]);
-
-  const confirmShare = useCallback(async () => {
-    if (!sharePreview) return;
-    setSharing(true);
-    try {
-      await Share.share({ message: sharePreview.message, title: sharePreview.title });
-      setSharePreview(null);
-    } catch {
-      showAppAlert(copy('error'), copy('shareStatsFailed'));
-    } finally {
-      setSharing(false);
-    }
-  }, [copy, sharePreview]);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim() || !user) return;
@@ -215,14 +192,11 @@ export default function DashboardScreen() {
                   arenaLabel={copy('arenaLabel')}
                   playersLabel={copy('players')}
                   tableLabel={copy('table')}
-                  inviteLabel={copy('invite')}
                   createdLabel={copy('created')}
                   openHint={copy('openArenaHint')}
                   openLabel={copy('open')}
-                  copyLabel={copy('copyInviteLink')}
                   formatDate={formatArenaDate}
                   onOpen={() => router.push({ pathname: '/table/[id]', params: { id: group.id } })}
-                  onCopyInvite={() => openInvitePreview(group.invite_code)}
                 />
               </View>
             ))}
@@ -230,18 +204,6 @@ export default function DashboardScreen() {
         )}
 
       </ScrollView>
-
-      <SharePreviewModal
-        visible={Boolean(sharePreview)}
-        title={sharePreview?.title || ''}
-        preview={sharePreview?.message || ''}
-        previewLabel={copy('sharePreview')}
-        shareLabel={copy('shareNow')}
-        cancelLabel={copy('cancel')}
-        onClose={() => setSharePreview(null)}
-        onShare={confirmShare}
-        sharing={sharing}
-      />
 
       <Modal visible={showJoinModal} onClose={() => setShowJoinModal(false)}>
         <Text style={styles.modalTitle}>{copy('joinArenaTitle')}</Text>

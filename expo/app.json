@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "MTG Tracker & Analytics",
+    "name": "21Life",
     "slug": "phyrexian-arena",
-    "version": "8.5.0",
+    "version": "9.0.0",
     "platforms": ["android", "ios", "web"],
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "requireFullScreen": false,
       "bundleIdentifier": "com.phyrexianarena.app",
-      "buildNumber": "80500",
+      "buildNumber": "90000",
       "icon": "./assets/icon.png",
       "backgroundColor": "#0a0a0f",
       "associatedDomains": [
@@ -41,7 +41,7 @@
     },
     "android": {
       "package": "com.phyrexianarena.app",
-      "versionCode": 80500,
+      "versionCode": 90000,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -50,7 +50,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#24282c"
       },
       "softwareKeyboardLayoutMode": "resize",
       "intentFilters": [

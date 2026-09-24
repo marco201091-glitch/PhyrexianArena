@@ -28,4 +28,12 @@ describe('V8 notification compatibility', () => {
     expect(migration).toMatch(/default 'it'/i);
     expect(migration).not.toMatch(/drop\s+(table|column)|alter\s+column\s+.*type/i);
   });
+
+  it('adds season notifications without changing existing notification data', () => {
+    const migration = read('supabase/migrations/20260922143000_smart_season_notifications.sql');
+    expect(migration).toMatch(/add column if not exists season_completed boolean not null default true/i);
+    expect(migration).toContain("'season_completed'");
+    expect(migration).toContain('arena_season_archives_notify_completed');
+    expect(migration).not.toMatch(/drop\s+(table|column)|alter\s+column\s+.*type/i);
+  });
 });

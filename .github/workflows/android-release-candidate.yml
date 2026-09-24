@@ -134,8 +134,8 @@ jobs:
         with:
           name: mtg-tracker-analytics-${{ steps.release.outputs.version }}
           path: |
-            artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk
-            artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk.sha256
+            artifacts/apk/21life-v${{ steps.release.outputs.version }}.apk
+            artifacts/apk/21life-v${{ steps.release.outputs.version }}.apk.sha256
             artifacts/apk/web-sbom-${{ steps.release.outputs.version }}.json
             artifacts/apk/android-sbom-${{ steps.release.outputs.version }}.json
           if-no-files-found: error
@@ -148,30 +148,32 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          $apk = "artifacts/apk/mtg-commander-v$env:RELEASE_VERSION.apk"
+          $apk = "artifacts/apk/21life-v$env:RELEASE_VERSION.apk"
           $checksum = "$apk.sha256"
           $webSbom = "artifacts/apk/web-sbom-$env:RELEASE_VERSION.json"
           $androidSbom = "artifacts/apk/android-sbom-$env:RELEASE_VERSION.json"
-          @(
-            "## MTG Tracker & Analytics $env:GITHUB_REF_NAME",
-            "",
-            "Feature release focused on live-game usability, privacy and operational reliability.",
-            "",
-            "### Main features",
-            "",
-            "- Search by deck or commander in the live-game wizard",
-            "- Last Standing applies lethal damage to every remaining opponent",
-            "- App-version visibility and operational diagnostics for administrators",
-            "- Account-data export and removal of avatar loading/upload",
-            "- Runtime compatibility controls, notification telemetry and stronger release checks",
+          $trailer = @(
             "",
             "Install or update with Obtainium from this repository's GitHub Releases.",
             "",
             "The attached checksum can be used to verify the APK before installation."
-          ) | Set-Content -LiteralPath "$env:RUNNER_TEMP/release-notes.md" -Encoding utf8
+          )
+
+          # Curated notes live next to the code; see docs/releases/README.md.
+          # Falling back to generated notes is deliberate: a release must never
+          # ship another version's changelog.
+          $notesFile = "docs/releases/$env:RELEASE_VERSION.md"
+          if (Test-Path $notesFile) {
+            $body = @((Get-Content -Raw $notesFile).TrimEnd()) + $trailer
+            $body | Set-Content -LiteralPath "$env:RUNNER_TEMP/release-notes.md" -Encoding utf8
+            $notesArgs = @("--notes-file", "$env:RUNNER_TEMP/release-notes.md")
+          } else {
+            Write-Host "No $notesFile: falling back to generated release notes."
+            $notesArgs = @("--generate-notes")
+          }
 
           gh release create $env:GITHUB_REF_NAME $apk $checksum $webSbom $androidSbom `
             --repo $env:GITHUB_REPOSITORY `
-            --title "MTG Tracker & Analytics $env:GITHUB_REF_NAME" `
-            --notes-file "$env:RUNNER_TEMP/release-notes.md" `
+            --title "21Life $env:GITHUB_REF_NAME" `
+            @notesArgs `
             --verify-tag

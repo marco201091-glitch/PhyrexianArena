@@ -185,8 +185,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
   },
   rankRowFirst: {
-    backgroundColor: 'rgba(66, 159, 74, 0.14)',
-    borderColor: 'rgba(66, 159, 74, 0.35)',
+    backgroundColor: colors.selectionTint,
+    borderColor: colors.selectionBorder,
   },
   rankRowSecond: {
     backgroundColor: 'rgba(148, 163, 184, 0.08)',
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   guestBadge: {
     color: colors.amber,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   },
   winRateLabel: {
     color: colors.muted,
-    fontSize: 10,
+    fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },

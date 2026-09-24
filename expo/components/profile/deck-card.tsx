@@ -1,5 +1,8 @@
-import { memo } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal } from '@/components/ui/modal';
+import { ModalHeader } from '@/components/ui/modal-header';
+import { Button } from '@/components/ui/button';
+import { memo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DeckImage } from '@/components/deck/deck-image';
 import { DeckExternalLinkChip } from '@/components/deck/deck-external-link-chip';
@@ -50,6 +53,7 @@ export const DeckCard = memo(function DeckCard({
   onToggleFavorite,
 }: DeckCardProps) {
   const { copy } = useLanguage();
+  const [menuOpen, setMenuOpen] = useState(false);
   const manaColors = getDeckDisplayColors(deck);
   const canRefresh = deck.source_type !== 'manual' && Boolean(deck.source_url);
   const gamesPlayed = winRate?.gamesPlayed ?? 0;
@@ -65,9 +69,9 @@ export const DeckCard = memo(function DeckCard({
         hasMastery && {
           borderColor: mastery.color,
           shadowColor: mastery.color,
-          shadowOpacity: 0.28,
-          shadowRadius: 12,
-          elevation: 8,
+          shadowOpacity: 0.08,
+          shadowRadius: 2,
+          elevation: 1,
         },
       ]}
     >
@@ -121,6 +125,7 @@ export const DeckCard = memo(function DeckCard({
 
       <View style={styles.actions}>
         <Pressable
+          accessibilityLabel={language === 'it' ? 'Mazzo preferito' : 'Favorite deck'}
           onPress={onToggleFavorite}
           style={styles.actionButton}
           accessibilityRole="button"
@@ -129,30 +134,20 @@ export const DeckCard = memo(function DeckCard({
           <Ionicons
             name={deck.is_favorite ? 'star' : 'star-outline'}
             size={20}
-            color={deck.is_favorite ? '#fcd34d' : colors.primaryMuted}
+            color={deck.is_favorite ? colors.medalGold : colors.primaryMuted}
           />
         </Pressable>
         <Pressable onPress={onDetails} style={[styles.actionButton, styles.detailsButton]} accessibilityRole="button">
           <Ionicons name="stats-chart-outline" size={18} color={colors.primaryMuted} />
           <Text style={styles.detailsLabel}>{detailsLabel}</Text>
         </Pressable>
-        {onEdit ? (
-          <Pressable onPress={onEdit} style={styles.actionButton} accessibilityRole="button">
-            <Ionicons name="create-outline" size={20} color={colors.primaryMuted} />
-          </Pressable>
-        ) : null}
-        {canRefresh && onRefresh ? (
-          <Pressable onPress={onRefresh} style={styles.actionButton} disabled={refreshing}>
-            {refreshing ? (
-              <ActivityIndicator size="small" color={colors.muted} />
-            ) : (
-              <Ionicons name="refresh-outline" size={20} color={colors.primaryMuted} />
-            )}
-          </Pressable>
-        ) : null}
-        <Pressable onPress={onDelete} style={styles.actionButton}>
-          <Ionicons name="trash-outline" size={18} color={colors.muted} />
-        </Pressable>
+        <Pressable onPress={() => setMenuOpen(true)} style={styles.actionButton} accessibilityRole="button" accessibilityLabel={language === 'it' ? 'Altre azioni mazzo' : 'More deck actions'}><Ionicons name="ellipsis-horizontal" size={22} color={colors.foreground} /></Pressable>
+        <Modal visible={menuOpen} onClose={() => setMenuOpen(false)}>
+          <ModalHeader title={deck.name} onClose={() => setMenuOpen(false)} />
+          {onEdit ? <Button label={copy('editCommander')} icon="create-outline" variant="ghost" onPress={() => { setMenuOpen(false); onEdit(); }} /> : null}
+          {canRefresh && onRefresh ? <Button label={copy('refreshDecks')} icon="refresh-outline" variant="ghost" disabled={refreshing} onPress={() => { setMenuOpen(false); onRefresh(); }} /> : null}
+          <Button label={copy('deleteDeck')} icon="trash-outline" variant="destructive" onPress={() => { setMenuOpen(false); onDelete(); }} />
+        </Modal>
       </View>
     </PhyrexianPanel>
   );
@@ -179,7 +174,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(4, 6, 10, 0.66)',
+    backgroundColor: colors.artScrim,
   },
   content: {
     minHeight: 230,
@@ -242,7 +237,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     color: 'rgba(255,255,255,0.68)',
-    fontSize: 10,
+    fontSize: 12,
     marginTop: 2,
     textAlign: 'center',
   },

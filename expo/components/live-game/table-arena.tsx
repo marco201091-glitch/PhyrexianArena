@@ -430,11 +430,11 @@ export function TableArena({
     ? centerToolbarBand?.height ?? 0
     : centerToolbarBand?.width ?? 0;
   const toolbarButtonSize = centerToolbarBand
-    ? Math.max(30, Math.min(56, (centerToolbarMainSize - 98) / 8))
+    ? Math.max(30, Math.min(56, (centerToolbarMainSize - 94) / 7))
     : 44;
   const toolbarButtonStyle = {
     width: toolbarButtonSize,
-    height: toolbarButtonSize,
+    height: isVerticalCenterToolbar ? toolbarButtonSize : 48,
     borderRadius: toolbarButtonSize / 2,
   };
 
@@ -665,7 +665,7 @@ export function TableArena({
         accessibilityLabel={labels.dieOrCoin}
       >
         <View style={styles.randomizerToolIcon}>
-          <Ionicons name="dice-outline" size={22} color={colors.foreground} />
+          <Ionicons name="diamond-outline" size={25} color="#ddd6fe" />
           <View style={styles.coinToolBadge} />
         </View>
       </Pressable>
@@ -680,8 +680,8 @@ export function TableArena({
         accessibilityLabel={labels.randomAll}
       >
         <View style={styles.groupRandomIcon}>
-          <Ionicons name="people-outline" size={22} color={colors.foreground} />
-          <Ionicons name="shuffle" size={11} color={colors.primaryLight} style={styles.iconBadge} />
+          <Ionicons name="dice-outline" size={23} color={colors.foreground} />
+          <Ionicons name="people" size={11} color="#99f6e4" style={styles.iconBadge} />
         </View>
       </Pressable>
 
@@ -697,8 +697,8 @@ export function TableArena({
         accessibilityLabel={labels.randomOpponents}
       >
         <View style={styles.opponentRandomIcon}>
-          <Ionicons name="finger-print-outline" size={22} color={colors.foreground} />
-          <Ionicons name="shuffle" size={11} color={colors.primaryLight} style={styles.iconBadge} />
+          <Ionicons name="dice-outline" size={23} color={colors.foreground} />
+          <Ionicons name="locate" size={11} color="#fbbf24" style={styles.iconBadge} />
         </View>
       </Pressable>
 
@@ -1073,9 +1073,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
   },
-  onboardingCard: { position: 'absolute', left: 12, right: 12, zIndex: 80, gap: 5, borderWidth: 1, borderColor: 'rgba(52,211,153,0.38)', borderRadius: radii.lg, backgroundColor: 'rgba(9,9,15,0.97)', padding: spacing.md },
+  onboardingCard: { position: 'absolute', left: 12, right: 12, zIndex: 80, gap: 5, borderWidth: 1, borderColor: colors.selectionBorder, borderRadius: radii.lg, backgroundColor: colors.modalSurface, padding: spacing.md },
   onboardingHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  onboardingTitle: { flex: 1, color: '#d1fae5', fontSize: 14, fontWeight: '900' },
+  onboardingTitle: { flex: 1, color: colors.primaryMuted, fontSize: 14, fontWeight: '900' },
   onboardingClose: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
   onboardingText: { color: colors.muted, fontSize: 11, lineHeight: 16 },
   gridHost: {
@@ -1141,7 +1141,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
   toolBtnActive: {
-    backgroundColor: 'rgba(66, 159, 74,0.28)',
+    backgroundColor: colors.selectionTintStrong,
     borderColor: 'rgba(167, 227, 172,0.45)',
   },
   toolBtnUtility: {
@@ -1249,7 +1249,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingLeft: spacing.md,
     paddingRight: 5,
-    backgroundColor: 'rgba(66, 159, 74,0.16)',
+    backgroundColor: colors.selectionTint,
   },
   activePickerCancel: {
     minHeight: 36,
@@ -1292,7 +1292,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radii.md,
     paddingHorizontal: spacing.sm,
-    backgroundColor: 'rgba(66, 159, 74,0.22)',
+    backgroundColor: colors.selectionTintStrong,
   },
   damageFeedbackUndoText: {
     color: colors.primaryLight,
@@ -1312,11 +1312,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'rgba(167, 227, 172,0.32)',
-    backgroundColor: 'rgba(66, 159, 74,0.13)',
+    backgroundColor: colors.selectionTint,
   },
   randomizerButtonActive: {
     borderColor: 'rgba(217, 249, 157,0.78)',
-    backgroundColor: 'rgba(66, 159, 74,0.34)',
+    backgroundColor: colors.selectionTintStrong,
   },
   randomizerButtonText: {
     color: colors.foreground,
@@ -1340,7 +1340,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(217, 249, 157,0.72)',
     backgroundColor: '#25134a',
-    shadowColor: '#429f4a',
+    shadowColor: colors.primary,
     shadowOpacity: 0.45,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },

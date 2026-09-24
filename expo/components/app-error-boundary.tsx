@@ -18,7 +18,7 @@ export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl, backgroundColor: colors.black },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl, backgroundColor: colors.background },
   title: { color: colors.foreground, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   body: { color: colors.muted, fontSize: 14, textAlign: 'center' },
 });

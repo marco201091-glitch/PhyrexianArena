@@ -122,17 +122,23 @@ export default function ResetPasswordScreen() {
         <Input
           label={copy('password')}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           value={password}
           onChangeText={setPassword}
           autoComplete="new-password"
+          importantForAutofill="yes"
         />
         <PasswordRequirements password={password} />
         <Input
           label={copy('confirmPassword')}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           autoComplete="new-password"
+          importantForAutofill="yes"
         />
         {confirmPassword.length > 0 && !passwordsMatch ? (
           <Text style={styles.error}>{copy('passwordsDoNotMatch')}</Text>

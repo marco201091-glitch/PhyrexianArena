@@ -76,9 +76,9 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryLight,
     backgroundColor: colors.primarySurface,
     shadowColor: colors.primary,
-    shadowOpacity: 0.24,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
   label: {
     flexShrink: 1,

@@ -24,7 +24,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'MTG Tracker & Analytics',
+  title: '21Life',
   description: 'Life counter, deck analytics, match history, and playgroup tools for Commander.',
   authors: [{ name: 'blackistoostrong' }],
   creator: 'blackistoostrong',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'MTG Tracker',
+    title: '21Life',
   },
   formatDetection: {
     telephone: false,
