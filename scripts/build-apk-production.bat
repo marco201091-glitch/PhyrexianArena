@@ -70,16 +70,16 @@ popd
 
 set "ARTIFACT_DIR=%ROOT_DIR%\artifacts\apk"
 if not exist "%ARTIFACT_DIR%" mkdir "%ARTIFACT_DIR%"
-copy /Y "%EXPO_DIR%\android\app\build\outputs\apk\release\app-release.apk" "%ARTIFACT_DIR%\mtg-commander-v%VERSION%.apk" >nul
+copy /Y "%EXPO_DIR%\android\app\build\outputs\apk\release\app-release.apk" "%ARTIFACT_DIR%\21life-v%VERSION%.apk" >nul
 if errorlevel 1 goto :fail
 
-node "%~dp0verify-release-apk.mjs" "%ARTIFACT_DIR%\mtg-commander-v%VERSION%.apk" "%VERSION%"
+node "%~dp0verify-release-apk.mjs" "%ARTIFACT_DIR%\21life-v%VERSION%.apk" "%VERSION%"
 if errorlevel 1 goto :fail
 
 echo [6/6] Release artifact verified
 
 call :cleanup
-echo BUILD OK: %ARTIFACT_DIR%\mtg-commander-v%VERSION%.apk
+echo BUILD OK: %ARTIFACT_DIR%\21life-v%VERSION%.apk
 if "%NO_PAUSE%"=="0" pause
 exit /b 0
 

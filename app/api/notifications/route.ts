@@ -7,6 +7,7 @@ const DEFAULT_PREFERENCES = {
   arena_invite: true,
   arena_member_joined: true,
   match_completed: true,
+  season_completed: true,
   push_enabled: true,
 };
 
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
       .limit(50),
     admin
       .from('notification_preferences')
-      .select('arena_invite, arena_member_joined, match_completed, push_enabled')
+      .select('arena_invite, arena_member_joined, match_completed, season_completed, push_enabled')
       .eq('user_id', auth.user.id)
       .maybeSingle(),
   ]);

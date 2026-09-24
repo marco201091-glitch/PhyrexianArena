@@ -26,6 +26,7 @@ export function CollapsiblePanel({
         style={styles.header}
         onPress={() => setExpanded((current) => !current)}
         accessibilityRole="button"
+        accessibilityLabel={title}
         accessibilityState={{ expanded }}
       >
         <Ionicons

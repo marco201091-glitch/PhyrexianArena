@@ -25,7 +25,7 @@ module.exports = ({ config: base }) => {
 
   return {
     ...base,
-    name: isDevVariant ? 'MTG Tracker Dev' : base.name,
+    name: '21Life',
     scheme: isDevVariant ? devScheme : base.scheme,
     plugins: [
       ...basePlugins,

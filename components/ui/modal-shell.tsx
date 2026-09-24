@@ -87,7 +87,7 @@ export function ModalOverlay({
             className,
           )}
         >
-          <DialogPrimitive.Title className="sr-only">Tracker & Analytics</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">21Life</DialogPrimitive.Title>
           {children}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

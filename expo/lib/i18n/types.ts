@@ -35,6 +35,7 @@ export type TranslationKey =
   | 'arenaInviteNotifications'
   | 'memberJoinedNotifications'
   | 'matchCompletedNotifications'
+  | 'seasonCompletedNotifications'
   | 'pushNotifications'
   | 'archidektSync'
   | 'autoUpdate'

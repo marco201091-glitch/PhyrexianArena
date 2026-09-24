@@ -89,6 +89,7 @@ import {
   ExternalLink,
   Swords,
   Trophy,
+  Crown,
   Loader2,
   Search,
   Mail,
@@ -102,7 +103,6 @@ import {
   Lock,
   BarChart3,
   Crosshair,
-  HeartPulse,
   Shield,
   ChevronRight,
   Skull,
@@ -646,7 +646,7 @@ export default function ProfilePage() {
   const [linkDeckUrl, setLinkDeckUrl] = useState('');
   const [savingDeckLink, setSavingDeckLink] = useState(false);
   const [deckSearchQuery, setDeckSearchQuery] = useState('');
-  const [deckColorFilter, setDeckColorFilter] = useState('all');
+  const [deckColorFilter, setDeckColorFilter] = useState<string[]>([]);
   const [deckPlayerFilter, setDeckPlayerFilter] = useState('all');
   const [deckWinRates, setDeckWinRates] = useState<Map<string, DeckWinRateSnapshot>>(new Map());
   const [deckPerformance, setDeckPerformance] = useState<Map<string, DeckPerformanceStats>>(new Map());
@@ -974,9 +974,9 @@ export default function ProfilePage() {
     const normalizedQuery = deckSearchQuery.trim().toLowerCase();
 
     const matching = visibleDecks.filter((deck) => {
-      if (deckColorFilter !== 'all') {
+      if (deckColorFilter.length) {
         const colors = getDeckDisplayColors(deck);
-        if (!colors.includes(deckColorFilter)) {
+        if (!deckColorFilter.every((color) => colors.includes(color))) {
           return false;
         }
       }
@@ -1005,6 +1005,15 @@ export default function ProfilePage() {
       return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
     });
   }, [deckColorFilter, deckPerformance, deckSearchQuery, deckSort, visibleDecks]);
+
+  const personalSnapshot = useMemo(() => {
+    const performances = visibleDecks.map((deck) => deckPerformance.get(deck.id)).filter((entry): entry is DeckPerformanceStats => Boolean(entry));
+    const games = performances.reduce((total, entry) => total + entry.gamesPlayed, 0);
+    const wins = performances.reduce((total, entry) => total + entry.wins, 0);
+    const favorite = visibleDecks.find((deck) => deck.is_favorite) || visibleDecks[0];
+    const mostPlayed = [...visibleDecks].sort((a, b) => (deckPerformance.get(b.id)?.gamesPlayed || 0) - (deckPerformance.get(a.id)?.gamesPlayed || 0))[0];
+    return { games, wins, winRate: games ? Math.round((wins / games) * 100) : 0, favorite, mostPlayed };
+  }, [deckPerformance, visibleDecks]);
 
   const toggleDeckFavorite = useCallback(async (deck: Deck) => {
     if (!user || deck.user_id !== user.id) return;
@@ -2487,10 +2496,13 @@ export default function ProfilePage() {
                       </label>
                       <Input
                         id="currentPassword"
+                        name="currentPassword"
                         type="password"
                         value={currentPassword}
                         onChange={(event) => setCurrentPassword(event.target.value)}
                         autoComplete="current-password"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         className={accountPanelInputClass}
                       />
                     </div>
@@ -2500,10 +2512,13 @@ export default function ProfilePage() {
                       </label>
                       <Input
                         id="newPassword"
+                        name="newPassword"
                         type="password"
                         value={newPassword}
                         onChange={(event) => setNewPassword(event.target.value)}
                         autoComplete="new-password"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         className={accountPanelInputClass}
                       />
                       <PasswordRequirements password={newPassword} />
@@ -2514,10 +2529,13 @@ export default function ProfilePage() {
                       </label>
                       <Input
                         id="confirmNewPassword"
+                        name="confirmNewPassword"
                         type="password"
                         value={confirmNewPassword}
                         onChange={(event) => setConfirmNewPassword(event.target.value)}
                         autoComplete="new-password"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         className={accountPanelInputClass}
                       />
                       {confirmNewPassword.length > 0 && confirmNewPassword !== newPassword ? (
@@ -2638,6 +2656,23 @@ export default function ProfilePage() {
           </Card>
         )}
 
+        {!adminMode && (
+          <section className="mb-8 overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-950/45 via-background to-violet-950/35 p-4 shadow-[0_16px_42px_rgba(6,182,212,0.08)] sm:p-5" aria-label={t({ it: 'La tua scheda giocatore', en: 'Your player card' })}>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/70">{t({ it: 'Scheda giocatore', en: 'Player card' })}</p><h2 className="mt-1 text-xl font-bold text-foreground">{t({ it: 'La tua Command Zone', en: 'Your Command Zone' })}</h2></div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/25 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-100"><Crown className="h-3.5 w-3.5 text-violet-300" />{personalSnapshot.games ? t({ it: 'Statistiche personali', en: 'Personal stats' }) : t({ it: 'Pronto a giocare', en: 'Ready to play' })}</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { label: t({ it: 'Partite giocate', en: 'Matches played' }), value: personalSnapshot.games, tone: 'from-cyan-500/20 to-cyan-950/10', icon: Swords },
+                { label: t({ it: 'Win rate', en: 'Win rate' }), value: `${personalSnapshot.winRate}%`, tone: 'from-emerald-500/20 to-emerald-950/10', icon: Trophy },
+                { label: t({ it: 'Mazzi attivi', en: 'Active decks' }), value: visibleDecks.length, tone: 'from-violet-500/20 to-violet-950/10', icon: Star },
+              ].map(({ label, value, tone, icon: Icon }) => <div key={label} className={`rounded-xl border border-white/10 bg-gradient-to-br ${tone} p-3`}><div className="flex items-center justify-between text-xs text-muted-foreground"><span>{label}</span><Icon className="h-4 w-4 text-white/70" /></div><p className="mt-2 text-2xl font-bold text-foreground">{value}</p></div>)}
+            </div>
+            {personalSnapshot.favorite || personalSnapshot.mostPlayed ? <div className="mt-3 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-amber-300/15 bg-amber-500/5 p-3"><p className="text-xs text-amber-200/70">{t({ it: 'Mazzo preferito', en: 'Favorite deck' })}</p><p className="mt-1 truncate font-semibold text-foreground">{personalSnapshot.favorite?.name || '—'}</p></div><div className="rounded-xl border border-cyan-300/15 bg-cyan-500/5 p-3"><p className="text-xs text-cyan-200/70">{t({ it: 'Più giocato', en: 'Most played' })}</p><p className="mt-1 truncate font-semibold text-foreground">{personalSnapshot.mostPlayed?.name || '—'}</p></div></div> : null}
+          </section>
+        )}
+
         {/* Decks Section */}
         <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border/70 bg-black/25 p-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
@@ -2705,19 +2740,10 @@ export default function ProfilePage() {
                 className="border-border bg-background/50 pl-9 text-foreground placeholder:text-muted-foreground"
               />
             </div>
-            <Select value={deckColorFilter} onValueChange={setDeckColorFilter}>
-              <SelectTrigger className="border-border bg-background/50 text-foreground">
-                <SelectValue placeholder={t({ it: 'Colore', en: 'Color' })} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t({ it: 'Tutti i colori', en: 'All colors' })}</SelectItem>
-                {MANA_COLOR_ORDER.map((color) => (
-                  <SelectItem key={color} value={color}>
-                    {t(MANA_COLOR_LABELS[color])}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex min-h-10 items-center gap-1 rounded-md border border-border bg-background/50 px-2" aria-label={t({ it: 'Filtra per colori', en: 'Filter by colors' })}>
+              <button type="button" onClick={() => setDeckColorFilter([])} className={`rounded px-1.5 py-1 text-xs font-bold ${deckColorFilter.length === 0 ? 'bg-emerald-500/20 text-emerald-200' : 'text-muted-foreground'}`}>{t({ it: 'Tutti', en: 'All' })}</button>
+              {MANA_COLOR_ORDER.map((color) => <button key={color} type="button" onClick={() => setDeckColorFilter((current) => current.includes(color) ? current.filter((item) => item !== color) : [...current, color])} className={`grid h-7 w-7 place-items-center rounded-full text-xs font-black ${deckColorFilter.includes(color) ? 'bg-emerald-400 text-emerald-950' : 'bg-secondary text-muted-foreground'}`} title={t(MANA_COLOR_LABELS[color])}>{color}</button>)}
+            </div>
             <Select value={deckSort} onValueChange={(value) => setDeckSort(value as typeof deckSort)}>
               <SelectTrigger className="border-border bg-background/50 text-foreground">
                 <SelectValue placeholder={t({ it: 'Ordina per', en: 'Sort by' })} />
@@ -2943,6 +2969,11 @@ export default function ProfilePage() {
         <SheetContent side="right" className="w-full overflow-y-auto border-border bg-card p-0 sm:max-w-xl">
           {detailsDeck ? (() => {
             const performance = deckPerformance.get(detailsDeck.id);
+            const gamesPlayed = performance?.gamesPlayed ?? 0;
+            const wins = performance?.wins ?? 0;
+            const draws = performance?.draws ?? 0;
+            const losses = performance?.losses ?? 0;
+            const winRate = performance?.winRate ?? 0;
             return (
               <>
                 <div className="relative overflow-hidden border-b border-border">
@@ -2959,21 +2990,33 @@ export default function ProfilePage() {
                 </div>
                 <div className="space-y-6 p-5">
                   <section>
-                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground"><BarChart3 className="h-4 w-4 text-emerald-300" />Overview</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        [t({ it: 'Partite', en: 'Games' }), performance?.gamesPlayed ?? 0],
-                        [t({ it: 'Vittorie', en: 'Wins' }), performance?.wins ?? 0],
-                        ['Win rate', `${performance?.winRate ?? 0}%`],
-                        [t({ it: 'Secondi posti', en: 'Runner-up' }), performance?.secondPlaces ?? 0],
-                        [t({ it: 'Danno medio', en: 'Avg damage' }), performance?.averageDamageDealt ?? 0],
-                        [t({ it: 'Vittoria mediana', en: 'Median win' }), performance?.medianWinningDurationSeconds != null ? formatGameDuration(performance.medianWinningDurationSeconds) : '—'],
-                      ].map(([label, value]) => (
-                        <div key={String(label)} className="rounded-xl border border-border/70 bg-background/35 p-3">
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-                          <p className="mt-1 text-lg font-bold text-foreground">{value}</p>
+                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground"><BarChart3 className="h-4 w-4 text-emerald-300" />{t({ it: 'Impronta del mazzo', en: 'Deck fingerprint' })}</h3>
+                    <div className="grid gap-3 rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 via-background/35 to-cyan-500/5 p-4 sm:grid-cols-[9rem_1fr]">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="grid h-28 w-28 place-items-center rounded-full" style={{ background: `conic-gradient(#34d399 ${winRate}%, #475569 ${winRate}% ${Math.max(winRate, winRate + (draws / Math.max(gamesPlayed, 1)) * 100)}%, #1e293b 0)` }}>
+                          <div className="grid h-20 w-20 place-items-center rounded-full bg-card text-center shadow-inner">
+                            <strong className="text-2xl text-emerald-300">{winRate}%</strong>
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">win rate</span>
+                          </div>
                         </div>
-                      ))}
+                        <p className="mt-2 text-xs text-muted-foreground">{gamesPlayed} {t({ it: 'partite', en: 'games' })}</p>
+                      </div>
+                      <div className="space-y-3 self-center">
+                        {[
+                          [t({ it: 'Vittorie', en: 'Wins' }), wins, 'bg-emerald-400'],
+                          [t({ it: 'Patte', en: 'Draws' }), draws, 'bg-cyan-400'],
+                          [t({ it: 'Sconfitte', en: 'Losses' }), losses, 'bg-slate-500'],
+                        ].map(([label, value, color]) => (
+                          <div key={String(label)}>
+                            <div className="mb-1 flex justify-between text-xs"><span className="text-muted-foreground">{label}</span><span className="font-semibold text-foreground">{value}</span></div>
+                            <div className="h-2 overflow-hidden rounded-full bg-secondary"><div className={`h-full rounded-full ${color}`} style={{ width: `${(Number(value) / Math.max(gamesPlayed, 1)) * 100}%` }} /></div>
+                          </div>
+                        ))}
+                        <div className="grid grid-cols-2 gap-2 pt-1 text-center">
+                          <div className="rounded-lg bg-background/45 p-2"><p className="text-[10px] uppercase text-muted-foreground">{t({ it: 'Podî', en: 'Podiums' })}</p><p className="font-bold text-foreground">{wins + (performance?.secondPlaces ?? 0)}</p></div>
+                          <div className="rounded-lg bg-background/45 p-2"><p className="text-[10px] uppercase text-muted-foreground">{t({ it: 'Vittoria tipica', en: 'Typical win' })}</p><p className="font-bold text-foreground">{performance?.medianWinningDurationSeconds != null ? formatGameDuration(performance.medianWinningDurationSeconds) : '—'}</p></div>
+                        </div>
+                      </div>
                     </div>
                   </section>
 
@@ -2983,8 +3026,6 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           [t({ it: 'Danni inflitti', en: 'Damage dealt' }), performance.totalDamageDealt, Swords],
-                          [t({ it: 'Danni subiti', en: 'Damage taken' }), performance.totalDamageTaken, Shield],
-                          [t({ it: 'Vita guadagnata', en: 'Life gained' }), performance.totalLifeGained, HeartPulse],
                           ['KO', performance.eliminations, Crosshair],
                           [t({ it: 'Danno commander', en: 'Commander damage' }), performance.commanderDamageDealt, Shield],
                           [t({ it: 'Infect inflitto', en: 'Infect dealt' }), performance.infectDealt, Skull],

@@ -125,8 +125,8 @@ export function EditMatchModal({
   const formScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
   const availableHeight = windowHeight;
   const modalBodyHeight = Math.min(
-    windowHeight * 0.62,
-    520,
+    windowHeight * 0.86,
+    760,
     Math.max(180, availableHeight - Math.max(insets.bottom, spacing.md) - spacing.sm),
   );
   const [winnerKey, setWinnerKey] = useState('');

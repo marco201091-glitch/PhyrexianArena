@@ -1,12 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type AppNotificationType = 'arena_invite' | 'arena_member_joined' | 'match_completed';
+export type AppNotificationType = 'arena_invite' | 'arena_member_joined' | 'match_completed' | 'season_completed';
 
 type NotificationPreferenceRow = {
   user_id: string;
   arena_invite: boolean;
   arena_member_joined: boolean;
   match_completed: boolean;
+  season_completed: boolean;
   push_enabled: boolean;
 };
 
@@ -39,7 +40,7 @@ export async function notifyUsers(
   // the table yet, preserve the previous behavior instead of dropping alerts.
   const preferenceResult = await admin
     .from('notification_preferences')
-    .select('user_id, arena_invite, arena_member_joined, match_completed, push_enabled')
+    .select('user_id, arena_invite, arena_member_joined, match_completed, season_completed, push_enabled')
     .in('user_id', recipients);
   const preferences = preferenceResult.error
     ? new Map<string, NotificationPreferenceRow>()

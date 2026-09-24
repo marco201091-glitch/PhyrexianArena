@@ -211,7 +211,7 @@ export async function fetchEdhrecCommanderStats(commander: string): Promise<Edhr
       const response = await fetch(`${EDHREC_JSON_BASE}/${slug}.json`, {
         headers: {
           Accept: 'application/json',
-          'User-Agent': 'MTG Life Counter & Analytics: Commander (https://phyrexianarena.app)',
+          'User-Agent': '21Life/9.0 (https://app.phyrexianarena.dpdns.org)',
         },
         next: { revalidate: 86400 },
       });

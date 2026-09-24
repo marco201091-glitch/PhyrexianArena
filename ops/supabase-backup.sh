@@ -1,16 +1,15 @@
 #!/bin/bash
 #
-# Phyrexian Arena - backup giornaliero del database Supabase di produzione.
+# 21Life - backup giornaliero del database Supabase di produzione.
 #
 # Cosa fa:
 #   - dump del database in formato custom (ripristinabile con pg_restore)
 #   - archivio dello Storage
 #   - checksum SHA-256 e manifest dentro ogni backup
 #   - conserva gli ultimi 7 backup completi
-#   - scrive il marker "last-success" solo a backup riuscito
+#   - copia il backup su un remote rclone cifrato, se configurato
+#   - scrive marker distinti per backup locale e off-site
 #   - invia un'email di alert se il backup fallisce
-#
-# I backup restano sulla VM: NON esiste una copia off-site.
 #
 # Nessuna password e' contenuta in questo file: pg_dump e tar girano dentro i
 # container e si autenticano localmente. L'unico segreto usato e' la chiave
@@ -23,7 +22,8 @@ RETENTION=${RETENTION:-7}
 DB_CONTAINER=${DB_CONTAINER:-supabase-db}
 STORAGE_CONTAINER=${STORAGE_CONTAINER:-supabase-storage}
 HEALTH_ENV=${HEALTH_ENV:-/etc/phyrexian-health-alert.env}
-MAIL_FROM=${MAIL_FROM:-Phyrexian Arena <noreply@phyrexianarena.dpdns.org>}
+OFFSITE_ENV=${OFFSITE_ENV:-/etc/phyrexian-backup-offsite.env}
+MAIL_FROM=${MAIL_FROM:-21Life <noreply@phyrexianarena.dpdns.org>}
 
 if [[ -r "$HEALTH_ENV" ]]; then
   set -a
@@ -31,10 +31,18 @@ if [[ -r "$HEALTH_ENV" ]]; then
   source "$HEALTH_ENV"
   set +a
 fi
+if [[ -r "$OFFSITE_ENV" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$OFFSITE_ENV"
+  set +a
+fi
 
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 NAME="supabase-production-$STAMP"
 WORK_DIR=""
+OFFSITE_DESTINATION=${OFFSITE_RCLONE_DESTINATION:-}
+OFFSITE_RETENTION=${OFFSITE_RETENTION:-$RETENTION}
 
 alert() {
   local subject=$1 body=$2
@@ -58,6 +66,44 @@ last_success() {
   else
     echo mai
   fi
+}
+
+copy_offsite() {
+  [[ -n "$OFFSITE_DESTINATION" ]] || {
+    logger -t supabase-backup -p daemon.warning "backup off-site non configurato: $OFFSITE_ENV"
+    return 0
+  }
+  command -v rclone >/dev/null || {
+    echo 'rclone non installato' >&2
+    return 1
+  }
+  [[ "$OFFSITE_DESTINATION" == *:* ]] || {
+    echo 'OFFSITE_RCLONE_DESTINATION deve indicare un remote rclone' >&2
+    return 1
+  }
+  (( OFFSITE_RETENTION >= 1 )) || {
+    echo 'OFFSITE_RETENTION deve essere almeno 1' >&2
+    return 1
+  }
+
+  rclone copy "$BACKUP_DIR/$NAME" "$OFFSITE_DESTINATION/$NAME" \
+    --checksum --transfers 1 --checkers 4 --contimeout 15s --timeout 1m \
+    --retries 2 --low-level-retries 2
+
+  # Elimina solo directory con il nome prodotto da questo script.
+  mapfile -t offsite_stale < <(
+    rclone lsf --dirs-only "$OFFSITE_DESTINATION" \
+      | sed -n 's#^\(supabase-production-[0-9TZ]*\)/$#\1#p' \
+      | sort -r | tail -n "+$((OFFSITE_RETENTION + 1))"
+  )
+  for dir in "${offsite_stale[@]:-}"; do
+    [[ "$dir" =~ ^supabase-production-[0-9]{8}T[0-9]{6}Z$ ]] || continue
+    rclone purge "$OFFSITE_DESTINATION/$dir"
+  done
+
+  date -u +%s > "$BACKUP_DIR/offsite-last-success.tmp"
+  chmod 0600 "$BACKUP_DIR/offsite-last-success.tmp"
+  mv -- "$BACKUP_DIR/offsite-last-success.tmp" "$BACKUP_DIR/offsite-last-success"
 }
 
 finish() {
@@ -106,7 +152,11 @@ date -u +%s > "$BACKUP_DIR/last-success.tmp"
 chmod 0600 "$BACKUP_DIR/last-success.tmp"
 mv -- "$BACKUP_DIR/last-success.tmp" "$BACKUP_DIR/last-success"
 
-# 5. Retention: conserva solo i backup completi piu' recenti.
+# 5. Copia cifrata off-site. Un errore qui fa fallire il job e genera alert,
+# pur mantenendo disponibile il backup locale appena pubblicato.
+copy_offsite
+
+# 6. Retention: conserva solo i backup completi piu' recenti.
 mapfile -t stale < <(
   find "$BACKUP_DIR" -maxdepth 1 -type d -name 'supabase-production-*' -printf '%f\n' \
     | sort -r | tail -n "+$((RETENTION + 1))"

@@ -16,6 +16,7 @@ import type { AppLanguage } from '@/lib/i18n/types';
 type DeckCollectionInsightsProps = {
   decks: DeckCollectionSnapshot[];
   language: AppLanguage;
+  initiallyExpanded?: boolean;
   labels: {
     avgBracket: string;
     avgCommanderCmc: string;
@@ -41,8 +42,8 @@ const SOURCE_LABEL_KEYS = {
   other: 'sourceOther',
 } as const;
 
-export function DeckCollectionInsights({ decks, language, labels }: DeckCollectionInsightsProps) {
-  const [expanded, setExpanded] = useState(false);
+export function DeckCollectionInsights({ decks, language, labels, initiallyExpanded = false }: DeckCollectionInsightsProps) {
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const analytics = useMemo(() => buildDeckCollectionAnalytics(decks), [decks]);
   const averageCmc = useMemo(() => buildAverageCommanderCmc(decks), [decks]);
 
@@ -95,7 +96,7 @@ export function DeckCollectionInsights({ decks, language, labels }: DeckCollecti
                     <Text style={styles.barMeta}>{stat.count} · {stat.percentage}%</Text>
                   </View>
                   <View style={styles.barTrack}>
-                    <View style={[styles.barFillViolet, { width: `${Math.max(stat.percentage, stat.count > 0 ? 8 : 0)}%` }]} />
+                    <View style={[styles.barFillPrimary, { width: `${Math.max(stat.percentage, stat.count > 0 ? 8 : 0)}%` }]} />
                   </View>
                 </View>
               );
@@ -232,10 +233,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     overflow: 'hidden',
   },
-  barFillViolet: {
+  barFillPrimary: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: 'rgba(167, 227, 172, 0.9)',
+    backgroundColor: colors.primaryMuted,
   },
   barFillSky: {
     height: '100%',
@@ -268,13 +269,13 @@ const styles = StyleSheet.create({
   bracketChip: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: colors.selectionBorder,
+    backgroundColor: colors.selectionTint,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   bracketChipText: {
-    color: '#6ee7b7',
+    color: colors.primaryMuted,
     fontSize: 12,
   },
   avgColors: {

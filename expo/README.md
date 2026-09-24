@@ -1,4 +1,4 @@
-# MTG Tracker & Analytics — native app
+# 21Life — native app
 
 Expo/React Native client for Android and iOS. It shares the same accounts, playgroups, decks, matches, and analytics as the web app.
 

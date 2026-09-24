@@ -1,11 +1,59 @@
 # Project checklist
 
+Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checklist.
+
+- [x] Login password manager: semantica username/current-password/new-password e disattivazione maiuscola automatica nei campi password web/Android; test Playwright, build web, typecheck/lint e test web/Expo OK.
+- [x] Awards deck web: descrizioni dei premi sopra il podio, tradotte IT/EN; typecheck OK.
+- [x] Awards deck Expo: descrizione spostata sopra il podio; righe mazzo mostrano solo il conteggio partite. Aggiornamento live nell’emulatore.
+- [x] Profilo Expo: etichetta “Collection insights” rinominata “Decks insights” (IT: “Analisi mazzi”); Fast Refresh attivo.
+
 ## In progress
+
+- [x] Rebranding v9: nome visibile `21Life`, lockup interno `21Life - Tracker & Analytics`, dado con `21`, icone web/Android, email, notifiche, condivisioni e metadata aggiornati; identificativi tecnici preservati.
+
+- [x] App Android uniformata con palette nero neutro/verde fluo approvata: card neutre, accenti e glow verdi; snapshot locale verificato e ripristinato esattamente.
+- [x] Confrontata su emulatore la palette alternativa nero/blu notte/ciano.
+- [x] Provata su Android la palette Gilda fornita dal PM e salvata localmente come variante recuperabile.
+- [ ] Dopo approvazione PM, allineare la palette web a quella Android.
+
+- [x] UI v9: palette awards player attenuata per tema scuro; coccarde con pieghe e nastri oro/argento/bronzo a decrescente rilievo; typecheck web/Expo OK. Storico completo e spaziatura Archidekt corretta.
+- [x] Home Android: card playgroup arricchite con emblema, conteggio membri e icone statistiche; typecheck Expo OK.
+- [x] Home Android: rimosso codice invito e tasto condivisione; card riprogettata con due statistiche leggibili e apertura compatta.
+- [x] Arena Android: season corrente integrata nella card playgroup, sopra alle azioni; typecheck Expo OK.
+- [x] Filtri arena Android: ripristinato filtro bracket su tutte le schede non Awards, applicato a storico e statistiche; risolto separatore non UTF-8 nel riepilogo. Typecheck/lint OK.
+- [x] Edit Battle Android: aumentata l'altezza del solo modal di modifica per usare meglio lo schermo, mantenendo scroll e footer fissi; typecheck OK.
+- [x] Winning streaks nelle statistiche profilo sempre espanse.
+
+- [x] UI Android: stile, profilo, azioni mazzi, report, storico, moduli, leggibilita, notifiche, filtri e accesso/impostazioni aggiornati. Typecheck, lint e 25 test OK; app avviata su Pixel_9 con Metro/Fast Refresh. Validazione visiva completa PM da effettuare; nessun push.
+
+- [x] Wizard Android uniforme: preview partecipanti, vita iniziale, assegnazione posti; 2 giocatori solo layout classico. Toolbar live ampliata e icona dado distinta. Typecheck/lint OK.
+
+- [x] Scelta layout Android ridisegnata: tavoli separati, giocatori esterni, carte orientate secondo il runtime; typecheck OK. Validazione visiva PM in corso.
+
+- [x] Roadmap 9: rifinitura awards giocatori, report Details, filtri mazzo multipli e wizard tavolo.
+
+- [x] Roadmap 9: notifiche intelligenti (partita, inviti, fine stagione) e scheda personale profilo su Dev/Staging.
+- [x] Roadmap 9: validazione fisica E2E Android su APK Dev. F-Droid dopo una 9 stabile.
+
+- [x] Backup off-site: rclone crypt/Google Drive, retention e alert implementati; configurazione VM documentata.
+- [x] Runtime 9 e diagnostica migrazioni: migrazione applicata e verificata su Supabase staging; verifica CI implementata.
+- [x] Sicurezza Expo: vulnerabilità URI risolta con override compatibile `decode-uri-component` 0.5.0; audit produzione verde.
+- [x] Retrocompatibilità: client dalla 8.1 restano supportati; modifiche e migrazioni v9 additive.
+- [x] Dashboard salute e analytics: diagnostica admin presente; staging conferma gli indici analytics necessari. Alert backup off-site corretto.
+- [x] E2E Android: comando Maestro con controllo dispositivo implementato.
+- [x] UI v9: Details mazzo con impronta visiva W/P/S; Details partita con pressione relativa dei giocatori, web e Android.
+- [x] Player Awards web: 10 premi concordati, podio Top 3, calcolo su partite disponibili e schede Giocatori/Mazzi.
+
+- [x] Preparata 9.0.0 su Dev: dipendenze compatibili e major web aggiornate; qualità, build, bundle Android e smoke staging verificati; nessun deploy o mutazione produzione.
+- [x] Ripristolta risoluzione DNS locale disattivando WARP: Expo Doctor 21/21 verde.
+
+- [x] Audit Dev/main e release 8.5 completato: docs/AUDIT_2026-09-22.md; CI verde, 501 test locali superati, follow-up nel report.
 
 - [x] Compilare e verificare APK Dev locale 8.3.0 per test Android (prebuild e Gradle eseguiti su junction C:\\pa83 per riprodurre il percorso breve storico; CMake 3.31.6; packaging riuscito; package/version verificati; APK Dev firmata con certificato debug come previsto e salvata in `artifacts/apk/phyrexian-arena-dev-v8.3.0.apk`; mapping P: e junction rimossi).
 
 ## External follow-up
 
+- [x] Backup off-site rclone crypt/Google Drive: primo upload e marker verificati il 2026-09-24.
 - [ ] Monitor the official F-Droid merge request until approval.
 - [ ] PM verification of the Dokploy production build.
 

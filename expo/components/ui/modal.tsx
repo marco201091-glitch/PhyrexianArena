@@ -29,7 +29,7 @@ export function Modal({
   children,
   scroll = true,
   footer,
-  presentation = 'dialog',
+  presentation = 'sheet',
   maxWidth = 560,
 }: ModalProps) {
   const insets = useSafeAreaInsets();
@@ -47,7 +47,7 @@ export function Modal({
               footer ? styles.scrollWithFooter : styles.scrollStandalone,
             ]}
             keyboardShouldPersistTaps="always"
-            keyboardDismissMode="none"
+            keyboardDismissMode="on-drag"
             bottomOffset={spacing.lg}
             showsVerticalScrollIndicator
             nestedScrollEnabled

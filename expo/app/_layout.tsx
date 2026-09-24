@@ -76,7 +76,7 @@ function RootLayout() {
   useFonts({ Cinzel_700Bold });
 
   useEffect(() => {
-    void SystemUI.setBackgroundColorAsync(colors.black);
+    void SystemUI.setBackgroundColorAsync(colors.background);
   }, []);
 
   return (
@@ -133,6 +133,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.black,
+    backgroundColor: colors.background,
   },
 });

@@ -169,11 +169,14 @@ function ResetPasswordForm() {
               </label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 autoComplete="new-password"
+                autoCapitalize="none"
+                spellCheck={false}
                 className="border-border bg-background/50 text-foreground placeholder:text-muted-foreground"
               />
               <PasswordRequirements password={password} />
@@ -184,11 +187,14 @@ function ResetPasswordForm() {
               </label>
               <Input
                 id="confirmPassword"
+                name="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
                 autoComplete="new-password"
+                autoCapitalize="none"
+                spellCheck={false}
                 className="border-border bg-background/50 text-foreground placeholder:text-muted-foreground"
               />
               {confirmPassword.length > 0 && !passwordsMatch ? (

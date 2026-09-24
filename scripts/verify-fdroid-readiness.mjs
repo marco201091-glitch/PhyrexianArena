@@ -84,7 +84,7 @@ for (const text of [
     failures.push(`F-Droid docs must mention ${text}`);
   }
 }
-if (!metadata.includes('MTG Tracker & Analytics')) {
+if (!metadata.includes('AutoName: 21Life')) {
   failures.push('Fastlane metadata must use the Android display name');
 }
 for (const text of ['NonFreeNet', 'REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA', 'app-release-unsigned.apk']) {

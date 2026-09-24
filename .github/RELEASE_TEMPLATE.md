@@ -1,4 +1,4 @@
-## MTG Life Counter & Analytics: Commander vX.Y.Z
+## 21Life vX.Y.Z
 
 Unofficial Commander/EDH playgroup tracker by **blackistoostrong**.
 
@@ -21,9 +21,9 @@ users can add this GitHub repository as the application source.
 
 ### Legal
 
-MTG Life Counter & Analytics: Commander is unofficial Fan Content permitted under the
-Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials
-used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
+21Life is unofficial fan content. It is not approved, endorsed, or sponsored by
+Wizards of the Coast. Portions of the materials used are property of Wizards of
+the Coast LLC.
 
 See `LICENSE`, `THIRD_PARTY_NOTICES.md`, the Privacy Policy, and the Terms of
 Use before installing.

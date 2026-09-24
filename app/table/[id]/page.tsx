@@ -99,6 +99,8 @@ import {
   type ArenaSeasonContext,
 } from '@/lib/arena-seasons';
 import { ArenaSeasonSettings } from '@/components/arena-season-settings';
+import { PlayerAwards } from '@/components/arena/player-awards';
+import { buildPlayerAwards } from '@/lib/player-awards';
 import {
   isoToMatchDateValue,
   matchDateToIso,
@@ -433,6 +435,7 @@ export default function TablePage() {
   const [loading, setLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
+  const [awardsView, setAwardsView] = useState<'players' | 'decks'>('decks');
   const [activeLiveGameId, setActiveLiveGameId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
   const [bracketFilter, setBracketFilter] = useState('all');
@@ -1107,6 +1110,7 @@ export default function TablePage() {
     () => buildArenaAwards(allTimeAwardsDeckPerformance),
     [allTimeAwardsDeckPerformance],
   );
+  const playerAwards = useMemo(() => buildPlayerAwards(matches), [matches]);
   const arenaAwardGroups = useMemo(() => {
     const groups = new Map<DeckArenaAward['kind'], DeckArenaAward[]>();
     arenaAwards.forEach((award) => {
@@ -1895,7 +1899,7 @@ export default function TablePage() {
     const comment = match.notes?.trim() || t({ it: 'Nessun commento', en: 'No comment' });
 
     return [
-      `${t({ it: 'Partita Tracker & Analytics', en: 'Tracker & Analytics match' })} - ${group?.name || ''}`,
+      `${t({ it: 'Partita 21Life', en: '21Life match' })} - ${group?.name || ''}`,
       format(new Date(match.played_at), 'PPP'),
       match.duration_seconds != null
         ? `${t({ it: 'Durata', en: 'Duration' })}: ${formatGameDuration(match.duration_seconds)}`
@@ -2001,7 +2005,7 @@ export default function TablePage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `${group.name} - Tracker & Analytics`,
+          title: `${group.name} - 21Life`,
           text,
         });
         return;
@@ -2118,7 +2122,7 @@ export default function TablePage() {
   const handleShareMatch = async (match: Match) => {
     const text = buildMatchShareText(match);
     const shareData = {
-      title: t({ it: 'Log partita Tracker & Analytics', en: 'Tracker & Analytics match log' }),
+      title: t({ it: 'Log partita 21Life', en: '21Life match log' }),
       text,
     };
 
@@ -2717,7 +2721,10 @@ export default function TablePage() {
                   })}
                 </p>
               </div>
-              {arenaAwards.length === 0 ? (
+              <div className="flex w-fit rounded-xl border border-border bg-background/40 p-1">
+                {(['decks', 'players'] as const).map((view) => <Button key={view} size="sm" variant={awardsView === view ? 'default' : 'ghost'} onClick={() => setAwardsView(view)}>{view === 'players' ? t({ it: 'Giocatori', en: 'Players' }) : t({ it: 'Mazzi', en: 'Decks' })}</Button>)}
+              </div>
+              {awardsView === 'decks' ? (arenaAwards.length === 0 ? (
                 <Card className="phyrexian-panel">
                   <CardContent className="py-12 text-center">
                     <Award className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
@@ -2751,6 +2758,23 @@ export default function TablePage() {
                                     ? { icon: Flame, title: 'I think I won', tone: 'text-teal-300', badge: 'border-teal-300/40 bg-teal-400/10 shadow-teal-400/20' }
                                     : { icon: Trophy, title: 'Junk Master', tone: 'text-lime-300', badge: 'border-lime-300/40 bg-lime-400/10 shadow-lime-400/20' };
                     const Icon = presentation.icon;
+                    const awardDescription = leadAward.kind === 'fastest'
+                      ? t({ it: 'Le vittorie più rapide tra i mazzi tracciati.', en: 'Fastest wins among tracked decks.' })
+                      : leadAward.kind === 'group_slugger'
+                        ? t({ it: 'Il mazzo che ha inflitto più danni al tavolo.', en: 'The deck that dealt the most damage to the table.' })
+                        : leadAward.kind === 'executioner'
+                          ? t({ it: 'Il mazzo con più eliminazioni.', en: 'The deck with the most eliminations.' })
+                          : leadAward.kind === 'runner_up'
+                            ? t({ it: 'Il mazzo arrivato più spesso al secondo posto.', en: 'The deck that finished second most often.' })
+                            : leadAward.kind === 'archenemy'
+                              ? t({ it: 'Il mazzo sconfitto per primo più spesso.', en: 'The deck eliminated first most often.' })
+                              : leadAward.kind === 'comebacker'
+                                ? t({ it: 'Le vittorie ottenute dopo essere stato in svantaggio.', en: 'Wins earned after falling behind.' })
+                                : leadAward.kind === 'one_trick'
+                                  ? t({ it: 'Il mazzo portato al tavolo più spesso.', en: 'The deck brought to the table most often.' })
+                                  : leadAward.kind === 'combo_winner'
+                                    ? t({ it: 'Le vittorie concluse con una combo.', en: 'Wins completed with a combo.' })
+                                    : t({ it: 'Le vittorie ottenute con condizioni alternative.', en: 'Wins achieved through alternate conditions.' });
                     return (
                       <Card key={leadAward.kind} className="phyrexian-panel overflow-hidden border-white/10 bg-card/70">
                         <CardContent className="p-4">
@@ -2767,6 +2791,7 @@ export default function TablePage() {
                               {awards.length}/3
                             </span>
                           </div>
+                          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">{awardDescription}</p>
                           <div className="space-y-3">
                             {awards.map((award) => {
                               const podium = award.rank === 1
@@ -2805,7 +2830,7 @@ export default function TablePage() {
                     );
                   })}
                 </div>
-              )}
+              )) : <PlayerAwards awards={playerAwards} language={language} />}
             </div>
           </TabsContent>
 
@@ -3847,7 +3872,7 @@ export default function TablePage() {
               </Button>
             </div>
             <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-border/70 bg-background/35 p-3">
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />{t({ it: 'Durata', en: 'Duration' })}</p>
                   <p className="mt-1 font-bold text-foreground">{detailsMatch.duration_seconds != null ? formatGameDuration(detailsMatch.duration_seconds) : '—'}</p>
@@ -3855,10 +3880,6 @@ export default function TablePage() {
                 <div className="rounded-xl border border-border/70 bg-background/35 p-3">
                   <p className="text-xs text-muted-foreground">{t({ it: 'Vittoria', en: 'Win condition' })}</p>
                   <p className="mt-1 font-bold text-foreground">{detailsMatch.is_draw ? t({ it: 'Patta', en: 'Draw' }) : getWinConditionLabel(detailsMatch.win_condition)}</p>
-                </div>
-                <div className="col-span-2 rounded-xl border border-border/70 bg-background/35 p-3 sm:col-span-1">
-                  <p className="text-xs text-muted-foreground">{t({ it: 'Eventi registrati', en: 'Tracked events' })}</p>
-                  <p className="mt-1 font-bold text-foreground">{detailsMatch.match_participants.reduce((total, participant) => total + (participant.tracked_event_count || 0), 0)}</p>
                 </div>
               </div>
 
@@ -3871,6 +3892,16 @@ export default function TablePage() {
                   .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))
                   .map((participant) => {
                     const deck = getParticipantDeckSnapshot(participant);
+                    const impact = (participant.life_damage_dealt || 0) + (participant.commander_damage_dealt || 0) + (participant.infect_dealt || 0);
+                    const damage = participant.life_damage_dealt || 0;
+                    const gained = participant.life_gained || 0;
+                    const lost = participant.life_lost || 0;
+                    const activity = Math.max(1, damage + gained + lost);
+                    const damageEnd = (damage / activity) * 100;
+                    const gainedEnd = damageEnd + (gained / activity) * 100;
+                    const maxImpact = Math.max(1, ...detailsMatch.match_participants.map((entry) => (
+                      (entry.life_damage_dealt || 0) + (entry.commander_damage_dealt || 0) + (entry.infect_dealt || 0)
+                    )));
                     return (
                       <div key={participant.id} className={`rounded-xl border p-3 ${participant.is_winner ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/70 bg-background/25'}`}>
                         <div className="mb-3 flex items-center gap-3">
@@ -3883,18 +3914,29 @@ export default function TablePage() {
                             </div>
                             <p className="line-clamp-1 text-xs text-emerald-300">{deck?.name || deck?.commander}</p>
                           </div>
+                          <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
+                            <div className="grid h-14 w-14 place-items-center rounded-full" style={{ background: `conic-gradient(#fb7185 0 ${damageEnd}%, #34d399 ${damageEnd}% ${gainedEnd}%, #38bdf8 ${gainedEnd}% 100%)` }}>
+                              <div className="grid h-9 w-9 place-items-center rounded-full bg-card text-[10px] font-black text-foreground">{activity}</div>
+                            </div>
+                            <div className="text-[10px] leading-4 text-muted-foreground"><p><span className="text-rose-300">●</span> {t({ it: 'danni', en: 'damage' })}</p><p><span className="text-emerald-300">●</span> {t({ it: 'cura', en: 'healing' })}</p><p><span className="text-sky-300">●</span> {t({ it: 'subiti', en: 'taken' })}</p></div>
+                          </div>
+                        </div>
+                        <div className="mb-3 rounded-lg border border-border/60 bg-background/35 p-2.5">
+                          <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+                            <span>{t({ it: 'Pressione sul tavolo', en: 'Table pressure' })}</span>
+                            <span className="font-bold text-foreground">{impact}</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                            <div className={`h-full rounded-full ${participant.is_winner ? 'bg-emerald-400' : 'bg-cyan-400'}`} style={{ width: `${(impact / maxImpact) * 100}%` }} />
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                           {[
                             [t({ it: 'Danni inflitti', en: 'Damage dealt' }), participant.life_damage_dealt || 0],
-                            [t({ it: 'Vita persa', en: 'Life lost' }), participant.life_lost || 0],
-                            [t({ it: 'Vita guadagnata', en: 'Life gained' }), participant.life_gained || 0],
                             ['KO', participant.eliminations_caused || 0],
                             [t({ it: 'Danno commander', en: 'Commander damage' }), participant.commander_damage_dealt || 0],
-                            [t({ it: 'Commander subito', en: 'Commander taken' }), participant.commander_damage_taken || 0],
                             [t({ it: 'Infect inflitto', en: 'Infect dealt' }), participant.infect_dealt || 0],
-                            [t({ it: 'Infect subito', en: 'Infect received' }), participant.infect_received || 0],
-                          ].map(([label, value]) => (
+                          ].filter(([, value]) => Number(value) > 0).map(([label, value]) => (
                             <div key={String(label)} className="rounded-lg bg-secondary/45 px-2.5 py-2">
                               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
                               <p className="font-bold text-foreground">{value}</p>

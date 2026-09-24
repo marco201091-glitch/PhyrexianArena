@@ -1,3 +1,5 @@
+import { ReportRing } from '@/components/ui/report-ring';
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { CommanderArt } from '@/components/deck/commander-art';
 import { Modal } from '@/components/ui/modal';
@@ -11,6 +13,8 @@ type Labels = Record<
   | 'title'
   | 'games'
   | 'wins'
+  | 'draws'
+  | 'losses'
   | 'winRate'
   | 'secondPlaces'
   | 'damageDealt'
@@ -38,25 +42,20 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
   const phoneLayout = width < 600;
 
   const metrics = [
-    [labels.games, performance?.gamesPlayed || 0],
-    [labels.wins, performance?.wins || 0],
-    [labels.winRate, `${performance?.winRate || 0}%`],
-    [labels.secondPlaces, performance?.secondPlaces || 0],
     [labels.damageDealt, performance?.damageDealt || 0],
-    [labels.lifeLost, performance?.damageTaken || 0],
-    [labels.lifeGained, performance?.lifeGained || 0],
     [labels.eliminations, performance?.eliminations || 0],
     [labels.commanderDamage, performance?.commanderDamage || 0],
     [labels.infectDealt, performance?.infectDealt || 0],
-    [
-      labels.fastestWin,
-      performance?.medianWinningDurationSeconds != null
-        ? formatGameDuration(performance.medianWinningDurationSeconds)
-        : '—',
-    ],
+    [labels.fastestWin, performance?.medianWinningDurationSeconds != null ? formatGameDuration(performance.medianWinningDurationSeconds) : '—'],
   ] as const;
 
   const coverage = performance?.trackingCoverage || 0;
+  const gamesPlayed = performance?.gamesPlayed || 0;
+  const outcomes = [
+    [labels.wins, performance?.wins || 0, colors.primaryMuted],
+    [labels.draws, performance?.draws || 0, '#38bdf8'],
+    [labels.losses, performance?.losses || 0, '#64748b'],
+  ] as const;
 
   return (
     <Modal visible={visible} onClose={onClose} presentation="dialog" maxWidth={620}>
@@ -66,10 +65,21 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
           <CommanderArt uri={deck.commander_image} alt={deck.commander} size="hero" />
           <View style={styles.heroCopy}>
             <Text style={styles.title}>{labels.title}</Text>
-            <Text style={styles.subtitle}>{performance?.trackedGames || 0} / {performance?.gamesPlayed || 0}</Text>
+            <Text style={styles.subtitle}>{gamesPlayed} {labels.games}</Text>
           </View>
         </View>
 
+        <PhyrexianPanel variant="inset" style={styles.fingerprint}>
+          <ReportRing value={performance?.winRate || 0} label={labels.winRate} />
+          <View style={styles.outcomes}>
+            {outcomes.map(([label, value, color]) => <View key={label} style={styles.outcome}>
+              <View style={styles.outcomeHeader}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.outcomeValue}>{value}</Text></View>
+              <View style={styles.track}><View style={[styles.outcomeFill, { width: `${(value / Math.max(gamesPlayed, 1)) * 100}%`, backgroundColor: color }]} /></View>
+            </View>)}
+          </View>
+        </PhyrexianPanel>
+
+        <CollapsiblePanel key={deck.id} title={labels.title}>
         <View style={styles.metrics}>
           {metrics.map(([label, value], index) => (
             <PhyrexianPanel
@@ -96,10 +106,12 @@ export function DeckPerformanceModal({ visible, deck, performance, labels, onClo
             <View style={[styles.fill, { width: `${coverage}%` }]} />
           </View>
         </View>
+        </CollapsiblePanel>
       </View>
     </Modal>
   );
 }
+
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md },
@@ -107,11 +119,17 @@ const styles = StyleSheet.create({
   heroCopy: { flex: 1, gap: 3 },
   title: { color: colors.foreground, fontSize: 17, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 12 },
+  fingerprint: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  outcomes: { flex: 1, gap: 7 },
+  outcome: { gap: 3 },
+  outcomeHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  outcomeValue: { color: colors.foreground, fontSize: 12, fontWeight: '800' },
+  outcomeFill: { height: '100%', borderRadius: 99 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   metric: { width: '31%', minWidth: 96, minHeight: 80, flexGrow: 1, justifyContent: 'space-between' },
   metricPhone: { width: '48%', minWidth: 0 },
   metricWidePhone: { width: '100%' },
-  metricLabel: { color: colors.muted, fontSize: 10, lineHeight: 13, textTransform: 'uppercase' },
+  metricLabel: { color: colors.muted, fontSize: 12, lineHeight: 17, textTransform: 'uppercase' },
   metricValue: { color: colors.foreground, fontSize: 19, fontWeight: '800', marginTop: 3 },
   coverageBlock: { gap: spacing.xs, marginTop: spacing.xs },
   coverageHeader: { flexDirection: 'row', justifyContent: 'space-between' },
