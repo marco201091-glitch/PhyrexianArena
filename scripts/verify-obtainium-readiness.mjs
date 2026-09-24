@@ -20,7 +20,7 @@ for (const relativePath of requiredFiles) {
 }
 
 const appConfig = JSON.parse(read('expo/app.json'));
-if (appConfig.expo?.name !== 'MTG Tracker & Analytics') {
+if (appConfig.expo?.name !== '21Life') {
   failures.push('unexpected Android display name');
 }
 if (appConfig.expo?.android?.package !== 'com.phyrexianarena.app') {

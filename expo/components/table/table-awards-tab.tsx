@@ -35,7 +35,7 @@ function getAwardVisual(kind: ArenaAward['kind']) {
     case 'executioner': return { icon: 'locate' as const, color: '#fda4af', backgroundColor: 'rgba(244,63,94,0.16)' };
     case 'runner_up': return { icon: 'trophy' as const, color: '#fde68a', backgroundColor: 'rgba(251,191,36,0.18)' };
     case 'archenemy': return { icon: 'skull' as const, color: '#fca5a5', backgroundColor: 'rgba(248,113,113,0.16)' };
-    case 'comebacker': return { icon: 'trending-up' as const, color: '#86efac', backgroundColor: 'rgba(74,222,128,0.16)' };
+    case 'comebacker': return { icon: 'trending-up' as const, color: colors.primaryLight, backgroundColor: colors.selectionTintStrong };
     case 'one_trick': return { icon: 'locate' as const, color: '#93c5fd', backgroundColor: 'rgba(96,165,250,0.16)' };
     case 'combo_winner': return { icon: 'sparkles' as const, color: '#5eead4', backgroundColor: 'rgba(45,212,191,0.16)' };
     default: return { icon: 'ribbon' as const, color: '#bef264', backgroundColor: 'rgba(163,230,53,0.16)' };
@@ -88,6 +88,7 @@ export function TableAwardsTab({ awards, labels }: Props) {
             <Text style={[styles.groupTitle, { color: visual.color }]}>{title}</Text>
           </View>
         </View>
+        <Text style={styles.description}>{labels.descriptions[leadAward.kind]}</Text>
         <View style={styles.groupCards}>
           {group.map((award) => {
             const metaGames = award.kind === 'one_trick' ? award.gamesPlayed : award.trackedGames;
@@ -101,7 +102,7 @@ export function TableAwardsTab({ awards, labels }: Props) {
               badge={award.rank}
               title={award.commander}
               commander={award.ownerDisplayName}
-              meta={`${labels.descriptions[award.kind]} · ${metaGames} ${metaLabel}`}
+              meta={`${metaGames} ${metaLabel}`}
               trailing={<View style={styles.trailing}><View style={[styles.trophy, { backgroundColor: visual.backgroundColor, borderColor: podiumColor }]}><Ionicons name={visual.icon} size={16} color={podiumColor} /><View style={[styles.medalDot, { backgroundColor: podiumColor }]}><Text style={styles.medalRank}>{award.rank}</Text></View></View><Text style={[styles.value, { color: visual.color }]}>{value}</Text></View>}
             />;
           })}
@@ -120,6 +121,7 @@ const styles = StyleSheet.create({
   groupTitleBlock: { flex: 1 },
   groupEyebrow: { color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase' },
   groupTitle: { fontSize: 15, fontWeight: '900' },
+  description: { color: colors.muted, fontSize: 12, lineHeight: 17 },
   groupCards: { gap: spacing.sm },
   trailing: { alignItems: 'center', gap: 4 },
   trophy: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

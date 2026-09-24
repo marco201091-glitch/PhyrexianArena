@@ -7,7 +7,7 @@ html, body, #root {
   height: 100%;
   min-height: 100%;
   margin: 0;
-  background: #050508;
+  background: #070908;
 }
 
 body {
@@ -44,7 +44,7 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        <meta name="theme-color" content="#050508" />
+        <meta name="theme-color" content="#070908" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: responsiveRootCss }} />
       </head>

@@ -73,8 +73,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   tabActive: {
-    borderColor: '#86efac',
-    backgroundColor: '#173b29',
+    borderColor: colors.primaryLight,
+    backgroundColor: colors.primarySurface,
     shadowColor: colors.primary,
     shadowOpacity: 0.08,
     shadowRadius: 2,

@@ -488,7 +488,7 @@ export default function TableScreen() {
   const shareArenaStats = useCallback(() => {
     if (!group) return;
     setSharePreview({
-      title: `${group.name} - Tracker & Analytics`,
+      title: `${group.name} - 21Life`,
       message: buildArenaStatsShareMessage(),
     });
   }, [buildArenaStatsShareMessage, group]);
@@ -1415,16 +1415,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: 8,
   },
-  monthButtonActive: { borderColor: colors.primary, backgroundColor: 'rgba(16, 185, 129, 0.16)' },
+  monthButtonActive: { borderColor: colors.primaryLight, backgroundColor: colors.selectionTint },
   monthButtonText: { color: colors.muted, fontSize: 12, textTransform: 'capitalize' },
   monthButtonTextActive: { color: colors.primaryMuted, fontWeight: '700' },
   resumePanel: {
     gap: spacing.sm,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: colors.selectionBorder,
+    backgroundColor: colors.selectionTint,
   },
   resumeTitle: {
-    color: '#d1fae5',
+    color: colors.primaryMuted,
     fontSize: 15,
     fontWeight: '700',
   },

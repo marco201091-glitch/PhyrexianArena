@@ -1,4 +1,4 @@
-# MTG Tracker & Analytics
+# 21Life
 
 [![Web app](https://img.shields.io/badge/Open-Web_App-16a34a?style=flat-square)](https://app.phyrexianarena.dpdns.org)
 [![Android](https://img.shields.io/badge/Android-v9.0.0-7c3aed?style=flat-square)](https://github.com/marco201091-glitch/PhyrexianArena/releases/latest)
@@ -88,4 +88,4 @@ Sign-in is email/password, with optional Google sign-in on the web and the stand
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [MIT License](LICENSE)
 
-MTG Tracker & Analytics is unofficial fan content. It is not approved, endorsed, or sponsored by Wizards of the Coast. Portions of the materials used are property of Wizards of the Coast LLC.
+21Life - Tracker & Analytics is unofficial fan content. It is not approved, endorsed, or sponsored by Wizards of the Coast. Portions of the materials used are property of Wizards of the Coast LLC.

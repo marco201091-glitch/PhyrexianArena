@@ -30,7 +30,7 @@ function normalizeGuestName(name) {
 
 const SCRYFALL_HEADERS = {
   Accept: 'application/json',
-  'User-Agent': 'MTG Life Counter & Analytics: Commander (https://phyrexianarena.app)',
+  'User-Agent': '21Life/9.0 (https://app.phyrexianarena.dpdns.org)',
 };
 
 function extractScryfallImage(card) {

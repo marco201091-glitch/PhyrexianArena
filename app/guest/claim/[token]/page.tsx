@@ -104,7 +104,7 @@ export default function GuestClaimPage() {
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,#0a150c,#050509_62%)] px-4 py-10">
       <Card className="mx-auto w-full max-w-xl overflow-hidden border-emerald-400/25 bg-card/95 shadow-2xl">
         <CardHeader className="border-b border-border bg-emerald-500/10">
-          <p className="text-xs font-black uppercase tracking-[.2em] text-emerald-300">Phyrexian Arena</p>
+          <p className="text-xs font-black uppercase tracking-[.2em] text-emerald-300">21Life</p>
           <CardTitle className="text-2xl">{preview.guest.displayName}, {copy({ it: 'evolvi il tuo profilo', en: 'upgrade your profile' })}</CardTitle>
           <p className="text-sm text-muted-foreground">{copy({ it: 'Il manager ti ha invitato a trasformare il guest in un account reale.', en: 'The manager invited you to turn this guest into a real account.' })}</p>
         </CardHeader>

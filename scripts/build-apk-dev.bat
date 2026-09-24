@@ -65,11 +65,11 @@ popd
 
 set "ARTIFACT_DIR=%ROOT_DIR%\artifacts\apk"
 if not exist "%ARTIFACT_DIR%" mkdir "%ARTIFACT_DIR%"
-copy /Y "%EXPO_DIR%\android\app\build\outputs\apk\release\app-release.apk" "%ARTIFACT_DIR%\phyrexian-arena-dev-v%VERSION%.apk" >nul
+copy /Y "%EXPO_DIR%\android\app\build\outputs\apk\release\app-release.apk" "%ARTIFACT_DIR%\21life-dev-v%VERSION%.apk" >nul
 if errorlevel 1 goto :fail
 
 call :cleanup
-echo BUILD OK: %ARTIFACT_DIR%\phyrexian-arena-dev-v%VERSION%.apk
+echo BUILD OK: %ARTIFACT_DIR%\21life-dev-v%VERSION%.apk
 if "%NO_PAUSE%"=="0" pause
 exit /b 0
 

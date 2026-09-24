@@ -85,7 +85,7 @@ for (const marker of [
   'CODE_SIGNING_ALLOWED=NO',
   'SENTRY_DISABLE_AUTO_UPLOAD=true',
   'main.jsbundle',
-  'PhyrexianArena-unsigned.ipa',
+  '21Life-unsigned.ipa',
   'eas/upload_artifact',
 ]) {
   assert(workflow.includes(marker), `Unsigned IPA workflow is missing: ${marker}`);

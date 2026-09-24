@@ -55,7 +55,7 @@ export function Button({
         <Ionicons
           name={icon}
           size={size === 'sm' ? 16 : 18}
-          color={isPrimary ? '#fff' : isDestructive ? colors.destructive : colors.foreground}
+          color={isPrimary ? colors.white : isDestructive ? colors.destructive : colors.foreground}
           style={styles.icon}
         />
       ) : null}
@@ -103,19 +103,19 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   ghost: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.buttonSecondary,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
+    borderColor: colors.buttonSecondaryBorder,
   },
   outline: {
-    backgroundColor: 'rgba(12, 18, 14, 0.72)',
+    backgroundColor: colors.buttonSecondary,
     borderWidth: 1,
     borderColor: colors.selectionBorder,
   },
   destructive: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: colors.destructiveSurface,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.35)',
+    borderColor: colors.destructiveBorder,
   },
   disabled: {
     opacity: 0.5,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   icon: {},
   label: {
     flexShrink: 1,
-    color: '#fff',
+    color: colors.white,
     fontWeight: '700',
     fontSize: 16,
     textAlign: 'center',

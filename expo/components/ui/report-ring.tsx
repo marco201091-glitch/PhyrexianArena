@@ -7,8 +7,8 @@ export function ReportRing({ value, label }: { value: number; label: string }) {
   const circumference = 2 * Math.PI * 43;
   return <View style={styles.root} accessible accessibilityLabel={`${label}: ${rate}%`}>
     <Svg width={104} height={104} style={StyleSheet.absoluteFill}>
-      <Circle cx={52} cy={52} r={43} stroke="#28363a" strokeWidth={8} fill="none" />
-      <Circle cx={52} cy={52} r={43} stroke="#86efac" strokeWidth={8} fill="none" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference * (1 - rate / 100)} rotation={-90} origin="52,52" />
+      <Circle cx={52} cy={52} r={43} stroke={colors.surfaceTrack} strokeWidth={8} fill="none" />
+      <Circle cx={52} cy={52} r={43} stroke={colors.primaryLight} strokeWidth={8} fill="none" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference * (1 - rate / 100)} rotation={-90} origin="52,52" />
     </Svg>
     <Text style={styles.value}>{rate}%</Text><Text style={styles.label}>{label}</Text>
   </View>;

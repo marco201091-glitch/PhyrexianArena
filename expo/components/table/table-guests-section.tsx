@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: colors.tealMuted,
+    backgroundColor: colors.successSurface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.successBorder,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     opacity: 0.66,
     transform: [{ scale: 0.96 }],
   },
-  upgradeActionButton: { borderColor: colors.successBorder, backgroundColor: colors.tealMuted },
+  upgradeActionButton: { borderColor: colors.successBorder, backgroundColor: colors.successSurface },
   guestInfo: {
     flex: 1,
     gap: 4,

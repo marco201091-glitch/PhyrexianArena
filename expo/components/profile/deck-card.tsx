@@ -134,7 +134,7 @@ export const DeckCard = memo(function DeckCard({
           <Ionicons
             name={deck.is_favorite ? 'star' : 'star-outline'}
             size={20}
-            color={deck.is_favorite ? '#fcd34d' : colors.primaryMuted}
+            color={deck.is_favorite ? colors.medalGold : colors.primaryMuted}
           />
         </Pressable>
         <Pressable onPress={onDetails} style={[styles.actionButton, styles.detailsButton]} accessibilityRole="button">
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(4, 6, 10, 0.66)',
+    backgroundColor: colors.artScrim,
   },
   content: {
     minHeight: 230,

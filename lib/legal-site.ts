@@ -1,4 +1,4 @@
-export const LEGAL_SITE_NAME = 'MTG Life Counter & Analytics: Commander';
+export const LEGAL_SITE_NAME = '21Life - Tracker & Analytics';
 export const LEGAL_BRAND_NAME = 'blackistoostrong';
 export const LEGAL_CONTROLLER_NAME = 'Marco Andreani';
 export const APP_VERSION = '9.0.0';

@@ -3,9 +3,18 @@
 Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checklist.
 
 - [x] Login password manager: semantica username/current-password/new-password e disattivazione maiuscola automatica nei campi password web/Android; test Playwright, build web, typecheck/lint e test web/Expo OK.
-- [x] Awards deck: descrizioni dei premi sopra le righe del podio, allineate al layout dei player awards e tradotte IT/EN; typecheck OK.
+- [x] Awards deck web: descrizioni dei premi sopra il podio, tradotte IT/EN; typecheck OK.
+- [x] Awards deck Expo: descrizione spostata sopra il podio; righe mazzo mostrano solo il conteggio partite. Aggiornamento live nell’emulatore.
+- [x] Profilo Expo: etichetta “Collection insights” rinominata “Decks insights” (IT: “Analisi mazzi”); Fast Refresh attivo.
 
 ## In progress
+
+- [x] Rebranding v9: nome visibile `21Life`, lockup interno `21Life - Tracker & Analytics`, dado con `21`, icone web/Android, email, notifiche, condivisioni e metadata aggiornati; identificativi tecnici preservati.
+
+- [x] App Android uniformata con palette nero neutro/verde fluo approvata: card neutre, accenti e glow verdi; snapshot locale verificato e ripristinato esattamente.
+- [x] Confrontata su emulatore la palette alternativa nero/blu notte/ciano.
+- [x] Provata su Android la palette Gilda fornita dal PM e salvata localmente come variante recuperabile.
+- [ ] Dopo approvazione PM, allineare la palette web a quella Android.
 
 - [x] UI v9: palette awards player attenuata per tema scuro; coccarde con pieghe e nastri oro/argento/bronzo a decrescente rilievo; typecheck web/Expo OK. Storico completo e spaziatura Archidekt corretta.
 - [x] Home Android: card playgroup arricchite con emblema, conteggio membri e icone statistiche; typecheck Expo OK.

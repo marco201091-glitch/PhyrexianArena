@@ -1,4 +1,4 @@
-MTG Tracker & Analytics helps Commander playgroups track games without spreadsheets.
+21Life helps Commander playgroups track games without spreadsheets.
 
 Features:
 
