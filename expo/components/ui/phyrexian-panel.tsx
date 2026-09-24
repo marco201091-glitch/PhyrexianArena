@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
   },
   defaultAccentTop: {
@@ -62,13 +62,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(66, 159, 74, 0.42)',
+    backgroundColor: colors.primaryLight,
   },
   strong: {
     backgroundColor: colors.cardElevated,
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.borderViolet,
+    borderColor: colors.borderAccent,
     overflow: 'hidden',
   },
   strongAccentTop: {
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.modalSurface,
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.borderViolet,
+    borderColor: colors.borderAccent,
     overflow: 'hidden',
   },
   modalAccentTop: {

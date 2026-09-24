@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   list: { gap: spacing.sm },
   empty: { color: colors.muted, textAlign: 'center', padding: spacing.xl },
   item: { borderRadius: radii.lg, borderWidth: 1, borderLeftWidth: 4, borderColor: colors.borderSoft, backgroundColor: colors.card, padding: spacing.md },
-  unread: { borderColor: colors.primary, backgroundColor: 'rgba(16, 185, 129, 0.10)' },
+  unread: { borderColor: colors.primary, backgroundColor: colors.selectionTint },
   itemTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dot: { fontSize: 18, fontWeight: '800' },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },

@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { colors } from '@/constants/theme';
 import { layout as layoutMetrics, scaleForWidth } from '@/lib/layout';
 
 const logoImage = require('@/assets/logo.png');
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   subtitle: {
-    color: '#86efac',
+    color: colors.primaryMuted,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 2.8,

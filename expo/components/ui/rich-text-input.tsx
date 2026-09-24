@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   },
   editorFocused: {
     borderColor: colors.primaryLight,
-    backgroundColor: 'rgba(66, 159, 74, 0.08)',
+    backgroundColor: colors.selectionTint,
     shadowColor: colors.primary,
     shadowOpacity: 0.18,
     shadowRadius: 10,

@@ -226,7 +226,7 @@ export default function ProfileScreen() {
 
   const listHeader = (
     <View style={styles.listHeader}>
-        <PhyrexianPanel variant="strong" style={styles.profileCard}>
+        <PhyrexianPanel style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.profileMeta}>
               <Text style={styles.displayName} numberOfLines={1}>
@@ -249,7 +249,7 @@ export default function ProfileScreen() {
         </PhyrexianPanel>
 
         {decks.length > 0 ? (
-          <CollapsiblePanel title={language === 'it' ? 'Analisi collezione' : 'Collection insights'}>
+          <CollapsiblePanel title={language === 'it' ? 'Analisi mazzi' : 'Decks insights'}>
           <DeckCollectionInsights
             initiallyExpanded
             decks={decks}
@@ -584,7 +584,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   snapshotRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
-  snapshot: { flex: 1, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.05)', padding: 10 },
+  snapshot: { flex: 1, borderRadius: 10, backgroundColor: colors.surfaceRaised, padding: 10 },
   snapshotLabel: { color: colors.muted, fontSize: 11 },
   snapshotValue: { color: colors.foreground, fontSize: 20, fontWeight: '900', marginTop: 2 },
   favorite: { color: '#fde68a', fontSize: 12, fontWeight: '700', marginTop: spacing.xs },

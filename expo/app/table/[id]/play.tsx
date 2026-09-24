@@ -1915,8 +1915,8 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   pauseChoice: {
-    borderColor: 'rgba(66,159,74,0.42)',
-    backgroundColor: 'rgba(66, 159, 74,0.13)',
+    borderColor: colors.selectionBorder,
+    backgroundColor: colors.selectionTint,
   },
   discardChoice: {
     borderColor: 'rgba(248,113,113,0.34)',
@@ -1930,7 +1930,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pauseChoiceIcon: {
-    backgroundColor: 'rgba(66, 159, 74,0.24)',
+    backgroundColor: colors.selectionTintStrong,
   },
   discardChoiceIcon: {
     backgroundColor: 'rgba(127,29,29,0.3)',
@@ -1982,7 +1982,7 @@ const styles = StyleSheet.create({
   },
   winnerOptionActive: {
     borderColor: colors.primary,
-    backgroundColor: 'rgba(66, 159, 74, 0.15)',
+    backgroundColor: colors.selectionTint,
   },
   winnerOptionText: {
     color: colors.foreground,
@@ -2067,7 +2067,7 @@ const styles = StyleSheet.create({
   },
   winConditionOptionActive: {
     borderColor: colors.primaryLight,
-    backgroundColor: 'rgba(66, 159, 74, 0.18)',
+    backgroundColor: colors.selectionTint,
   },
   winConditionIcon: {
     width: 34,
@@ -2078,7 +2078,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceChip,
   },
   winConditionIconActive: {
-    backgroundColor: 'rgba(66, 159, 74, 0.30)',
+    backgroundColor: colors.selectionTintStrong,
   },
   winConditionOptionTitle: {
     color: colors.foreground,

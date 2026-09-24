@@ -94,7 +94,7 @@ export function Screen({
 const styles = StyleSheet.create({
   solid: {
     flex: 1,
-    backgroundColor: colors.black,
+    backgroundColor: colors.background,
   },
   keyboardAvoid: {
     flex: 1,

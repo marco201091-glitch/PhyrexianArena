@@ -39,7 +39,7 @@ export function LiveGameRecapView({
     <View style={styles.summaryRow}>
       <Text style={styles.summaryChip}>⏱ {duration}</Text>
       {recap.startingPlayerName ? <Text style={styles.summaryChip}>① {recap.startingPlayerName} · {recap.startingDirection === 'clockwise' ? '↻' : '↺'}</Text> : null}
-      {!sharing ? <Pressable onPress={() => void shareRecap().catch(() => undefined)} hitSlop={touchSlop(32)} accessibilityRole="button" accessibilityLabel={language === 'it' ? 'Condividi riepilogo' : 'Share recap'} style={styles.shareButton}><Ionicons name="share-social-outline" size={15} color="#a7f3d0" /></Pressable> : null}
+      {!sharing ? <Pressable onPress={() => void shareRecap().catch(() => undefined)} hitSlop={touchSlop(32)} accessibilityRole="button" accessibilityLabel={language === 'it' ? 'Condividi riepilogo' : 'Share recap'} style={styles.shareButton}><Ionicons name="share-social-outline" size={15} color={colors.primaryMuted} /></Pressable> : null}
     </View>
     <Text style={styles.title}>{labels.timeline}</Text>
     {recap.players.map((player, index) => (
@@ -74,11 +74,11 @@ export function LiveGameRecapView({
 }
 
 const styles = StyleSheet.create({
-  root: { gap: spacing.sm, borderWidth: 1, borderColor: 'rgba(34,211,238,0.2)', borderRadius: radii.lg, backgroundColor: 'rgba(34,211,238,0.05)', padding: spacing.md },
+  root: { gap: spacing.sm, borderWidth: 1, borderColor: colors.selectionBorder, borderRadius: radii.lg, backgroundColor: colors.primarySurface, padding: spacing.md },
   summaryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
   summaryChip: { color: colors.muted, fontSize: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 5 },
-  shareButton: { marginLeft: 'auto', width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(52,211,153,0.35)', backgroundColor: 'rgba(16,185,129,0.12)' },
-  title: { color: '#a5f3fc', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  shareButton: { marginLeft: 'auto', width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.selectionBorder, backgroundColor: colors.selectionTint },
+  title: { color: colors.primaryMuted, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
   player: { gap: 3, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, paddingBottom: spacing.sm },
   playerHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   dot: { width: 8, height: 8, borderRadius: 4 },
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   commander: { color: colors.muted, fontSize: 10 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   metric: { color: colors.muted, fontSize: 9, fontWeight: '700' },
-  highlightsTitle: { color: '#ddd6fe', marginTop: spacing.xs },
+  highlightsTitle: { color: colors.foreground, marginTop: spacing.xs },
   highlights: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   highlight: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.sm, paddingVertical: 5 },
   highlightText: { color: colors.muted, fontSize: 10 },

@@ -96,7 +96,7 @@ export function DeckCollectionInsights({ decks, language, labels, initiallyExpan
                     <Text style={styles.barMeta}>{stat.count} · {stat.percentage}%</Text>
                   </View>
                   <View style={styles.barTrack}>
-                    <View style={[styles.barFillViolet, { width: `${Math.max(stat.percentage, stat.count > 0 ? 8 : 0)}%` }]} />
+                    <View style={[styles.barFillPrimary, { width: `${Math.max(stat.percentage, stat.count > 0 ? 8 : 0)}%` }]} />
                   </View>
                 </View>
               );
@@ -233,10 +233,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     overflow: 'hidden',
   },
-  barFillViolet: {
+  barFillPrimary: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: 'rgba(167, 227, 172, 0.9)',
+    backgroundColor: colors.primaryMuted,
   },
   barFillSky: {
     height: '100%',
@@ -269,13 +269,13 @@ const styles = StyleSheet.create({
   bracketChip: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: colors.selectionBorder,
+    backgroundColor: colors.selectionTint,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   bracketChipText: {
-    color: '#6ee7b7',
+    color: colors.primaryMuted,
     fontSize: 12,
   },
   avgColors: {
