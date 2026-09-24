@@ -118,7 +118,7 @@ function LoginForm() {
               size="xl"
               showText
               layout="stacked"
-              title="Magic The Gathering"
+              title="21Life"
               subtitle="TRACKER & ANALYTICS"
               className="w-full"
             />

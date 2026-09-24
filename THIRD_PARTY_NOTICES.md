@@ -1,11 +1,11 @@
 # Third-party notices
 
-MTG Life Counter & Analytics: Commander is developed and distributed by
+21Life - Tracker & Analytics is developed and distributed by
 **blackistoostrong** under the MIT License.
 
 ## Wizards of the Coast
 
-MTG Life Counter & Analytics: Commander is unofficial Fan Content permitted under the
+21Life - Tracker & Analytics is unofficial Fan Content permitted under the
 Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials
 used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
 

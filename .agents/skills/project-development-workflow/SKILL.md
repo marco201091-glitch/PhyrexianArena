@@ -1,6 +1,6 @@
 ---
 name: project-development-workflow
-description: Apply the PM-led, specification-driven workflow for MTG Tracker & Analytics. Use for every development, maintenance, audit, release, deployment, documentation, or repository task in this project so branch roles, persistent task tracking, terse communication, and the current code map remain consistent.
+description: Apply the PM-led, specification-driven workflow for 21Life. Use for every development, maintenance, audit, release, deployment, documentation, or repository task in this project so branch roles, persistent task tracking, terse communication, and the current code map remain consistent.
 ---
 
 # Project Development Workflow

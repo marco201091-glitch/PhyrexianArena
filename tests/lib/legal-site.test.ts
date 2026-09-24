@@ -25,7 +25,7 @@ describe('legal-site', () => {
   it('exposes the current app version', () => {
     const packageVersion = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8')).version;
     expect(APP_VERSION).toBe(packageVersion);
-    expect(LEGAL_SITE_NAME).toBe('MTG Life Counter & Analytics: Commander');
+    expect(LEGAL_SITE_NAME).toBe('21Life - Tracker & Analytics');
     expect(LEGAL_BRAND_NAME).toBe('blackistoostrong');
   });
 

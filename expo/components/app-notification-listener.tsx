@@ -47,7 +47,7 @@ export function AppNotificationListener() {
       if (!Notifications || !active) return;
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
-          name: 'Tracker & Analytics',
+          name: '21Life',
           importance: Notifications.AndroidImportance.DEFAULT,
         });
       }

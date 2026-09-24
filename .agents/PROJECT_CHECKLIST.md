@@ -9,6 +9,8 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 
 ## In progress
 
+- [x] Rebranding v9: nome visibile `21Life`, lockup interno `21Life - Tracker & Analytics`, dado con `21`, icone web/Android, email, notifiche, condivisioni e metadata aggiornati; identificativi tecnici preservati.
+
 - [x] App Android uniformata con palette nero neutro/verde fluo approvata: card neutre, accenti e glow verdi; snapshot locale verificato e ripristinato esattamente.
 - [x] Confrontata su emulatore la palette alternativa nero/blu notte/ciano.
 - [x] Provata su Android la palette Gilda fornita dal PM e salvata localmente come variante recuperabile.

@@ -134,8 +134,8 @@ jobs:
         with:
           name: mtg-tracker-analytics-${{ steps.release.outputs.version }}
           path: |
-            artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk
-            artifacts/apk/mtg-commander-v${{ steps.release.outputs.version }}.apk.sha256
+            artifacts/apk/21life-v${{ steps.release.outputs.version }}.apk
+            artifacts/apk/21life-v${{ steps.release.outputs.version }}.apk.sha256
             artifacts/apk/web-sbom-${{ steps.release.outputs.version }}.json
             artifacts/apk/android-sbom-${{ steps.release.outputs.version }}.json
           if-no-files-found: error
@@ -148,7 +148,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          $apk = "artifacts/apk/mtg-commander-v$env:RELEASE_VERSION.apk"
+          $apk = "artifacts/apk/21life-v$env:RELEASE_VERSION.apk"
           $checksum = "$apk.sha256"
           $webSbom = "artifacts/apk/web-sbom-$env:RELEASE_VERSION.json"
           $androidSbom = "artifacts/apk/android-sbom-$env:RELEASE_VERSION.json"
@@ -174,6 +174,6 @@ jobs:
 
           gh release create $env:GITHUB_REF_NAME $apk $checksum $webSbom $androidSbom `
             --repo $env:GITHUB_REPOSITORY `
-            --title "MTG Tracker & Analytics $env:GITHUB_REF_NAME" `
+            --title "21Life $env:GITHUB_REF_NAME" `
             @notesArgs `
             --verify-tag

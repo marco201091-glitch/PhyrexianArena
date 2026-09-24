@@ -86,7 +86,7 @@ async function openProject() {
     throw new Error(`Could not open Expo Go (adb exit ${result.status ?? 'unknown'})`);
   }
 
-  console.log(`Opened Tracker & Analytics at ${PROJECT_URL}`);
+  console.log(`Opened 21Life at ${PROJECT_URL}`);
 }
 
 openProject().catch((error) => {

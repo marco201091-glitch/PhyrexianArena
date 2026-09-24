@@ -1899,7 +1899,7 @@ export default function TablePage() {
     const comment = match.notes?.trim() || t({ it: 'Nessun commento', en: 'No comment' });
 
     return [
-      `${t({ it: 'Partita Tracker & Analytics', en: 'Tracker & Analytics match' })} - ${group?.name || ''}`,
+      `${t({ it: 'Partita 21Life', en: '21Life match' })} - ${group?.name || ''}`,
       format(new Date(match.played_at), 'PPP'),
       match.duration_seconds != null
         ? `${t({ it: 'Durata', en: 'Duration' })}: ${formatGameDuration(match.duration_seconds)}`
@@ -2005,7 +2005,7 @@ export default function TablePage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `${group.name} - Tracker & Analytics`,
+          title: `${group.name} - 21Life`,
           text,
         });
         return;
@@ -2122,7 +2122,7 @@ export default function TablePage() {
   const handleShareMatch = async (match: Match) => {
     const text = buildMatchShareText(match);
     const shareData = {
-      title: t({ it: 'Log partita Tracker & Analytics', en: 'Tracker & Analytics match log' }),
+      title: t({ it: 'Log partita 21Life', en: '21Life match log' }),
       text,
     };
 

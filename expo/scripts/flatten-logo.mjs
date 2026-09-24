@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { Buffer } from 'node:buffer';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
@@ -16,7 +17,6 @@ if (!emblemSource) {
   throw new Error('Missing logo source. Expected public/logo-def.png or public/logo-transparent.png');
 }
 
-const BLACK = { r: 0, g: 0, b: 0, alpha: 1 };
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 const LUMINANCE_THRESHOLD = 140;
 
@@ -65,7 +65,7 @@ async function emblemBuffer(size, emblemScale = 1, { flattenBlack = false } = {}
     .toBuffer();
 }
 
-async function compositeEmblem(size, emblemScale = 1, { background = BLACK } = {}) {
+async function compositeEmblem(size, emblemScale = 1, { background = TRANSPARENT } = {}) {
   const emblem = await emblemBuffer(size, emblemScale, {
     flattenBlack: background.alpha === 1,
   });
@@ -82,11 +82,14 @@ async function compositeEmblem(size, emblemScale = 1, { background = BLACK } = {
     .png();
 }
 
-const flattenEmblem = (size, emblemScale = 1) => compositeEmblem(size, emblemScale, { background: BLACK });
+const flattenEmblem = async (size, emblemScale = 1) => {
+  const emblem = await emblemBuffer(size, emblemScale);
+  const background = Buffer.from(`<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#303438"/><stop offset="1" stop-color="#16191c"/></linearGradient><radialGradient id="glow"><stop stop-color="#5f7a67" stop-opacity=".25"/><stop offset=".65" stop-color="#5f7a67" stop-opacity="0"/></radialGradient></defs><rect width="100%" height="100%" fill="url(#bg)"/><circle cx="50%" cy="47%" r="46%" fill="url(#glow)"/></svg>`);
+  return sharp(background).composite([{ input: emblem, gravity: 'center' }]).removeAlpha().png();
+};
 const transparentEmblem = (size, emblemScale = 1) => compositeEmblem(size, emblemScale, { background: TRANSPARENT });
 
-const sourceMeta = await sharp(emblemSource).metadata();
-const inAppSize = Math.max(sourceMeta.width || 1024, sourceMeta.height || 1024);
+const inAppSize = 1024;
 
 await (await transparentEmblem(inAppSize, 0.92)).toFile(path.join(assetsDir, 'logo.png'));
 console.log(`Wrote assets/logo.png (${inAppSize}x${inAppSize}, transparent) from ${path.basename(emblemSource)}`);

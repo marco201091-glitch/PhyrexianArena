@@ -18,10 +18,10 @@ interface ManaLogoProps {
 }
 
 const sizes = {
-  sm: { plate: 80, wordmark: 13, subtitle: 8, gap: 8 },
-  md: { plate: 104, wordmark: 17, subtitle: 9, gap: 10 },
-  lg: { plate: 152, wordmark: 22, subtitle: 10, gap: 12 },
-  xl: { plate: 236, wordmark: 27, subtitle: 11, gap: 12 },
+  sm: { plate: 80, wordmark: 15, subtitle: 8, gap: 8 },
+  md: { plate: 104, wordmark: 20, subtitle: 9, gap: 10 },
+  lg: { plate: 152, wordmark: 27, subtitle: 10, gap: 12 },
+  xl: { plate: 236, wordmark: 34, subtitle: 11, gap: 12 },
 } as const;
 
 export function ManaLogo({
@@ -38,8 +38,8 @@ export function ManaLogo({
   const contentWidth = Math.max(0, screenWidth - 40);
   const plate = scaleForWidth(base.plate, contentWidth);
   const gap = scaleForWidth(base.gap, contentWidth, layoutMetrics.compactWidth + 40);
-  const primaryText = title ?? subtitle ?? 'Tracker & Analytics';
-  const secondaryText = title ? subtitle : undefined;
+  const primaryText = title ?? '21Life';
+  const secondaryText = subtitle;
 
   return (
     <View style={[
@@ -71,7 +71,7 @@ export function ManaLogo({
       {showText ? (
         <View style={[styles.textBlock, stacked && styles.textBlockStacked]}>
           <Text
-            style={[styles.wordmark, { fontSize: base.wordmark }, !title && styles.uppercase]}
+            style={[styles.wordmark, { fontSize: base.wordmark, lineHeight: Math.round(base.wordmark * 1.2) }]}
             maxFontSizeMultiplier={layoutMetrics.maxFontSizeMultiplier}
           >
             {primaryText}
@@ -87,7 +87,7 @@ export function ManaLogo({
         </View>
       ) : subtitle ? (
         <Text
-          style={[styles.wordmark, { fontSize: base.wordmark }]}
+          style={[styles.wordmark, { fontSize: base.wordmark, lineHeight: Math.round(base.wordmark * 1.2) }]}
           maxFontSizeMultiplier={layoutMetrics.maxFontSizeMultiplier}
         >
           {subtitle}
@@ -126,13 +126,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wordmark: {
-    color: '#f4f4f5',
+    color: '#fafafa',
     fontFamily: 'Cinzel_700Bold',
-    letterSpacing: 1.4,
+    letterSpacing: 1.1,
     textAlign: 'center',
-  },
-  uppercase: {
-    textTransform: 'uppercase',
+    textShadowColor: 'rgba(255, 255, 255, 0.18)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 5,
   },
   subtitle: {
     color: colors.primaryMuted,

@@ -67,14 +67,14 @@ build:
           cp -R "$APP_PATH" ios/build/unsigned-payload/Payload/
 
           mkdir -p artifacts/ios
-          rm -f artifacts/ios/PhyrexianArena-unsigned.ipa
+          rm -f artifacts/ios/21Life-unsigned.ipa
           (
             cd ios/build/unsigned-payload
-            ditto -c -k --sequesterRsrc --keepParent Payload ../../../artifacts/ios/PhyrexianArena-unsigned.ipa
+            ditto -c -k --sequesterRsrc --keepParent Payload ../../../artifacts/ios/21Life-unsigned.ipa
           )
 
     - eas/upload_artifact:
         name: Upload unsigned IPA
         inputs:
           type: application-archive
-          path: expo/artifacts/ios/PhyrexianArena-unsigned.ipa
+          path: expo/artifacts/ios/21Life-unsigned.ipa

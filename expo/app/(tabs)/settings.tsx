@@ -253,7 +253,6 @@ export default function SettingsScreen() {
           showText
           layout="horizontal"
           centered
-          subtitle={copy('appSubtitle')}
         />
       </View>
 

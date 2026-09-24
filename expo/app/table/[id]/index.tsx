@@ -488,7 +488,7 @@ export default function TableScreen() {
   const shareArenaStats = useCallback(() => {
     if (!group) return;
     setSharePreview({
-      title: `${group.name} - Tracker & Analytics`,
+      title: `${group.name} - 21Life`,
       message: buildArenaStatsShareMessage(),
     });
   }, [buildArenaStatsShareMessage, group]);

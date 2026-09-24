@@ -6,7 +6,7 @@ import {
 } from '@/lib/deck-importers';
 
 const ARCHIDEKT_USER_AGENT = process.env.ARCHIDEKT_USER_AGENT
-  || 'MTG Life Counter & Analytics: Commander (https://app.phyrexianarena.dpdns.org)';
+  || '21Life/9.0 (https://app.phyrexianarena.dpdns.org)';
 import {
   buildMoxfieldApiUrls,
   buildMoxfieldHeaders,
@@ -204,7 +204,7 @@ async function fetchArchidektPrintingImage(card: ArchidektCard, commanderName: s
   try {
     const response = await fetch(
       `https://api.scryfall.com/cards/${encodeURIComponent(setCode)}/${encodeURIComponent(collectorNumber)}`,
-      { headers: { Accept: 'application/json', 'User-Agent': 'MTG Life Counter & Analytics: Commander (https://phyrexianarena.app)' } },
+      { headers: { Accept: 'application/json', 'User-Agent': '21Life/9.0 (https://app.phyrexianarena.dpdns.org)' } },
     );
     if (!response.ok) return null;
 

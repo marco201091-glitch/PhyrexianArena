@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Phyrexian Arena - health alert della VM.
+# 21Life - health alert della VM.
 #
 # Controlla disco, container, endpoint pubblici e freschezza del backup
 # Supabase. Notifica solo al cambio di stato, non a ogni esecuzione: lo stato
@@ -22,7 +22,7 @@ OFFSITE_BACKUP_MARKER=${OFFSITE_BACKUP_MARKER:-/var/backups/phyrexianarena/offsi
 BACKUP_MAX_AGE_HOURS=${BACKUP_MAX_AGE_HOURS:-30}
 STATE_FILE=/run/phyrexian-health-alert.state
 HEALTH_ENV=/etc/phyrexian-health-alert.env
-MAIL_FROM=${MAIL_FROM:-Phyrexian Arena <noreply@phyrexianarena.dpdns.org>}
+MAIL_FROM=${MAIL_FROM:-21Life <noreply@phyrexianarena.dpdns.org>}
 
 if [[ -r "$HEALTH_ENV" ]]; then
   set -a
@@ -112,8 +112,8 @@ if [[ -n "${PHYREXIAN_HEALTH_WEBHOOK_URL:-}" ]]; then
 fi
 
 if [[ -n "${RESEND_API_KEY:-}" && -n "${ALERT_EMAIL:-}" ]]; then
-  subject="[ALERT] VM Phyrexian Arena"
-  [[ "$current_state" == 'healthy' ]] && subject="[OK] VM Phyrexian Arena ripristinata"
+  subject="[ALERT] VM 21Life"
+  [[ "$current_state" == 'healthy' ]] && subject="[OK] VM 21Life ripristinata"
   curl --silent --show-error --max-time 15 \
     --request POST https://api.resend.com/emails \
     --header "Authorization: Bearer $RESEND_API_KEY" \
