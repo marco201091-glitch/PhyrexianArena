@@ -53,7 +53,7 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 
 ## External follow-up
 
-- [ ] Prima della pubblicazione 9 in produzione: confermare il primo backup off-site rclone crypt/Google Drive dopo il rate limit temporaneo.
+- [x] Backup off-site rclone crypt/Google Drive: primo upload e marker verificati il 2026-09-24.
 - [ ] Monitor the official F-Droid merge request until approval.
 - [ ] PM verification of the Dokploy production build.
 
