@@ -25,4 +25,12 @@ sudo cat /var/backups/phyrexianarena/offsite-last-success
 
 7. Controlla dal Drive che i file non siano leggibili e programma un ripristino di prova trimestrale in un database isolato.
 
+## Recupero dopo perdita della VM
+
+Conserva una copia privata di `rclone.conf` fuori dalla VM: contiene sia la
+configurazione del remote cifrato sia l'accesso necessario per leggerlo. Per
+l'installazione di produzione è archiviata in Google Drive in
+`21LifeRecovery/rclone-production.conf`, con il checksum affiancato. Non
+condividere questa cartella: equivale a una chiave di recupero dei backup.
+
 Il job fallisce e invia un alert se la copia off-site configurata non riesce. Non impostare l'ambiente off-site finché il remote `crypt` non è stato verificato: senza configurazione il backup locale continua e registra un warning.
