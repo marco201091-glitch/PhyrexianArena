@@ -168,7 +168,7 @@ jobs:
             $body | Set-Content -LiteralPath "$env:RUNNER_TEMP/release-notes.md" -Encoding utf8
             $notesArgs = @("--notes-file", "$env:RUNNER_TEMP/release-notes.md")
           } else {
-            Write-Host "No $notesFile: falling back to generated release notes."
+            Write-Host "No ${notesFile}: falling back to generated release notes."
             $notesArgs = @("--generate-notes")
           }
 
