@@ -1,0 +1,4 @@
+21Life v9.0.0 introduces the new app name, redesigned table setup and live-game
+controls, Player Awards, clearer visual reports, smarter notifications, and a
+refined dark interface. Your account, decks, playgroups, and match history stay
+unchanged.
