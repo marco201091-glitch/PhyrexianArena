@@ -169,7 +169,7 @@ function topBy(
   minimum = 1,
 ) {
   return [...decks]
-    .filter((deck) => deck.trackedGames >= AWARD_MIN_TRACKED_GAMES && selector(deck) >= minimum)
+    .filter((deck) => selector(deck) >= minimum)
     .sort((a, b) => selector(b) - selector(a) || b.trackedGames - a.trackedGames || a.key.localeCompare(b.key))
     .slice(0, 3);
 }

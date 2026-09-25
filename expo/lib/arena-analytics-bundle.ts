@@ -112,6 +112,7 @@ export function getAnalyticsSince(dateFilter: ArenaDateFilter): string | null {
 
 function buildAwards(decks: DeckRollup[]): ArenaAward[] {
   const eligible = decks.filter((deck) => deck.tracked_games >= 3);
+  const allDecks = decks;
   const awards: ArenaAward[] = [];
   const addRanked = (kind: ArenaAwardKind, ranked: DeckRollup[], selector: (deck: DeckRollup) => number | null) => {
     ranked.slice(0, 3).forEach((deck, index) => {
@@ -146,11 +147,11 @@ function buildAwards(decks: DeckRollup[]): ArenaAward[] {
     true,
   );
   addRanked('fastest', fastest, (deck) => deck.median_winning_duration_seconds);
-  addRanked('group_slugger', top(eligible, (deck) => deck.group_damage_dealt), (deck) => deck.group_damage_dealt);
-  addRanked('executioner', top(eligible, (deck) => deck.eliminations), (deck) => deck.eliminations);
-  addRanked('runner_up', top(eligible, (deck) => deck.second_places), (deck) => deck.second_places);
-  addRanked('archenemy', top(eligible, (deck) => deck.first_eliminations), (deck) => deck.first_eliminations);
-  addRanked('comebacker', top(eligible, (deck) => deck.comeback_wins), (deck) => deck.comeback_wins);
+  addRanked('group_slugger', top(allDecks, (deck) => deck.group_damage_dealt), (deck) => deck.group_damage_dealt);
+  addRanked('executioner', top(allDecks, (deck) => deck.eliminations), (deck) => deck.eliminations);
+  addRanked('runner_up', top(allDecks, (deck) => deck.second_places), (deck) => deck.second_places);
+  addRanked('archenemy', top(allDecks, (deck) => deck.first_eliminations), (deck) => deck.first_eliminations);
+  addRanked('comebacker', top(allDecks, (deck) => deck.comeback_wins), (deck) => deck.comeback_wins);
   addRanked('one_trick', top(decks, (deck) => deck.games_played), (deck) => deck.games_played);
   addRanked('combo_winner', top(decks, (deck) => deck.combo_wins), (deck) => deck.combo_wins);
   addRanked('junk_master', top(decks, (deck) => deck.alternate_wins), (deck) => deck.alternate_wins);

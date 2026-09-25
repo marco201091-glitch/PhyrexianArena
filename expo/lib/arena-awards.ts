@@ -102,7 +102,8 @@ export function calculateArenaAwards(matches: ArenaMatch[]): ArenaAward[] {
     });
   });
 
-  const eligible = Array.from(byDeck.values()).filter((deck) => deck.trackedGames >= 3);
+  const allDecks = Array.from(byDeck.values());
+  const eligible = allDecks.filter((deck) => deck.trackedGames >= 3);
   const awards: ArenaAward[] = [];
   const addRanked = (
     kind: ArenaAwardKind,
@@ -117,17 +118,16 @@ export function calculateArenaAwards(matches: ArenaMatch[]): ArenaAward[] {
     .filter((entry): entry is { deck: typeof eligible[number]; value: number } => entry.value != null)
     .sort((a, b) => a.value - b.value || b.deck.winningDurations.length - a.deck.winningDurations.length || a.deck.deckId.localeCompare(b.deck.deckId));
   addRanked('fastest', fastest);
-  const top = (selector: (deck: typeof eligible[number]) => number) =>
-    [...eligible]
+  const top = (entries: typeof allDecks, selector: (deck: typeof allDecks[number]) => number) =>
+    [...entries]
       .filter((deck) => selector(deck) > 0)
       .sort((a, b) => selector(b) - selector(a) || b.trackedGames - a.trackedGames || a.deckId.localeCompare(b.deckId))
       .map((deck) => ({ deck, value: selector(deck) }));
-  addRanked('group_slugger', top((deck) => deck.groupDamage));
-  addRanked('executioner', top((deck) => deck.eliminations));
-  addRanked('runner_up', top((deck) => deck.secondPlaces));
-  addRanked('archenemy', top((deck) => deck.firstEliminations));
-  addRanked('comebacker', top((deck) => deck.comebackWins));
-  const allDecks = Array.from(byDeck.values());
+  addRanked('group_slugger', top(allDecks, (deck) => deck.groupDamage));
+  addRanked('executioner', top(allDecks, (deck) => deck.eliminations));
+  addRanked('runner_up', top(allDecks, (deck) => deck.secondPlaces));
+  addRanked('archenemy', top(allDecks, (deck) => deck.firstEliminations));
+  addRanked('comebacker', top(allDecks, (deck) => deck.comebackWins));
   const topAll = (selector: (deck: typeof allDecks[number]) => number) =>
     [...allDecks]
       .filter((deck) => selector(deck) > 0)

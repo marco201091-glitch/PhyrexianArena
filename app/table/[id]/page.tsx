@@ -2716,8 +2716,8 @@ export default function TablePage() {
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {t({
-                    it: 'Top 3 per ogni premio. I primati usano tutte le partite registrate; quelli realtime richiedono almeno 3 partite tracciate.',
-                    en: 'Top 3 for each award. Records use every saved match; realtime awards require at least 3 tracked games.',
+                    it: 'Top 3 per ogni premio. I primati usano tutte le partite registrate; solo il premio Più veloce richiede almeno 3 partite tracciate.',
+                    en: 'Top 3 for each award. Records use every saved match; only the Fastest award requires at least 3 tracked games.',
                   })}
                 </p>
               </div>
