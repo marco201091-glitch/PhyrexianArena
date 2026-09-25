@@ -9,6 +9,10 @@ Preferenza permanente PM: comunicare SEMPRE nella modalità OK / Fatto + checkli
 
 ## In progress
 
+- [x] iPad: pre-caricamento immagini limitato a 4 operazioni parallele su iOS; Android invariato.
+
+- [ ] Hotfix 9.0.1 Android: icona nativa durata, award Healing Master e Beginner’s luck, premi mazzo senza soglia tranne Più veloce; release production da completare.
+
 - [x] Rebranding v9: nome visibile `21Life`, lockup interno `21Life - Tracker & Analytics`, dado con `21`, icone web/Android, email, notifiche, condivisioni e metadata aggiornati; identificativi tecnici preservati.
 
 - [x] App Android uniformata con palette nero neutro/verde fluo approvata: card neutre, accenti e glow verdi; snapshot locale verificato e ripristinato esattamente.

@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
+import { Platform } from 'react-native';
 import { fetchCommanderArtOptions } from '@/lib/commander-arts';
 import { collectDeckCommanderNames, collectDeckImageUrls } from '@/lib/deck-image-urls';
 import { getRemoteImageHeaders } from '@/lib/remote-image';
@@ -16,7 +17,9 @@ const CACHE_ROOT = FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? 
 const CACHE_DIR = `${CACHE_ROOT}deck-images/`;
 const MANIFEST_PATH = `${CACHE_DIR}manifest.json`;
 const ON_DEMAND_CONCURRENCY = 6;
-const BACKGROUND_CONCURRENCY = 12;
+// iPad can decode several large commander arts at once; keep background work below
+// its rendering budget while preserving Android's existing warm-cache throughput.
+const BACKGROUND_CONCURRENCY = Platform.OS === 'ios' ? 4 : 12;
 const MIN_CACHED_FILE_BYTES = 512;
 const IMAGE_DECODE_TIMEOUT_MS = 3_000;
 const ARTS_PER_COMMANDER_PREFETCH = 8;
