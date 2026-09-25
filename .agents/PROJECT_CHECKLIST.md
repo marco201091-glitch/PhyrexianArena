@@ -10,7 +10,7 @@
 - [x] Update MR !44721 to the canonical 8.0.7 metadata.
 - [x] Monitor the corrected GitLab pipeline through completion.
 - [x] Publish F-Droid metadata 9.0.1 pinned to public commit `cf4d8d4` and update GitLab MR !44721.
-- [ ] Monitor GitLab MR !44721 / F-Droid pipeline for 9.0.1.
+- [ ] Monitor GitLab MR !44721 / F-Droid pipeline for 9.0.1; once live, post the release note tagging @linsui.
 
 ## External follow-up
 
