@@ -20,10 +20,9 @@ Binaries:
   https://github.com/marco201091-glitch/PhyrexianArena/releases/download/fdroid-v%v/mtg-tracker-fdroid-v%v.apk
 
 Builds:
-  - versionName: 8.1.0
-    versionCode: 80100
-    commit: 487373e078143fad3471e1a3abc6b5e3fb85a1e4
-    timeout: 7200
+  - versionName: 8.2.0
+    versionCode: 80200
+    commit: 59b596315e035f7dd5e7715a9f48004a3d52cc0f
     subdir: expo
     sudo:
       - apt-get update
@@ -60,6 +59,61 @@ Builds:
       - expo/node_modules/react-native-safe-area-context/android/build.gradle
       - expo/node_modules/react-native-screens/android/build.gradle
       - expo/node_modules/react-native-svg/android/build.gradle
+      - expo/node_modules/react-native-view-shot/android/build.gradle
+      - expo/node_modules/react-native-webview/android/build.gradle
+      - expo/node_modules/react-native/ReactAndroid/publish.gradle
+    scandelete:
+      - node_modules
+      - expo/node_modules
+    build:
+      - export APP_VARIANT=fdroid
+      - export EXPO_PUBLIC_FDROID_BUILD=true
+      - export EXPO_PUBLIC_SENTRY_ENABLED=false
+      - export EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
+      - cd android
+      - gradle :app:assembleRelease -PfdroidBuild=true -PreactNativeArchitectures=arm64-v8a
+        -PreactNativeDevServerIp=localhost --no-daemon --console=plain
+
+  - versionName: 9.0.1
+    versionCode: 90001
+    commit: cf4d8d4ad96be4e05c30574b297a7f0714754947
+    subdir: expo
+    sudo:
+      - apt-get update
+      - apt-get install -y nodejs npm
+    init:
+      - cd ..
+      - npm ci
+      - cd expo
+      - npm ci
+      - node scripts/patch-fdroid-java-toolchains.mjs
+      - node scripts/patch-fdroid-reproducibility.mjs
+    output: android/app/build/outputs/apk/release/app-release-unsigned.apk
+    prebuild:
+      - export APP_VARIANT=fdroid
+      - export EXPO_PUBLIC_FDROID_BUILD=true
+      - export EXPO_PUBLIC_SENTRY_ENABLED=false
+      - export EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS=true
+      - npx --no-install expo prebuild --platform android --clean --no-install
+      - sed -i 's/-Xmx2048m/-Xmx4g/' android/gradle.properties
+      - sed -i 's/MaxMetaspaceSize=512m/MaxMetaspaceSize=1g/' android/gradle.properties
+      - echo 'org.gradle.workers.max=1' >> android/gradle.properties
+      - cd ..
+      - npm run verify:fdroid
+      - cd expo
+      - npm run typecheck
+    scanignore:
+      - expo/node_modules/hermes-compiler/hermesc/linux64-bin/hermesc
+      - expo/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+      - expo/node_modules/@react-native-async-storage/async-storage/android/build.gradle
+      - expo/node_modules/@react-native-community/netinfo/android/build.gradle
+      - expo/node_modules/@react-native-masked-view/masked-view/android/build.gradle
+      - expo/node_modules/react-native-get-random-values/android/build.gradle
+      - expo/node_modules/react-native-keyboard-controller/android/build.gradle
+      - expo/node_modules/react-native-safe-area-context/android/build.gradle
+      - expo/node_modules/react-native-screens/android/build.gradle
+      - expo/node_modules/react-native-svg/android/build.gradle
+      - expo/node_modules/react-native-view-shot/android/build.gradle
       - expo/node_modules/react-native-webview/android/build.gradle
       - expo/node_modules/react-native/ReactAndroid/publish.gradle
     scandelete:
@@ -79,5 +133,5 @@ AllowedAPKSigningKeys: 5d25e32cdf901becfba81adf93189e1d755e50a90b897efa21da4c2ab
 AutoUpdateMode: Version
 UpdateCheckMode: Tags fdroid-v[0-9.]+$
 UpdateCheckData: expo/app.json|"versionCode":\s*(\d+),|.|"version":\s*"([^"]+)"
-CurrentVersion: 8.1.0
-CurrentVersionCode: 80100
+CurrentVersion: 9.0.1
+CurrentVersionCode: 90001

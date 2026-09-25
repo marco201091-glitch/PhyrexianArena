@@ -66,14 +66,7 @@ Draft metadata lives in:
 fdroid/metadata/com.phyrexianarena.app.yml
 ```
 
-Before submitting to `fdroiddata`, replace:
-
-```text
-REPLACE_WITH_FDROID_RELEASE_COMMIT_SHA
-```
-
-with the exact full commit SHA of the public release commit. F-Droid metadata
-requires commit hashes rather than branch names.
+The current 9.0.1 recipe is pinned to the exact full SHA of its public release commit. F-Droid metadata requires commit hashes rather than branch names.
 
 Keep every `sudo`, `init`, `prebuild`, and `build` command as a separate YAML
 list entry. Do not chain commands with `&&` or `;`. The descriptive metadata
@@ -99,4 +92,4 @@ Merge request:
 The F-Droid pipeline has completed `fdroid readmeta`, metadata linting, source
 build, scanner, signed-APK generation, and APK checks successfully. The merge
 request follows the App Inclusion template and the React Native build template.
-Only F-Droid maintainer review remains external to this repository.
+The 9.0.1 update is present in the merge request; F-Droid maintainer review remains external to this repository.
