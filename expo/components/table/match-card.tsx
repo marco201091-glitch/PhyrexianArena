@@ -40,9 +40,15 @@ export const MatchCard = memo(function MatchCard({ match, drawLabel, onEdit, onS
           <Text style={styles.drawBadgeText}>{drawLabel}</Text>
         </View>
       ) : null}
-      <View style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={styles.summary}>
         <Ionicons name="people-outline" size={18} color={colors.primaryMuted} />
-        <Text style={{ color: colors.foreground, flex: 1 }}>{match.match_participants.length} {language === 'it' ? 'giocatori' : 'players'}{match.duration_seconds != null ? ` � ${formatGameDuration(match.duration_seconds)}` : ''}</Text>
+        <Text style={styles.summaryText}>{match.match_participants.length} {language === 'it' ? 'giocatori' : 'players'}</Text>
+        {match.duration_seconds != null ? (
+          <View style={styles.duration}>
+            <Ionicons name="time-outline" size={15} color={colors.muted} />
+            <Text style={styles.durationText}>{formatGameDuration(match.duration_seconds)}</Text>
+          </View>
+        ) : null}
         {match.win_condition ? <Text style={{ color: colors.muted, flexShrink: 1 }}>{({ last_standing: 'Last Standing', combo: 'Combo', concession: language === 'it' ? 'Concessione' : 'Concession', alternate_card: language === 'it' ? 'Vittoria alternativa' : 'Alternate win', other: language === 'it' ? 'Altra vittoria' : 'Other win' })[match.win_condition]}</Text> : null}
       </View>
       <View style={styles.participants}>
@@ -114,6 +120,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
+  summary: { padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  summaryText: { color: colors.foreground, flex: 1 },
+  duration: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  durationText: { color: colors.muted, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   participants: {
     gap: spacing.sm,
     padding: spacing.md,

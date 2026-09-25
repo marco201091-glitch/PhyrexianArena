@@ -48,9 +48,16 @@ describe('deck performance analytics', () => {
     expect(stats.medianWinningDurationSeconds).toBe(2400);
   });
 
-  it('awards only decks with at least three tracked games', () => {
+  it('keeps the three-game threshold only for the median fastest award', () => {
     const decks = buildDeckPerformanceStats([row(), row(), row()]);
     expect(buildArenaAwards(decks).map((award) => award.kind)).toEqual([
+      'group_slugger', 'executioner', 'one_trick',
+    ]);
+  });
+
+  it('awards non-median records from a single tracked game', () => {
+    const [deck] = buildDeckPerformanceStats([row({ is_winner: false })]);
+    expect(buildArenaAwards([deck]).map((award) => award.kind)).toEqual([
       'group_slugger', 'executioner', 'one_trick',
     ]);
   });
