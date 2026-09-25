@@ -4,13 +4,13 @@
 
 - [x] Port Dev 8.1.0 features selectively to `fdroid-prep`.
 - [x] Preserve the approved F-Droid metadata, reproducibility workflow, and non-free dependency exclusions.
-- [x] Validate the local 8.1.0 F-Droid source before publishing any tag or MR update.
+- [x] Validate the local F-Droid source and metadata for 9.0.1.
 - [x] Post the final verified response to the F-Droid maintainer comments.
 - [x] Publish the deterministic F-Droid 8.0.7 reference APK.
 - [x] Update MR !44721 to the canonical 8.0.7 metadata.
 - [x] Monitor the corrected GitLab pipeline through completion.
-- [x] Publish validated source commit `487373e`, tag `fdroid-v8.1.0`, and the reproducible reference APK.
-- [x] Update MR !44721 to 8.1.0 and pass GitLab pipeline `2789471649`, including `fdroid build` and `check apk`.
+- [x] Publish F-Droid metadata 9.0.1 pinned to public commit `cf4d8d4` and update GitLab MR !44721.
+- [ ] Monitor GitLab MR !44721 / F-Droid pipeline for 9.0.1.
 
 ## External follow-up
 
