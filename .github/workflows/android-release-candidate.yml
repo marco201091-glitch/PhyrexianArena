@@ -172,8 +172,15 @@ jobs:
             $notesArgs = @("--generate-notes")
           }
 
-          gh release create $env:GITHUB_REF_NAME $apk $checksum $webSbom $androidSbom `
-            --repo $env:GITHUB_REPOSITORY `
-            --title "21Life $env:GITHUB_REF_NAME" `
-            @notesArgs `
-            --verify-tag
+          $assets = @($apk, $checksum, $webSbom, $androidSbom)
+          $null = gh release view $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:GITHUB_REF_NAME @assets --repo $env:GITHUB_REPOSITORY --clobber
+            gh release edit $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY --title "21Life $env:GITHUB_REF_NAME" @notesArgs
+          } else {
+            gh release create $env:GITHUB_REF_NAME @assets `
+              --repo $env:GITHUB_REPOSITORY `
+              --title "21Life $env:GITHUB_REF_NAME" `
+              @notesArgs `
+              --verify-tag
+          }
